@@ -1,0 +1,208 @@
+# Player journey through every menu using device-action presses only (keyboard layouts A and B).
+# Screens: 1 title, 2 main, 3 select, 4 match, 5 results, 6 settings, 7 bindings, 8 move list, 9 credits, 10 quit confirm.
+# Main menu: Versus CPU, Local Versus, Training, Lesson, Move List, Settings, Credits, Quit.
+wait 5
+screenshot j01_title
+press kbA Light
+wait 1
+expect_screen 2
+screenshot j02_main
+# Versus CPU: Wren, then the default opponent (Ashka), then Normal / left side.
+press kbA Light
+wait 0.6
+expect_screen 3
+screenshot j03_select
+press kbA Light
+press kbA Light
+wait 0.3
+screenshot j03b_select_options
+press kbA Light
+wait 3
+expect_screen 4
+screenshot j04_match_intro
+wait 4
+# Pause: Resume, Restart match, Move List, Settings, Change Fighters, Main Menu.
+press kbA Pause
+wait 0.5
+screenshot j05_pause
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.5
+expect_screen 8
+screenshot j06_movelist
+press kbA Right
+wait 0.3
+screenshot j06b_movelist_ashka
+press kbA Heavy
+wait 0.4
+expect_screen 4
+press kbA Heavy
+wait 1
+press kbA Pause
+wait 0.4
+press kbA Up
+press kbA Light
+wait 1
+expect_screen 2
+# Training: Wren against Ashka; turn hitboxes on (pause item 6), grab and heavy, reset, leave.
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.5
+expect_screen 3
+press kbA Light
+press kbA Light
+wait 2.5
+expect_screen 4
+press kbA Pause
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.3
+screenshot j07a_training_pause
+press kbA Heavy
+wait 1
+hold kbA Right
+wait 0.8
+release kbA Right
+press kbA Throw
+wait 2
+press kbA Heavy
+wait 0.25
+screenshot j07_training_hitboxes
+wait 1
+press kbA Reset
+wait 1
+screenshot j07b_training_reset
+press kbA Pause
+press kbA Up
+press kbA Light
+wait 1
+expect_screen 2
+# Lesson: pick Wren, read the first step, try it, then leave through pause.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.5
+expect_screen 3
+press kbA Light
+wait 3
+expect_screen 4
+screenshot j08_lesson
+hold kbA Right
+wait 1
+release kbA Right
+hold kbA Left
+wait 1
+release kbA Left
+wait 1
+screenshot j09_lesson_step
+press kbA Pause
+press kbA Up
+press kbA Light
+wait 1
+expect_screen 2
+# Local Versus on one keyboard: both layouts join, lock Wren and Ashka, start, then leave.
+press kbA Down
+press kbA Light
+wait 0.5
+expect_screen 3
+press kbA Light
+press kbB Light
+wait 0.3
+screenshot j10a_versus_select
+press kbA Light
+press kbB Light
+press kbA Light
+wait 3
+expect_screen 4
+screenshot j10b_versus_match
+press kbB Pause
+wait 0.4
+press kbB Up
+press kbB Light
+wait 1
+expect_screen 2
+# Settings > Audio: master volume down and up.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.4
+expect_screen 6
+press kbA Down
+press kbA Down
+press kbA Light
+press kbA Left
+press kbA Right
+screenshot j11_audio
+press kbA Heavy
+# Settings > Accessibility: toggle reduced shake on and off again.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+press kbA Down
+press kbA Light
+screenshot j12_accessibility
+press kbA Light
+press kbA Heavy
+# Settings > Video (view only; Back discards).
+press kbA Down
+press kbA Light
+screenshot j13_video
+press kbA Heavy
+# Settings > Controls > Keyboard - left side bindings.
+press kbA Light
+press kbA Down
+press kbA Light
+wait 0.5
+expect_screen 7
+screenshot j14_bindings
+press kbA Heavy
+wait 0.3
+expect_screen 6
+press kbA Heavy
+press kbA Heavy
+wait 0.5
+expect_screen 2
+settings_roundtrip
+# Move list from the main menu.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.5
+expect_screen 8
+press kbA Heavy
+wait 0.5
+expect_screen 2
+# Credits, then quit through the confirmation.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 1
+expect_screen 9
+screenshot j15_credits
+press kbA Heavy
+wait 0.5
+expect_screen 2
+press kbA Up
+press kbA Light
+wait 0.5
+expect_screen 10
+screenshot j16_quit_confirm
+press kbA Light
+wait 5

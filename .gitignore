@@ -1,0 +1,9 @@
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+.vscode/
+*.code-workspace
+Build/
+__pycache__/
+*.pyc

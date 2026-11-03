@@ -1,0 +1,18 @@
+# Performance capture at the launch resolution: warm up, then sample a long bot-vs-CPU fight with effects active.
+wait 5
+press kbA Light
+wait 1
+match wren ashka cpu 2 left
+bots 2 none
+wait 20
+perf_begin
+wait 60
+perf_end perf_fight_60s
+mem after_perf
+screenshot perf_frame
+goto_main
+wait 2
+perf_begin
+wait 20
+perf_end perf_menu_20s
+quit

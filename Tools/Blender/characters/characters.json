@@ -1,0 +1,229 @@
+{
+ "about": "Build parameters for the Ebony Hearts fighters (read by build_characters.py). MPFB macros are 0..1; region targets -1..1 by 'category/modifier'; expression units are MPFB face units baked into the neutral head. Heights are barefoot stature in metres; sole_m raises the body so shoe soles rest on Z=0.",
+ "common": {
+  "eyes": "high-poly",
+  "rig": "game_engine",
+  "texture_sizes": {
+   "skin": 2048,
+   "outfit": 2048,
+   "accessory": 1024,
+   "hair": 1024,
+   "eyes": 512
+  },
+  "weight_limit": 8,
+  "lod1_ratio": 0.5,
+  "ao_rays": 20,
+  "eye": {
+   "iris_angle": 0.68,
+   "pupil_angle": 0.22
+  }
+ },
+ "characters": {
+  "wren": {
+   "name": "Wren",
+   "display_name": "Wren Ku",
+   "height_m": 1.78,
+   "sole_m": 0.0,
+   "macros": {
+    "gender": 0.0,
+    "age": 0.53,
+    "muscle": 0.95,
+    "weight": 0.42,
+    "proportions": 0.95,
+    "cupsize": 0.45,
+    "firmness": 0.75,
+    "race": {
+     "caucasian": 0.9,
+     "asian": 0.05,
+     "african": 0.05
+    }
+   },
+   "targets": {
+    "legs/upperlegs-height-decr-incr": 0.3,
+    "legs/lowerlegs-height-decr-incr": 0.15,
+    "legs/upperleg-muscle-decr-incr": 0.5,
+    "legs/measure-thigh-circ-decr-incr": 0.25,
+    "legs/lowerleg-muscle-decr-incr": 0.35,
+    "hip/hip-scale-horiz-decr-incr": 0.12,
+    "buttocks/buttocks-volume-decr-incr": 0.25,
+    "pelvis/pelvis-tone-decr-incr": 0.4,
+    "stomach/stomach-pregnant-decr-incr": -0.35,
+    "torso/torso-muscle-dorsi-decr-incr": 0.3,
+    "torso/torso-vshape-decr-incr": 0.15,
+    "torso/measure-waist-circ-decr-incr": -0.15,
+    "arms/upperarm-muscle-decr-incr": 0.5,
+    "arms/upperarm-shoulder-muscle-decr-incr": 0.45,
+    "arms/lowerarm-muscle-decr-incr": 0.4,
+    "neck/measure-neck-circ-decr-incr": 0.1,
+    "cheek/cheek-bones-decr-incr": 0.3,
+    "eyes/eye-scale-decr-incr": 0.32,
+    "mouth/mouth-scale-horiz-decr-incr": 0.08,
+    "chin/chin-width-decr-incr": -0.1,
+    "torso/measure-shoulder-dist-decr-incr": 0.12,
+    "mouth/mouth-lowerlip-volume-decr-incr": 0.2,
+    "mouth/mouth-upperlip-volume-decr-incr": 0.15,
+    "nose/nose-scale-horiz-decr-incr": -0.1
+   },
+   "expression": {
+    "race": "caucasian",
+    "mouth-corner-puller": 0.58,
+    "eye-left-slit": 0.18,
+    "eye-right-slit": 0.18
+   },
+   "eyelashes": "eyelashes01",
+   "eyebrows": "eyebrow001",
+   "palette": {
+    "skin": "#cf9b7c",
+    "skin_shadow": "#9c6249",
+    "lips": "#b8665d",
+    "hair": "#45301f",
+    "hair_light": "#73523a",
+    "hair_dark": "#20140c",
+    "iris": "#1677b8",
+    "iris_dark": "#06294f",
+    "black": "#16171b",
+    "black_light": "#2a2c33",
+    "blue": "#0f6fae",
+    "blue_light": "#2a9bd6"
+   },
+   "uv": {
+    "head_scale": 1.6
+   },
+   "abs": {
+    "navel_frac": 0.595,
+    "normal_strength": 0.0016,
+    "paint_strength": 0.09
+   },
+   "hair": {
+    "cap_thickness": 0.013,
+    "anchor_back": 0.032,
+    "anchor_down": 0.012,
+    "clear": 0.012,
+    "drop": 0.3,
+    "width": [
+     0.044,
+     0.03
+    ],
+    "period": 0.065,
+    "tassel": 0.06,
+    "tie_color": "#16171b",
+    "tie_stripe": "#0f6fae",
+    "hairline_up": 0.04
+   },
+   "outfit": {
+    "shorts_hem": 0.5
+   }
+  },
+  "ashka": {
+   "name": "Ashka",
+   "display_name": "Ashka Rook",
+   "height_m": 1.7,
+   "sole_m": 0.022,
+   "macros": {
+    "gender": 0.0,
+    "age": 0.515,
+    "muscle": 0.55,
+    "weight": 0.32,
+    "proportions": 0.9,
+    "cupsize": 0.4,
+    "firmness": 0.6,
+    "race": {
+     "caucasian": 0.62,
+     "asian": 0.3,
+     "african": 0.08
+    }
+   },
+   "targets": {
+    "legs/upperlegs-height-decr-incr": 0.12,
+    "torso/measure-waist-circ-decr-incr": -0.2,
+    "neck/measure-neck-height-decr-incr": 0.15,
+    "chin/chin-prominent-decr-incr": 0.1,
+    "chin/chin-width-decr-incr": -0.2,
+    "cheek/cheek-volume-decr-incr": -0.15,
+    "eyes/eye-scale-decr-incr": 0.22,
+    "nose/nose-scale-horiz-decr-incr": -0.1
+   },
+   "expression": {
+    "race": "caucasian",
+    "mouth-corner-puller": 0.14,
+    "eye-left-slit": 0.22,
+    "eye-right-slit": 0.22
+   },
+   "eyelashes": "eyelashes02",
+   "eyebrows": "eyebrow006",
+   "palette": {
+    "skin": "#e2b8a2",
+    "skin_shadow": "#b98676",
+    "lips": "#a35a5a",
+    "hair": "#7a0e1b",
+    "hair_light": "#9e1a28",
+    "hair_dark": "#38050b",
+    "iris": "#b0121f",
+    "iris_dark": "#4a050c",
+    "coat": "#141417",
+    "coat_light": "#26272c",
+    "shirt": "#ecebe6",
+    "tie": "#0e0e10",
+    "pants": "#18181b",
+    "loafer": "#4a2c19",
+    "loafer_dark": "#24140a",
+    "metal": "#8a8378",
+    "tattoo": "#8e0f22"
+   },
+   "uv": {
+    "head_scale": 1.0,
+    "tattoo_scale": 2.5
+   },
+   "tattoo": {
+    "size_cm": 6.5
+   },
+   "hair": {
+    "cap_thickness": 0.01,
+    "clear": 0.012,
+    "drop": 0.36,
+    "width": [
+     0.05,
+     0.034
+    ],
+    "period": 0.085,
+    "tassel": 0.07,
+    "nape_down": 0.035,
+    "bang_span": 0.07,
+    "bang_root": 0.05,
+    "bang_clear": 0.007,
+    "bang_past_brow": 0.011,
+    "bang_width": 0.034,
+    "strand_width": 0.026,
+    "strand_drop": 0.1,
+    "tie_color": "#141416",
+    "bang_count": 8,
+    "bang_thick": 0.006,
+    "strand_thick": 0.006
+   },
+   "outfit": {
+    "button_above_pelvis": 0.075,
+    "v_halfwidth_top": 0.08,
+    "tattoo_dz": -0.075,
+    "pants_hem_z": 0.035,
+    "pants_min_radius": 0.062,
+    "skirt_top_rel_pelvis": -0.03,
+    "sleeve_end_t": 0.93,
+    "coat_offset": 0.014,
+    "hem_z": 0.3,
+    "skirt_rows": 14,
+    "skirt_flare": 0.055,
+    "skirt_clear": 0.03,
+    "side_slit_rows": 9,
+    "back_vent_rows": 8,
+    "skirt_thickness": 0.004,
+    "lapel_width": 0.07,
+    "collar_height": 0.05,
+    "belt_above_pelvis": 0.075,
+    "belt_height": 0.035,
+    "tie_width": 0.075,
+    "front_gap": 0.09,
+    "belt_knot_x": 0.05
+   }
+  }
+ }
+}

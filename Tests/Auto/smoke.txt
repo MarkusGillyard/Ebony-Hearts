@@ -1,0 +1,21 @@
+# Quick smoke: title, menu, one CPU match segment with a bot on player one, perf sample, asset report.
+wait 5
+screenshot 01_title
+press kbA Light
+wait 1.5
+screenshot 02_main
+match wren ashka cpu 1
+bots 1 none
+wait 3
+screenshot 03_intro
+wait 6
+screenshot 04_fight
+perf_begin
+wait 12
+perf_end perf_smoke
+screenshot 05_fight_later
+assets
+mem after_match
+goto_main
+wait 1
+quit

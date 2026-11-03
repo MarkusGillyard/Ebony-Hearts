@@ -1,0 +1,27 @@
+# Isolates the cost of Spirit Enhanced Strikes: Training with the gauge always full, a 10 s capture with no aura,
+# then two 7 s captures while the aura is active (the second after it has expired and been re-applied).
+wait 3
+press kbA Light
+wait 1
+training_gauge full
+match wren ashka training 0 left
+wait 4
+perf_begin
+wait 10
+perf_end perf_training_no_aura_10s
+hold kbA Left
+press kbA Special
+release kbA Left
+wait 0.8
+perf_begin
+wait 7
+perf_end perf_training_aura_7s
+wait 2
+hold kbA Left
+press kbA Special
+release kbA Left
+wait 0.8
+perf_begin
+wait 7
+perf_end perf_training_aura2_7s
+quit

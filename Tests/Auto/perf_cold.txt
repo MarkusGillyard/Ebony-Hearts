@@ -1,0 +1,13 @@
+# First-use behaviour: sample frame times from the very start of the first match after launch (no warm-up), so
+# shader/pipeline compilation and first-use stutter are measured separately from the warmed perf.txt numbers.
+# Run on a fresh user profile to measure a true first launch.
+wait 3
+press kbA Light
+wait 1
+perf_begin
+match wren ashka cpu 2 left
+bots 2 none
+wait 25
+perf_end perf_cold_first_match_25s
+mem after_cold
+quit

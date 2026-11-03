@@ -1,0 +1,313 @@
+// Owns the whole player journey: menus, character select, matches (versus CPU, local versus, training and the
+// interactive lesson), results, settings and quit. Steps the combat simulation at a fixed 60 Hz from real time and
+// turns its events into presentation (animation, effects, sound, camera, HUD).
+#pragma once
+
+#include "CoreMinimal.h"
+#include "EHAI.h"
+#include "EHAudio.h"
+#include "EHClock.h"
+#include "EHCombatData.h"
+#include "EHInputRouter.h"
+#include "EHMatch.h"
+#include "EHPresentation.h"
+#include "EHSettings.h"
+#include "EHUICanvas.h"
+#include "GameFramework/Actor.h"
+
+#include "EHGameDirector.generated.h"
+
+class ACameraActor;
+class AEHFighterVisual;
+class AEHVfx;
+class UTexture2D;
+
+// Move id string for a fighter's move index (empty for -1).
+inline FString EHMoveId(const eh::Match& Match, int32 Player, int32 Move)
+{
+	return Move < 0 ? FString() : FString(UTF8_TO_TCHAR(Match.Character(Player).moves[static_cast<size_t>(Move)].id.c_str()));
+}
+
+enum class EEHScreen : uint8
+{
+	Error,
+	Title,
+	Main,
+	Select,
+	Match,
+	Results,
+	Settings,
+	Bindings,
+	MoveList,
+	Credits,
+	QuitConfirm,
+	DisplayConfirm,
+};
+
+enum class EEHMode : uint8
+{
+	VersusCpu,
+	Versus,
+	Training,
+	Tutorial,
+};
+
+struct FEHMenuItem
+{
+	FString Label;
+	TFunction<FString()> Value;          // optional right-hand value
+	TFunction<void(int32)> Change;        // left/right
+	TFunction<void()> Activate;           // confirm
+	FString Hint;
+	bool bHeader = false;
+};
+
+struct FEHBanner
+{
+	FString Text;
+	FString Sub;
+	float Age = 0.0f;
+	float Life = 1.2f;
+	FLinearColor Color = FLinearColor::White;
+};
+
+struct FEHCallout
+{
+	FString Text;
+	int32 Side = 0;
+	float Age = 0.0f;
+	float Life = 0.9f;
+	FLinearColor Color = FLinearColor::White;
+};
+
+struct FEHInputLogEntry
+{
+	int8 X = 0;
+	uint8 Held = 0;
+	int32 Frames = 1;
+};
+
+struct FEHStats
+{
+	int32 Damage[2] = {0, 0};
+	int32 MaxCombo[2] = {0, 0};
+	int32 Throws[2] = {0, 0};
+	int32 Deflects[2] = {0, 0};
+	int32 Frames = 0;
+};
+
+struct FEHTutorialStep
+{
+	FString Title;
+	FString Body;
+	int32 Goal = 1;
+};
+
+UCLASS(NotBlueprintable)
+class AEHGameDirector : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	AEHGameDirector();
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
+	virtual void Tick(float DeltaSeconds) override;
+
+	void PaintUI(FEHPainter& P);
+	float UIScale() const { return Settings.UIScale; }
+
+	// Automation hooks (evaluation runs use the same router path as devices).
+	FEHInputRouter* Router() const { return RouterPtr.Get(); }
+	EEHScreen CurrentScreen() const { return Screen; }
+	const eh::Match* CurrentMatch() const { return Match.IsValid() ? Match.Get() : nullptr; }
+	bool IsPaused() const { return bPaused; }
+
+private:
+	// Data
+	eh::Rules Rules;
+	eh::CharacterDef Chars[2];       // 0 Wren, 1 Ashka
+	FEHPresentation Pres;
+	FString DataError;
+	FEHSettings Settings;
+	FString SettingsWarning;
+	TSharedPtr<FEHInputRouter> RouterPtr;
+	FEHAudio Audio;
+	FEHFonts Fonts;
+
+	// Flow
+	EEHScreen Screen = EEHScreen::Title;
+	EEHScreen SettingsReturn = EEHScreen::Main;
+	float ScreenAge = 0.0f;
+	TArray<FEHMenuItem> Menu;
+	int32 MenuIndex = 0;
+	FString MenuTitle;
+	int32 MenuOwner = EHDeviceNone;  // device allowed to drive the current menu (-1 = any)
+	int32 PrimaryDevice = EHDeviceKeyboardA;
+	FString Toast;
+	float ToastAge = 10.0f;
+
+	// Character select
+	EEHMode Mode = EEHMode::VersusCpu;
+	int32 SelectCursor[2] = {0, 1};
+	bool SelectLocked[2] = {false, false};
+	int32 SelectDevice[2] = {EHDeviceNone, EHDeviceNone};
+	int32 SelectStage = 0;          // versus CPU: 0 pick yours, 1 pick CPU fighter, 2 difficulty/side
+	bool bPlayerOnRight = false;
+
+	// Match
+	TUniquePtr<eh::Match> Match;
+	eh::CpuController Cpu[2];
+	bool SlotCpu[2] = {false, true};
+	int32 SlotDevice[2] = {EHDeviceKeyboardA, EHDeviceNone};
+	int32 SlotChar[2] = {0, 1};
+	int32 CpuLevel = 1;
+	eh::FixedStepClock Clock;
+	int32 PrevX[2] = {0, 0};
+	bool bPaused = false;
+	int32 PauseOwner = EHDeviceNone;
+	bool bResultsShown = false;
+	FEHStats Stats;
+	int32 LastWinner = -1;
+	float HealthLag[2] = {1.0f, 1.0f};
+	float LastHitAge[2] = {10.0f, 10.0f};
+	TArray<FEHBanner> Banners;
+	TArray<FEHCallout> Callouts;
+	FString DisconnectNotice;
+
+	// Training
+	eh::DummyMode Dummy = eh::DummyMode::Stand;
+	int32 TrainingLayout = 0;
+	bool bShowHitboxes = false;
+	bool bShowFrameData = true;
+	bool bShowInputs = true;
+	bool bInfiniteMeter = false;
+	TArray<FEHInputLogEntry> InputLog[2];
+	FString LastMoveName[2];
+	FString LastMoveFrames[2];
+
+	// Tutorial
+	TArray<FEHTutorialStep> Lesson;
+	int32 LessonStep = 0;
+	int32 LessonCount = 0;
+	float LessonDoneAge = -1.0f;
+	int32 ScriptTimer = 0;
+	int8 LessonWalkDir = 0;
+
+	// Presentation
+	UPROPERTY()
+	TObjectPtr<AEHFighterVisual> Visual[2];
+	UPROPERTY()
+	TObjectPtr<AEHVfx> Vfx;
+	UPROPERTY()
+	TObjectPtr<ACameraActor> Camera;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> TitleTexture;
+	FSlateBrush TitleBrush;
+	FVector CamPos = FVector(0, 600, 140);
+	float CamShake = 0.0f;
+	float CamPunch = 0.0f;
+	float MenuOrbit = 0.0f;
+	double RenderTime = 0.0;
+	TSharedPtr<SEHCanvas> Canvas;
+	bool bAnyGraybox = false;
+	float FootTimer[2] = {0.0f, 0.0f};
+	int64 LastSplash[2] = {-1, -1};
+	bool bMatchActive = false;
+
+	// Display change safety
+	FEHSettings DisplayRevert;
+	// Display values from the settings file; launch flags override them for the session only.
+	FEHSettings DiskDisplay;
+	bool bSessionDisplayOverride = false;
+	float DisplayConfirmLeft = 0.0f;
+
+	// Automation
+	FString AutoScript;
+	TArray<FString> AutoLines;
+	int32 AutoLine = 0;
+	float AutoWait = 0.0f;
+	bool bAutoBot[2] = {false, false};
+	eh::CpuController AutoBot[2];
+	uint32 AutoBotHeld[2] = {0, 0};
+	FString EvidenceDir;
+	TArray<FString> AutoLog;
+	TArray<float> FrameTimes;
+	bool bRecordFrames = false;
+	int32 AutoMatches = 0;
+	double AutoStart = 0.0;
+
+	// Lifecycle helpers
+	bool LoadData();
+	void ApplySettings(bool bDisplay);
+	void SaveSettings();
+	// Writes the settings file; display values overridden by launch flags keep their saved values.
+	bool WriteSettings() const;
+	void ShowToast(const FString& Text);
+
+	// Flow
+	void GoTo(EEHScreen Next);
+	void BuildMenu();
+	void HandleNav();
+	void HandleMenuNav(const FEHNavEvent& E);
+	void HandleSelectNav(const FEHNavEvent& E);
+	void HandleMatchNav(const FEHNavEvent& E);
+	void HandleConnections();
+	void BeginSelect(EEHMode InMode);
+	void StartMatch();
+	void Rematch();
+	void LeaveMatch(EEHScreen To);
+	void SetPaused(bool bPause, int32 Owner);
+	void BuildPauseMenu();
+	void BuildSettingsMenu(int32 Page);
+	void BuildBindingsMenu(EEHBindingSet Set);
+	int32 SettingsPage = 0;
+	EEHBindingSet BindingSet = EEHBindingSet::KeyboardA;
+	int32 CaptureAction = -1;
+	int32 CaptureSlot = 0;
+
+	// Simulation
+	void SimStep();
+	eh::InputFrame SlotInput(int32 Player);
+	eh::InputFrame LessonScriptInput();
+	void ProcessEvents();
+	void UpdateLesson(const eh::Event& E);
+	void SetupLesson();
+	void RecordInput(int32 Player, const eh::InputFrame& In);
+	void UpdateFrameData(int32 Player);
+
+	// Presentation
+	void UpdatePresentation(float DeltaSeconds, float Alpha);
+	void UpdateCamera(float DeltaSeconds);
+	void SpawnWorldActors();
+	void ConfigureVisuals();
+	FVector SimToWorld(int32 X, int32 Y) const;
+
+	// UI painting
+	void PaintBackdrop(FEHPainter& P, float Dim);
+	void PaintTitle(FEHPainter& P);
+	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact);
+	void PaintSelect(FEHPainter& P);
+	void PaintHUD(FEHPainter& P);
+	void PaintTraining(FEHPainter& P);
+	void PaintLesson(FEHPainter& P);
+	void PaintResults(FEHPainter& P);
+	void PaintMoveList(FEHPainter& P);
+	void PaintCredits(FEHPainter& P);
+	void PaintError(FEHPainter& P);
+	// Draws one button glyph and returns its width.
+	float PaintPrompt(FEHPainter& P, FVector2f Pos, EEHAction Action, int32 Device, float Height = 30.0f);
+	void PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<TPair<EEHAction, FString>>& Items, int32 Device);
+	FString PromptText(EEHAction Action, int32 Device) const;
+	EEHDeviceKind PromptKind(int32 Device) const;
+	void PaintHitboxes(FEHPainter& P);
+
+	// Automation
+	void InitAutomation();
+	void TickAutomation(float DeltaSeconds);
+	void AutoLogLine(const FString& Line);
+	void WriteEvidence(const FString& Name, const FString& Text);
+	void AutoInject(int32 Device, EEHAction Action);
+	eh::InputFrame AutoBotInput(int32 Player);
+	void AutoReleaseBots();
+};
