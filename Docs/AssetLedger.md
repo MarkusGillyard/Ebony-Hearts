@@ -46,8 +46,16 @@ Files deliberately excluded:
 
 ## Creator-supplied
 
-- **Title card** (`/Game/UI/T_TitleCard`), SHA-256 `2856a352...0f01bfec`. Supplied by the creator in the project folder.
-  Its origin and rights are the creator's to confirm before any public release.
+- **Title card** (`/Game/UI/T_TitleCard`). Imported unmodified from the creator's file `Ebony Hearts Title Card`
+  (PNG, 2172 × 724), SHA-256 `2856a3520ba7def78f39c1daeb6c8e1b4b119c637902d6a55e78598f5a401f0f`.
+  - **Origin.** AI-generated. The creator generated it specifically for Ebony Hearts with OpenAI's ChatGPT image
+    generation.
+  - **Rights.** Confirmed by the creator on 2026-11-03. Under OpenAI's Terms of Use, the creator owns the output as
+    between the creator and OpenAI, to the extent permitted by applicable law, and may use, modify, distribute and
+    commercially incorporate it in Ebony Hearts. It is an authorized project asset.
+  - **Copyright.** Including it does not imply that the unmodified, AI-generated image has exclusive copyright
+    protection.
+  - **Handling.** Keep the original file. Do not replace or redesign the title card without the creator's approval.
 
 ## Rights summary
 

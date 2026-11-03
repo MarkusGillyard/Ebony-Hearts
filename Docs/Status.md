@@ -5,10 +5,9 @@ Updated 2026-11-03.
 ## Where things stand
 
 **PARTIAL — NOT COMPLETE.** The slice is implemented, and the packaged Linux build passed every automated acceptance
-run on the test machine (see [Validation](Validation.md)). It is not declared complete for four reasons:
+run on the test machine (see [Validation](Validation.md)). It is not declared complete because:
 - **People.** Three checks need a person: physical-controller buttons, a hands-on playtest of feel and balance, and a
   listening pass on the mix.
-- **Title card.** Its rights must be confirmed by the creator.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   It is recorded as a Preservation failure.
 
@@ -78,13 +77,13 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
    Then unplug and replug the controller mid-match.
 2. **Playtest and listening.** Play a few matches against each CPU level and in Training. Note anything that feels
    unfair, slow or unclear, and anything in the mix that is too loud, too quiet or grating.
-3. **Title card.** Confirm the origin and rights of the supplied title card (`/Game/UI/T_TitleCard`) before any public
-   release.
+3. **Title card.** Done on 2026-11-03. The creator confirmed it is an authorized, AI-generated project asset (OpenAI
+   ChatGPT image generation). Origin, rights and handling are in the [asset ledger](AssetLedger.md#creator-supplied).
 4. **Merge and release.** `release/first-slice` is published as one squashed commit. The local working history,
    which includes an early commit with Python bytecode caches, is not published. Merging pull request #1 into
    `main`, tagging a version and making a GitHub release each need your explicit go-ahead.
 
 ## Next safe action
 
-Do the controller check in item 1 above. If it passes, decide whether to merge pull request #1 into `main`. Nothing
-will be merged, tagged or released without that decision.
+Do the controller check and the playtest (items 1 and 2 above). After the playtest, the creator plans to have pull
+request #1 merged into `main`. Nothing will be merged, tagged or released without that decision.

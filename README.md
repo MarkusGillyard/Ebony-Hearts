@@ -11,8 +11,7 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 **First playable slice: PARTIAL — NOT COMPLETE.**
 - **Build.** A packaged Linux build exists and passes its automated acceptance runs on the test machine: menus and
   modes, 12-match matrix, 30+ minute soak, 1080p/60 performance, real keyboard events and a virtual gamepad.
-- **Still open.** A physical-controller check, a human playtest and listening pass, and the creator's confirmation of
-  title-card rights.
+- **Still open.** A physical-controller check, and a human playtest and listening pass.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
 
 Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Status.md).
@@ -139,10 +138,10 @@ Tests/Core/run_core_tests.sh
 - **Audio.** Music, ambience and most effects are synthesized for the slice, with CC0 layers. There are no voices.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback, online
   play or replay saving.
-- **Title card.** The title card was supplied by the creator. Its rights must be confirmed before any public release.
 
 ## Rights
 
 Ebony Hearts, its characters and its world belong to Markus Gillyard / Cinqic. All rights reserved. Third-party inputs
 and their licences are listed in [Docs/AssetLedger.md](Docs/AssetLedger.md). The packaged game ships
-`THIRD_PARTY_NOTICES.txt`.
+`THIRD_PARTY_NOTICES.txt`. The title card was generated for the game by the creator with OpenAI's ChatGPT image
+generation and is used with the creator's authorization; the ledger records its origin and rights.
