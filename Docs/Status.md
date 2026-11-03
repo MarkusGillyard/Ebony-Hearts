@@ -12,7 +12,8 @@ run on the test machine (see [Validation](Validation.md)). It is not declared co
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   It is recorded as a Preservation failure.
 
-Nothing has been pushed or published.
+**Published.** On 2026-11-03, at the creator's request, `release/first-slice` was pushed to
+`MarkusGillyard/Ebony-Hearts` and opened as pull request #1 into `main`. Nothing has been merged, tagged or released.
 
 ## What was delivered
 
@@ -79,11 +80,11 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
    unfair, slow or unclear, and anything in the mix that is too loud, too quiet or grating.
 3. **Title card.** Confirm the origin and rights of the supplied title card (`/Game/UI/T_TitleCard`) before any public
    release.
-4. **Publication.** This needs your explicit go-ahead. The working branch's history includes an early commit with
-   Python bytecode caches. A squashed local branch, `release/first-slice`, holds the same final tree as one clean
-   commit for publishing.
+4. **Merge and release.** `release/first-slice` is published as one squashed commit. The local working history,
+   which includes an early commit with Python bytecode caches, is not published. Merging pull request #1 into
+   `main`, tagging a version and making a GitHub release each need your explicit go-ahead.
 
 ## Next safe action
 
-Do the controller check in item 1 above. If it passes, decide whether to publish `release/first-slice` to
-`MarkusGillyard/Ebony-Hearts`. Nothing will be pushed without that decision.
+Do the controller check in item 1 above. If it passes, decide whether to merge pull request #1 into `main`. Nothing
+will be merged, tagged or released without that decision.

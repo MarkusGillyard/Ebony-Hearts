@@ -8,7 +8,7 @@ files (logs, screenshots, footage, frame-time captures, resource samples) are ke
 
 | Item | Value |
 |---|---|
-| Source | branch `dev/slice-foundation`, commit `f3ae5ab` (local; not pushed). Later commits change documents only. |
+| Source | branch `dev/slice-foundation`, commit `f3ae5ab` (local; not pushed). Later commits change documents only. The same files are published as `release/first-slice`. |
 | Release archive | `EbonyHearts-Slice-f3ae5ab.tar.gz`, SHA-256 `57886ee502edaf2482939b9d0282cf5d357f6577a3e14436c3264082ff064d74` |
 | Content hash | `6bd8b055dfa8ac0477bc8b7ff27d5cc8ce86e07841dbc18d4566c0adbd1878b3`: SHA-256 over the pak files, also in the release's `VERSION.txt` |
 | Engine and configuration | Unreal Engine 5.8.4 (installed build), Shipping, Linux x86-64, Vulkan SM6. The cook covered 760 packages with 0 warnings and 0 errors. |
@@ -166,8 +166,8 @@ Defects found and fixed during review:
   play.
 - **Config noise.** `Config/DefaultEngine.ini` holds an editor-generated Android File Server block. It is unused (the
   plugin is not shipped).
-- **History.** The local history includes an early commit that contained Python bytecode caches. A squashed branch is
-  prepared for publication (see `Docs/Status.md`).
+- **History.** The local history includes an early commit that contained Python bytecode caches. Only the squashed branch
+  `release/first-slice` is published (see `Docs/Status.md`).
 
 ## Superseded and failed evidence (kept)
 
