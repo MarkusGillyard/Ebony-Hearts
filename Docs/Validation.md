@@ -901,6 +901,20 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-59`).
 
+### Throws flow out of the grab (package `pkg-46-grab`)
+
+- **Measured.** When a grab connects (its first active frame, 5), the throw takes over. Wren's grab pose was 65 cm from
+  the first frame of her captured double-leg and 48 cm from her captured shoulder throw; Ashka's was 25 cm from both
+  of hers. The game covered that in a 6-frame blend, a visible snap.
+- **Fix.** Each throw's first 8 frames now ease out of the grab's own pose at that frame (`build_anims.grab_connect_pose`),
+  so the hand-over is 0 cm for all four throws. Wren now drops from her reach into the double-leg shoot, or turns in
+  for the shoulder throw. The throws' ends still hand over exactly (0 mm).
+- **Review and regression.**
+  - Every throw was rebuilt and reimported, and packaged as `pkg-46-grab`.
+  - The training throw script was recorded on `pkg-45` and `pkg-46` at 60 fps (`anim-63`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-64`).
+
 ## Known limitations
 
 - **Not verified by a person:**

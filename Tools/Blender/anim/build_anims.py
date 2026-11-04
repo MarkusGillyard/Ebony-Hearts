@@ -76,6 +76,7 @@ def build_throws(a, data):
     v_rig = A.Rig(victim_arm, "victim_" + a.victim_char, a.victim_height or None)
     t_prefix = "A_" + a.char.capitalize() + "_"
     v_prefix = "A_" + a.victim_char.capitalize() + "_"
+    grab_pose = grab_connect_pose(a, data, t_rig)
     for td in data["throws"]:
         build = throws.THROWS[(a.char, td["id"])]
         t_keys, v_keys = build(throws.stance_of(a.victim_char), td)
@@ -108,6 +109,11 @@ def build_throws(a, data):
                 for i in range(n_end):
                     k = total - n_end + i
                     poses[k] = M.blend_pose(poses[k], ends[arm.name], A.ease("smooth", (i + 1) / n_end))
+        # The throw starts where the grab connects (its first active frame), so the thrower eases out of the grab's
+        # own pose instead of jumping to the throw's first frame (65 cm for Wren's captured double-leg).
+        n_in = min(8, total)
+        for i in range(n_in):
+            t_poses[i] = M.blend_pose(grab_pose, t_poses[i], A.ease("smooth", i / n_in))
         v_poses = [transform_pose(victim_arm, pose, to_own) for pose in v_poses]
         report_handoff(td, t_rig, v_rig, t_poses[-1], v_poses[-1], shown_v)
         A.mute_constraints(t_rig, True)
@@ -221,6 +227,27 @@ def pose_world(arm, pose):
         world[b.name] = (world[b.parent.name] @ (rest[b.parent.name].inverted() @ rest[b.name]) if b.parent else rest[b.name]) @ basis
         stack.extend(b.children)
     return world
+
+
+def grab_connect_pose(a, data, rig):
+    """The thrower's grab (the scripted T move) at its first active frame, where a throw takes over."""
+    defs = moves.wren_moves(data) if a.char == "wren" else moves.ashka_moves(data)
+    keys, total, travel, _ = defs["T"]
+    move = next(m for m in data["moves"] if m["id"] == "T")
+    frame = move["hits"][0]["frames"][0]
+    A.mute_constraints(rig, False)
+    rig.reset()
+    keep = rig.arm.animation_data.action if rig.arm.animation_data else None
+    tmp = bpy.data.actions.new("grab_tmp")
+    rig.arm.animation_data_create()
+    rig.arm.animation_data.action = tmp
+    A.author([(rig, keys, travel)], frame)
+    bpy.context.scene.frame_set(frame)
+    pose = {pb.name: (pb.location.copy(), pb.rotation_quaternion.copy()) for pb in rig.arm.pose.bones}
+    rig.arm.animation_data.action = keep
+    bpy.data.actions.remove(tmp)
+    A.mute_constraints(rig, True)
+    return pose
 
 
 def author_pose(rig, spec):
