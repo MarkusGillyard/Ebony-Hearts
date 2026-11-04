@@ -935,9 +935,16 @@ rolls, the grab and the three scripted throws):
   request to bypass the compositor (`SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR=1`) still left it at 60 Hz (`anim-60`).
   Remedies are system settings: run the monitor at 59.97 Hz, or let full-screen windows bypass the compositor
   (Cinnamon: disable compositing for full-screen windows) and play fullscreen.
-- **Exclusive fullscreen.** One launch in 26 at exclusive fullscreen crashed (signal 11) just after the display mode
-  switch, on the first launch after a long idle. It did not recur in 25 further fullscreen launches (3440 × 1440 and
-  1920 × 1080) or in 12 default borderless launches (`anim-60`). The shipping build gives no callstack.
+- **Rare startup crash.** About one launch in 30 to 40 crashes during startup (signal 11): 1 of 26 shipping launches
+  and 1 of 40 Development launches, all at exclusive fullscreen, and none in 12 default borderless launches (`anim-60`,
+  `anim-61`). The Development build shows where:
+  - an unnamed engine thread read a null pointer inside the C library;
+  - this happened right as the audio mixer started its first buffers, with a buffer underrun logged on the monitor's
+    HDMI/DisplayPort audio device (SDL3 over PulseAudio);
+  - the game thread was still loading engine modules, so no game code was running.
+
+  It is a startup race in the engine's Linux audio backend. It is not specific to fullscreen and cannot be fixed in
+  the game's code. Relaunching works.
 - **Borderless window.** In 1 of 5 default launches, the borderless window came up constrained to the desktop work
   area (3440 × 1368, above the Cinnamon panel) instead of covering the panel. Play is unaffected.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback or online
