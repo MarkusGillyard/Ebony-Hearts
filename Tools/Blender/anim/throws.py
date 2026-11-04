@@ -60,17 +60,20 @@ def wren_double_leg(victim, td):
 
 def wren_suplex(victim, td):
     hold, land = td["holdX"] / 100.0, td["landX"] / 100.0
-    t = world_feet(WREN)
+    t = world_feet(WREN)(spin=0.0)    # the turn after the impact starts from 0, so it is interpolated, not a snap
     lock = t(pelvis=(0.10, 0, -0.10), chest=(10, 15, 0), gaze=1.0, fist=0.0, hand_l=(hold + 0.10, 0.20, 1.00), hand_r=(hold + 0.10, -0.20, 1.00),
              elbow_l=(0.0, 0.5, -0.2), elbow_r=(0.0, -0.5, -0.2), foot_l_world=(0.40, 0.12, 0.0))
     dip = lock(pelvis=(0.12, 0, -0.30), chest=(0, 10, 0))
     arch = dip(pelvis=(0.02, 0, -0.10), pelvis_rot=(-38, -35, 0), chest=(0, -45, 0), head=(0, -30, 0), gaze=0.0,
                hand_l=(-0.20, 0.25, 1.70), hand_r=(-0.20, -0.25, 1.70))
     impact = arch(pelvis=(-0.10, 0, -0.35), pelvis_rot=(-38, -55, 0), chest=(0, -40, 0), hand_l=(land + 0.4, 0.25, 0.5), hand_r=(land + 0.4, -0.25, 0.5))
-    turned = unrel(t(spin=180.0, pelvis=(0.0, 0, -0.20), chest=(WREN["chest"][0], 25, 0), foot_l_world=None, foot_r_world=None))
+    # She turns round on the balls of her feet, lifting them mid-turn, and settles into her stance facing back.
+    turning = impact(spin=90.0, pelvis=(-0.05, 0, -0.28), pelvis_rot=(-20, -20, 0), chest=(0, -10, 0), head=(0, -10, 0),
+                     foot_l_world=(0.36, 0.14, 0.06), foot_r_world=(-0.24, -0.16, 0.06), hand_l=(0.30, 0.25, 0.9), hand_r=(0.30, -0.25, 0.9))
+    turned = unrel(t(spin=180.0, pelvis=(0.0, 0, -0.20), chest=(WREN["chest"][0], 25, 0)))
     attacker = [(1, t, "smooth"), (6, lock, "snap"), (14, dip, "smooth"), (24, arch, "smooth"), (38, impact, "in"),
-                (48, turned, "smooth"), (60, unrel(t(spin=180.0, foot_l_world=None, foot_r_world=None)), "smooth")]
-    v = victim
+                (43, turning, "smooth"), (48, turned, "smooth"), (60, unrel(t(spin=180.0, foot_l_world=None, foot_r_world=None)), "smooth")]
+    v = victim(spin=0.0, pivot=((hold - land) / 2.0, 0.0))   # the landing's side switch turns in, not a snap
     held = victim_recoil(v, hold, 1.35)(pelvis=(0.06, 0, -0.02))
     lifted = held(pelvis=(0.10, 0, 0.30), pelvis_rot=(0, -20, 0), foot_l=(0.05, 0.12, 0.30), foot_r=(0.0, -0.12, 0.28))
     inverted = lifted(pelvis=(0.55, 0, 0.75), pelvis_rot=(0, -175, 0), chest=(0, -10, 0), foot_l=None, foot_r=None,
@@ -94,33 +97,52 @@ def ashka_clinch_knees(victim, td):
     trip = down(pelvis=(0.10, 0, -0.10), pelvis_rot=(20, 5, 0), chest=(30, 30, 0), foot_r_world=None, foot_r=(0.35, 0.05, 0.10),
                 hand_l=(land - 0.30, 0.10, 0.70), hand_r=(land - 0.30, -0.10, 0.70))
     attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, pull, "smooth"), (18, knee, "snap"), (24, down, "smooth"), (31, knee, "snap"),
-                (36, down, "smooth"), (41, trip, "snap"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
+                (36, down, "smooth"), (39, trip, "snap"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
     v = victim
     bent = victim_recoil(v, hold, 1.25)(chest=(0, 40, 0), head=(0, 35, 0), pelvis=(0.0, 0, -0.06))
     jolt = bent(chest=(0, 52, 0), pelvis=(0.0, 0, 0.0), head=(0, 40, 0))
     fall = bent(pelvis=(-0.35, 0, -0.30), pelvis_rot=(0, -45, 0), chest=(0, -10, 0), head=(0, -20, 0), foot_l=(0.30, 0.12, 0.25))
     end = landed(v, hold, land)
     victim_keys = [(1, v, "smooth"), (6, victim_recoil(v, hold), "snap"), (12, bent, "smooth"), (18, jolt, "snap"), (24, bent, "smooth"),
-                   (31, jolt, "snap"), (36, bent, "smooth"), (41, fall, "in"), (44, end(head=(0, 20, -6)), "in"), (50, end, "out"), (64, end, "smooth")]
+                   (31, jolt, "snap"), (36, bent, "smooth"), (39, fall, "in"), (44, end(head=(0, 20, -6)), "in"), (50, end, "out"), (64, end, "smooth")]
     return attacker, victim_keys
 
 
 def ashka_clinch_turn(victim, td):
     hold, land = td["holdX"] / 100.0, td["landX"] / 100.0
-    t = world_feet(ASHKA)
+    t = world_feet(ASHKA)(spin=0.0)   # both turns start from 0, so they are interpolated, not a snap
     plum = t(pelvis=(0.04, 0, -0.04), chest=(5, 12, 0), fist=0.0, gaze=1.0, hand_l=(hold - 0.06, 0.08, 1.45), hand_r=(hold - 0.06, -0.08, 1.45),
              elbow_l=(0.4, 0.15, -0.3), elbow_r=(0.4, -0.15, -0.3))
-    pivot = unrel(plum(spin=110.0, foot_l_world=None, foot_r_world=None, pelvis=(0.0, 0, -0.10)))
-    trip = pivot(spin=180.0, pelvis=(0.05, 0, -0.18), chest=(10, 35, 0), foot_r=(0.40, -0.05, 0.08), hand_l=(0.55, 0.10, 0.80), hand_r=(0.55, -0.10, 0.80))
-    attacker = [(1, t, "smooth"), (6, plum, "snap"), (16, pivot, "smooth"), (26, trip, "smooth"), (38, trip(chest=(10, 45, 0)), "in"),
-                (56, unrel(t(spin=180.0, foot_l_world=None, foot_r_world=None)), "smooth")]
-    v = victim
+    # Feet are placed unspun (foot_*_abs) so a planted foot stays put while she turns: the lead foot pivots in place
+    # while the rear foot swings round into the sweep, then the lead foot steps through and the rear foot steps into
+    # her stance facing back. Each planted foot turns with her (foot_*_rot) so the leg does not twist.
+    fl, fr_ = ASHKA["foot_l"], ASHKA["foot_r"]
+    lead = (fl[0], fl[1], 0.0)
+    swept = (-0.40, 0.05, 0.0)                                   # the trip leg's spot behind the victim's legs
+    pivot = unrel(plum(spin=110.0, foot_l_world=None, foot_r_world=None, pelvis=(0.0, 0, -0.10),
+                       foot_l_abs=lead, foot_l_rot=(110, 0, 0), foot_r_abs=(-0.05, -0.30, 0.07), foot_r_rot=(110, 0, 0)))
+    trip = pivot(spin=180.0, pelvis=(0.05, 0, -0.18), chest=(10, 35, 0), hand_l=(0.55, 0.10, 0.80), hand_r=(0.55, -0.10, 0.80),
+                 foot_l_rot=(180, 0, 0), foot_r_abs=(swept[0], swept[1], 0.08), foot_r_rot=(180, 0, 0))
+    planted = trip(chest=(10, 45, 0), foot_r_abs=swept)
+    lead_step = planted(foot_l_abs=(0.0, 0.0, 0.08))
+    lead_down = planted(foot_l_abs=(-fl[0], -fl[1], 0.0))
+    rear_step = lead_down(foot_r_abs=((swept[0] - fr_[0]) / 2, (swept[1] - fr_[1]) / 2, 0.07))
+    rear_down = lead_down(foot_r_abs=(-fr_[0], -fr_[1], 0.0))
+    attacker = [(1, t, "smooth"), (6, plum, "snap"), (16, pivot, "smooth"), (26, trip, "smooth"), (38, planted, "in"),
+                (42, lead_step, "smooth"), (46, lead_down, "smooth"), (49, rear_step, "smooth"), (52, rear_down, "smooth"),
+                (56, unrel(t(spin=180.0, foot_l_world=None, foot_r_world=None, foot_l_abs=None, foot_r_abs=None,
+                             foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0))), "smooth")]
+    v = victim(spin=0.0, pivot=(hold, 0.0))
     held = victim_recoil(v, hold, 1.25)(chest=(0, 30, 0), head=(0, 25, 0))
+    # Swung round by the clinch, the victim stumbles: each foot lifts in turn instead of both dragging over the floor.
+    lifted = lambda foot, u: (foot[0], foot[1], u)
+    stumble_r = held(spin=55.0, pivot=(hold, 0.0), foot_r=lifted(victim["foot_r"], 0.07))
     swung = held(spin=110.0, pivot=(hold, 0.0), pelvis=(0.05, 0, -0.05))
+    stumble_l = swung(spin=145.0, foot_l=lifted(victim["foot_l"], 0.07))
     off = held(spin=180.0, pivot=(hold, 0.0), pelvis=(-0.15, 0, -0.10), pelvis_rot=(0, -25, 0), foot_l=(0.25, 0.12, 0.25))
     end = landed(v, hold, land)
-    victim_keys = [(1, v, "smooth"), (6, held, "snap"), (16, swung, "smooth"), (26, off, "smooth"), (38, end(head=(0, 20, -6)), "in"),
-                   (44, end, "out"), (56, end, "smooth")]
+    victim_keys = [(1, v, "smooth"), (6, held, "snap"), (11, stumble_r, "smooth"), (16, swung, "smooth"), (21, stumble_l, "smooth"),
+                   (26, off, "smooth"), (38, end(head=(0, 20, -6)), "in"), (44, end, "out"), (56, end, "smooth")]
     return attacker, victim_keys
 
 

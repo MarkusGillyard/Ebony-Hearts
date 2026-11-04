@@ -52,6 +52,9 @@ def notices(package):
         ledger_table(),
         "CC0 1.0 needs no attribution; the sources are credited as a courtesy.",
         "",
+        "Motion capture: Open Motion Project by ACCAD / The Ohio State University, licensed under CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/); retargeted and retimed for this game.",
+        "Animation: some movements are based on Mixamo animations (Adobe), used royalty free under Mixamo's terms; retargeted and retimed for this game. Credited as a courtesy.",
+        "",
     ]
     engine = os.path.join(package, "NOTICES.txt")
     if os.path.exists(engine):

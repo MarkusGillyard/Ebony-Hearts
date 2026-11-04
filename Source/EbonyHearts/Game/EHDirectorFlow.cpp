@@ -187,6 +187,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 		}));
 		break;
 	case 1:
+	{
 		MenuTitle = TEXT("Controls");
 		Menu.Add(Choice(TEXT("Button prompts"), [this] {
 			switch (Settings.PromptStyle)
@@ -197,12 +198,24 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			default: return FString(TEXT("Automatic"));
 			}
 		}, [this](int32 D) { Settings.PromptStyle = static_cast<EEHPromptStyle>((static_cast<int32>(Settings.PromptStyle) + D + 4) % 4); }, TEXT("Automatic follows the device each player uses.")));
-		Menu.Add(Button(TEXT("Keyboard - left side"), [this] { BindingSet = EEHBindingSet::KeyboardA; GoTo(EEHScreen::Bindings); }, TEXT("Player one's default keyboard layout.")));
-		Menu.Add(Button(TEXT("Keyboard - right side"), [this] { BindingSet = EEHBindingSet::KeyboardB; GoTo(EEHScreen::Bindings); }, TEXT("Player two's default keyboard layout.")));
-		Menu.Add(Button(TEXT("Gamepad"), [this] { BindingSet = EEHBindingSet::Gamepad; GoTo(EEHScreen::Bindings); }));
-		Menu.Add(Button(TEXT("Restore default controls"), [this] { Settings.Bindings = FEHBindings::Defaults(); SaveSettings(); ShowToast(TEXT("Default controls restored.")); }));
+		auto OpenLayout = [this](EEHBindingSet Set) {
+			BindingSet = Set;
+			BindingPage = 0;
+			BindingListIndex = 0;
+			GoTo(EEHScreen::Bindings);
+		};
+		Menu.Add(Button(TEXT("Controller - Player 1"), [OpenLayout] { OpenLayout(EEHBindingSet::GamepadP1); }, TEXT("Your controller layout, used by every controller outside Local Versus.")));
+		Menu.Add(Button(TEXT("Controller - Player 2"), [OpenLayout] { OpenLayout(EEHBindingSet::GamepadP2); }, TEXT("The second player's controller layout in Local Versus.")));
+		Menu.Add(Button(TEXT("Keyboard - Player 1 (left side)"), [OpenLayout] { OpenLayout(EEHBindingSet::KeyboardA); }));
+		Menu.Add(Button(TEXT("Keyboard - Player 2 (right side)"), [OpenLayout] { OpenLayout(EEHBindingSet::KeyboardB); }, TEXT("Player two's keys in Local Versus.")));
+		Menu.Add(Button(TEXT("Restore all default controls"), [this] {
+			bResetAllLayouts = true;
+			BindingPage = 3;
+			GoTo(EEHScreen::Bindings);
+		}, TEXT("Every controller and keyboard layout returns to the official defaults.")));
 		Menu.Add(Button(TEXT("Back"), Back));
 		break;
+	}
 	case 2:
 		MenuTitle = TEXT("Video");
 		Menu.Add(Choice(TEXT("Display mode"), [this] { return FString(Settings.WindowMode == 0 ? TEXT("Fullscreen") : (Settings.WindowMode == 1 ? TEXT("Borderless") : TEXT("Windowed"))); }, [this](int32 D) { Settings.WindowMode = (Settings.WindowMode + D + 3) % 3; }));
@@ -252,37 +265,220 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 
 void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 {
+	// Order follows the controller: attacks and defence first, then movement and the training shortcut.
+	static const EEHAction Order[] = {EEHAction::Light, EEHAction::Heavy, EEHAction::Dodge, EEHAction::Throw, EEHAction::Block,
+		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Reset};
 	Menu.Reset();
 	BindingSet = Set;
-	MenuTitle = Set == EEHBindingSet::KeyboardA ? TEXT("Keyboard - left side") : (Set == EEHBindingSet::KeyboardB ? TEXT("Keyboard - right side") : TEXT("Gamepad"));
-	for (int32 A = 0; A < EHActionCount; ++A)
+	const bool bPad = !EHIsKeyboardSet(Set);
+	switch (BindingPage)
 	{
-		FEHMenuItem I;
-		I.Label = EHActionName(static_cast<EEHAction>(A));
-		I.Value = [this, A] {
-			const int32 S = static_cast<int32>(BindingSet);
-			FString Out;
-			for (int32 K = 0; K < EHKeysPerAction; ++K)
+	case 0:
+	{
+		MenuTitle = EHSetLabel(Set);
+		for (EEHAction A : Order)
+		{
+			FEHMenuItem I;
+			I.Label = EHActionLabel(A);
+			I.PaintValue = [this, Set, A](FEHPainter& P, FVector2f Right, bool bSel) { PaintBindingValue(P, Right, Set, A, -1, bSel); };
+			I.Activate = [this, A] {
+				BindingAction = static_cast<int32>(A);
+				BindingListIndex = MenuIndex;
+				BindingPage = 1;
+				BuildBindingsMenu(BindingSet);
+				MenuIndex = 0;
+			};
+			I.Hint = A == EEHAction::Reset ? FString(TEXT("Training only: puts both fighters back at their start positions."))
+				: (bPad ? FString(TEXT("Confirm to change. The left stick always moves; Options / Menu always pauses."))
+				: FString(TEXT("Confirm to change. Escape always pauses.")));
+			Menu.Add(I);
+		}
+		Menu.Add(Button(TEXT("Restore this layout's defaults"), [this] {
+			bResetAllLayouts = false;
+			BindingPage = 3;
+			BuildBindingsMenu(BindingSet);
+		}));
+		Menu.Add(Button(TEXT("Back"), [this] {
+			SaveSettings();
+			FString Missing;
+			for (EEHAction A : {EEHAction::Light, EEHAction::Heavy, EEHAction::Special, EEHAction::Throw, EEHAction::Dodge, EEHAction::Block, EEHAction::Left, EEHAction::Right})
 			{
-				const FKey& Key = Settings.Bindings.Keys[S][A][K];
-				FString Name = Key.IsValid() ? Key.GetDisplayName(false).ToString() : FString(TEXT("-"));
-				if (CaptureAction == A && CaptureSlot == K)
+				if (Settings.Bindings.IsUnbound(BindingSet, A))
 				{
-					Name = TEXT("press a key...");
+					Missing += (Missing.IsEmpty() ? TEXT("") : TEXT(", ")) + FString(EHActionLabel(A));
 				}
-				Out += (K == CaptureSlot ? TEXT("[") + Name + TEXT("]") : Name) + (K == 0 ? TEXT("   ") : TEXT(""));
 			}
-			return Out;
-		};
-		I.Change = [this](int32) { CaptureSlot = 1 - CaptureSlot; };
-		I.Activate = [this, A] {
-			CaptureAction = A;
-			RouterPtr->BeginCapture(BindingSet);
-		};
-		I.Hint = TEXT("Confirm to rebind; left/right picks the primary or alternate key. Escape or Options cancels.");
-		Menu.Add(I);
+			if (!Missing.IsEmpty())
+			{
+				ShowToast(FString::Printf(TEXT("Warning: no button for %s in %s."), *Missing, EHSetLabel(BindingSet)));
+			}
+			SettingsPage = 1;
+			GoTo(EEHScreen::Settings);
+		}));
+		MenuIndex = FMath::Clamp(BindingListIndex, 0, Menu.Num() - 1);
+		break;
 	}
-	Menu.Add(Button(TEXT("Back"), [this] { SaveSettings(); SettingsPage = 1; GoTo(EEHScreen::Settings); }));
+	case 1:
+	{
+		const EEHAction A = static_cast<EEHAction>(BindingAction);
+		MenuTitle = FString::Printf(TEXT("%s - %s"), EHActionLabel(A), EHSetLabel(Set));
+		for (int32 K = 0; K < EHKeysPerAction; ++K)
+		{
+			FEHMenuItem I;
+			I.Label = K == 0 ? TEXT("Primary") : TEXT("Secondary");
+			I.PaintValue = [this, Set, A, K](FEHPainter& P, FVector2f Right, bool bSel) { PaintBindingValue(P, Right, Set, A, K, bSel); };
+			I.Activate = [this, K] { BeginBindingCapture(K); };
+			I.Hint = bPad ? TEXT("Confirm, then press the new button. Options / Menu cancels.") : TEXT("Confirm, then press the new key. Escape cancels.");
+			Menu.Add(I);
+		}
+		for (int32 K = 0; K < EHKeysPerAction; ++K)
+		{
+			if (Settings.Bindings.Get(Set, A, K).IsValid())
+			{
+				Menu.Add(Button(K == 0 ? TEXT("Remove primary") : TEXT("Remove secondary"), [this, A, K] {
+					const FString Name = KeyName(BindingSet, Settings.Bindings.Get(BindingSet, A, K));
+					Settings.Bindings.Clear(BindingSet, A, K);
+					BindingsChanged(FString::Printf(TEXT("%s removed from %s."), *Name, EHActionLabel(A)));
+				}));
+			}
+		}
+		Menu.Add(Button(TEXT("Reset to default"), [this, A] {
+			const FString Taken = Settings.Bindings.ResetAction(BindingSet, A);
+			BindingsChanged(Taken.IsEmpty() ? FString::Printf(TEXT("%s reset to default."), EHActionLabel(A))
+				: FString::Printf(TEXT("%s reset to default; %s."), EHActionLabel(A), *Taken));
+		}));
+		Menu.Add(Button(TEXT("Back"), [this] {
+			BindingPage = 0;
+			BuildBindingsMenu(BindingSet);
+		}));
+		break;
+	}
+	case 2:
+	{
+		const EEHAction A = static_cast<EEHAction>(BindingAction);
+		const FEHBindingRef C = PendingConflict;
+		const FKey Previous = Settings.Bindings.Get(Set, A, CaptureSlot);
+		const FString Other = C.Set == Set ? FString(EHActionLabel(C.Action)) : FString::Printf(TEXT("%s (%s)"), EHActionLabel(C.Action), EHSetLabel(C.Set));
+		MenuTitle = FString::Printf(TEXT("%s is already %s"), *KeyName(Set, PendingKey), *Other);
+		if (Previous.IsValid())
+		{
+			Menu.Add(Button(FString::Printf(TEXT("Swap: %s takes %s"), *Other, *KeyName(Set, Previous)), [this] { ResolveConflict(true); },
+				TEXT("Both actions keep a button.")));
+		}
+		Menu.Add(Button(FString::Printf(TEXT("Replace: %s loses it"), *Other), [this] { ResolveConflict(false); },
+			FString::Printf(TEXT("%s keeps only its other button, if it has one."), *Other)));
+		Menu.Add(Button(TEXT("Cancel"), [this] {
+			BindingPage = 1;
+			BuildBindingsMenu(BindingSet);
+			ShowToast(TEXT("No change."));
+		}));
+		break;
+	}
+	case 3:
+	default:
+		MenuTitle = bResetAllLayouts ? FString(TEXT("Restore every layout to the official defaults?"))
+			: FString::Printf(TEXT("Restore %s to the official defaults?"), EHSetLabel(Set));
+		Menu.Add(Button(TEXT("Restore defaults"), [this] {
+			const bool bAll = bResetAllLayouts;
+			if (bAll)
+			{
+				Settings.Bindings = FEHBindings::Defaults();
+			}
+			else
+			{
+				Settings.Bindings.ResetSet(BindingSet);
+			}
+			bResetAllLayouts = false;
+			SaveSettings();
+			RouterPtr->ResetHeld();
+			ShowToast(bAll ? TEXT("All controls restored to the defaults.") : TEXT("Layout restored to the defaults."));
+			if (bAll)
+			{
+				SettingsPage = 1;
+				GoTo(EEHScreen::Settings);
+			}
+			else
+			{
+				BindingPage = 0;
+				BuildBindingsMenu(BindingSet);
+			}
+		}));
+		Menu.Add(Button(TEXT("Cancel"), [this] {
+			if (bResetAllLayouts)
+			{
+				bResetAllLayouts = false;
+				SettingsPage = 1;
+				GoTo(EEHScreen::Settings);
+			}
+			else
+			{
+				BindingPage = 0;
+				BuildBindingsMenu(BindingSet);
+			}
+		}));
+		MenuIndex = 1;   // start on Cancel, so a stray confirm changes nothing
+		break;
+	}
+	MenuIndex = FMath::Clamp(MenuIndex, 0, Menu.Num() - 1);
+}
+
+void AEHGameDirector::BeginBindingCapture(int32 Slot)
+{
+	CaptureAction = BindingAction;
+	CaptureSlot = Slot;
+	CaptureLeft = 6.0f;
+	RouterPtr->BeginCapture(BindingSet);
+	AutoLogLine(FString::Printf(TEXT("capture %s %s slot=%d"), EHSetId(BindingSet), EHActionId(static_cast<EEHAction>(BindingAction)), Slot));
+}
+
+void AEHGameDirector::ApplyCapturedKey(const FKey& Key)
+{
+	const EEHAction A = static_cast<EEHAction>(BindingAction);
+	if (Settings.Bindings.Get(BindingSet, A, CaptureSlot) == Key)
+	{
+		ShowToast(FString::Printf(TEXT("%s is already on %s."), *KeyName(BindingSet, Key), EHActionLabel(A)));
+		BuildBindingsMenu(BindingSet);
+		return;
+	}
+	const FEHBindingRef C = Settings.Bindings.FindConflict(BindingSet, A, CaptureSlot, Key);
+	if (!C.IsValid() || (C.Set == BindingSet && C.Action == A))
+	{
+		// Free, or the action's own other slot (the two slots trade).
+		Settings.Bindings.Assign(BindingSet, A, CaptureSlot, Key, EEHConflictResolve::Replace);
+		BindingsChanged(FString::Printf(TEXT("%s: %s."), EHActionLabel(A), *KeyName(BindingSet, Key)));
+		return;
+	}
+	PendingKey = Key;
+	PendingConflict = C;
+	BindingPage = 2;
+	BuildBindingsMenu(BindingSet);
+	MenuIndex = 0;
+	AutoLogLine(FString::Printf(TEXT("conflict %s already %s/%s"), *Key.ToString(), EHSetId(C.Set), EHActionId(C.Action)));
+}
+
+void AEHGameDirector::ResolveConflict(bool bSwap)
+{
+	const EEHAction A = static_cast<EEHAction>(BindingAction);
+	const FEHBindingRef C = PendingConflict;
+	const FKey Previous = Settings.Bindings.Get(BindingSet, A, CaptureSlot);
+	Settings.Bindings.Assign(BindingSet, A, CaptureSlot, PendingKey, bSwap ? EEHConflictResolve::Swap : EEHConflictResolve::Replace);
+	BindingPage = 1;
+	const FString OtherNow = bSwap && Previous.IsValid() ? FString::Printf(TEXT("%s is now on %s"), EHActionLabel(C.Action), *KeyName(BindingSet, Previous))
+		: FString::Printf(TEXT("%s lost it"), EHActionLabel(C.Action));
+	BindingsChanged(FString::Printf(TEXT("%s: %s; %s."), EHActionLabel(A), *KeyName(BindingSet, PendingKey), *OtherNow));
+	PendingKey = EKeys::Invalid;
+	PendingConflict = FEHBindingRef();
+}
+
+void AEHGameDirector::BindingsChanged(const FString& Message)
+{
+	SaveSettings();
+	RouterPtr->ResetHeld();
+	ShowToast(Message);
+	AutoLogLine(FString::Printf(TEXT("bindings changed: %s"), *Message));
+	const int32 Keep = MenuIndex;
+	BuildBindingsMenu(BindingSet);
+	MenuIndex = FMath::Clamp(Keep, 0, Menu.Num() - 1);
 }
 
 void AEHGameDirector::BeginSelect(EEHMode InMode)
@@ -300,9 +496,9 @@ void AEHGameDirector::BeginSelect(EEHMode InMode)
 
 void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 {
-	const bool bBack = E.Action == EEHAction::Heavy || E.Action == EEHAction::Pause;
-	const bool bOk = E.Action == EEHAction::Light;
-	const int32 Dir = E.Action == EEHAction::Left ? -1 : (E.Action == EEHAction::Right ? 1 : 0);
+	const bool bBack = (E.Nav == EEHNav::Back || E.Nav == EEHNav::Pause) && !E.bRepeat;
+	const bool bOk = E.Nav == EEHNav::Confirm && !E.bRepeat;
+	const int32 Dir = E.Nav == EEHNav::Left ? -1 : (E.Nav == EEHNav::Right ? 1 : 0);
 	if (Mode == EEHMode::Versus)
 	{
 		int32 Slot = SelectDevice[0] == E.Device ? 0 : (SelectDevice[1] == E.Device ? 1 : -1);
@@ -394,7 +590,7 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 	}
 	else
 	{
-		if (E.Action == EEHAction::Up || E.Action == EEHAction::Down)
+		if (E.Nav == EEHNav::Up || E.Nav == EEHNav::Down)
 		{
 			MenuIndex = 1 - MenuIndex;
 			Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui);
@@ -452,12 +648,12 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 		return;
 	}
 	MenuIndex = FMath::Clamp(MenuIndex, 0, Menu.Num() - 1);
-	switch (E.Action)
+	switch (E.Nav)
 	{
-	case EEHAction::Up:
-	case EEHAction::Down:
+	case EEHNav::Up:
+	case EEHNav::Down:
 	{
-		const int32 Step = E.Action == EEHAction::Up ? -1 : 1;
+		const int32 Step = E.Nav == EEHNav::Up ? -1 : 1;
 		for (int32 Guard = 0; Guard < Menu.Num(); ++Guard)
 		{
 			MenuIndex = (MenuIndex + Step + Menu.Num()) % Menu.Num();
@@ -469,15 +665,15 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 		Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
 		break;
 	}
-	case EEHAction::Left:
-	case EEHAction::Right:
+	case EEHNav::Left:
+	case EEHNav::Right:
 		if (Menu[MenuIndex].Change)
 		{
-			Menu[MenuIndex].Change(E.Action == EEHAction::Left ? -1 : 1);
+			Menu[MenuIndex].Change(E.Nav == EEHNav::Left ? -1 : 1);
 			Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
 		}
 		break;
-	case EEHAction::Light:
+	case EEHNav::Confirm:
 		if (E.bRepeat)
 		{
 			break;
@@ -493,8 +689,8 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 			Menu[MenuIndex].Change(1);
 		}
 		break;
-	case EEHAction::Heavy:
-	case EEHAction::Pause:
+	case EEHNav::Back:
+	case EEHNav::Pause:
 		Audio.Play(TEXT("UiBack"), EEHSoundCat::Ui, 0.8f);
 		if (Screen == EEHScreen::Match && bPaused)
 		{
@@ -518,13 +714,14 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 		}
 		else if (Screen == EEHScreen::Bindings)
 		{
+			// Back always leaves the current page, so no layout can trap the player.
 			Menu.Last().Activate();
 		}
 		else if (Screen == EEHScreen::QuitConfirm)
 		{
 			GoTo(EEHScreen::Main);
 		}
-		else if (Screen == EEHScreen::Main && E.Action == EEHAction::Heavy)
+		else if (Screen == EEHScreen::Main && E.Nav == EEHNav::Back)
 		{
 			GoTo(EEHScreen::QuitConfirm);
 		}
@@ -543,7 +740,7 @@ void AEHGameDirector::HandleMatchNav(const FEHNavEvent& E)
 	if (bPaused)
 	{
 		// A disconnected player's slot can be taken over by any free device pressing confirm.
-		if (!DisconnectNotice.IsEmpty() && E.Action == EEHAction::Light && E.Device != SlotDevice[0] && E.Device != SlotDevice[1])
+		if (!DisconnectNotice.IsEmpty() && E.Nav == EEHNav::Confirm && E.Device != SlotDevice[0] && E.Device != SlotDevice[1])
 		{
 			for (int32 i = 0; i < 2; ++i)
 			{
@@ -554,6 +751,7 @@ void AEHGameDirector::HandleMatchNav(const FEHNavEvent& E)
 					ShowToast(FString::Printf(TEXT("Player %d is now using %s"), i + 1, *RouterPtr->FindDevice(E.Device)->Name));
 				}
 			}
+			AssignGamepadPlayers();
 			DisconnectNotice.Reset();
 			PauseOwner = E.Device;
 			BuildPauseMenu();
@@ -566,7 +764,7 @@ void AEHGameDirector::HandleMatchNav(const FEHNavEvent& E)
 		return;
 	}
 	const bool bPlayerDevice = (!SlotCpu[0] && E.Device == SlotDevice[0]) || (!SlotCpu[1] && E.Device == SlotDevice[1]);
-	if (E.Action == EEHAction::Pause && !E.bRepeat && (bPlayerDevice || Mode != EEHMode::Versus))
+	if (E.Nav == EEHNav::Pause && !E.bRepeat && (bPlayerDevice || Mode != EEHMode::Versus))
 	{
 		SetPaused(true, E.Device);
 	}
@@ -579,7 +777,7 @@ void AEHGameDirector::HandleMatchNav(const FEHNavEvent& E)
 		}
 		Vfx->Ripple(FVector::ZeroVector, 0.5f);
 	}
-	else if (Mode == EEHMode::Tutorial && LessonStep >= Lesson.Num() - 1 && E.Action == EEHAction::Light && bPlayerDevice && LessonDoneAge > 1.0f)
+	else if (Mode == EEHMode::Tutorial && LessonStep >= Lesson.Num() - 1 && E.Nav == EEHNav::Confirm && bPlayerDevice && LessonDoneAge > 1.0f)
 	{
 		LeaveMatch(EEHScreen::Main);
 	}
@@ -598,27 +796,44 @@ void AEHGameDirector::HandleNav()
 	}
 	if (Screen == EEHScreen::Bindings && CaptureAction >= 0)
 	{
+		CaptureLeft -= GetWorld()->GetDeltaSeconds();
+		if (CaptureLeft <= 0.0f)
+		{
+			RouterPtr->CancelCapture();
+		}
 		FKey Key;
 		bool bCancelled = false;
 		if (RouterPtr->TakeCaptured(Key, bCancelled))
 		{
-			if (!bCancelled)
-			{
-				const FString Report = Settings.Bindings.Assign(BindingSet, static_cast<EEHAction>(CaptureAction), CaptureSlot, Key);
-				SaveSettings();
-				ShowToast(Report.IsEmpty() ? FString::Printf(TEXT("%s set to %s"), EHActionName(static_cast<EEHAction>(CaptureAction)), *Key.GetDisplayName(false).ToString()) : Report);
-			}
 			CaptureAction = -1;
+			if (bCancelled)
+			{
+				ShowToast(TEXT("Change cancelled."));
+				AutoLogLine(TEXT("capture cancelled"));
+				BuildBindingsMenu(BindingSet);
+			}
+			else
+			{
+				AutoLogLine(FString::Printf(TEXT("captured %s"), *Key.ToString()));
+				ApplyCapturedKey(Key);
+			}
 		}
 		return;
 	}
 	FEHNavEvent E;
 	while (RouterPtr->PopNav(E))
 	{
+		if (InputLogLeft > 0.0f && !E.bRepeat)
+		{
+			static const TCHAR* Kinds[] = {TEXT("keyboard"), TEXT("playstation"), TEXT("xbox"), TEXT("generic")};
+			AutoLogLine(FString::Printf(TEXT("input dev=%d kind=%s layout=%s action=%s menu=%s"), E.Device, Kinds[static_cast<int32>(RouterPtr->KindOf(E.Device))],
+				EHSetId(RouterPtr->SetFor(E.Device)), E.Action == EEHAction::Count ? TEXT("-") : EHActionName(E.Action), E.Nav == EEHNav::Count ? TEXT("-") : EHNavName(E.Nav)));
+		}
+		const bool bBackish = E.Nav == EEHNav::Back || E.Nav == EEHNav::Pause;
 		switch (Screen)
 		{
 		case EEHScreen::Error:
-			if (E.Action == EEHAction::Light || E.Action == EEHAction::Pause)
+			if (E.Nav == EEHNav::Confirm || E.Nav == EEHNav::Pause)
 			{
 				UKismetSystemLibrary::QuitGame(this, GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, false);
 			}
@@ -638,12 +853,12 @@ void AEHGameDirector::HandleNav()
 			HandleMatchNav(E);
 			break;
 		case EEHScreen::MoveList:
-			if (E.Action == EEHAction::Left || E.Action == EEHAction::Right)
+			if (E.Nav == EEHNav::Left || E.Nav == EEHNav::Right)
 			{
 				SelectCursor[0] = 1 - SelectCursor[0];
 				Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
 			}
-			else if (E.Action == EEHAction::Heavy || E.Action == EEHAction::Pause || E.Action == EEHAction::Light)
+			else if (bBackish || E.Nav == EEHNav::Confirm)
 			{
 				Audio.Play(TEXT("UiBack"), EEHSoundCat::Ui, 0.8f);
 				if (SettingsReturn == EEHScreen::Match)
@@ -658,13 +873,13 @@ void AEHGameDirector::HandleNav()
 			}
 			break;
 		case EEHScreen::Credits:
-			if (E.Action == EEHAction::Heavy || E.Action == EEHAction::Pause || E.Action == EEHAction::Light)
+			if (bBackish || E.Nav == EEHNav::Confirm)
 			{
 				GoTo(EEHScreen::Main);
 			}
 			break;
 		default:
-			if (Screen == EEHScreen::Main)
+			if (Screen == EEHScreen::Main && E.Nav != EEHNav::Count)
 			{
 				PrimaryDevice = E.Device;
 			}

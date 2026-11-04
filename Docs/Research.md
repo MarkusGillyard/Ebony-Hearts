@@ -55,3 +55,38 @@ an unblockable move would leave Dodge as the only answer.
   spin-out to the landing.
 - **Ashka's Muay Thai.** She keeps a tall, square guard and a rhythmic idle. Her teep (push kick) and body kick make
   contact with the ball of the foot and the shin respectively. Clinch knees and the clinch trip are her grabs.
+
+## Fighting stances
+
+The creator asked for a simple traditional MMA stance with a little bounce, like Jon Jones's, for Wren, and a
+traditional Muay Thai stance for Ashka. Coaching articles and fight analysis gave the following. The values live in
+`Tools/Blender/anim/stances.json`, written for a 1.75 m body and scaled to each fighter. Both fighters stand orthodox.
+
+**Wren: MMA**
+- **Feet.** Wider than a boxing stance, so she can sprawl or shoot without stepping first. The lead toes point at the
+  opponent and the rear foot turns about 45° out, with the rear heel slightly up.
+- **Body.** Weight close to even, knees bent 25–30°, hips about 9 cm lower than standing. The hips turn about 28° and
+  the chest about 35° (bladed), with the torso tipped 8° forward.
+- **Hands.** The lead hand reaches about 45 cm out in front of her chin, at chin height, with a soft elbow, measuring
+  range as Jones does. The rear fist sits at the jaw with the elbow tucked down over the ribs.
+- **Bounce.** No source measures Jones's bounce, so she gets a small, grounded spring: 2–3 cm at the hips, about
+  1.8 bounces a second. It is not a boxer's hop.
+
+**Ashka: Muay Thai**
+- **Body.** Tall and nearly square to the opponent, hips forward and under the shoulders. Hips turn about 12°, the
+  chest about 10°.
+- **Feet.** About shoulder width with a short stagger, rear foot 45° out. Weight biased to the back foot (about
+  40/60), rear heel up, lead foot light.
+- **Hands.** High guard: gloves in front of the face, up to the brow, palms facing each other. Elbows below the hands,
+  in front of the chest and close to the body.
+- **Rhythm.** A slow front-to-back rock, not a bounce: 2.5 cm of hip travel, with a small dip as each leg takes the
+  weight. The lead heel lifts a few centimetres as she rocks back.
+
+**Faults avoided:** feet on one line, locked legs or arms, flat feet, flared or raised elbows, the wrong discipline's
+stance, everything moving at once (the head stays steadier than the hips), and sliding feet.
+
+**How they are built.** Both idles start from ACCAD motion capture: a boxer's bounce for Wren and a ready stance for
+Ashka. The capture's joint positions drive the rig, so the source skeleton's rest pose does not matter
+(`Tools/Blender/anim/aim.py`). A stance layer then places the hips, chest, head, feet and hands on the values above
+while keeping the captured motion around them (`apply_stance` in `Tools/Blender/anim/mocap.py`). Ashka's rock is added
+on top. The hand targets come from her real shoulder positions in the stance, so the elbows hang below the shoulders.

@@ -1,0 +1,11 @@
+# Pair with "virtual_pad.py remap <xbox|ds4>": the pad itself walks the Controls menus and swaps Light attack onto
+# Triangle / Y; the result is checked here, then the defaults are restored.
+wait 3
+reset_layout all
+wait 26
+expect_binding controller1 Light 0 Gamepad_FaceButton_Top
+expect_binding controller1 Heavy 0 Gamepad_FaceButton_Left
+expect_screen 2
+devices
+reset_layout all
+quit

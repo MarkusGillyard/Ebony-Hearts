@@ -225,7 +225,8 @@ void AEHGameDirector::ApplySettings(bool bDisplay)
 	G->SetVSyncEnabled(Settings.bVSync);
 	G->SetFrameRateLimit(static_cast<float>(Settings.FrameCap));
 	G->SetOverallScalabilityLevel(Settings.Quality);
-	G->SetResolutionScaleNormalized(FMath::Clamp((Settings.RenderScale - 50) / 50.0f, 0.0f, 1.0f));
+	// Unreal's resolution scale runs 0-100 %, so the setting is passed as the percentage it shows.
+	G->SetResolutionScaleValueEx(static_cast<float>(Settings.RenderScale));
 	G->ApplySettings(false);
 }
 
@@ -687,6 +688,7 @@ void AEHGameDirector::StartMatch()
 	Banners.Reset();
 	Callouts.Reset();
 	DisconnectNotice.Reset();
+	AssignGamepadPlayers();
 	RouterPtr->ClearLatches();
 	if (Mode == EEHMode::Tutorial)
 	{
@@ -707,6 +709,7 @@ void AEHGameDirector::LeaveMatch(EEHScreen To)
 {
 	bPaused = false;
 	bMatchActive = false;
+	RouterPtr->ClearGamepadPlayers();
 	// Return to the idle showcase behind the menus.
 	Mode = EEHMode::VersusCpu;
 	std::string Err;
@@ -744,7 +747,9 @@ void AEHGameDirector::HandleConnections()
 	{
 		const FEHDevice* D = RouterPtr->FindDevice(Device);
 		const FString Name = D ? D->Name : TEXT("Controller");
-		AutoLogLine(FString::Printf(TEXT("device %s key=%d name=%s"), bConnected ? TEXT("connected") : TEXT("disconnected"), Device, *Name));
+		static const TCHAR* Kinds[] = {TEXT("keyboard"), TEXT("playstation"), TEXT("xbox"), TEXT("generic")};
+		AutoLogLine(FString::Printf(TEXT("device %s key=%d name=%s kind=%s"), bConnected ? TEXT("connected") : TEXT("disconnected"), Device, *Name,
+			Kinds[static_cast<int32>(RouterPtr->KindOf(Device))]));
 		if (!bConnected && Screen == EEHScreen::Match && (SlotDevice[0] == Device || SlotDevice[1] == Device))
 		{
 			const int32 Player = SlotDevice[0] == Device ? 0 : 1;
@@ -767,7 +772,24 @@ void AEHGameDirector::HandleConnections()
 						SlotDevice[i] = Device;
 					}
 				}
+				AssignGamepadPlayers();
 				DisconnectNotice.Reset();
+			}
+		}
+	}
+}
+
+void AEHGameDirector::AssignGamepadPlayers()
+{
+	// In Local Versus each controller uses its player's layout; in every other mode the one human uses player one's.
+	RouterPtr->ClearGamepadPlayers();
+	if (bMatchActive && Mode == EEHMode::Versus)
+	{
+		for (int32 i = 0; i < 2; ++i)
+		{
+			if (!SlotCpu[i])
+			{
+				RouterPtr->SetGamepadPlayer(SlotDevice[i], i);
 			}
 		}
 	}

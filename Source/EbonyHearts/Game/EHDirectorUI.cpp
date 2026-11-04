@@ -34,6 +34,12 @@ namespace EHUIText
 {
 FString CharId(int32 Index) { return Index == 0 ? TEXT("wren") : TEXT("ashka"); }
 
+bool IsFace(const FKey& Key)
+{
+	return Key == EKeys::Gamepad_FaceButton_Bottom || Key == EKeys::Gamepad_FaceButton_Right || Key == EKeys::Gamepad_FaceButton_Left || Key == EKeys::Gamepad_FaceButton_Top;
+}
+
+// Short label drawn inside a prompt box. Face buttons are drawn as glyphs instead (see PaintKeyGlyph).
 FString ButtonLabel(EEHDeviceKind Kind, const FKey& Key)
 {
 	if (Kind == EEHDeviceKind::PlayStation)
@@ -44,8 +50,10 @@ FString ButtonLabel(EEHDeviceKind Kind, const FKey& Key)
 		if (Key == EKeys::Gamepad_RightTrigger) return TEXT("R2");
 		if (Key == EKeys::Gamepad_Special_Right) return TEXT("OPTIONS");
 		if (Key == EKeys::Gamepad_Special_Left) return TEXT("SHARE");
+		if (Key == EKeys::Gamepad_LeftThumbstick) return TEXT("L3");
+		if (Key == EKeys::Gamepad_RightThumbstick) return TEXT("R3");
 	}
-	if (Kind == EEHDeviceKind::Xbox || Kind == EEHDeviceKind::Gamepad)
+	if (Kind == EEHDeviceKind::Xbox)
 	{
 		if (Key == EKeys::Gamepad_FaceButton_Bottom) return TEXT("A");
 		if (Key == EKeys::Gamepad_FaceButton_Right) return TEXT("B");
@@ -57,12 +65,60 @@ FString ButtonLabel(EEHDeviceKind Kind, const FKey& Key)
 		if (Key == EKeys::Gamepad_RightTrigger) return TEXT("RT");
 		if (Key == EKeys::Gamepad_Special_Right) return TEXT("MENU");
 		if (Key == EKeys::Gamepad_Special_Left) return TEXT("VIEW");
+		if (Key == EKeys::Gamepad_LeftThumbstick) return TEXT("LS");
+		if (Key == EKeys::Gamepad_RightThumbstick) return TEXT("RS");
+	}
+	if (Kind == EEHDeviceKind::Gamepad)
+	{
+		// Unknown make: name buttons by position, which is always right.
+		if (Key == EKeys::Gamepad_LeftShoulder) return TEXT("L BUMPER");
+		if (Key == EKeys::Gamepad_RightShoulder) return TEXT("R BUMPER");
+		if (Key == EKeys::Gamepad_LeftTrigger) return TEXT("L TRIGGER");
+		if (Key == EKeys::Gamepad_RightTrigger) return TEXT("R TRIGGER");
+		if (Key == EKeys::Gamepad_Special_Right) return TEXT("START");
+		if (Key == EKeys::Gamepad_Special_Left) return TEXT("SELECT");
+		if (Key == EKeys::Gamepad_LeftThumbstick) return TEXT("L STICK");
+		if (Key == EKeys::Gamepad_RightThumbstick) return TEXT("R STICK");
 	}
 	if (Key == EKeys::Gamepad_DPad_Left) return TEXT("D-PAD LEFT");
 	if (Key == EKeys::Gamepad_DPad_Right) return TEXT("D-PAD RIGHT");
 	if (Key == EKeys::Gamepad_DPad_Up) return TEXT("D-PAD UP");
 	if (Key == EKeys::Gamepad_DPad_Down) return TEXT("D-PAD DOWN");
 	return Key.GetDisplayName(false).ToString().ToUpper();
+}
+
+// Name used in sentences and notices ("Square", "X", "bottom face button", "J").
+FString ButtonName(EEHDeviceKind Kind, const FKey& Key)
+{
+	if (!Key.IsValid())
+	{
+		return TEXT("nothing");
+	}
+	if (IsFace(Key))
+	{
+		const int32 I = Key == EKeys::Gamepad_FaceButton_Bottom ? 0 : (Key == EKeys::Gamepad_FaceButton_Right ? 1 : (Key == EKeys::Gamepad_FaceButton_Left ? 2 : 3));
+		static const TCHAR* PS[] = {TEXT("Cross"), TEXT("Circle"), TEXT("Square"), TEXT("Triangle")};
+		static const TCHAR* XB[] = {TEXT("A"), TEXT("B"), TEXT("X"), TEXT("Y")};
+		static const TCHAR* Pos[] = {TEXT("bottom face button"), TEXT("right face button"), TEXT("left face button"), TEXT("top face button")};
+		return Kind == EEHDeviceKind::PlayStation ? PS[I] : (Kind == EEHDeviceKind::Xbox ? XB[I] : Pos[I]);
+	}
+	if (Kind == EEHDeviceKind::Gamepad)
+	{
+		if (Key == EKeys::Gamepad_LeftShoulder) return TEXT("left bumper");
+		if (Key == EKeys::Gamepad_RightShoulder) return TEXT("right bumper");
+		if (Key == EKeys::Gamepad_LeftTrigger) return TEXT("left trigger");
+		if (Key == EKeys::Gamepad_RightTrigger) return TEXT("right trigger");
+		if (Key == EKeys::Gamepad_Special_Right) return TEXT("Start");
+		if (Key == EKeys::Gamepad_Special_Left) return TEXT("Select");
+		if (Key == EKeys::Gamepad_LeftThumbstick) return TEXT("left stick button");
+		if (Key == EKeys::Gamepad_RightThumbstick) return TEXT("right stick button");
+	}
+	if (Key.IsGamepadKey())
+	{
+		const FString L = ButtonLabel(Kind, Key);
+		return L.StartsWith(TEXT("D-PAD")) ? L.ToLower().Replace(TEXT("d-pad"), TEXT("D-pad")) : L;
+	}
+	return Key.GetDisplayName(false).ToString();
 }
 }
 using namespace EHUIText;
@@ -80,30 +136,58 @@ EEHDeviceKind AEHGameDirector::PromptKind(int32 Device) const
 	return RouterPtr->KindOf(D);
 }
 
-FString AEHGameDirector::PromptText(EEHAction Action, int32 Device) const
+EEHBindingSet AEHGameDirector::PromptSet(int32 Device) const
 {
-	const EEHDeviceKind Kind = PromptKind(Device);
 	const int32 D = Device == EHDeviceNone ? RouterPtr->MostRecentDevice() : Device;
-	EEHBindingSet Set = EEHBindingSet::Gamepad;
-	if (Kind == EEHDeviceKind::Keyboard)
+	if (PromptKind(Device) == EEHDeviceKind::Keyboard)
 	{
-		Set = D == EHDeviceKeyboardB ? EEHBindingSet::KeyboardB : EEHBindingSet::KeyboardA;
+		return D == EHDeviceKeyboardB ? EEHBindingSet::KeyboardB : EEHBindingSet::KeyboardA;
 	}
-	const FKey& Key = Settings.Bindings.Keys[static_cast<int32>(Set)][static_cast<int32>(Action)][0];
-	return Key.IsValid() ? ButtonLabel(Kind, Key) : FString(TEXT("-"));
+	return D >= EHDeviceGamepadBase ? RouterPtr->SetFor(D) : EEHBindingSet::GamepadP1;
 }
 
-float AEHGameDirector::PaintPrompt(FEHPainter& P, FVector2f Pos, EEHAction Action, int32 Device, float Height)
+FKey AEHGameDirector::PromptKey(const FEHHint& Hint, int32 Device) const
 {
-	const EEHDeviceKind Kind = PromptKind(Device);
-	const int32 D = Device == EHDeviceNone ? RouterPtr->MostRecentDevice() : Device;
-	const EEHBindingSet Set = Kind == EEHDeviceKind::Keyboard ? (D == EHDeviceKeyboardB ? EEHBindingSet::KeyboardB : EEHBindingSet::KeyboardA) : EEHBindingSet::Gamepad;
-	const FKey Key = Settings.Bindings.Keys[static_cast<int32>(Set)][static_cast<int32>(Action)][0];
+	const EEHBindingSet Set = PromptSet(Device);
+	if (Hint.Nav != EEHNav::Count)
+	{
+		return EHMenuKey(EHIsKeyboardSet(Set) ? Set : EEHBindingSet::GamepadP1, Hint.Nav);
+	}
+	return Hint.Action == EEHAction::Count ? FKey(EKeys::Invalid) : Settings.Bindings.First(Set, Hint.Action);
+}
+
+EEHDeviceKind AEHGameDirector::KindForSet(EEHBindingSet Set) const
+{
+	if (EHIsKeyboardSet(Set))
+	{
+		return EEHDeviceKind::Keyboard;
+	}
+	if (Settings.PromptStyle == EEHPromptStyle::PlayStation) return EEHDeviceKind::PlayStation;
+	if (Settings.PromptStyle == EEHPromptStyle::Xbox) return EEHDeviceKind::Xbox;
+	const int32 Pad = RouterPtr->MostRecentGamepad();
+	return Pad != EHDeviceNone ? RouterPtr->KindOf(Pad) : EEHDeviceKind::Gamepad;
+}
+
+FString AEHGameDirector::KeyName(EEHBindingSet Set, const FKey& Key) const
+{
+	return ButtonName(KindForSet(Set), Key);
+}
+
+FString AEHGameDirector::ButtonNameOf(EEHDeviceKind Kind, const FKey& Key)
+{
+	return ButtonName(Kind, Key);
+}
+
+float AEHGameDirector::PaintKeyGlyph(FEHPainter& P, FVector2f Pos, EEHDeviceKind Kind, const FKey& Key, float Height, bool bMeasureOnly)
+{
 	const float R = Height * 0.5f;
 	const FVector2f C = Pos + FVector2f(R, R);
-	const bool bFace = Key == EKeys::Gamepad_FaceButton_Bottom || Key == EKeys::Gamepad_FaceButton_Right || Key == EKeys::Gamepad_FaceButton_Left || Key == EKeys::Gamepad_FaceButton_Top;
-	if (Kind != EEHDeviceKind::Keyboard && bFace)
+	if (Kind != EEHDeviceKind::Keyboard && IsFace(Key))
 	{
+		if (bMeasureOnly)
+		{
+			return Height;
+		}
 		P.Round(Pos, FVector2f(Height, Height), FLinearColor(0.08f, 0.08f, 0.10f, 0.95f), R);
 		P.Frame(Pos + FVector2f(2, 2), FVector2f(Height - 4, Height - 4), A(Bone, 0.25f), 1.0f);
 		if (Kind == EEHDeviceKind::PlayStation)
@@ -135,7 +219,7 @@ float AEHGameDirector::PaintPrompt(FEHPainter& P, FVector2f Pos, EEHAction Actio
 				P.Line({C + FVector2f(0, -S * 1.1f), C + FVector2f(S, S * 0.8f), C + FVector2f(-S, S * 0.8f), C + FVector2f(0, -S * 1.1f)}, FLinearColor(0.45f, 0.85f, 0.70f), 2.5f);
 			}
 		}
-		else
+		else if (Kind == EEHDeviceKind::Xbox)
 		{
 			FLinearColor Col = Bone;
 			if (Key == EKeys::Gamepad_FaceButton_Bottom) Col = FLinearColor(0.45f, 0.85f, 0.40f);
@@ -144,18 +228,40 @@ float AEHGameDirector::PaintPrompt(FEHPainter& P, FVector2f Pos, EEHAction Actio
 			if (Key == EKeys::Gamepad_FaceButton_Top) Col = FLinearColor(0.98f, 0.84f, 0.30f);
 			P.Text(ButtonLabel(Kind, Key), C, Fonts.Sized(Fonts.BodyBold, Height * 0.55f), Col, 0.5f, 0.5f, false);
 		}
+		else
+		{
+			// Unknown make: four dots in a diamond, the pressed position filled.
+			const float D = R * 0.42f;
+			const float Dot = FMath::Max(3.0f, R * 0.22f);
+			const FVector2f Offsets[] = {FVector2f(0, D), FVector2f(D, 0), FVector2f(-D, 0), FVector2f(0, -D)};
+			const FKey Order[] = {EKeys::Gamepad_FaceButton_Bottom, EKeys::Gamepad_FaceButton_Right, EKeys::Gamepad_FaceButton_Left, EKeys::Gamepad_FaceButton_Top};
+			for (int32 i = 0; i < 4; ++i)
+			{
+				const bool bOn = Order[i] == Key;
+				P.Round(C + Offsets[i] - FVector2f(Dot, Dot), FVector2f(Dot * 2, Dot * 2), bOn ? Bone : A(Bone, 0.22f), Dot);
+			}
+		}
 		return Height;
 	}
-	const FString Label = Key.IsValid() ? ButtonLabel(Kind, Key) : FString(TEXT("?"));
+	const FString Label = Key.IsValid() ? ButtonLabel(Kind, Key) : FString(TEXT("-"));
 	const FSlateFontInfo F = Fonts.Sized(Fonts.BodyBold, Height * 0.5f);
 	const float W = FMath::Max(Height, P.Measure(Label, F).X + Height * 0.6f);
+	if (bMeasureOnly)
+	{
+		return W;
+	}
 	P.Round(Pos, FVector2f(W, Height), FLinearColor(0.10f, 0.10f, 0.12f, 0.95f), 4.0f);
 	P.Frame(Pos, FVector2f(W, Height), A(Bone, 0.35f), 1.0f);
 	P.Text(Label, Pos + FVector2f(W * 0.5f, Height * 0.5f), F, Bone, 0.5f, 0.5f, false);
 	return W;
 }
 
-void AEHGameDirector::PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<TPair<EEHAction, FString>>& Items, int32 Device)
+float AEHGameDirector::PaintPrompt(FEHPainter& P, FVector2f Pos, const FEHHint& Hint, int32 Device, float Height)
+{
+	return PaintKeyGlyph(P, Pos, PromptKind(Device), PromptKey(Hint, Device), Height);
+}
+
+void AEHGameDirector::PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<FEHHint>& Items, int32 Device)
 {
 	if (!Settings.bInputHints)
 	{
@@ -163,11 +269,50 @@ void AEHGameDirector::PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<
 	}
 	const FSlateFontInfo F = Fonts.Sized(Fonts.Body, 19.0f);
 	float X = Pos.X;
-	for (const TPair<EEHAction, FString>& It : Items)
+	for (const FEHHint& It : Items)
 	{
-		X += PaintPrompt(P, FVector2f(X, Pos.Y), It.Key, Device, 30.0f) + 8.0f;
-		X += P.Text(It.Value, FVector2f(X, Pos.Y + 15.0f), F, Muted, 0.0f, 0.5f).X + 28.0f;
+		X += PaintPrompt(P, FVector2f(X, Pos.Y), It, Device, 30.0f) + 8.0f;
+		X += P.Text(It.Label, FVector2f(X, Pos.Y + 15.0f), F, Muted, 0.0f, 0.5f).X + 28.0f;
 	}
+}
+
+void AEHGameDirector::PaintBindingValue(FEHPainter& P, FVector2f Right, EEHBindingSet Set, EEHAction Action, int32 OnlySlot, bool bSel)
+{
+	const EEHDeviceKind Kind = KindForSet(Set);
+	const float H = 34.0f;
+	const FSlateFontInfo F = Fonts.Sized(Fonts.BodyMedium, 22);
+	const bool bCapturing = Screen == EEHScreen::Bindings && CaptureAction == static_cast<int32>(Action) && BindingSet == Set;
+	float X = Right.X;
+	auto DrawSlot = [&](int32 K) {
+		if (bCapturing && CaptureSlot == K)
+		{
+			const int32 Secs = FMath::CeilToInt(FMath::Max(0.0f, CaptureLeft));
+			const FString Wait = EHIsKeyboardSet(Set) ? FString::Printf(TEXT("Press a key... %d"), Secs) : FString::Printf(TEXT("Press a button... %d"), Secs);
+			X -= P.Text(Wait, FVector2f(X, Right.Y), F, Gold, 1.0f, 0.5f).X + 18.0f;
+			return;
+		}
+		const FKey Key = Settings.Bindings.Get(Set, Action, K);
+		if (!Key.IsValid())
+		{
+			X -= P.Text(TEXT("-"), FVector2f(X - 8.0f, Right.Y), F, A(Muted, 0.6f), 1.0f, 0.5f).X + 26.0f;
+			return;
+		}
+		const float W = PaintKeyGlyph(P, FVector2f::ZeroVector, Kind, Key, H, true);
+		PaintKeyGlyph(P, FVector2f(X - W, Right.Y - H * 0.5f), Kind, Key, H);
+		X -= W + 18.0f;
+	};
+	if (OnlySlot >= 0)
+	{
+		DrawSlot(OnlySlot);
+		return;
+	}
+	if (!bCapturing && Settings.Bindings.IsUnbound(Set, Action))
+	{
+		P.Text(TEXT("Unbound"), Right, F, Crimson, 1.0f, 0.5f);
+		return;
+	}
+	DrawSlot(1);
+	DrawSlot(0);
 }
 
 void AEHGameDirector::PaintBackdrop(FEHPainter& P, float Dim)
@@ -332,7 +477,11 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 			P.Rect(Row + FVector2f(16, 6), FVector2f(4, RowH - 12), Violet);
 		}
 		P.Text(It.Label, Row + FVector2f(40, RowH * 0.5f), Fonts.Sized(bSel ? Fonts.BodyBold : Fonts.BodyMedium, 26), bSel ? Bone : Muted, 0.0f, 0.5f);
-		if (It.Value)
+		if (It.PaintValue)
+		{
+			It.PaintValue(P, Row + FVector2f(W - 40, RowH * 0.5f), bSel);
+		}
+		else if (It.Value)
 		{
 			const FString V = It.Value();
 			const FString Shown = It.Change ? FString::Printf(TEXT("‹  %s  ›"), *V) : V;
@@ -345,7 +494,14 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 		P.Text(Sel->Hint, FVector2f(bCentered ? 960.0f : Pos.X, Pos.Y + H + 34), Fonts.Sized(Fonts.Body, 21), Muted, bCentered ? 0.5f : 0.0f, 0.5f);
 	}
 	const int32 Owner = MenuOwner != EHDeviceNone ? MenuOwner : RouterPtr->MostRecentDevice();
-	PaintPromptRow(P, FVector2f(96, 1000), {{EEHAction::Light, TEXT("Select")}, {EEHAction::Heavy, TEXT("Back")}}, Owner);
+	if (Screen == EEHScreen::Bindings && CaptureAction >= 0)
+	{
+		// Escape or Options / Menu cancels a capture; show the one that belongs to the layout being edited.
+		const int32 CancelDevice = EHIsKeyboardSet(BindingSet) ? EHDeviceKeyboardA : RouterPtr->MostRecentGamepad();
+		PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Pause, TEXT("Cancel"))}, CancelDevice);
+		return;
+	}
+	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Confirm, TEXT("Select")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Owner);
 }
 
 void AEHGameDirector::PaintSelect(FEHPainter& P)
@@ -355,7 +511,7 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 	FString Instruction;
 	if (Mode == EEHMode::Versus)
 	{
-		Instruction = TEXT("Each player presses Light on their own device to join, then chooses and confirms.");
+		Instruction = TEXT("Each player presses Confirm on their own controller or keyboard side to join, then chooses and confirms.");
 	}
 	else if (SelectStage == 0)
 	{
@@ -438,7 +594,7 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 			P.Text(TEXT("Both ready - press Light to fight"), FVector2f(960, 520), Fonts.Sized(Fonts.Display, 30), A(Gold, Pulse), 0.5f, 0.5f);
 		}
 	}
-	PaintPromptRow(P, FVector2f(96, 1000), {{EEHAction::Left, TEXT("Choose")}, {EEHAction::Light, TEXT("Confirm")}, {EEHAction::Heavy, TEXT("Back")}}, Mode == EEHMode::Versus ? EHDeviceNone : SelectDevice[0]);
+	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Left, TEXT("Choose")), FEHHint::Menu(EEHNav::Confirm, TEXT("Confirm")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Mode == EEHMode::Versus ? EHDeviceNone : SelectDevice[0]);
 }
 
 void AEHGameDirector::PaintHUD(FEHPainter& P)
@@ -648,7 +804,7 @@ void AEHGameDirector::PaintTraining(FEHPainter& P)
 		const eh::FighterState& F = S.f[0];
 		P.Text(FString::Printf(TEXT("%s    You: %s    Partner: %s"), *Adv, UTF8_TO_TCHAR(eh::StateName(F.state)), UTF8_TO_TCHAR(eh::StateName(S.f[1].state))), FVector2f(960, 932), Fonts.Sized(Fonts.Body, 20), Muted, 0.5f, 0.5f);
 	}
-	PaintPromptRow(P, FVector2f(560, 1040), {{EEHAction::Pause, TEXT("Training options")}, {EEHAction::Reset, TEXT("Reset")}}, SlotDevice[0]);
+	PaintPromptRow(P, FVector2f(560, 1040), {FEHHint::Menu(EEHNav::Pause, TEXT("Training options")), FEHHint::Act(EEHAction::Reset, TEXT("Reset"))}, SlotDevice[0]);
 }
 
 void AEHGameDirector::PaintLesson(FEHPainter& P)
@@ -668,16 +824,16 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 		const bool bDone = LessonDoneAge >= 0.0f;
 		P.Text(bDone ? TEXT("Done") : FString::Printf(TEXT("%d / %d"), FMath::Min(LessonCount, Step.Goal), Step.Goal), Pos + FVector2f(968, 36), Fonts.Sized(Fonts.BodyBold, 24), bDone ? Gold : Muted, 1.0f, 0.5f);
 		// Which buttons this step is about.
-		TArray<TPair<EEHAction, FString>> Hints;
+		TArray<FEHHint> Hints;
 		switch (LessonStep)
 		{
-		case 0: Hints = {{EEHAction::Left, TEXT("Back")}, {EEHAction::Right, TEXT("Forward")}}; break;
-		case 1: Hints = {{EEHAction::Light, TEXT("Light x3")}}; break;
-		case 2: Hints = {{EEHAction::Heavy, TEXT("Heavy")}}; break;
-		case 3: case 4: Hints = {{EEHAction::Block, TEXT("Block")}}; break;
-		case 5: case 6: Hints = {{EEHAction::Throw, TEXT("Grab")}}; break;
-		case 7: Hints = {{EEHAction::Block, TEXT("Block")}, {EEHAction::Dodge, TEXT("Dodge")}, {EEHAction::Light, TEXT("Punish")}}; break;
-		case 8: Hints = {{EEHAction::Special, TEXT("Special (+ toward / + away)")}}; break;
+		case 0: Hints = {FEHHint::Act(EEHAction::Left, TEXT("Back")), FEHHint::Act(EEHAction::Right, TEXT("Forward"))}; break;
+		case 1: Hints = {FEHHint::Act(EEHAction::Light, TEXT("Light x3"))}; break;
+		case 2: Hints = {FEHHint::Act(EEHAction::Heavy, TEXT("Heavy"))}; break;
+		case 3: case 4: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block"))}; break;
+		case 5: case 6: Hints = {FEHHint::Act(EEHAction::Throw, TEXT("Grab"))}; break;
+		case 7: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block")), FEHHint::Act(EEHAction::Dodge, TEXT("Dodge")), FEHHint::Act(EEHAction::Light, TEXT("Punish"))}; break;
+		case 8: Hints = {FEHHint::Act(EEHAction::Special, TEXT("Special (+ toward / + away)"))}; break;
 		default: break;
 		}
 		const bool bSaved = Settings.bInputHints;
@@ -687,7 +843,10 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 	}
 	else
 	{
-		P.Text(TEXT("Press Light to return to the menu, or keep practising."), Pos + FVector2f(32, 124), Fonts.Sized(Fonts.BodyMedium, 20), Gold, 0.0f, 0.5f);
+		const bool bSaved = Settings.bInputHints;
+		Settings.bInputHints = true;
+		PaintPromptRow(P, Pos + FVector2f(32, 108), {FEHHint::Menu(EEHNav::Confirm, TEXT("Return to the menu, or keep practising"))}, SlotDevice[0]);
+		Settings.bInputHints = bSaved;
 	}
 }
 
@@ -751,25 +910,40 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	for (const eh::MoveDef& M : Def.moves)
 	{
 		const FString Id = UTF8_TO_TCHAR(M.id.c_str());
-		FString Input;
-		const TCHAR* DirText = M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""));
-		const TCHAR* Btn = M.button == eh::BtnLight ? TEXT("Light") : (M.button == eh::BtnHeavy ? TEXT("Heavy") : (M.button == eh::BtnSpecial ? TEXT("Special") : (M.button == eh::BtnThrow ? TEXT("Grab") : TEXT("Dodge"))));
-		Input = FString(DirText) + Btn;
-		if (Id == TEXT("L2")) Input = TEXT("Light, Light");
-		if (Id == TEXT("L3")) Input = TEXT("Light x3");
-		if (M.kind == eh::MoveKind::Dodge && M.dir == eh::DirReq::Any) Input = TEXT("Dodge (away or neutral)");
+		// Inputs are drawn with the viewer's own buttons: direction words, then the action's button glyph.
+		const FString DirText = M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""));
+		const EEHAction Act = M.button == eh::BtnLight ? EEHAction::Light : (M.button == eh::BtnHeavy ? EEHAction::Heavy : (M.button == eh::BtnSpecial ? EEHAction::Special : (M.button == eh::BtnThrow ? EEHAction::Throw : EEHAction::Dodge)));
+		int32 Repeats = 1;
+		FString Suffix;
+		if (Id == TEXT("L2")) Repeats = 2;
+		if (Id == TEXT("L3")) Repeats = 3;
+		if (M.kind == eh::MoveKind::Dodge && M.dir == eh::DirReq::Any) Suffix = TEXT("  away or neutral");
 		const FString Startup = M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().frames.first);
 		const FString Damage = M.kind == eh::MoveKind::Throw ? FString::Printf(TEXT("%d"), Def.throws[0].damage) : (M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().damage));
 		const FText* Note = CP.MoveNotes.Find(Id);
 		const float Y = 236 + Line * 64;
 		P.Text(UTF8_TO_TCHAR(M.name.c_str()), FVector2f(Cols[0], Y), Fonts.Sized(Fonts.BodyBold, 22), Bone, 0.0f, 0.5f);
-		P.Text(Input, FVector2f(Cols[1], Y), Row, Gold, 0.0f, 0.5f);
+		{
+			float X = Cols[1];
+			if (!DirText.IsEmpty())
+			{
+				X += P.Text(DirText, FVector2f(X, Y), Row, Gold, 0.0f, 0.5f).X + 4.0f;
+			}
+			for (int32 r = 0; r < Repeats; ++r)
+			{
+				X += PaintPrompt(P, FVector2f(X, Y - 15.0f), FEHHint::Act(Act, FString()), EHDeviceNone, 30.0f) + 6.0f;
+			}
+			if (!Suffix.IsEmpty())
+			{
+				P.Text(Suffix, FVector2f(X, Y), Fonts.Sized(Fonts.Body, 19), Muted, 0.0f, 0.5f);
+			}
+		}
 		P.Text(Startup, FVector2f(Cols[2], Y), Row, Bone, 0.0f, 0.5f);
 		P.Text(Damage, FVector2f(Cols[3], Y), Row, Bone, 0.0f, 0.5f);
 		P.Text(Note ? Note->ToString() : FString(), FVector2f(Cols[4], Y), Fonts.Sized(Fonts.Body, 19), Muted, 0.0f, 0.5f);
 		++Line;
 	}
-	PaintPromptRow(P, FVector2f(96, 1000), {{EEHAction::Left, TEXT("Other fighter")}, {EEHAction::Heavy, TEXT("Back")}}, EHDeviceNone);
+	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Left, TEXT("Other fighter")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, EHDeviceNone);
 }
 
 void AEHGameDirector::PaintCredits(FEHPainter& P)
@@ -784,6 +958,8 @@ void AEHGameDirector::PaintCredits(FEHPainter& P)
 		TEXT("Character bodies built from MakeHuman system assets (CC0 1.0)"),
 		TEXT("Surface textures: Poly Haven and ambientCG (CC0 1.0)"),
 		TEXT("Interface and impact sounds include Kenney audio packs (CC0 1.0)"),
+		TEXT("Motion capture: Open Motion Project by ACCAD / The Ohio State University (CC BY 3.0)"),
+		TEXT("Animation: Mixamo (Adobe), used royalty free"),
 		TEXT("Fonts: Cinzel and Alegreya Sans, SIL Open Font License 1.1"),
 		TEXT(""),
 		TEXT("Unreal® Engine, Copyright 1998-2026, Epic Games, Inc. All rights reserved."),
@@ -796,5 +972,5 @@ void AEHGameDirector::PaintCredits(FEHPainter& P)
 		P.Text(Lines[i], FVector2f(960, Y), bTitle ? Fonts.Sized(Fonts.Display, 48) : Fonts.Sized(Fonts.Body, 24), bTitle ? Bone : Muted, 0.5f, 0.5f);
 		Y += bTitle ? 70.0f : 44.0f;
 	}
-	PaintPromptRow(P, FVector2f(96, 1000), {{EEHAction::Heavy, TEXT("Back")}}, EHDeviceNone);
+	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, EHDeviceNone);
 }

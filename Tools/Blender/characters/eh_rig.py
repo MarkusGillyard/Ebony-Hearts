@@ -89,6 +89,78 @@ def twist_constraints(rig):
             c.mix_mode_rot = "REPLACE"
 
 
+# Half joints: a short bone at the shoulder and hip joints that turns half as far as the limb. Skin around the joint
+# blends through it, so a raised arm or a high kick bends the shoulder and hip round instead of folding them flat
+# (plain linear skinning collapses there). The animation builders key them at half the limb's rotation.
+HALF = (
+    # name, limb, parent of both (no side for pelvis), parent-side weight groups
+    ("upperarm_half", "upperarm", "clavicle", ("clavicle", "spine_03")),
+    ("thigh_half", "thigh", "pelvis", ("pelvis", "spine_01")),
+)
+CENTRE_BONES = ("pelvis", "spine_01", "spine_02", "spine_03")
+
+
+def _sided(name, s):
+    return name if name in CENTRE_BONES else "%s_%s" % (name, s)
+
+
+def add_half_joints(rig):
+    eb = edit(rig)
+    for name, limb, parent, _ in HALF:
+        for s in "lr":
+            c = eb["%s_%s" % (limb, s)]
+            b = eb.new("%s_%s" % (name, s))
+            b.head = c.head.copy()
+            b.tail = c.head + (c.tail - c.head) * 0.25
+            b.roll = c.roll
+            b.parent = eb[_sided(parent, s)]
+            b.use_connect = False
+            b.use_deform = True
+    obj_mode()
+
+
+def half_constraints(rig):
+    for name, limb, parent, _ in HALF:
+        for s in "lr":
+            pb = rig.pose.bones["%s_%s" % (name, s)]
+            pb.rotation_mode = "QUATERNION"
+            for c in list(pb.constraints):
+                pb.constraints.remove(c)
+            c = pb.constraints.new("COPY_ROTATION")
+            c.name = "half_of_" + limb
+            c.target = rig
+            c.subtarget = "%s_%s" % (limb, s)
+            c.target_space = "LOCAL"
+            c.owner_space = "LOCAL"
+            c.influence = 0.5
+
+
+def split_half_weights(ob, rig, W=None):
+    """Where skin blends between the trunk and a limb (both carry weight), a share of up to 70 % moves to the half
+    joint, taken from both sides in proportion. Returns the new weight dict."""
+    W = M.weights(ob) if W is None else W
+    n = len(M.co(ob))
+    twist = {t[1]: t[0] for t in TWIST}
+    for name, limb, parent, trunk in HALF:
+        for s in "lr":
+            child = [g for g in ("%s_%s" % (limb, s), "%s_%s" % (twist.get(limb, ""), s)) if g in W]
+            par = [g for g in dict.fromkeys(_sided(p, s) for p in trunk) if g in W]
+            if not child or not par:
+                continue
+            wc = sum(W[g] for g in child)
+            wp = sum(W[g] for g in par)
+            share = np.minimum(0.7, 2.0 * np.minimum(wc, wp))
+            tot = np.maximum(wc + wp, 1e-9)
+            take_c, take_p = share * wc / tot, share * wp / tot
+            for g in child:
+                W[g] = W[g] - take_c * np.where(wc > 0, W[g] / np.maximum(wc, 1e-9), 0.0)
+            for g in par:
+                W[g] = W[g] - take_p * np.where(wp > 0, W[g] / np.maximum(wp, 1e-9), 0.0)
+            hn = "%s_%s" % (name, s)
+            W[hn] = W.get(hn, np.zeros(n)) + share
+    return W
+
+
 def bone_param(rig, bone, P):
     b = rig.data.bones[bone]
     h, t = np.array(b.head_local), np.array(b.tail_local)

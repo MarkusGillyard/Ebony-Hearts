@@ -173,7 +173,7 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(e.find("unknown move \"L9\"") != std::string::npos && e.find("moves[0]") != std::string::npos, "unknown cancel target: " + e);
 		e = LoadError(Replace(good, "\"into\": [\"L2\", \"@special\"]", "\"into\": [\"@special\"]"));
 		EXPECT_TRUE(e.find("chain-only") != std::string::npos, "unreachable chain move: " + e);
-		e = LoadError(Replace(good, "\"frames\": [5, 6], \"box\": [18, 128, 78, 156]", "\"frames\": [5, 40], \"box\": [18, 128, 78, 156]"));
+		e = LoadError(Replace(good, "\"frames\": [8, 9], \"box\": [18, 128, 78, 156]", "\"frames\": [8, 40], \"box\": [18, 128, 78, 156]"));
 		EXPECT_TRUE(e.find("moves[0].hits[0].frames") != std::string::npos, "hit beyond total: " + e);
 		e = LoadError(Replace(good, "\"box\": [18, 128, 78, 156]", "\"box\": [78, 128, 18, 156]"));
 		EXPECT_TRUE(e.find("x1 > x0") != std::string::npos, "inverted box: " + e);
@@ -181,7 +181,7 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(e.find("duplicate move id") != std::string::npos, "duplicate id: " + e);
 		e = LoadError(Replace(good, "\"damage\": 30,", ""));
 		EXPECT_TRUE(e.find("hits[0].damage: missing") != std::string::npos, "missing field: " + e);
-		e = LoadError(Replace(good, "\"dir\": \"forward\", \"total\": 38", "\"dir\": \"any\", \"total\": 38"));
+		e = LoadError(Replace(good, "\"dir\": \"forward\", \"total\": 47", "\"dir\": \"any\", \"total\": 47"));
 		EXPECT_TRUE(e.find("could never be performed") != std::string::npos, "shadowed move: " + e);
 		e = LoadError(Replace(good, "\"throwBack\": \"wren_suplex\"", "\"throwBack\": \"nope\""));
 		EXPECT_TRUE(e.find("unknown throw") != std::string::npos, "unknown throw: " + e);
@@ -404,10 +404,17 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(tech, "simultaneous throws break");
 		EXPECT_TRUE(m.State().f[0].health == g_wren.maxHealth && m.State().f[1].health == g_ashka.maxHealth, "nobody damaged by a double throw");
 
-		// Ashka's jab (startup 5) is active on the same tick Wren's grab (startup 5) would connect.
+		// Ashka's jab is active on the same tick Wren's grab would connect: the jab is pressed earlier by the difference
+		// in their startups.
 		Match s = MakeMatch(0, 1);
 		s.TrainingPlace(Cm(-35), Cm(35));
-		Step(s, In(0, BtnThrow), In(0, BtnLight));
+		const int jabStartup = Fighter(1).moves[static_cast<size_t>(Move(1, "L1"))].hits[0].frames.first;
+		const int grabStartup = Fighter(0).moves[static_cast<size_t>(Move(0, "T"))].hits[0].frames.first;
+		for (int t = 0; t < jabStartup - grabStartup; ++t)
+		{
+			Step(s, In(), t == 0 ? In(0, BtnLight) : In());
+		}
+		Step(s, In(0, BtnThrow), jabStartup == grabStartup ? In(0, BtnLight) : In());
 		bool thrown = false;
 		bool hit = false;
 		for (int t = 0; t < 10; ++t)
@@ -530,11 +537,13 @@ int main(int argc, char** argv)
 	});
 
 	Run("example_combos_each_fighter", [] {
-		// Documented routes: L1 > L2 > L3 and L1 > L2 > forward special, both fighters.
+		// Documented routes: L1 > L2 > L3, L1 > L2 > forward special and L1 > forward special, both fighters.
+		const char* routes[] = {" L1 L2 L3", " L1 L2 FS", " L1 FS"};
 		for (int c = 0; c < 2; ++c)
 		{
-			for (int ender = 0; ender < 2; ++ender)
+			for (int ender = 0; ender < 3; ++ender)
 			{
+				const int links = ender == 2 ? 1 : 2;
 				Match m = MakeMatch(c, 1 - c);
 				m.TrainingPlace(Cm(-50), Cm(50));
 				int maxCombo = 0;
@@ -547,15 +556,15 @@ int main(int argc, char** argv)
 					{
 						p0 = In(0, BtnLight);
 					}
-					else if (f.state == FState::Attack && f.connectedHit && f.hitstop == 1 && presses < 2)
+					else if (f.state == FState::Attack && f.connectedHit && f.hitstop == 1 && presses < links)
 					{
 						++presses;
-						p0 = (presses == 2 && ender == 1) ? In(Toward(m, 0), BtnSpecial) : In(0, BtnLight);
+						p0 = (presses == links && ender > 0) ? In(Toward(m, 0), BtnSpecial) : In(0, BtnLight);
 					}
 					Step(m, p0);
 					maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
 				}
-				EXPECT_EQ(maxCombo, 3, std::string(FighterName(c)) + (ender ? " L1 L2 FS" : " L1 L2 L3") + " is a 3-hit combo");
+				EXPECT_EQ(maxCombo, links + 1, std::string(FighterName(c)) + routes[ender] + " is a " + std::to_string(links + 1) + "-hit combo");
 			}
 		}
 	});
@@ -590,7 +599,9 @@ int main(int argc, char** argv)
 			}
 		}
 		EXPECT_TRUE(worst <= 5, "longest random combo " + std::to_string(worst) + " stays short");
-		EXPECT_TRUE(worstStun < 240, "longest continuous loss of control " + std::to_string(worstStun) + " ticks is bounded");
+		// About two knockdowns' worth of falling and getting up, plus the hits between.
+		const int bound = 200 + 2 * g_rules.getupFrames;
+		EXPECT_TRUE(worstStun < bound, "longest continuous loss of control " + std::to_string(worstStun) + " ticks is bounded (< " + std::to_string(bound) + ")");
 	});
 
 	Run("damage_scaling_and_counter_hit", [] {
@@ -729,17 +740,13 @@ int main(int argc, char** argv)
 			m.TrainingPlace(Cm(-45), Cm(45));
 			const MoveDef& h = g_wren.moves[static_cast<size_t>(Move(0, "H"))];
 			const int active = h.hits[0].frames.first;
-			if (mash)
-			{
-				Step(m, InputFrame(), In(0, BtnBlock));
-				Step(m);
-			}
 			Step(m, In(0, BtnHeavy), InputFrame());
 			bool deflect = false;
 			bool block = false;
 			for (int t = 2; t <= 40; ++t)
 			{
-				const bool press = t == active - 2;
+				// The mash case presses once more 6 ticks earlier, well inside the lockout, whatever the kick's startup.
+				const bool press = t == active - 2 || (mash && t == active - 8);
 				Step(m, InputFrame(), press ? In(0, BtnBlock) : In(0, 0, BtnBlock));
 				deflect = deflect || HasEvent(m, EventType::Deflect);
 				block = block || HasEvent(m, EventType::Block);

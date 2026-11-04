@@ -22,7 +22,7 @@ struct FEHAnimChoice
 	int32 Frame = 1;          // 1-based frame within the animation at 60 fps
 	bool bLoop = false;
 	int64 Instance = 0;       // changes whenever a new instance of the state/move starts
-	float BlendSeconds = 0.08f;
+	float BlendSeconds = 0.08f;   // inertial blend from the previous pose; 0 cuts
 };
 
 // Pure function of simulation state: which animation and frame represent this fighter now.
@@ -83,10 +83,6 @@ private:
 	FName CurrentKey;
 	int64 CurrentInstance = -1;
 	double CurrentTime = 0.0;
-	FName PreviousKey;
-	double PreviousTime = 0.0;
-	float BlendTotal = 0.0f;
-	float BlendLeft = 0.0f;
 	double LoopTime = 0.0;
 	float AuraIntensity = 0.0f;
 	float FlameIntensity = 0.0f;

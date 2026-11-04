@@ -39,25 +39,28 @@ The rules, move tables and canon boundaries are in [Docs/CombatContract.md](Docs
 Linux x86-64 (tested on Ubuntu with an NVIDIA GPU and the proprietary Vulkan driver) with X11 or XWayland.
 Requires a Vulkan GPU with Shader Model 6 support. The target is 1920 × 1080 at 60 FPS.
 
-Input: keyboard (two layouts, so two players can share one keyboard) and SDL-supported gamepads. Gamepads are assigned
-to whichever side presses a button first. If a gamepad disconnects mid-match the game pauses, and any gamepad can take
-over that side.
+Input: keyboard (two layouts, so two players can share one keyboard) and SDL-supported gamepads. In Local Versus each
+player joins by pressing Confirm on their own device. If a gamepad disconnects mid-match the game pauses, and any device
+can take over that side.
 
 ## Controls
 
-| Action | Keyboard (left side) | Keyboard (right side) | Gamepad |
-|---|---|---|---|
-| Move | A / D | Arrow keys | D-pad or left stick |
-| Light | J | Numpad 1 / , | South face (Cross / A) |
-| Heavy | K | Numpad 2 / . | East face (Circle / B) |
-| Special | L | Numpad 3 / / | North face (Triangle / Y) |
-| Grab | I | Numpad 5 / ; | West face (Square / X) |
-| Dodge | O | Numpad 6 / ' | L1 / LB (or L2 / LT) |
-| Block (hold) | Space | Numpad 0 / Right Shift | R1 / RB (or R2 / RT) |
-| Pause | Escape | Numpad 9 / = | Options / Menu |
-| Training reset | R | Numpad 7 / - | Share / View |
+| Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
+|---|---|---|---|---|
+| Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
+| Light | J, or Enter | Numpad 1, or , | Square | X |
+| Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
+| Special | L | Numpad 3, or / | R1 | RB |
+| Grab | I | Numpad 5, or ; | Cross, or L1 | A, or LB |
+| Dodge | O | Numpad 6, or ' | Circle | B |
+| Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
+| Pause | Escape | Numpad 9, or = | Options | Menu |
+| Training reset | R | Numpad 7, or - | Share | View |
 
-In menus, Light confirms and Heavy goes back. Every combat binding can be changed under Settings > Controls.
+PlayStation and Xbox share one layout by button position. Menus have their own fixed controls: Cross / A or Enter
+confirms, Circle / B or Escape goes back, and Options / Menu pauses. So Cross / A grabs in a match without affecting
+menus. Every gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1
+and 2 and for each keyboard side. Details: [Docs/Controls.md](Docs/Controls.md).
 
 ## Running the packaged build
 
@@ -132,8 +135,18 @@ Tests/Core/run_core_tests.sh
 - **Art.**
   - The fighters are built by script from a MakeHuman base. They read well at gameplay distance, but close-up detail
     (faces, hair cards) is modest.
-  - Animation is keyed by script, not motion-captured. Coat panels and braids are spring-simulated, and they can clip
-    in the most extreme spins.
+  - Both fighters stand in researched stances (Wren MMA, Ashka Muay Thai; see `Docs/Research.md`). Most motion comes
+    from motion capture (ACCAD and Mixamo):
+    - the idles, walks and held guards;
+    - Wren's jab, cross and four kicks;
+    - Ashka's jab, both elbows, step-in knee, flying knee, body kick and teep;
+    - Wren's double-leg slam (both sides);
+    - both fighters' intros, wins and defeated poses;
+    - both fighters' hit, block, knockdown, KO and get-up.
+
+    The remaining moves are keyed by script on the same stances: Wren's spinning elbow, both bursts, rolls, grabs
+    and the other three throws. Moves blend into each other with inertial transitions. Coat panels
+    and braids are spring-simulated, and they can clip in the most extreme spins.
   - Only Wren's primary outfit is in the slice.
 - **Audio.** Music, ambience and most effects are synthesized for the slice, with CC0 layers. There are no voices.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback, online

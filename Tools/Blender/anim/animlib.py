@@ -75,8 +75,63 @@ def blend(a, b, t):
     return out
 
 
+def _number(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _slope(values, frames, i):
+    """Monotone cubic tangent (units per frame) at key i: zero where the channel turns back or at the ends, otherwise a
+    weighted harmonic mean of the neighbouring slopes (Fritsch-Butland), so the curve never overshoots a key."""
+    if i <= 0 or i >= len(values) - 1 or not all(_number(v) for v in values[i - 1:i + 2]):
+        return 0.0
+    h0, h1 = frames[i] - frames[i - 1], frames[i + 1] - frames[i]
+    d0, d1 = (values[i] - values[i - 1]) / h0, (values[i + 1] - values[i]) / h1
+    if d0 * d1 <= 0.0:
+        return 0.0
+    w0, w1 = 2.0 * h1 + h0, h1 + 2.0 * h0
+    return (w0 + w1) / (w0 / d0 + w1 / d1)
+
+
+def _flow(full, j, frame):
+    """Pose between keys j and j+1 of a "smooth" segment. Each channel follows a cubic through the keys: it passes
+    through a key without stopping when the neighbouring segment is also smooth and the channel keeps going the same
+    way, and eases to rest at a key where it turns back, at the first and last keys, and next to a key with a
+    deliberate ease (snap, in, out, linear, hold). With no flow at either end this is exactly the old smoothstep."""
+    f0, p0, _ = full[j]
+    f1, p1, _ = full[j + 1]
+    h = float(f1 - f0)
+    t = (frame - f0) / max(1e-6, h)
+    flow0 = j > 0 and full[j][2] == "smooth"
+    flow1 = j + 2 < len(full) and full[j + 2][2] == "smooth"
+    frames = [k[0] for k in full]
+    out = Pose()
+    h00, h10, h01, h11 = 2 * t ** 3 - 3 * t ** 2 + 1, t ** 3 - 2 * t ** 2 + t, -2 * t ** 3 + 3 * t ** 2, t ** 3 - t ** 2
+    for key in set(p0) | set(p1):
+        va, vb = p0.get(key), p1.get(key)
+        if key not in p0 or key not in p1:
+            out[key] = va if key in p0 else vb
+            continue
+        tuples = isinstance(va, tuple) and isinstance(vb, tuple) and len(va) == len(vb)
+        if not (tuples or (_number(va) and _number(vb))):
+            out[key] = vb if t >= 1.0 - 1e-9 else va
+            continue
+        comps = len(va) if tuples else 1
+        res = []
+        for c in range(comps):
+            series = [(k[1].get(key)[c] if tuples and isinstance(k[1].get(key), tuple) and len(k[1].get(key)) == comps else
+                       (k[1].get(key) if not tuples else None)) for k in full]
+            a = va[c] if tuples else va
+            b = vb[c] if tuples else vb
+            m0 = _slope(series, frames, j) if flow0 else 0.0
+            m1 = _slope(series, frames, j + 1) if flow1 else 0.0
+            res.append(h00 * a + h10 * h * m0 + h01 * b + h11 * h * m1)
+        out[key] = tuple(res) if tuples else res[0]
+    return out
+
+
 def sample(keys, frame):
-    """keys: list of (frame, Pose, easing-into-this-key). Returns the interpolated pose at frame."""
+    """keys: list of (frame, Pose, easing-into-this-key). Returns the interpolated pose at frame. "smooth" segments
+    flow through keys (see _flow); the other easings shape their segment as written."""
     full = []
     acc = Pose()
     for f, p, e in keys:
@@ -84,8 +139,10 @@ def sample(keys, frame):
         full.append((f, acc, e))
     if frame <= full[0][0]:
         return full[0][1]
-    for (f0, p0, _), (f1, p1, e1) in zip(full, full[1:]):
+    for j, ((f0, p0, _), (f1, p1, e1)) in enumerate(zip(full, full[1:])):
         if f0 <= frame <= f1:
+            if e1 == "smooth":
+                return _flow(full, j, frame)
             return blend(p0, p1, ease(e1, (frame - f0) / max(1e-6, f1 - f0)))
     return full[-1][1]
 
@@ -251,7 +308,12 @@ class Rig:
                 self.targets[f"arm_{side}"].location = hand_pos
             shoulder = place(self.head(f"upperarm_{side}") + V(*S(p["pelvis"])))
             self.targets[f"arm_{side}_pole"].location = shoulder + spin @ V(*p[f"elbow_{side}"])
-        # Legs: feet in character space, or held in the world while the root travels.
+        # Legs: feet in character space, or held in the world while the root travels. The limb IK starts from the rest
+        # pose every frame: started from the last frame's baked limb it can stick (a straight planted leg would not fold
+        # into a raised knee; hands missed their targets by up to 27 cm).
+        for side in ("l", "r"):
+            for name in ("thigh", "calf", "upperarm", "lowerarm"):
+                self.pb[f"{name}_{side}"].rotation_quaternion = (1, 0, 0, 0)
         ankle = Vector((0, 0, self.head("foot_l").z))
         for side in ("l", "r"):
             fr = rot(*p[f"foot_{side}_rot"])
@@ -309,6 +371,41 @@ def travel_curve(segments, total):
     return out
 
 
+# Overlap: the body moves in sequence, not as one block. The chest follows the hips a frame late and the head two;
+# hands are placed by their own targets, so strikes still land on their keyed frames.
+HALF_JOINTS = (("upperarm_half", "upperarm"), ("thigh_half", "thigh"))   # characters/eh_rig.HALF
+
+TRAIL = {"chest": 1, "head": 2, "gaze": 2}
+
+
+def half_rotation(q, prev=None):
+    """Half of local rotation q's swing: the bone direction (local Y) is moved halfway along the arc from rest to where
+    the limb points. Twist is left to the twist bones, so the half joint stays on the joint's bend. Near a half turn
+    the arc's axis is ambiguous; the previous frame's half (prev) then picks the same way round."""
+    y = Vector((0.0, 1.0, 0.0))
+    d = q @ y
+    axis, angle = y.rotation_difference(d).to_axis_angle()
+    h = Quaternion(axis, angle * 0.5)
+    if prev is not None and angle > 2.8:
+        pa, _ = prev.to_axis_angle()
+        pa = pa - y * pa.dot(y)
+        if pa.length > 1e-6:
+            h = Quaternion(pa.normalized(), angle * 0.5)
+    return h
+
+
+def trailed(keys, frame, loop):
+    pose = sample(keys, frame)
+    if loop:
+        return pose
+    for channel, lag in TRAIL.items():
+        if channel in pose:
+            earlier = sample(keys, max(1, frame - lag))
+            if channel in earlier:
+                pose[channel] = earlier[channel]
+    return pose
+
+
 def author(rigs_and_keys, total, loop=False):
     """rigs_and_keys: list of (Rig, keys, travel_per_frame or None). Keys frames on all bones, frame 1..total."""
     scene = bpy.context.scene
@@ -322,17 +419,32 @@ def author(rigs_and_keys, total, loop=False):
         if travel and isinstance(travel[0], dict):
             travel = travel_curve(travel, total)
         curves.append(travel)
+    half_prev = {}
     for frame in range(1, total + 1):
         sample_frame = frame
         for (rig, keys, _), travel in zip(rigs_and_keys, curves):
             t = travel[min(frame, len(travel) - 1)] if travel else 0.0
-            rig.apply(sample(keys, sample_frame), t)
+            rig.apply(trailed(keys, sample_frame, loop), t)
         bpy.context.view_layer.update()
         for rig, keys, travel in rigs_and_keys:
             # Read the solved pose (including IK) and key it as FK.
+            local = {}
             for pb in rig.pb:
                 m = rig.arm.convert_space(pose_bone=pb, matrix=pb.matrix, from_space="POSE", to_space="LOCAL")
                 loc, q, _ = m.decompose()
+                local[pb.name] = (loc, q)
+            # Half joints take exactly half their limb's rotation (a half-influence constraint flips near 180 deg),
+            # continuing the way they were turning.
+            prev = half_prev.setdefault(rig.arm.name, {})
+            for half, limb in HALF_JOINTS:
+                for side in ("l", "r"):
+                    h, l = f"{half}_{side}", f"{limb}_{side}"
+                    if h in local and l in local:
+                        q = half_rotation(local[l][1], prev.get(h))
+                        prev[h] = q
+                        local[h] = (local[h][0], q)
+            for pb in rig.pb:
+                loc, q = local[pb.name]
                 pb.location = loc
                 pb.rotation_quaternion = q
                 pb.keyframe_insert("location", frame=frame)
@@ -363,6 +475,26 @@ CHAIN_SPRING = {
     "coat": (0.36, 0.78, 0.0003),
 }
 CHAIN_FLOOR = 0.025   # chain points never sink below this height (armature space, metres)
+
+
+COAT_SWING = math.radians(50.0)   # furthest a coat tail's target swings from hanging straight down
+
+
+def _hang(rigid, q_target):
+    """A coat tail follows its thigh (rig helper) only so far: when the thigh would lift the tail's first segment more
+    than COAT_SWING from hanging down (knees drawn up while sitting, a high knee), the whole target chain turns back
+    about the tail's root to that limit, and the spring simulation drapes it from there."""
+    seg = rigid[1] - rigid[0]
+    down = Vector((0.0, 0.0, -1.0))
+    if seg.length < 1e-6:
+        return rigid, q_target
+    over = seg.angle(down) - COAT_SWING
+    axis = seg.cross(down)
+    if over <= 0.0 or axis.length < 1e-6:
+        return rigid, q_target
+    turn = Quaternion(axis.normalized(), over)
+    root = rigid[0]
+    return [root + turn @ (p - root) for p in rigid], [turn @ q for q in q_target]
 
 
 def bake_secondary(rig, chains, total, loop):
@@ -396,6 +528,8 @@ def bake_secondary(rig, chains, total, loop):
                 kind = next((k for k in CHAIN_SPRING if name.startswith(k)), "braid")
                 stiff, damp, grav = CHAIN_SPRING[kind]
                 rigid, q_target, q_parent_target = targets[frame][name]
+                if name.startswith("coat"):
+                    rigid, q_target = _hang(rigid, q_target)
                 lengths = [(rigid[i + 1] - rigid[i]).length for i in range(len(bones))]
                 if name not in state:
                     state[name] = ([p.copy() for p in rigid], [p.copy() for p in rigid])

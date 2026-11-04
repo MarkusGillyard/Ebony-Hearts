@@ -4,21 +4,23 @@ upright, rhythmic, long guard). Character space: f forward, l the character's le
 Every move keys its contact pose on the move's first active frame from Content/Data/Fighters/*.json, and feet that
 stay planted are keyed in world space (`foot_*_world`) so they hold still while the simulation moves the root.
 """
+import json
+import os
+
 from animlib import Pose as P
 
 # ------------------------------------------------------------------------------------------------ stances
-WREN = P(
-    pelvis=(-0.02, 0.0, -0.11), pelvis_rot=(-38, 5, 0), chest=(8, 10, 3), head=(0, -8, 0), gaze=0.85,
-    hand_l=(0.30, 0.13, 1.37), hand_r=(0.13, -0.10, 1.41), elbow_l=(0.1, 0.35, -0.5), elbow_r=(0.0, -0.30, -0.55),
-    foot_l=(0.27, 0.11, 0.0), foot_r=(-0.25, -0.18, 0.0), foot_l_rot=(-20, 0, 0), foot_r_rot=(-55, 0, 0),
-    knee_l=(0.6, 0.30, 0.0), knee_r=(0.5, -0.05, 0.0), fist=1.0, ball_l=0, ball_r=18, clav_l=(0, 0, 0), clav_r=(0, 0, 0),
-)
-ASHKA = P(
-    pelvis=(-0.03, 0.0, -0.06), pelvis_rot=(-22, 0, 0), chest=(4, 3, 0), head=(0, -4, 0), gaze=0.9,
-    hand_l=(0.36, 0.11, 1.38), hand_r=(0.20, -0.08, 1.38), elbow_l=(0.15, 0.30, -0.5), elbow_r=(0.1, -0.30, -0.5),
-    foot_l=(0.20, 0.09, 0.0), foot_r=(-0.23, -0.12, 0.0), foot_l_rot=(-10, 0, 0), foot_r_rot=(-40, 0, 0),
-    knee_l=(0.6, 0.20, 0.0), knee_r=(0.5, -0.10, 0.0), fist=1.0, ball_l=25, ball_r=0, clav_l=(0, 0, 0), clav_r=(0, 0, 0),
-)
+# Each fighter's stance lives in stances.json, shared with the motion-capture build (build_mocap.py) so every move,
+# scripted or captured, starts and ends in the same stance.
+def _stance(name):
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "stances.json")) as f:
+        data = json.load(f)[name]
+    # lean / head_pitch / head_yaw steer the captured clips' posture; scripted poses use pelvis_rot, chest and head.
+    return P(**{k: tuple(v) if isinstance(v, list) else v for k, v in data.items() if k not in ("idle", "lean", "head_pitch", "head_yaw", "clavicle")})
+
+
+WREN = _stance("wren")
+ASHKA = _stance("ashka")
 
 
 def world_feet(stance):
@@ -96,9 +98,11 @@ def block_hit(s, high):
 
 
 def hit_light(s):
-    rec = s(pelvis=(s["pelvis"][0] - 0.07, 0, s["pelvis"][2] - 0.01), chest=(s["chest"][0] - 18, s["chest"][1] - 14, 6), head=(12, -24, 6),
-            hand_l=(s["hand_l"][0] - 0.12, s["hand_l"][1] + 0.05, s["hand_l"][2] - 0.06), hand_r=(s["hand_r"][0] - 0.08, s["hand_r"][1], s["hand_r"][2] - 0.04), fist=0.6)
-    return [(1, s, "smooth"), (3, rec, "snap"), (8, rec(head=(6, -12, 3), chest=(s["chest"][0] - 10, s["chest"][1] - 6, 3)), "smooth"), (20, s, "smooth")], 20, None, False
+    """A clean shot: the head snaps back and turns, the chest follows, the hips give a little and the guard is knocked
+    loose, then she recovers into her stance."""
+    rec = s(pelvis=(s["pelvis"][0] - 0.10, 0, s["pelvis"][2] - 0.02), chest=(s["chest"][0] - 22, s["chest"][1] - 18, 8), head=(16, -32, 8),
+            hand_l=(s["hand_l"][0] - 0.16, s["hand_l"][1] + 0.07, s["hand_l"][2] - 0.08), hand_r=(s["hand_r"][0] - 0.10, s["hand_r"][1], s["hand_r"][2] - 0.05), fist=0.6)
+    return [(1, s, "smooth"), (3, rec, "snap"), (8, rec(head=(8, -16, 4), chest=(s["chest"][0] - 12, s["chest"][1] - 8, 4)), "smooth"), (20, s, "smooth")], 20, None, False
 
 
 def hit_heavy(s):
@@ -110,14 +114,19 @@ def hit_heavy(s):
 
 
 def knockdown(s):
-    """Knocked off the feet backwards: recoil, fall, land on the back, lie. Ends at lying(s)."""
+    """Knocked off the feet backwards the way people fall: the head snaps back, the knees buckle so the hips drop
+    first, she sits down hard with the hands reaching back and the chin tucked, then rolls onto her back and the legs
+    settle. Ends at lying(s)."""
     lie = lying(s)
-    fall = s(pelvis=(-0.35, 0, -0.45), pelvis_rot=(0, -45, 0), chest=(0, -18, 0), head=(0, -25, 0), gaze=0.0,
-             hand_l=(0.0, 0.45, 1.0), hand_r=(-0.05, -0.45, 0.95), foot_l=(0.45, 0.14, 0.25), foot_r=(0.30, -0.16, 0.10),
-             foot_l_rot=(0, -40, 0), elbow_l=(-0.2, 0.6, 0.0), elbow_r=(-0.2, -0.6, 0.0), fist=0.2)
-    land = lie(pelvis=(-0.15, 0, -0.66), head=(0, 18, -6))
-    keys = [(1, s, "smooth"), (4, hit_heavy(s)[0][1][1], "snap"), (11, fall, "in"), (15, land, "in"), (19, lie, "out"),
-            (43, lie(head=(0, 4, -12)), "smooth")]
+    buckle = s(pelvis=(-0.18, 0, -0.30), pelvis_rot=(s["pelvis_rot"][0] + 10, -22, 0), chest=(0, -26, 4), head=(10, -28, 6), gaze=0.0,
+               hand_l=(0.05, 0.40, 1.10), hand_r=(0.0, -0.42, 1.05), elbow_l=(-0.2, 0.6, -0.1), elbow_r=(-0.2, -0.6, -0.1), fist=0.3)
+    sit = s(pelvis=(-0.30, 0, -0.66), pelvis_rot=(0, -40, 0), chest=(0, -12, 0), head=(0, 18, 0), gaze=0.0,
+            hand_l=(-0.30, 0.38, 0.20), hand_r=(-0.32, -0.38, 0.22), elbow_l=(-0.3, 0.5, 0.2), elbow_r=(-0.3, -0.5, 0.2),
+            foot_l=(0.42, 0.14, 0.0), foot_r=(0.30, -0.16, 0.0), foot_l_rot=(0, -10, 0), knee_l=(0.4, 0.2, 0.8), knee_r=(0.4, -0.2, 0.8),
+            foot_l_world=None, foot_r_world=None, fist=0.2)
+    roll = lie(pelvis=(-0.18, 0, -0.68), head=(0, 26, -4), foot_l=(0.62, 0.16, 0.22), foot_r=(0.52, -0.16, 0.30))
+    keys = [(1, s, "smooth"), (4, hit_heavy(s)[0][1][1], "snap"), (9, buckle, "smooth"), (14, sit, "in"), (19, roll, "out"),
+            (25, lie, "smooth"), (43, lie(head=(0, 4, -12)), "smooth")]
     return keys, 43, None, False
 
 
@@ -160,18 +169,46 @@ def rolls(s, move, forward):
     """Forward roll (somersault through) or back roll, tucked, pelvis-relative limbs, travel from the move data."""
     total = move["total"]
     sign = 1 if forward else -1
-    tuck = s(gaze=0.0, chest=(0, 45 * sign, 0), head=(0, 35 * sign, 0), fist=0.6,
-             hand_l=None, hand_r=None, hand_l_rel=(0.20 * sign, 0.18, 0.10), hand_r_rel=(0.20 * sign, -0.18, 0.12),
-             elbow_l=(0.3 * sign, 0.3, -0.2), elbow_r=(0.3 * sign, -0.3, -0.2),
-             foot_l=None, foot_r=None, foot_l_rel=(0.30 * sign, 0.12, -0.30), foot_r_rel=(0.25 * sign, -0.12, -0.32),
-             foot_l_world=None, foot_r_world=None, knee_follow_pelvis=True, knee_l=(0.4 * sign, 0.1, 0.4), knee_r=(0.4 * sign, -0.1, 0.4))
-    dip = s(pelvis=(s["pelvis"][0] + 0.10 * sign, 0, -0.32), chest=(s["chest"][0], 30 * sign, 0), head=(0, 20 * sign, 0))
-    keys = [(1, s, "smooth"), (3, dip, "out"),
-            (6, tuck(pelvis=(0.1 * sign, 0, -0.45), pelvis_rot=(0, 90 * sign, 0)), "linear"),
+    # Both rolls curl forward (rounded back, chin in, knees to the chest, hands at the shins); only the direction the
+    # body turns differs. The back roll used to mirror the curl too, which arched it and folded the legs backwards.
+    tuck = s(gaze=0.0, chest=(0, 45, 0), head=(0, 35, 0), fist=0.6,
+             hand_l=None, hand_r=None, hand_l_rel=(0.20, 0.18, 0.10), hand_r_rel=(0.20, -0.18, 0.12),
+             elbow_l=(0.3, 0.3, -0.2), elbow_r=(0.3, -0.3, -0.2),
+             foot_l=None, foot_r=None, foot_l_rel=(0.30, 0.12, -0.30), foot_r_rel=(0.25, -0.12, -0.32),
+             foot_l_world=None, foot_r_world=None, knee_follow_pelvis=True, knee_l=(0.4, 0.1, 0.4), knee_r=(0.4, -0.1, 0.4))
+    dip = s(pelvis=(s["pelvis"][0] + 0.10 * sign, 0, -0.32), chest=(s["chest"][0], 30, 0), head=(0, 20, 0))
+    # Take-off. The dip names no pelvis-relative feet, so the tuck's used to apply from its first frame and the feet
+    # jumped into it (up to 60 cm). Now they push off in character space onto where the tuck holds them at frame 6
+    # (measured on both fighters, within ~2 cm) and the tuck takes over from frame 7.
+    # The hands go the same way: down from the guard onto where the tuck holds them at the shins.
+    if forward:
+        off_l, off_r = (-0.18, 0.12, 0.13), (-0.20, -0.12, 0.18)   # heels kick up behind as she dives
+        hoff_l, hoff_r = (0.22, 0.18, 0.31), (0.24, -0.18, 0.31)
+    else:
+        off_l, off_r = (0.22, 0.12, 0.73), (0.24, -0.12, 0.68)     # legs swing up as she sits back onto her shoulders
+        hoff_l, hoff_r = (-0.18, 0.18, 0.71), (-0.20, -0.18, 0.71)
+    # The knees aim with the pelvis from the dip on, so they do not flip as the pelvis tips into the roll.
+    keys = [(1, s, "smooth"), (3, dip(foot_l_rel=None, foot_r_rel=None, hand_l_rel=None, hand_r_rel=None, knee_follow_pelvis=True), "out"),
+            (6, tuck(pelvis=(0.1 * sign, 0, -0.45), pelvis_rot=(0, 90 * sign, 0), foot_l_rel=None, foot_r_rel=None,
+                     foot_l=off_l, foot_r=off_r, hand_l_rel=None, hand_r_rel=None, hand_l=hoff_l, hand_r=hoff_r), "linear"),
+            (7, tuck(pelvis=(0.075 * sign, 0, -0.475), pelvis_rot=(0, 112.5 * sign, 0)), "linear"),
             (10, tuck(pelvis=(0.0, 0, -0.55), pelvis_rot=(0, 180 * sign, 0)), "linear"),
-            (14, tuck(pelvis=(0.0, 0, -0.50), pelvis_rot=(0, 270 * sign, 0)), "linear"),
-            (18, unrel(dip(pelvis_rot=(s["pelvis_rot"][0], 360 * sign + s["pelvis_rot"][1], 0), pelvis=(0, 0, -0.30))), "out"),
-            (total, unrel(s(pelvis_rot=(s["pelvis_rot"][0], 360 * sign + s["pelvis_rot"][1], 0))), "smooth")]
+            (14, tuck(pelvis=(0.0, 0, -0.50), pelvis_rot=(0, 270 * sign, 0)), "linear")]
+    # Landing (the same for both rolls, which end in the same tuck). As she comes upright the feet leave the tuck
+    # where they really are (measured on both fighters, within ~4 cm): the lead foot comes down on its stance spot and
+    # the rear one swings through the air onto its own. Before, both jumped to the stance on one frame (up to 52 cm).
+    sl, sr = (s["foot_l"][0], s["foot_l"][1], 0.0), (s["foot_r"][0], s["foot_r"][1], 0.0)
+    air_l, air_r = (0.34, 0.01, 0.26), (0.21, -0.19, 0.24)
+    mid_l, mid_r = sl, ((air_r[0] + sr[0]) / 2, (air_r[1] + sr[1]) / 2, 0.08)
+    # The hands leave the tuck from where it holds them (measured, within ~3 cm) and come up into the guard.
+    hair_l, hair_r = ((0.21, 0.13, 0.78), (0.11, -0.21, 0.80)) if forward else ((0.28, 0.12, 0.62), (0.20, -0.23, 0.64))
+    gl, gr = s["hand_l"], s["hand_r"]
+    hmid_l, hmid_r = tuple((a + b) / 2 for a, b in zip(hair_l, gl)), tuple((a + b) / 2 for a, b in zip(hair_r, gr))
+    up = unrel(dip(pelvis_rot=(s["pelvis_rot"][0], 360 * sign + s["pelvis_rot"][1], 0), pelvis=(0, 0, -0.30)))
+    keys += [(18, up(foot_l=air_l, foot_r=air_r, hand_l=hair_l, hand_r=hair_r), "linear"),
+             (21, up(foot_l=mid_l, foot_r=mid_r, hand_l=hmid_l, hand_r=hmid_r), "smooth"),
+             (24, up(foot_l=sl, foot_r=sr, hand_l=gl, hand_r=gr), "smooth"),
+             (total, unrel(s(pelvis_rot=(s["pelvis_rot"][0], 360 * sign + s["pelvis_rot"][1], 0))), "smooth")]
     return keys, total, move.get("travel"), False
 
 
@@ -209,13 +246,26 @@ def wren_moves(data):
     out["L2"] = ([(1, w, "smooth"), (3, w(hand_r=(0.18, -0.12, 1.38), pelvis_rot=(-30, 6, 0)), "in"), (6, cross, "snap"), (8, cross, "hold"),
                   (12, cross(hand_r=(0.35, -0.10, 1.40), pelvis_rot=(-20, 6, 0), clav_r=(8, 0, 0)), "smooth"),
                   (19, w(foot_l_world=(0.40, 0.11, 0.0), foot_r_world=(-0.13, -0.18, 0.0)), "smooth")], 19, m["L2"]["travel"], False)
-    # Light 3: spinning back elbow. Pivot on the lead foot, turn the back through (clockwise), right elbow lands at ~200 deg.
-    sb = s(pivot=(0.05, 0.0))
+    # Light 3: spinning back elbow, turning the back through (clockwise); the right elbow lands at ~200 deg. The lead
+    # foot steps across onto the pivot with the travel and turns on its ball; the rear foot tucks in and swings round
+    # in the air, lands back in stance, and the lead foot steps back out. No foot slides round the floor.
+    t3 = sum((seg["frames"][1] - seg["frames"][0] + 1) * seg["vx"] for seg in m["L3"]["travel"]) / 100.0
+    piv = (0.20 + t3, 0.02)                                  # world; 20 cm ahead of her centre once the travel is done
+    across = (piv[0] - 0.11, piv[1], 0.0)                    # lead ankle, its ball on the pivot
+    home_l = (s["foot_l"][0] + t3, s["foot_l"][1], 0.0)      # the lead foot's stance spot after the travel
+    sb = w(pivot=piv, pivot_world=True, foot_l_world=across, foot_r_world=None, foot_r=(s["foot_r"][0] - 0.035, s["foot_r"][1], 0.0))
     elbow = sb(spin=-200, hand_r=(0.08, 0.12, 1.42), elbow_r=(0.6, 0.0, 0.1), hand_l=(0.10, 0.18, 1.35), chest=(-15, 8, 0), head=(-25, 0, 0), gaze=0.0,
-               foot_r_world=None, foot_r=(-0.25, -0.18, 0.06))
-    out["L3"] = ([(1, sb, "smooth"), (4, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.42), gaze=0.4), "in"),
-                  (9, elbow, "snap"), (11, elbow(spin=-225), "linear"), (18, sb(spin=-330, gaze=0.6), "out"),
-                  (30, sb(spin=-360, foot_r=s["foot_r"]), "smooth")], 30, m["L3"]["travel"], False)
+               foot_r=(0.0, -0.08, 0.10))
+    out["L3"] = ([(1, w, "smooth"),
+                  (2, w(foot_l_world=((s["foot_l"][0] + across[0]) / 2, (s["foot_l"][1] + across[1]) / 2, 0.04), chest=(8, 6, 0)), "smooth"),
+                  (3, sb(chest=(12, 8, 0)), "smooth"),
+                  (5, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.42), gaze=0.4, foot_r=(-0.10, -0.10, 0.08)), "in"),
+                  (9, elbow, "snap"), (11, elbow(spin=-225), "linear"),
+                  (16, sb(spin=-330, gaze=0.6, foot_r=(-0.15, -0.15, 0.06)), "out"),
+                  (19, sb(spin=-360, foot_r=s["foot_r"]), "smooth"),
+                  (22, sb(spin=-360, foot_l_world=((across[0] + home_l[0]) / 2, (across[1] + home_l[1]) / 2, 0.05)), "smooth"),
+                  (25, sb(spin=-360, foot_l_world=home_l), "smooth"),
+                  (30, sb(spin=-360, foot_l_world=home_l), "smooth")], 30, m["L3"]["travel"], False)
     # Heavy: rear roundhouse ("Punt"), shin/instep at head height on frame 12, pivoting on the lead ball.
     chamber = w(pelvis=(-0.02, 0, -0.06), pelvis_rot=(-10, 0, 10), chest=(10, 5, -8), foot_r_world=None,
                 foot_r=(0.05, -0.10, 0.45), knee_r=(0.6, 0.2, 0.5), foot_r_rot=(-30, -40, 0), ball_l=30, foot_l_rot=(10, 0, 0),

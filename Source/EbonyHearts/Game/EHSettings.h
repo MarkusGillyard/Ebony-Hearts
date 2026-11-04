@@ -4,28 +4,42 @@
 #include "CoreMinimal.h"
 #include "InputCoreTypes.h"
 
+// Gameplay actions: what the combat simulation and training read. Remappable per player and per device class.
+// The order is stable; settings files store each action by its EHActionId string, not by this number.
 enum class EEHAction : uint8
 {
 	Left,
 	Right,
-	Up,
-	Down,
 	Light,
 	Heavy,
 	Special,
-	Throw,
+	Throw,   // Grab / Throw
 	Dodge,
 	Block,
-	Pause,
 	Reset,   // training quick reset
 	Count
 };
 
+// Menu commands: fixed per device class (never remappable), so a player can never lock themselves out of the menus.
+enum class EEHNav : uint8
+{
+	Up,
+	Down,
+	Left,
+	Right,
+	Confirm,
+	Back,
+	Pause,
+	Count
+};
+
+// One gameplay layout per player and device class. Both keyboard sides share one physical keyboard.
 enum class EEHBindingSet : uint8
 {
-	KeyboardA,   // player one side of the keyboard
-	KeyboardB,   // player two side of the keyboard
-	Gamepad,
+	KeyboardA,   // player one, left side of the keyboard
+	KeyboardB,   // player two, right side of the keyboard
+	GamepadP1,   // player one's controller layout
+	GamepadP2,   // player two's controller layout (Local Versus)
 	Count
 };
 
@@ -38,22 +52,59 @@ enum class EEHPromptStyle : uint8
 };
 
 constexpr int32 EHActionCount = static_cast<int32>(EEHAction::Count);
+constexpr int32 EHNavCount = static_cast<int32>(EEHNav::Count);
 constexpr int32 EHSetCount = static_cast<int32>(EEHBindingSet::Count);
 constexpr int32 EHKeysPerAction = 2;
+
+inline bool EHIsKeyboardSet(EEHBindingSet Set) { return Set == EEHBindingSet::KeyboardA || Set == EEHBindingSet::KeyboardB; }
+
+// A single binding slot.
+struct FEHBindingRef
+{
+	EEHBindingSet Set = EEHBindingSet::Count;
+	EEHAction Action = EEHAction::Count;
+	int32 Slot = -1;
+	bool IsValid() const { return Set != EEHBindingSet::Count && Action != EEHAction::Count && Slot >= 0; }
+};
+
+// How an assignment treats another action that already uses the key.
+enum class EEHConflictResolve : uint8
+{
+	Swap,      // the other action takes the slot's previous key
+	Replace,   // the other action loses the key (its slot is cleared)
+};
 
 struct FEHBindings
 {
 	FKey Keys[EHSetCount][EHActionCount][EHKeysPerAction];
 
 	static FEHBindings Defaults();
+	const FKey& Get(EEHBindingSet Set, EEHAction Action, int32 Slot) const { return Keys[static_cast<int32>(Set)][static_cast<int32>(Action)][Slot]; }
+	// The first bound key of an action (primary, else secondary), or EKeys::Invalid.
+	FKey First(EEHBindingSet Set, EEHAction Action) const;
 	// Returns the action bound to Key in the set, or EEHAction::Count.
 	EEHAction Find(EEHBindingSet Set, const FKey& Key) const;
-	// Assigns Key to (Set, Action, Slot). A conflicting binding in the same set, or in the other keyboard set,
-	// is moved to the previous key of the slot being replaced (swap), so no key is ever bound twice.
-	// Returns a description of the swap for the UI, or an empty string.
-	FString Assign(EEHBindingSet Set, EEHAction Action, int32 Slot, const FKey& Key);
-	bool HasConflicts(FString* OutReport = nullptr) const;
+	// Another slot in the same input context that already uses Key (both keyboard sides share one keyboard), including
+	// the action's own other slot. Invalid if the key is free.
+	FEHBindingRef FindConflict(EEHBindingSet Set, EEHAction Action, int32 Slot, const FKey& Key) const;
+	// Binds Key to (Set, Action, Slot). A conflicting slot of another action is swapped or cleared, never silently
+	// duplicated; if the key sits in the action's own other slot, the two slots trade keys.
+	void Assign(EEHBindingSet Set, EEHAction Action, int32 Slot, const FKey& Key, EEHConflictResolve Resolve);
+	void Clear(EEHBindingSet Set, EEHAction Action, int32 Slot);
+	// Restores an action's default keys; other actions using those keys lose them. Returns what was taken, or empty.
+	FString ResetAction(EEHBindingSet Set, EEHAction Action);
+	void ResetSet(EEHBindingSet Set);
+	bool IsUnbound(EEHBindingSet Set, EEHAction Action) const { return !First(Set, Action).IsValid(); }
+	// Reports the first duplicate key within an input context, or a reserved key, for one set (or all sets).
+	bool HasConflicts(FString* OutReport = nullptr, EEHBindingSet Only = EEHBindingSet::Count) const;
+	// Keys a gameplay action may use: no mouse, analog axes or stick directions, and not the fixed pause keys.
+	static bool IsBindable(EEHBindingSet Set, const FKey& Key);
 };
+
+// Fixed menu controls. Class is KeyboardA, KeyboardB, or GamepadP1 for any controller.
+EEHNav EHMenuCommand(EEHBindingSet Class, const FKey& Key);
+// The key shown in prompts for a menu command.
+FKey EHMenuKey(EEHBindingSet Class, EEHNav Nav);
 
 struct FEHSettings
 {
@@ -81,9 +132,18 @@ struct FEHSettings
 
 	static FString FilePath();
 	// Loads settings; a missing or corrupt file yields defaults (a corrupt file is kept as .bad for inspection).
-	static FEHSettings Load(FString* OutWarning = nullptr);
-	bool Save() const;
+	// Version 1 files keep their keyboard layouts; their controller layout moves to the current default.
+	static FEHSettings Load(FString* OutWarning = nullptr, const FString& PathOverride = FString());
+	bool Save(const FString& PathOverride = FString()) const;
 	void Clamp();
 };
 
+// Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);
+// Stable identifier stored in settings files ("LightAttack", "Grab", ...).
+const TCHAR* EHActionId(EEHAction Action);
+// Player-facing name ("Light attack", "Grab / Throw", ...).
+const TCHAR* EHActionLabel(EEHAction Action);
+const TCHAR* EHNavName(EEHNav Nav);
+const TCHAR* EHSetId(EEHBindingSet Set);
+const TCHAR* EHSetLabel(EEHBindingSet Set);

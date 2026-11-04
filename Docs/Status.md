@@ -70,11 +70,14 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
 ## Remaining items for the creator
 
 1. **Physical controller check (about 5 minutes).** Launch the build with the PS4 controller connected. Press Cross
-   on the title screen and pick Versus CPU. In a match, check that each action does what the Controls table says:
-   - Cross: Light. Circle: Heavy. Triangle: Special. Square: Grab.
-   - L1/L2: Dodge. R1/R2: Block (hold).
-   - D-pad or left stick: walk. Options: pause.
-   Then unplug and replug the controller mid-match.
+   on the title screen and pick Training. Check that each button does what the new layout says:
+   - Square: Light. Triangle: Heavy. Circle: Dodge. Cross and L1: Grab. R1: Special.
+   - R2: Block while held, stopping on release.
+   - D-pad or left stick: walk (toward + a button gives the toward move). Options: pause.
+   - In menus, Cross confirms and Circle goes back; on-screen prompts show PlayStation shapes.
+   - In Settings > Controls > Controller - Player 1, move one action to another button and try Swap.
+   Then unplug and replug the controller mid-match. Simulated DualShock 4 and Xbox 360 pads already pass these
+   steps, but they are not physical hardware.
 2. **Playtest and listening.** Play a few matches against each CPU level and in Training. Note anything that feels
    unfair, slow or unclear, and anything in the mix that is too loud, too quiet or grating.
 3. **Title card.** Done on 2026-11-03. The creator confirmed it is an authorized, AI-generated project asset (OpenAI

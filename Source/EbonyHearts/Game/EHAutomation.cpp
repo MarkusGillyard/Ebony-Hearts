@@ -26,7 +26,7 @@ struct FLoopFrame
 	int32 Remaining = 0;
 };
 TArray<FLoopFrame> Loops;
-TArray<TPair<int32, EEHAction>> PendingRelease;
+TArray<TPair<int32, FKey>> PendingRelease;
 float StepTimer = 0.0f;
 int32 StuckFrames[2] = {0, 0};
 int32 LastStateKey[2] = {-1, -1};
@@ -34,16 +34,43 @@ TArray<float> GpuTimes;
 TArray<float> GameTimes;
 TArray<float> RenderTimes;
 
+// Accepts the short name ("Light", "Grab"), the stable id ("LightAttack") or the label ("Light attack").
 EEHAction ParseAction(const FString& S)
 {
 	for (int32 A = 0; A < EHActionCount; ++A)
 	{
-		if (S.Equals(EHActionName(static_cast<EEHAction>(A)), ESearchCase::IgnoreCase))
+		const EEHAction Act = static_cast<EEHAction>(A);
+		if (S.Equals(EHActionName(Act), ESearchCase::IgnoreCase) || S.Equals(EHActionId(Act), ESearchCase::IgnoreCase) ||
+			S.Equals(EHActionLabel(Act), ESearchCase::IgnoreCase) || (Act == EEHAction::Throw && S.Equals(TEXT("Throw"), ESearchCase::IgnoreCase)))
 		{
-			return static_cast<EEHAction>(A);
+			return Act;
 		}
 	}
 	return EEHAction::Count;
+}
+
+EEHNav ParseNav(const FString& S)
+{
+	for (int32 N = 0; N < EHNavCount; ++N)
+	{
+		if (S.Equals(EHNavName(static_cast<EEHNav>(N)), ESearchCase::IgnoreCase))
+		{
+			return static_cast<EEHNav>(N);
+		}
+	}
+	return EEHNav::Count;
+}
+
+EEHBindingSet ParseSet(const FString& S)
+{
+	for (int32 i = 0; i < EHSetCount; ++i)
+	{
+		if (S.Equals(EHSetId(static_cast<EEHBindingSet>(i)), ESearchCase::IgnoreCase))
+		{
+			return static_cast<EEHBindingSet>(i);
+		}
+	}
+	return EEHBindingSet::Count;
 }
 
 int32 ParseDevice(const FString& S)
@@ -55,6 +82,17 @@ int32 ParseDevice(const FString& S)
 		return EHDeviceGamepadBase + FCString::Atoi(*S.RightChop(3));
 	}
 	return EHDeviceKeyboardA;
+}
+
+const TCHAR* KindName(EEHDeviceKind K)
+{
+	switch (K)
+	{
+	case EEHDeviceKind::PlayStation: return TEXT("playstation");
+	case EEHDeviceKind::Xbox: return TEXT("xbox");
+	case EEHDeviceKind::Gamepad: return TEXT("generic");
+	default: return TEXT("keyboard");
+	}
 }
 
 float Percentile(TArray<float> Values, float P)
@@ -117,10 +155,35 @@ void AEHGameDirector::WriteEvidence(const FString& Name, const FString& Text)
 	}
 }
 
-void AEHGameDirector::AutoInject(int32 Device, EEHAction Action)
+bool AEHGameDirector::AutoKey(int32 Device, const FString& Name, FKey& OutKey) const
 {
-	RouterPtr->InjectAction(Device, Action, true);
-	PendingRelease.Add(TPair<int32, EEHAction>(Device, Action));
+	// key:<name> presses a raw key; Left/Right are menu directions off the match screen and movement on it.
+	if (Name.StartsWith(TEXT("key:")))
+	{
+		OutKey = FKey(FName(*Name.RightChop(4)));
+		return OutKey.IsValid();
+	}
+	const EEHBindingSet Set = RouterPtr->SetFor(Device);
+	const EEHBindingSet MenuClass = EHIsKeyboardSet(Set) ? Set : EEHBindingSet::GamepadP1;
+	const EEHNav N = ParseNav(Name);
+	const EEHAction A = ParseAction(Name);
+	if (N != EEHNav::Count && (A == EEHAction::Count || Screen != EEHScreen::Match))
+	{
+		OutKey = EHMenuKey(MenuClass, N);
+		return OutKey.IsValid();
+	}
+	if (A != EEHAction::Count)
+	{
+		OutKey = Settings.Bindings.First(Set, A);
+		return OutKey.IsValid();
+	}
+	return false;
+}
+
+void AEHGameDirector::AutoInject(int32 Device, const FKey& Key)
+{
+	RouterPtr->InjectKey(Device, Key, true);
+	PendingRelease.Add(TPair<int32, FKey>(Device, Key));
 }
 
 void AEHGameDirector::AutoReleaseBots()
@@ -188,11 +251,32 @@ eh::InputFrame AEHGameDirector::AutoBotInput(int32 Player)
 
 void AEHGameDirector::TickAutomation(float DeltaSeconds)
 {
-	for (const TPair<int32, EEHAction>& R : PendingRelease)
+	for (const TPair<int32, FKey>& R : PendingRelease)
 	{
-		RouterPtr->InjectAction(R.Key, R.Value, false);
+		RouterPtr->InjectKey(R.Key, R.Value, false);
 	}
 	PendingRelease.Reset();
+	if (InputLogLeft > 0.0f)
+	{
+		// Held gameplay actions per controller, so trigger holds and releases show up in the log.
+		InputLogLeft -= DeltaSeconds;
+		for (const TPair<int32, FEHDevice>& Pair : RouterPtr->Devices())
+		{
+			const uint32 Was = InputLogHeld.FindRef(Pair.Key);
+			if (Pair.Value.Held != Was)
+			{
+				for (int32 A = 0; A < EHActionCount; ++A)
+				{
+					const uint32 Bit = 1u << A;
+					if ((Pair.Value.Held ^ Was) & Bit)
+					{
+						AutoLogLine(FString::Printf(TEXT("held dev=%d kind=%s %s%s"), Pair.Key, KindName(Pair.Value.Kind), (Pair.Value.Held & Bit) ? TEXT("+") : TEXT("-"), EHActionName(static_cast<EEHAction>(A))));
+					}
+				}
+				InputLogHeld.Add(Pair.Key, Pair.Value.Held);
+			}
+		}
+	}
 	if (AutoLines.Num() == 0)
 	{
 		return;
@@ -272,18 +356,167 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 		}
 		else if (Cmd == TEXT("press"))
 		{
-			const EEHAction A = ParseAction(Arg(2, TEXT("Light")));
-			AutoInject(ParseDevice(Arg(1, TEXT("kbA"))), A);
-			AutoLogLine(FString::Printf(TEXT("press %s %s screen=%d"), *Arg(1, TEXT("kbA")), EHActionName(A), static_cast<int32>(Screen)));
+			// press <device> <action|menu command|key:Name>: the device's key for it, through the real input path.
+			const int32 Device = ParseDevice(Arg(1, TEXT("kbA")));
+			FKey Key;
+			if (AutoKey(Device, Arg(2, TEXT("Light")), Key))
+			{
+				AutoInject(Device, Key);
+			}
+			AutoLogLine(FString::Printf(TEXT("%spress %s %s key=%s screen=%d"), Key.IsValid() ? TEXT("") : TEXT("FAIL "), *Arg(1, TEXT("kbA")), *Arg(2, TEXT("Light")), *Key.ToString(), static_cast<int32>(Screen)));
 			AutoWait = 0.12f;
 			return;
 		}
 		else if (Cmd == TEXT("hold") || Cmd == TEXT("release"))
 		{
-			// hold/release <device> <action>: a held direction or Block, for direction + button moves.
-			const EEHAction A = ParseAction(Arg(2, TEXT("Right")));
-			RouterPtr->InjectAction(ParseDevice(Arg(1, TEXT("kbA"))), A, Cmd == TEXT("hold"));
-			AutoLogLine(FString::Printf(TEXT("%s %s %s"), *Cmd, *Arg(1, TEXT("kbA")), EHActionName(A)));
+			// hold/release <device> <action|key:Name>: a held direction or Block, for direction + button moves.
+			const int32 Device = ParseDevice(Arg(1, TEXT("kbA")));
+			FKey Key;
+			if (AutoKey(Device, Arg(2, TEXT("Right")), Key))
+			{
+				RouterPtr->InjectKey(Device, Key, Cmd == TEXT("hold"));
+			}
+			AutoLogLine(FString::Printf(TEXT("%s%s %s %s key=%s"), Key.IsValid() ? TEXT("") : TEXT("FAIL "), *Cmd, *Arg(1, TEXT("kbA")), *Arg(2, TEXT("Right")), *Key.ToString()));
+		}
+		else if (Cmd == TEXT("axis"))
+		{
+			// axis <pad> <Gamepad_RightTriggerAxis|Gamepad_LeftX|...> <value>
+			RouterPtr->InjectAnalog(ParseDevice(Arg(1, TEXT("pad0"))), FKey(FName(*Arg(2, TEXT("Gamepad_RightTriggerAxis")))), FCString::Atof(*Arg(3, TEXT("0"))));
+			AutoLogLine(FString::Printf(TEXT("axis %s %s %s"), *Arg(1, TEXT("pad0")), *Arg(2, TEXT("")), *Arg(3, TEXT("0"))));
+		}
+		else if (Cmd == TEXT("devices"))
+		{
+			for (const TPair<int32, FEHDevice>& Pair : RouterPtr->Devices())
+			{
+				AutoLogLine(FString::Printf(TEXT("device key=%d name=\"%s\" kind=%s connected=%d layout=%s"), Pair.Key, *Pair.Value.Name, KindName(Pair.Value.Kind), Pair.Value.bConnected, EHSetId(RouterPtr->SetFor(Pair.Key))));
+			}
+			AutoLogLine(FString::Printf(TEXT("prompt kind=%s last_device=%d last_pad=%d"), KindName(PromptKind(EHDeviceNone)), RouterPtr->MostRecentDevice(), RouterPtr->MostRecentGamepad()));
+		}
+		else if (Cmd == TEXT("expect_kind"))
+		{
+			// expect_kind <lastpad|kbA|padN> <playstation|xbox|generic|keyboard>: how prompts would be drawn for it.
+			const FString Who = Arg(1, TEXT("lastpad"));
+			const int32 Device = Who == TEXT("lastpad") ? RouterPtr->MostRecentGamepad() : ParseDevice(Who);
+			const FString Got = Device == EHDeviceNone ? FString(TEXT("none")) : FString(KindName(PromptKind(Device)));
+			AutoLogLine(FString::Printf(TEXT("%s expect_kind %s %s (is %s)"), Got == Arg(2, TEXT("")) ? TEXT("ok") : TEXT("FAIL"), *Who, *Arg(2, TEXT("")), *Got));
+		}
+		else if (Cmd == TEXT("prompt_style"))
+		{
+			const FString V = Arg(1, TEXT("auto"));
+			Settings.PromptStyle = V == TEXT("playstation") ? EEHPromptStyle::PlayStation : (V == TEXT("xbox") ? EEHPromptStyle::Xbox : (V == TEXT("keyboard") ? EEHPromptStyle::Keyboard : EEHPromptStyle::Auto));
+			AutoLogLine(FString::Printf(TEXT("prompt_style %s"), *V));
+		}
+		else if (Cmd == TEXT("log_input"))
+		{
+			InputLogLeft = FCString::Atof(*Arg(1, TEXT("10")));
+			InputLogHeld.Reset();
+			AutoLogLine(FString::Printf(TEXT("log_input %.1fs"), InputLogLeft));
+		}
+		else if (Cmd == TEXT("bindings_selftest"))
+		{
+			RunBindingsSelfTest();
+		}
+		else if (Cmd == TEXT("input_selftest"))
+		{
+			RunInputSelfTest();
+		}
+		else if (Cmd == TEXT("goto_bindings"))
+		{
+			// goto_bindings <set>: opens that layout's page like Settings > Controls does.
+			AutoReleaseBots();
+			if (bMatchActive)
+			{
+				LeaveMatch(EEHScreen::Main);
+			}
+			SettingsReturn = EEHScreen::Main;
+			BindingSet = ParseSet(Arg(1, TEXT("controller1")));
+			BindingPage = 0;
+			BindingListIndex = 0;
+			GoTo(EEHScreen::Bindings);
+		}
+		else if (Cmd == TEXT("remap"))
+		{
+			// remap <set> <action> <slot> <key> [swap|replace|cancel]: the Controls screen's capture path, then its
+			// conflict choice when the key is taken.
+			const EEHBindingSet Set = ParseSet(Arg(1, TEXT("controller1")));
+			const EEHAction A = ParseAction(Arg(2, TEXT("Light")));
+			const FKey Key(FName(*Arg(4, TEXT(""))));
+			if (Set == EEHBindingSet::Count || A == EEHAction::Count || !FEHBindings::IsBindable(Set, Key))
+			{
+				AutoLogLine(FString::Printf(TEXT("FAIL remap bad arguments or unbindable key: %s"), *Line));
+			}
+			else
+			{
+				BindingSet = Set;
+				BindingAction = static_cast<int32>(A);
+				CaptureSlot = FMath::Clamp(FCString::Atoi(*Arg(3, TEXT("0"))), 0, 1);
+				BindingPage = 1;
+				ApplyCapturedKey(Key);
+				const FString Choice = Arg(5, TEXT("swap"));
+				if (BindingPage == 2)
+				{
+					if (Choice == TEXT("cancel"))
+					{
+						BindingPage = 1;
+						BuildBindingsMenu(BindingSet);
+					}
+					else
+					{
+						ResolveConflict(Choice == TEXT("swap"));
+					}
+				}
+				AutoLogLine(FString::Printf(TEXT("remap %s %s slot %d -> %s (%s): now [%s, %s]"), EHSetId(Set), EHActionId(A), CaptureSlot, *Key.ToString(), *Choice,
+					*Settings.Bindings.Get(Set, A, 0).ToString(), *Settings.Bindings.Get(Set, A, 1).ToString()));
+			}
+		}
+		else if (Cmd == TEXT("clear_binding") || Cmd == TEXT("reset_action"))
+		{
+			const EEHBindingSet Set = ParseSet(Arg(1, TEXT("controller1")));
+			const EEHAction A = ParseAction(Arg(2, TEXT("Light")));
+			if (Set == EEHBindingSet::Count || A == EEHAction::Count)
+			{
+				AutoLogLine(FString::Printf(TEXT("FAIL %s bad arguments"), *Cmd));
+			}
+			else
+			{
+				if (Cmd == TEXT("clear_binding"))
+				{
+					Settings.Bindings.Clear(Set, A, FMath::Clamp(FCString::Atoi(*Arg(3, TEXT("0"))), 0, 1));
+				}
+				else
+				{
+					Settings.Bindings.ResetAction(Set, A);
+				}
+				SaveSettings();
+				RouterPtr->ResetHeld();
+				AutoLogLine(FString::Printf(TEXT("%s %s %s: now [%s, %s]"), *Cmd, EHSetId(Set), EHActionId(A), *Settings.Bindings.Get(Set, A, 0).ToString(), *Settings.Bindings.Get(Set, A, 1).ToString()));
+			}
+		}
+		else if (Cmd == TEXT("reset_layout"))
+		{
+			const FString Which = Arg(1, TEXT("all"));
+			if (Which == TEXT("all"))
+			{
+				Settings.Bindings = FEHBindings::Defaults();
+			}
+			else
+			{
+				Settings.Bindings.ResetSet(ParseSet(Which));
+			}
+			SaveSettings();
+			RouterPtr->ResetHeld();
+			AutoLogLine(FString::Printf(TEXT("reset_layout %s"), *Which));
+		}
+		else if (Cmd == TEXT("expect_binding"))
+		{
+			// expect_binding <set> <action> <slot> <key|none>
+			const EEHBindingSet Set = ParseSet(Arg(1, TEXT("controller1")));
+			const EEHAction A = ParseAction(Arg(2, TEXT("Light")));
+			const int32 Slot = FMath::Clamp(FCString::Atoi(*Arg(3, TEXT("0"))), 0, 1);
+			const FString Want = Arg(4, TEXT("none"));
+			const FKey Got = (Set == EEHBindingSet::Count || A == EEHAction::Count) ? FKey(EKeys::Invalid) : Settings.Bindings.Get(Set, A, Slot);
+			const bool bOk = Want == TEXT("none") ? !Got.IsValid() : Got == FKey(FName(*Want));
+			AutoLogLine(FString::Printf(TEXT("%s expect_binding %s %s %d %s (is %s)"), bOk ? TEXT("ok") : TEXT("FAIL"), *Arg(1, TEXT("")), *Arg(2, TEXT("")), Slot, *Want, Got.IsValid() ? *Got.ToString() : TEXT("none")));
 		}
 		else if (Cmd == TEXT("training_gauge"))
 		{
@@ -482,4 +715,278 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			AutoLogLine(FString::Printf(TEXT("FAIL unknown command: %s"), *Line));
 		}
 	}
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Self-tests for the control system, run in the packaged game so they cover the shipped code.
+
+void AEHGameDirector::RunBindingsSelfTest()
+{
+	int32 Checks = 0;
+	int32 Fails = 0;
+	auto Check = [&](bool bOk, const FString& What) {
+		++Checks;
+		if (!bOk)
+		{
+			++Fails;
+			AutoLogLine(FString::Printf(TEXT("FAIL bindings_selftest: %s"), *What));
+		}
+	};
+	using S = EEHBindingSet;
+	using A = EEHAction;
+	const FEHBindings D = FEHBindings::Defaults();
+
+	// 1. The creator's controller layout, identical for both players' layouts.
+	for (S Pad : {S::GamepadP1, S::GamepadP2})
+	{
+		const FString P = EHSetId(Pad);
+		Check(D.Get(Pad, A::Light, 0) == EKeys::Gamepad_FaceButton_Left, P + TEXT(" light = Square / X"));
+		Check(D.Get(Pad, A::Heavy, 0) == EKeys::Gamepad_FaceButton_Top, P + TEXT(" heavy = Triangle / Y"));
+		Check(D.Get(Pad, A::Dodge, 0) == EKeys::Gamepad_FaceButton_Right, P + TEXT(" dodge = Circle / B"));
+		Check(D.Get(Pad, A::Throw, 0) == EKeys::Gamepad_FaceButton_Bottom, P + TEXT(" grab slot 1 = Cross / A"));
+		Check(D.Get(Pad, A::Throw, 1) == EKeys::Gamepad_LeftShoulder, P + TEXT(" grab slot 2 = L1 / LB"));
+		Check(D.Get(Pad, A::Block, 0) == EKeys::Gamepad_RightTrigger, P + TEXT(" block = R2 / RT"));
+		Check(D.Get(Pad, A::Special, 0) == EKeys::Gamepad_RightShoulder, P + TEXT(" special = R1 / RB"));
+		Check(D.Get(Pad, A::Left, 0) == EKeys::Gamepad_DPad_Left && D.Get(Pad, A::Right, 0) == EKeys::Gamepad_DPad_Right, P + TEXT(" movement = D-pad"));
+		for (A Act : {A::Light, A::Heavy, A::Dodge, A::Block, A::Special})
+		{
+			Check(!D.Get(Pad, Act, 1).IsValid(), P + TEXT(" no hidden second button on ") + EHActionId(Act));
+		}
+	}
+	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_Special_Right) == EEHNav::Pause && !FEHBindings::IsBindable(S::GamepadP1, EKeys::Gamepad_Special_Right),
+		TEXT("Options / Menu always pauses and cannot be bound"));
+
+	// 2. PlayStation and Xbox names for the same physical buttons.
+	struct FName2 { A Act; int32 Slot; const TCHAR* PS; const TCHAR* XB; };
+	const FName2 Names[] = {{A::Light, 0, TEXT("Square"), TEXT("X")}, {A::Heavy, 0, TEXT("Triangle"), TEXT("Y")}, {A::Dodge, 0, TEXT("Circle"), TEXT("B")},
+		{A::Throw, 0, TEXT("Cross"), TEXT("A")}, {A::Throw, 1, TEXT("L1"), TEXT("LB")}, {A::Block, 0, TEXT("R2"), TEXT("RT")}, {A::Special, 0, TEXT("R1"), TEXT("RB")}};
+	for (const FName2& N : Names)
+	{
+		const FKey K = D.Get(S::GamepadP1, N.Act, N.Slot);
+		const FString PS = ButtonNameOf(EEHDeviceKind::PlayStation, K);
+		const FString XB = ButtonNameOf(EEHDeviceKind::Xbox, K);
+		Check(PS == N.PS && XB == N.XB, FString::Printf(TEXT("%s names: %s / %s (want %s / %s)"), EHActionId(N.Act), *PS, *XB, N.PS, N.XB));
+	}
+	Check(ButtonNameOf(EEHDeviceKind::PlayStation, EKeys::Gamepad_Special_Right) == TEXT("OPTIONS") && ButtonNameOf(EEHDeviceKind::Xbox, EKeys::Gamepad_Special_Right) == TEXT("MENU"), TEXT("pause names"));
+	Check(ButtonNameOf(EEHDeviceKind::Gamepad, EKeys::Gamepad_FaceButton_Bottom) == TEXT("bottom face button"), TEXT("generic controllers name buttons by position"));
+
+	// 3. Menus and gameplay are separate: Cross / A confirms in menus and grabs in a match; Circle / B backs out and dodges.
+	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_FaceButton_Bottom) == EEHNav::Confirm && D.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Bottom) == A::Throw, TEXT("Cross: confirm in menus, grab in play"));
+	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_FaceButton_Right) == EEHNav::Back && D.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Right) == A::Dodge, TEXT("Circle: back in menus, dodge in play"));
+	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_FaceButton_Left) == EEHNav::Count, TEXT("Square has no menu role"));
+
+	// 4. Conflicts are never silent: detect, swap, replace, own-slot trade, clear, reset.
+	FEHBindings B = D;
+	FEHBindingRef C = B.FindConflict(S::GamepadP1, A::Light, 0, EKeys::Gamepad_FaceButton_Top);
+	Check(C.IsValid() && C.Set == S::GamepadP1 && C.Action == A::Heavy && C.Slot == 0, TEXT("conflict with Heavy found"));
+	B.Assign(S::GamepadP1, A::Light, 0, EKeys::Gamepad_FaceButton_Top, EEHConflictResolve::Swap);
+	Check(B.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Top && B.Get(S::GamepadP1, A::Heavy, 0) == EKeys::Gamepad_FaceButton_Left, TEXT("swap"));
+	FString Report;
+	Check(!B.HasConflicts(&Report), TEXT("no duplicate after swap ") + Report);
+	B = D;
+	B.Assign(S::GamepadP1, A::Light, 0, EKeys::Gamepad_FaceButton_Top, EEHConflictResolve::Replace);
+	Check(B.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Top && B.IsUnbound(S::GamepadP1, A::Heavy), TEXT("replace leaves Heavy unbound"));
+	const FString Taken = B.ResetAction(S::GamepadP1, A::Heavy);
+	Check(B.Get(S::GamepadP1, A::Heavy, 0) == EKeys::Gamepad_FaceButton_Top && B.IsUnbound(S::GamepadP1, A::Light) && !Taken.IsEmpty(), TEXT("reset action takes its default back and reports it"));
+	B = D;
+	B.Assign(S::GamepadP1, A::Throw, 1, EKeys::Gamepad_FaceButton_Bottom, EEHConflictResolve::Replace);
+	Check(B.Get(S::GamepadP1, A::Throw, 1) == EKeys::Gamepad_FaceButton_Bottom && B.Get(S::GamepadP1, A::Throw, 0) == EKeys::Gamepad_LeftShoulder, TEXT("a key from the action's other slot trades slots"));
+	B = D;
+	B.Assign(S::GamepadP1, A::Light, 1, EKeys::Gamepad_LeftTrigger, EEHConflictResolve::Replace);
+	Check(B.Find(S::GamepadP1, EKeys::Gamepad_LeftTrigger) == A::Light && B.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Left) == A::Light, TEXT("two buttons for one action"));
+	B.Clear(S::GamepadP1, A::Throw, 1);
+	Check(B.Find(S::GamepadP1, EKeys::Gamepad_LeftShoulder) == A::Count && B.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Bottom) == A::Throw, TEXT("clear one grab slot"));
+	B.ResetSet(S::GamepadP1);
+	bool bSame = true;
+	for (int32 a = 0; a < EHActionCount; ++a)
+	{
+		for (int32 k = 0; k < EHKeysPerAction; ++k)
+		{
+			bSame &= B.Keys[static_cast<int32>(S::GamepadP1)][a][k] == D.Keys[static_cast<int32>(S::GamepadP1)][a][k];
+		}
+	}
+	Check(bSame, TEXT("restore layout defaults"));
+	B = D;
+	B.Assign(S::GamepadP2, A::Light, 0, EKeys::Gamepad_FaceButton_Top, EEHConflictResolve::Swap);
+	Check(B.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Left, TEXT("player 2's layout is independent of player 1's"));
+	C = D.FindConflict(S::KeyboardA, A::Light, 0, EKeys::NumPadOne);
+	Check(C.IsValid() && C.Set == S::KeyboardB && C.Action == A::Light, TEXT("both keyboard sides share one keyboard"));
+	Check(!FEHBindings::IsBindable(S::KeyboardA, EKeys::Escape) && !FEHBindings::IsBindable(S::GamepadP1, EKeys::Gamepad_LeftStick_Up) &&
+		!FEHBindings::IsBindable(S::GamepadP1, EKeys::Gamepad_RightTriggerAxis) && FEHBindings::IsBindable(S::GamepadP1, EKeys::Gamepad_RightTrigger) &&
+		FEHBindings::IsBindable(S::GamepadP1, EKeys::Gamepad_Special_Left) && !FEHBindings::IsBindable(S::GamepadP1, EKeys::J) &&
+		!FEHBindings::IsBindable(S::KeyboardA, EKeys::Gamepad_FaceButton_Bottom), TEXT("bindable keys"));
+	Check(!D.HasConflicts(&Report), TEXT("defaults have no conflicts ") + Report);
+
+	// 5. Save and load: a round trip, a version-1 file, and a file with a conflict.
+	const FString Dir = FPaths::Combine(EvidenceDir.IsEmpty() ? FPaths::ProjectSavedDir() : EvidenceDir, TEXT("selftest"));
+	IFileManager::Get().MakeDirectory(*Dir, true);
+	FEHSettings T = Settings;
+	T.Bindings = D;
+	T.Bindings.Assign(S::GamepadP2, A::Light, 0, EKeys::Gamepad_FaceButton_Bottom, EEHConflictResolve::Swap);
+	T.Bindings.Assign(S::KeyboardA, A::Light, 0, EKeys::U, EEHConflictResolve::Replace);
+	T.Bindings.Clear(S::GamepadP1, A::Throw, 1);
+	const FString RoundPath = FPaths::Combine(Dir, TEXT("roundtrip.json"));
+	Check(T.Save(RoundPath), TEXT("save"));
+	FString Warning;
+	const FEHSettings L = FEHSettings::Load(&Warning, RoundPath);
+	bSame = Warning.IsEmpty();
+	for (int32 s = 0; s < EHSetCount; ++s)
+	{
+		for (int32 a = 0; a < EHActionCount; ++a)
+		{
+			for (int32 k = 0; k < EHKeysPerAction; ++k)
+			{
+				bSame &= L.Bindings.Keys[s][a][k] == T.Bindings.Keys[s][a][k];
+			}
+		}
+	}
+	Check(bSame, TEXT("custom layouts survive save and load ") + Warning);
+	const FString V1Path = FPaths::Combine(Dir, TEXT("version1.json"));
+	FFileHelper::SaveStringToFile(TEXT("{\"version\":1,\"bindings\":{\"0.Light\":[\"U\",\"Enter\"],\"0.Pause\":[\"Escape\",\"\"],\"2.Light\":[\"Gamepad_FaceButton_Bottom\",\"\"],\"2.Grab\":[\"Gamepad_FaceButton_Left\",\"\"]}}"), *V1Path);
+	Warning.Reset();
+	const FEHSettings V1 = FEHSettings::Load(&Warning, V1Path);
+	Check(V1.Bindings.Get(S::KeyboardA, A::Light, 0) == EKeys::U && V1.Bindings.Get(S::KeyboardA, A::Light, 1) == EKeys::Enter, TEXT("version-1 keyboard layout kept"));
+	Check(V1.Bindings.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Left && V1.Bindings.Get(S::GamepadP1, A::Throw, 0) == EKeys::Gamepad_FaceButton_Bottom && !Warning.IsEmpty(),
+		TEXT("version-1 controller layout moves to the new default, with a notice"));
+	const FString BadPath = FPaths::Combine(Dir, TEXT("conflict.json"));
+	FFileHelper::SaveStringToFile(TEXT("{\"version\":2,\"bindings\":{\"controller1\":{\"LightAttack\":[\"Gamepad_FaceButton_Top\",\"\"]},\"controller2\":{\"LightAttack\":[\"Gamepad_LeftThumbstick\",\"\"]}}}"), *BadPath);
+	Warning.Reset();
+	const FEHSettings Bad = FEHSettings::Load(&Warning, BadPath);
+	Check(Bad.Bindings.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Left && Bad.Bindings.Get(S::GamepadP2, A::Light, 0) == EKeys::Gamepad_LeftThumbstick && !Warning.IsEmpty(),
+		TEXT("a conflicting layout resets alone; the other layout is kept"));
+	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
+}
+
+void AEHGameDirector::RunInputSelfTest()
+{
+	int32 Checks = 0;
+	int32 Fails = 0;
+	auto Check = [&](bool bOk, const FString& What) {
+		++Checks;
+		if (!bOk)
+		{
+			++Fails;
+			AutoLogLine(FString::Printf(TEXT("FAIL input_selftest: %s"), *What));
+		}
+	};
+	FEHInputRouter& R = *RouterPtr;
+	const int32 Dev = EHDeviceGamepadBase + 77;   // a test-only device, removed again at the end
+	const FEHBindings Saved = Settings.Bindings;
+	Settings.Bindings = FEHBindings::Defaults();
+	R.ClearNav();
+	auto Sample = [&]() { return R.SampleForTick(Dev); };
+	auto Tap = [&](const FKey& K) {
+		R.InjectKey(Dev, K, true);
+		const eh::InputFrame F = Sample();
+		R.InjectKey(Dev, K, false);
+		Sample();
+		return F;
+	};
+	auto LastNav = [&]() {
+		EEHNav Out = EEHNav::Count;
+		FEHNavEvent E;
+		while (R.PopNav(E))
+		{
+			if (E.Device == Dev && E.Nav != EEHNav::Count)
+			{
+				Out = E.Nav;
+			}
+		}
+		return Out;
+	};
+
+	// Every default button gives exactly its one action.
+	struct FCase { FKey Key; uint8 Btn; const TCHAR* What; };
+	const FCase Cases[] = {{EKeys::Gamepad_FaceButton_Left, eh::BtnLight, TEXT("Square / X -> light")}, {EKeys::Gamepad_FaceButton_Top, eh::BtnHeavy, TEXT("Triangle / Y -> heavy")},
+		{EKeys::Gamepad_FaceButton_Right, eh::BtnDodge, TEXT("Circle / B -> dodge")}, {EKeys::Gamepad_FaceButton_Bottom, eh::BtnThrow, TEXT("Cross / A -> grab")},
+		{EKeys::Gamepad_LeftShoulder, eh::BtnThrow, TEXT("L1 / LB -> grab")}, {EKeys::Gamepad_RightShoulder, eh::BtnSpecial, TEXT("R1 / RB -> special")}};
+	for (const FCase& Case : Cases)
+	{
+		const eh::InputFrame F = Tap(Case.Key);
+		Check(F.pressed == Case.Btn && F.x == 0, FString::Printf(TEXT("%s (pressed=%d)"), Case.What, F.pressed));
+	}
+	// Menu roles of the same buttons.
+	LastNav();
+	Tap(EKeys::Gamepad_FaceButton_Bottom);
+	Check(LastNav() == EEHNav::Confirm, TEXT("Cross / A confirms in menus"));
+	Tap(EKeys::Gamepad_FaceButton_Right);
+	Check(LastNav() == EEHNav::Back, TEXT("Circle / B backs out of menus"));
+	Tap(EKeys::Gamepad_FaceButton_Left);
+	Check(LastNav() == EEHNav::Count, TEXT("Square / X does nothing in menus"));
+	Tap(EKeys::Gamepad_Special_Right);
+	Check(LastNav() == EEHNav::Pause, TEXT("Options / Menu pauses"));
+
+	// Directions (toward / away is judged from x when a button is pressed).
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Right, true);
+	eh::InputFrame F = Sample();
+	Check(F.x == 1, TEXT("D-pad right"));
+	R.InjectKey(Dev, EKeys::Gamepad_FaceButton_Top, true);
+	F = Sample();
+	Check(F.x == 1 && F.pressed == eh::BtnHeavy, TEXT("toward + heavy in one tick"));
+	R.InjectKey(Dev, EKeys::Gamepad_FaceButton_Top, false);
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Right, false);
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Left, true);
+	Check(Sample().x == -1, TEXT("D-pad left"));
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Left, false);
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftX, 0.9f);
+	Check(Sample().x == 1, TEXT("left stick right"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftX, 0.0f);
+	Check(Sample().x == 0, TEXT("left stick centred"));
+	LastNav();
+
+	// Both grab buttons at once are one grab, and the grab stays held until both are released.
+	R.InjectKey(Dev, EKeys::Gamepad_FaceButton_Bottom, true);
+	R.InjectKey(Dev, EKeys::Gamepad_LeftShoulder, true);
+	F = Sample();
+	Check(F.pressed == eh::BtnThrow, TEXT("Cross + L1 together: one grab"));
+	R.InjectKey(Dev, EKeys::Gamepad_FaceButton_Bottom, false);
+	Check((Sample().held & eh::BtnThrow) != 0, TEXT("grab still held by L1"));
+	R.InjectKey(Dev, EKeys::Gamepad_LeftShoulder, false);
+	Check((Sample().held & eh::BtnThrow) == 0, TEXT("grab released"));
+
+	// The engine's digital trigger press can arrive before the first axis event; it must not become a second press.
+	R.InjectKey(Dev, EKeys::Gamepad_RightTrigger, true);
+	Check((Sample().pressed & eh::BtnBlock) == 0, TEXT("an early digital trigger press waits for the axis"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, 0.15f);
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, 0.6f);
+	F = Sample();
+	Check((F.pressed & eh::BtnBlock) != 0, TEXT("then the axis presses block once"));
+	R.InjectKey(Dev, EKeys::Gamepad_RightTrigger, false);
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, 0.0f);
+	Check((Sample().held & eh::BtnBlock) == 0, TEXT("and releases it"));
+	// R2 / RT: hold to block, release to stop, with fixed analog thresholds.
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, FEHInputRouter::TriggerOn - 0.05f);
+	Check((Sample().held & eh::BtnBlock) == 0, TEXT("trigger below the press threshold"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, FEHInputRouter::TriggerOn + 0.05f);
+	F = Sample();
+	Check((F.held & eh::BtnBlock) != 0 && (F.pressed & eh::BtnBlock) != 0, TEXT("trigger pressed: block"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, FEHInputRouter::TriggerOn - 0.05f);
+	Check((Sample().held & eh::BtnBlock) != 0, TEXT("still blocking between the thresholds"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, FEHInputRouter::TriggerOff - 0.05f);
+	Check((Sample().held & eh::BtnBlock) == 0, TEXT("trigger released: block ends"));
+	R.InjectKey(Dev, EKeys::Gamepad_RightTrigger, true);
+	Check((Sample().held & eh::BtnBlock) == 0, TEXT("the engine's digital trigger press is ignored once the axis is known"));
+	R.InjectKey(Dev, EKeys::Gamepad_RightTrigger, false);
+
+	// Player 2's layout applies only to the controller in player 2's Local Versus slot.
+	Settings.Bindings.Assign(EEHBindingSet::GamepadP2, EEHAction::Light, 0, EKeys::Gamepad_FaceButton_Top, EEHConflictResolve::Swap);
+	R.SetGamepadPlayer(Dev, 1);
+	Check(Tap(EKeys::Gamepad_FaceButton_Left).pressed == eh::BtnHeavy && Tap(EKeys::Gamepad_FaceButton_Top).pressed == eh::BtnLight, TEXT("player 2 layout in player 2's slot"));
+	R.ClearGamepadPlayers();
+	Check(Tap(EKeys::Gamepad_FaceButton_Left).pressed == eh::BtnLight, TEXT("player 1 layout elsewhere"));
+
+	// Remapping changes the action a button produces at once.
+	Settings.Bindings = FEHBindings::Defaults();
+	Settings.Bindings.Assign(EEHBindingSet::GamepadP1, EEHAction::Block, 0, EKeys::Gamepad_LeftTrigger, EEHConflictResolve::Replace);
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftTriggerAxis, 0.9f);
+	Check((Sample().held & eh::BtnBlock) != 0, TEXT("block moved to L2 / LT"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftTriggerAxis, 0.0f);
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, 0.9f);
+	Check((Sample().held & eh::BtnBlock) == 0, TEXT("R2 / RT no longer blocks"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_RightTriggerAxis, 0.0f);
+
+	Settings.Bindings = Saved;
+	R.ForgetDevice(Dev);
+	R.ClearLatches();
+	AutoLogLine(FString::Printf(TEXT("%s input_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }

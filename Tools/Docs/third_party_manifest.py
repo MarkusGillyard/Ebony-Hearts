@@ -4,6 +4,7 @@ licence, acquisition date and SHA-256 of the original download(s).
 Usage: python3 Tools/Docs/third_party_manifest.py <thirdparty-dir> <fonts-dir>
 The source ledger in <thirdparty-dir> records the original downloads; only items listed in USED are emitted.
 """
+import hashlib
 import json
 import os
 import sys
@@ -25,6 +26,8 @@ USED = {
     "kenney/impact-sounds": "Layered under synthesized impacts, falls, steps",
     "kenney/interface-sounds": "Menu sounds (processed)",
     "kenney/rpg-audio": "Cloth and creak layers",
+    "accad/male2_bvh": "Base motion for both fighters' idle stances, Wren's 720 hook kick and tornado kick, Ashka's body kick, teep, bow intro and bow win, and both fighters' defeated pose; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json)",
+    "mixamo/animations": "Base motion for Wren's jab, cross, roundhouse, spinning back kick, walks, held guard, intro, win and double-leg slam (both sides), Ashka's held guard, Ashka's jab, horizontal elbow, step-in knee, flame elbow, flying knee and walks, and both fighters' hit, block, knockdown and KO reactions and get-up; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json). Raw exports are not in the repository",
 }
 
 
@@ -50,6 +53,8 @@ def main():
             "license_url": lic.get("legalcode_url") if isinstance(lic, dict) else None,
             "use": USED[item["id"]], "modified": True, "raw_files_in_repo": False, "original_downloads": hashes,
         })
+        if item.get("attribution"):
+            out[-1]["attribution"] = item["attribution"]
     prov = json.loads((tp / "MakeHuman" / "PROVENANCE.json").read_text())
     msa = prov["makehuman_system_assets"]
     out.append({"id": "makehuman/system_assets", "title": "MakeHuman system assets", "creator": "MakeHuman Community",
@@ -63,6 +68,23 @@ def main():
                 "source_page": mp["listed_by"], "acquired": "2026-10-26", "license": "GPL-3.0-or-later (code); CC0-1.0 (bundled assets)",
                 "use": "Build tool only (body shaping, game_engine rig and weights); not shipped", "modified": False,
                 "raw_files_in_repo": False, "original_downloads": [{"file": os.path.basename(mp["file"]), "sha256": mp["sha256"], "url": mp["url"]}]})
+    # Motion capture: the CMU clips named in Tools/Blender/anim/mocap_clips.json, plus each subject's skeleton.
+    clips = json.loads((Path(__file__).resolve().parents[1] / "Blender" / "anim" / "mocap_clips.json").read_text())
+    used = sorted({spec["clip"] for char in clips.values() for spec in char.values() if "clip" in spec})
+    if used:   # CMU data is credited only while a clip uses it
+        files = sorted({f"{c.split('_')[0]}.asf" for c in used} | {f"{c}.amc" for c in used})
+        cmu = tp / "CMU"
+        out.append({"id": "cmu/mocap", "title": "CMU Graphics Lab Motion Capture Database: " + ", ".join(used),
+                    "creator": "Carnegie Mellon University Graphics Lab", "source_page": "http://mocap.cs.cmu.edu/",
+                    "acquired": "2026-11-03",
+                    "license": "CMU terms: free for all uses; may be included in commercially sold products; the data itself may not be resold, even converted",
+                    "license_url": "http://mocap.cs.cmu.edu/faqs.php",
+                    "use": "Base motion for fighter animations, retargeted and retimed to the combat data (Tools/Blender/anim/build_mocap.py)",
+                    "modified": True, "raw_files_in_repo": False,
+                    "original_downloads": [{"file": f, "sha256": hashlib.sha256((cmu / f).read_bytes()).hexdigest(),
+                                            "url": f"http://mocap.cs.cmu.edu/subjects/{f.split('_')[0].split('.')[0]}/{f}"} for f in files],
+                    "notes": "Credit requested by CMU: The data used in this project was obtained from mocap.cs.cmu.edu. "
+                             "The database was created with funding from NSF EIA-0196217."})
     sums = {}
     for line in (fonts / "SHA256SUMS").read_text().splitlines():
         h, f = line.split(None, 1)

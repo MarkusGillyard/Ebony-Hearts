@@ -147,6 +147,597 @@ Defects found and fixed during review:
 - selection tags overlapping long names
 - round-banner hitches
 
+## Changes after the release
+
+These commits are on `dev/slice-foundation` only. They are not in the `f3ae5ab` release or in pull request 1. Each was
+packaged (Shipping) and tested on FLOWBOX. Evidence is in the workspace's `evidence/` folder.
+
+### Controls (package `pkg-12-controls`)
+
+The controller layout and remapping are described in `Docs/Controls.md`.
+- **Self-tests.** 57 binding checks and 30 input-router checks passed: swap, replace, clear, reset, conflicts, the
+  version 1 settings migration, trigger thresholds and hysteresis, and the double-press guard.
+- **Automation through the real input path.** Remapping passed 20/20 checks and persistence across a restart 9/9 on
+  the previous controls package, `pkg-11-controls` (`controls-01`). The menu flow passed 6/6 with 18 screenshots on
+  both packages (`controls-01`, `controls-02`). `pkg-12` fixed controller button names, a trigger double press and the
+  test profile; the remap and persistence runs were not repeated on it.
+- **Simulated controllers.** These were created through the Linux uinput system: an Xbox 360 pad (045e:028e) and a
+  DualShock 4 (054c:05c4). They covered the default layout, menus and a fight, disconnect and reconnect, and remapping
+  from the pad itself. **No physical controller buttons were pressed.** The creator's PS4 controller was detected as
+  a PlayStation pad, and that is all.
+- **Regression.** The smoke test, the 25-step journey, the xinput drive and the 12-match matrix all passed, with 0
+  failures and 0 warnings.
+
+### Stances and motion capture (package `pkg-14-stances`)
+
+- **What changed.** Wren's MMA stance and Ashka's Muay Thai stance were researched and built (`Docs/Research.md`,
+  "Fighting stances"). Both idles now come from ACCAD motion capture placed on those stances, and every scripted move
+  shares the same stance values.
+- **Review.** Blender frame renders, then in-game captures compared with the previous package. Evidence: `stances-02`
+  (`stances_before_after.mp4` and a half-speed copy).
+- **Defect found and fixed.** In the first stance build (`pkg-13`), both fighters' upper arms were level with their
+  shoulders, so the elbows stuck out. The crouch had lowered the shoulders while the hand targets stayed at a fixed
+  height. The hand targets are now solved from the measured shoulder positions. Wren's rear elbow sits 26–31° below
+  the shoulder and her lead elbow 14° below; Ashka's elbows sit 10–15° below.
+- **Regression.** The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed,
+  with 0 failures and 0 warnings. Evidence: `stances-03`.
+
+### Animation realism pass
+
+After the stances, the creator found the movement still unnatural: kicks looked like an action figure, with no
+transitions between moves.
+- **Transitions.** Moves used to cut over with a 25–50 ms crossfade from a frozen pose. They now use inertial
+  blending (`EHAnimInstance`). The new move starts on its first frame at once, so combat timing is unchanged, and the
+  difference from the pose on screen eases out over a time set per state: 50–150 ms into strikes (within the startup),
+  60 ms into hit reactions, and 220 ms back into stance.
+- **Motion capture.** The following now come from ACCAD capture:
+  - Wren's roundhouse and spinning back kick.
+  - Wren's 720 hook kick and tornado kick: a spinning hook kick and a roundhouse, with a jump, an extra full turn in
+    the air and a tucked support leg added (`mocap.add_air`).
+  - Ashka's jab, body kick and teep. The teep's landing foot steps back to stance (`mocap.settle_feet`).
+  - Ashka's horizontal elbow: a rear hook with the forearm folded so the elbow lands (`mocap.fold_limb`).
+  Each is timed so contact falls on the move's first active frame. Kicks keep their captured knee direction and toe
+  angle while the foot is off the floor.
+- **Scripted moves.** These no longer stop at every key pose. Smooth segments follow a monotone cubic through the
+  keys, so motion flows through a key unless the limb reverses there (`animlib.sample`). The knockdown now buckles
+  at the knees, sits down and rolls onto the back instead of falling like a plank.
+- **Tried and dropped.** A knee strike built from a captured front kick raised the thigh far too high. Ashka's
+  knees stay scripted.
+- **Review.** Frame sheets of every new move, and in-game before/after footage: `kicks-01` (checkpoint sent to the
+  creator) and `anim-01`: every move for both fighters, with the training partner taking the hits, before
+  and after, also sent to the creator.
+- **Regression.** The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed
+  on `pkg-16-anim`, with 0 failures and 0 warnings. Evidence: `anim-02`. The kick checkpoint `pkg-15` also passed
+  (`kicks-02`).
+
+### Animation realism, second pass
+
+The creator reviewed the first pass and found every category still off. The reasons given: too fast or jerky, stiff
+or robotic, limbs bending or twisting wrong, and floaty or weightless. The creator approved slower timing.
+- **Natural speed.** Captured moves were playing 2.5–4× faster than captured to fit their frame data. Eight moves were
+  retimed so the motion plays near 1.5×:
+  - Wren's roundhouse, startup 12 → 16.
+  - Wren's spinning back kick, 15 → 21.
+  - Wren's 720 hook kick, 26 → 35.
+  - Wren's tornado kick, 13 → 17.
+  - Ashka's body kick, 11 → 16.
+  - Ashka's teep, 9 → 16.
+  - Ashka's jab and elbow: longer recoveries; startups unchanged.
+
+  Every frame range in each move was remapped (hits, cancels, travel, airborne, invulnerability, hurtboxes). Travel
+  speed was rescaled so distances are unchanged. Block and hit stun grew with each recovery, so advantage on block and
+  on hit is unchanged for every move (`Docs/CombatContract.md`). Two design properties held the limits:
+  - The tornado kick still combos after the cross (startup 17 is the slowest that does).
+  - A back roll's recovery is still punishable by the roundhouse. Both back rolls are 4 frames longer, which also
+    suits a real roll's speed.
+
+  The combat core tests pass (257 checks). One test that assumed the roundhouse's old startup was rewritten relative
+  to its hit frame.
+- **Posture and guard.**
+  - The ACCAD retarget copied that skeleton's steep collarbone slope, so the shoulders read as hunched or shrugged.
+    Collarbones, neck and head are now calibrated against ACCAD's neutral standing take. The collarbone slope is set
+    by the stance (−3°), with the captured shrugs kept around it.
+  - During strikes the hand that isn't striking stays at the guard (`guard` in `mocap_clips.json`) instead of copying
+    the performer's dropped guard.
+- **Knees and joints.**
+  - The stance's knee direction now turns with the hips, so spinning moves no longer buckle the standing knee
+    inward.
+  - Both characters have new shoulder and hip half-joints (`eh_rig.HALF`). Each sits on the joint and turns half as
+    far as the limb's swing, and skin around the joint blends through it. A raised arm or a high kick now bends the
+    shoulder and hip round instead of folding them. The builders key the half-joints exactly; the maths was checked
+    on the rig to 0.000° across twisting poses.
+- **Weight and follow-through.**
+  - Jumps land with the hips sinking about 7 cm and recovering while the feet stay planted.
+  - Scripted moves have the chest trailing the hips by one frame and the head by two.
+  - Light hit reactions snap harder.
+- **Downloaded but not used yet.** 21 further CMU takes (get-ups, dive rolls, knee strikes, a female fighter's kicks
+  and blocks), 33 MiB, approved by the creator. The game's get-up is 21 frames, about 14× faster than a captured
+  get-up, so those moves need a timing decision before capture can help.
+- **Review and regression.**
+  - Both characters were rebuilt and reimported (meshes, materials, LOD1 and 32 animations each) and packaged as
+    `pkg-18-realism`.
+  - Every move was recorded before and after (`anim-04`, sent to the creator).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-05`).
+
+### Mixamo motion (package `pkg-19-mixamo`)
+
+The creator found the second pass better, but every group still looked off. The creator chose Mixamo as the
+animation source and exported 31 clips from their own Adobe account. Mixamo's FAQ says its animations are royalty
+free for commercial projects, including video games (`Docs/AssetLedger.md`). The raw exports stay outside the
+repository.
+- **Pipeline.** `build_mocap.py` reads Mixamo FBX clips through the same position-aimed retarget as the BVH takes
+  (`mocap.FbxSource`). It calibrates against the X Bot T-pose. Clip changes:
+  - A time-warp change applies to every clip. Anchors such as the contact frame are now joined by monotone cubics
+    rather than straight lines, so playback speed changes smoothly through them instead of jumping.
+  - Reactions can set their own pace: explicit anchors give a fast impact and a slower recovery.
+  - A clip can be layered onto a scripted pose (the block reaction rides on the guard) or end in one (the knockdown
+    settles into the lying pose the get-up starts from).
+  - A fall's travel can be shortened.
+- **Feet.** The stance layer read foot heights after moving the pelvis to the stance height. So any difference
+  between the performer's hip height and the stance lifted or sank both feet: Ashka floated about 2 cm in her idle
+  and up to 4 cm in new clips, and Wren's lead foot sank about 1 cm. Feet now keep their captured height above the
+  floor, put on each fighter's own ankle height. The fix applies to every captured move.
+- **Moves now from Mixamo.**
+  - Wren: roundhouse (MMA high kick), spinning back kick, walks (boxing step-drag), intro (warm-up) and win (victory).
+  - Ashka: step-in knee, body kick, flame elbow (a stepping elbow, its dip reduced to suit her upright stance) and
+    walks; her walks were keyed by script before.
+  - Both: light and heavy hits, block, knockdown and KO.
+  - The game's frame data is unchanged. Startup and recovery play about 1.5–2× the captured speed. The knockdown plays
+    about 2.5× to land inside the 42-frame knockdown, and the KO plays near natural speed.
+- **Not used.** Some clips can't fit the current frame data:
+  - The captured jab and elbow take 2.4–4× longer to land than the 4–5-frame startups.
+  - The get-up takes 8.4 s; the game's get-up is 20 frames.
+  - The flying knee and the forward roll travel about 4 m.
+  - The two throws take about 3.5 s; the game's throws take 56–64 frames.
+
+  These stay as they were (CMU, ACCAD or script) until their timing is decided.
+- **Review and regression.**
+  - Every clip was reviewed frame by frame in Blender. Both characters' animations were reimported (32 each) and
+    packaged as `pkg-19-mixamo`.
+  - The same move script was recorded on `pkg-18-realism` and the new build, side by side (`anim-06`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-07`).
+
+### Rotation transfer and natural timing (package `pkg-20-carry`)
+
+The creator found every group still off: stiff or robotic, limbs bending or twisting wrong, and floaty. Too fast or
+jerky was no longer on the list. The creator approved longer move timing where capture needs it.
+- **Rotation transfer.** The position-aimed retarget rebuilt each bone's twist from hinge planes. That lost:
+  - the head turning on the neck;
+  - the feet rolling;
+  - the forearm rotating;
+  - the spine's own twist.
+
+  It could also flip a straight limb's twist. Mixamo and ACCAD clips now carry their joints' recorded rotations
+  (`aim.AimRetarget.carry`). Each bone starts from the aim's frame on the source's neutral pose and turns as its
+  source joint turned. Bone directions match the aim to within 0.1° (limbs 0.0°). Twist differs by up to 60° on feet
+  and calves and up to 50° on the head: the motion the aim dropped. The elbow stays a hinge:
+  - The upper arm and forearm keep the hinge-plane roll, because the two skeletons' forearms rest rolled 41° apart.
+  - The hand points where the performer's hand points and takes the performer's forearm rotation.
+- **Timing (creator-approved).** Advantage on hit and block is unchanged.
+
+  | Move | Startup / total | Now from |
+  |---|---|---|
+  | Wren's jab | 5/15 → 7/17 | CMU, about 1.2× captured speed |
+  | Wren's cross | 6/19 → 8/23 | CMU, about 1.2× captured speed |
+  | Ashka's jab | 5/18 → 8/24 | Mixamo |
+  | Ashka's horizontal elbow | 6/26 → 9/30 | Mixamo |
+  | Get-up | 20 → 60 frames (`rules.json`) | Mixamo get-up |
+
+  The get-up blends out of the lying pose the knockdown ends in and finishes on the fighter's spot.
+- **Core tests.** 257 checks pass. Three tests were updated to follow the data:
+  - The invalid-hit test's pattern follows the jab's new frames.
+  - The strike-beats-grab test presses the jab earlier by the difference in startup, so both still land on the same
+    tick.
+  - The loss-of-control bound scales with the get-up (200 + 2 × get-up frames, the same 240 as before for the old
+    get-up). The worst random run is now 306 ticks.
+- **Seen in review.** Ashka's coat panels follow her thighs, so while she sits during the get-up and the knockdown they
+  stand out stiffly instead of draping.
+- **Review and regression.**
+  - All captured clips were rebuilt and reimported (32 animations per fighter) and packaged as `pkg-20-carry`.
+  - The move script was recorded side by side with `pkg-19-mixamo` (`anim-08`, encoded to play on phones).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-09`).
+  - The creator has not judged this build yet.
+
+### Coat and captured takedown (package `pkg-21-throws`)
+
+- **Coat.** Ashka's coat tails follow her thighs through rig helpers. When she sat with her knees up, the helpers
+  stood the tails up like boards. Each tail's target now swings at most 70° from hanging straight down
+  (`animlib._hang`). The spring simulation drapes it from there, so sitting tails lie on the floor and kick flares stay
+  within reason. The limit applies to every scripted and captured animation.
+- **Double-leg slam.** Wren's forward throw now comes from Mixamo's paired takedown, attacker and victim
+  (`build_anims.capture_throw`; `"throws"` in `mocap_clips.json`). Mixamo exports the two sides separately:
+  - The victim is turned to face the attacker and shifted so the attacker's hands meet its knees over the grip
+    (residual 4–6 cm).
+  - The grip, the victim's landing and the end of the attacker's stand-up map to frames 1, 34 (the damage frame,
+    unchanged) and the last frame.
+  - Each body's travel is scaled so the victim lands near the throw's 120 cm landing point. The victim ends in the
+    exact lying pose its knockdown starts from, and Wren ends back in her stance.
+  - The throw lasts 74 frames instead of 56, for the stand-up; the creator approved longer throws. Damage, damage
+    frame, landing and the victim's knockdown are unchanged. Core tests: 257 checks pass.
+  - The other three throws stay scripted: Mixamo has no matching paired clips for them.
+- **Review and regression.**
+  - All animations were rebuilt (60 scripted and throw clips, 32 captured) and reimported (32 per fighter), and
+    packaged as `pkg-21-throws`.
+  - The move script was recorded side by side with `pkg-20-carry` (`anim-10`). The review's grab misses at that
+    spacing, so a separate clip records the slam in the packaged game (`anim-10/takedown2`): grip, drive, landing,
+    Wren standing, Ashka's knockdown and get-up.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-11`).
+
+### Feet during transitions (package `pkg-22-footlock`)
+
+- **Why.** Transitions are inertialized: every bone's leftover offset from the last shown pose decays to zero. The
+  hips' and legs' offsets decay together, so a foot planted in both poses rode along with the hips for the length of
+  the blend (0.05–0.22 s) and slid. This is one likely source of the floaty feel.
+- **Change.** In `EHAnimInstance`, a foot that is on the floor in both the shown pose and the new animation (within
+  3 cm of the reference ankle height, fading out by 10 cm) now eases in a straight line from where it was shown to
+  where the new animation puts it, on the same decay curve. The leg reaches it with two-bone IK (`AnimationCore`),
+  keeping its knee's bend, and the hip half-joint takes half the thigh's new swing as the animations key it. Feet in
+  the air (kicks, knees, falls) are untouched.
+- **Review and regression.**
+  - The change compiled with no new warnings and was packaged as `pkg-22-footlock` (code only; animations
+    unchanged).
+  - The move script was recorded side by side with `pkg-21-throws` (`anim-12`). There were no leg pops or twisted
+    knees.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-13`).
+  - Not measured: how much sliding remains. That needs a person watching it in play.
+
+### Strikes that land, a looser body (package `pkg-23-strikes`)
+
+The creator's verdict on `pkg-22`:
+- Wren's kicks improved a lot.
+- Both fighters' punches look as if they aren't being thrown.
+- Ashka's kicks and knees need much more work.
+- Bodies still move without natural flexibility.
+
+Changes:
+- **Measured cause.** On the first active frame the striking part sat well short of its hitbox:
+  - Wren's jab stayed at her guard, 55 cm out (hitbox to 78).
+  - Wren's cross reached 58 cm (hitbox to 85).
+  - Ashka's knee reached 28 cm (hitbox to 70).
+  - Ashka's horizontal elbow came from the wrong part of its clip, the chamber, with the elbow 39 cm behind her.
+
+  Kicks already reached (Wren 119 of 140 cm, Ashka 134 of 130).
+- **Punches.**
+  - Wren's jab and cross, and Ashka's jab, now come from Mixamo's boxing jab and cross. These are full-extension
+    punches that step in; 50–70% of the step is kept.
+  - Ashka's elbow uses the strike itself (frames 40–48 of its clip: the hips turn 36° with the elbow high).
+  - Wren's jab is 8/20 (was 7/17) and her cross 9/24 (was 8/23), with advantage on hit and block unchanged.
+- **Reach.** A new build step, `mocap.reach`, carries each strike into its hitbox on the active frames:
+  - The hips move toward the target (up to 35 cm) with planted feet kept in place by leg IK, so the fighter steps or
+    lunges in.
+  - Arm strikes lean the spine for any distance left.
+
+  Reach on the first active frame:
+  - Wren: jab 0.71 m, cross 0.77 m.
+  - Ashka: jab 0.64 m, flame elbow 0.68 m, knee 0.54 m, horizontal elbow 0.48 m (the lean is capped so she doesn't
+    fold over).
+- **Looser body.**
+  - The hand that guards during a strike keeps 60% of the performer's motion (was 30%).
+  - The idles keep more of their captured motion:
+    - Wren: bounce 0.45, sway 0.7, hands 0.8, feet 0.6 (was 0.3/0.4/0.5/0.4).
+    - Ashka: bounce 0.35, sway 0.6, hands 0.7, feet 0.5 (was 0.15/0.3/0.4/0.3).
+  - The held guard is now the scripted guard pose with the motion of a captured MMA idle layered on, so it breathes
+    and shifts weight instead of holding still.
+  - Coat tails swing at most 50° from hanging (was 70°), so kicks no longer carry them out like boards.
+- **Credits.** No move uses CMU motion capture any more, so its credit was replaced by a Mixamo courtesy line in the
+  in-game credits and the notices, and CMU left the manifest.
+- **Tried and dropped.** A forward roll from Mixamo's stand-to-roll clip turned out to be a flying dive with a flip.
+  The forward roll stays scripted.
+- **Review and regression.**
+  - Every animation was rebuilt and reimported, and packaged as `pkg-23-strikes`.
+  - The move script was recorded side by side with `pkg-22` (`anim-14`). In game, Wren's jab now extends with a
+    step-in; the kicks connect as before.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-15`). Core tests: 257 checks pass.
+
+### Ashka's body kick and teep (package `pkg-24-ashka`)
+
+- **Body kick.** On `pkg-23` in game, Ashka's Mixamo kick moved like a straight-legged side kick. She leaned so far
+  back on the follow-through that she looked off balance, and the coat fanned out flat behind her. Her body kick goes
+  back to ACCAD's body roundhouse (Male2_G15). It now runs through the rotation transfer, which keeps the hip turn and
+  the foot's roll that the old position aim lost. Side by side in review it reads as a Muay Thai roundhouse: she stays
+  upright with her guard up, the shin rises into the target, and the coat hangs. It reaches 1.12 m on its first
+  active frame (hitbox to 1.30 m).
+- **Teep.** It now reaches further: 0.98 m against a 1.21 m target (hitbox to 1.45 m). The hips may move at most
+  35 cm, and kicks get no lean.
+- **Review and regression.**
+  - Ashka's clips were rebuilt and every animation reimported, and packaged as `pkg-24-ashka`.
+  - The move script was recorded side by side with `pkg-23` (`anim-16`). In game, the body kick lands on Wren's
+    torso.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-17`).
+
+### Follow-through, elbow and teep reach (package `pkg-25-flex`)
+
+- **Follow-through.** In every captured clip the upper spine and neck now trail the body's turns by a frame, and the
+  head by two (`mocap.overlap`: 30–35% of the lagging rotation). The torso bends through a motion instead of turning
+  as one piece. This is a further step on the creator's note that the bodies lack natural flexibility; the captured
+  motion still leads.
+- **Reach.** Each strike can set its own reach limits:
+  - Ashka's horizontal elbow may lean further and now reaches 0.56 m (target 0.58, was 0.48), with a committed lunge.
+  - Her teep may carry the hips further and now reaches 1.13 m (target 1.21, was 0.98).
+- **Safety.** At the creator's request, a Claude Code hook now refuses any command that would recursively delete or
+  link anything on the storage drive (outside the repository; noted here for the record).
+- **Review and regression.**
+  - Both fighters' captured clips were rebuilt and every animation reimported, and packaged as `pkg-25-flex`.
+  - The move script was recorded side by side with `pkg-24` (`anim-18`). There were no head or neck glitches.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-19`).
+- **Tried and not used: a captured flying knee for Ashka.** Mixamo's flying knee covers the move's 1.26 m with a
+  running take-off over about 0.7 s, but the game gives it 15 frames (0.25 s). On the hit frame the knee trails behind
+  her unless the clip plays about 3× fast. With a startup of about 22 frames (total about 55) it would play near
+  1.7×. That is a balance change to a special move, left for the creator to decide; the flying knee stays scripted.
+
+### Captured bow, win and defeated (package `pkg-26-ceremony`)
+
+- **Ashka's intro.** ACCAD's bow-to-ready take (Male2_D8, mirrored to her lead side like her idle): she brings her
+  hands together, bows, then rises into her fighting stance. 121 frames, about 1.4× the captured speed.
+- **Ashka's win.** The bow from ACCAD's walk-to-bow take (Male2_D7): hands together, a deep bow, then upright.
+  121 frames, about 1.45×.
+- **Both fighters' defeated pose.** ACCAD's ready-to-relax take (Male2_D4, mirrored): the guard drops and the body
+  relaxes, then over the last 30 frames it settles into the scripted dejected slump, so the pose still reads as a
+  loss. 91 frames, about 1.4×. Her braid flicks up as the slump settles in (the hair spring reacting).
+- **Checked and not usable.** ACCAD's backfists don't spin (−8° of hip turn), so they can't stand in for Wren's
+  spinning elbow. ACCAD's lying take holds still, so it adds nothing to lying down.
+- **Review and regression.**
+  - Both fighters' captured clips were rebuilt and every animation reimported, and packaged as `pkg-26-ceremony`.
+  - The new clips were reviewed frame by frame in Blender (`anim-20/ashka_intro_win_defeated.jpg`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-21`).
+
+### Captured flying knee (package `pkg-27-flyknee`)
+
+- **Timing.** The creator approved lengthening move timing where captured motion needs it, keeping advantage the
+  same. On that basis Ashka's flying knee went from startup 15 / total 41 to 24 / 52. The hits are now frames 24–26
+  and the travel (still 1.26 m) is spread over frames 3–25. Block stun grew by 2 frames, so advantage on block is
+  unchanged; the move knocks down on hit. All 257 core checks pass. It's one commit, so it is easy to revert if the
+  creator prefers the old timing.
+- **Motion.** Mixamo's jumping knee from part of its run-up (frames 9–48), which plays at about 1.5×:
+  - Forward travel kept at 90% to match the game's 1.26 m, jump height at 45% so the knee lands inside the hitbox
+    instead of a metre above it.
+  - No stance layer: it dragged the airborne legs back. The move blends in from her guard instead.
+  - The right knee drives up and forward on the active frames and reaches 0.46 m (hitbox 10–85 cm).
+- **Review and regression.**
+  - Ashka's clips were rebuilt and every animation reimported, and packaged as `pkg-27-flyknee`.
+  - The move script was recorded (`anim-22`). In game she crouches, leaps and drives the knee into Wren's body; Wren
+    is knocked down.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-23`). Move tables were regenerated.
+
+### Flying knee combos after the jab again (package `pkg-28-fs22`)
+
+- **What broke.** The startup of 24 cut a documented route: the combat contract says the flying knee ends strings, but
+  Ashka's jab leaves 22 frames of hitstun, so a jab into the flying knee no longer combo'd. Jab, elbow, flying knee
+  still did (27 frames of hitstun). No test covered the shorter route.
+- **Fix.** Startup 22 / total 50, the slowest timing that keeps the route. Hits are now frames 22–24 and the travel
+  covers frames 3–23. Advantage on hit and on block is unchanged. The take-off now plays at about 1.65× capture
+  speed (1.5× before). On the hit frame the knee is 0.49 m ahead of her (hitbox 10–85 cm).
+- **Test.** `example_combos_each_fighter` now also checks Light into toward + Special for both fighters (Wren's
+  tornado kick links with 0 frames to spare). It fails on the startup-24 data and passes on the new data. All 259
+  core checks pass.
+- **Every other cancel route still combos.** The one exception is Wren's 720 Hook Kick (startup 35), which never
+  combo'd from any string, by design.
+- **Review and regression.**
+  - Ashka's clips were rebuilt and every animation reimported, and packaged as `pkg-28-fs22`.
+  - The move script was recorded side by side with `pkg-27` (`anim-24`). In game it looks the same as before, just
+    quicker: she crouches, leaps and drives the knee into Wren's body, and Wren is knocked down. The training display
+    reads startup 22.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-25`). Move tables were regenerated.
+
+### Balanced teep and body kick (package `pkg-29-teep`)
+
+- **What was wrong.** ACCAD's push kick (Male2_G17) skips about 0.5 m forward into the kick. The game's teep travels
+  6 cm, so the retarget drops that step, and on the hit frame the foot was only 0.55 m out with the knee still
+  chambered. The reach step then slid her hips 0.5 m forward over a planted support foot. On the hit frame her hips
+  were 64 cm ahead of that foot with the torso upright: a lunge no one could balance, not a teep.
+- **Fix (no gameplay change).** Two new reach options for kicks and knees (`mocap.reach`):
+  - `skid` lets the support foot slide forward with the hips, the push-off skid real teeps have (here up to 12 cm).
+  - `balance` leans the upper body back against the hips' shift past the support foot, so the chest stays over it.
+- **Result.**
+  - **Teep.** The hip push is capped at 0.3 m. On the hit frame the hips are 39 cm ahead of the support foot
+    (the performer's own take has 21 cm), the head is back over the foot, and the foot is 0.93 m out (hitbox
+    30–145 cm). She stands upright and leans back, with the knee up and the foot driving forward.
+  - **Body kick.** Its hip push is only 7 cm, so it changes little: a slightly stronger lean back.
+  - **Step-in knee.** Already balanced (the take leans back over the hips), so it is unchanged.
+- **Trade-off.** At the teep's longest range the foot stops short of the opponent's body. Closing that gap
+  naturally would need a gameplay change (forward travel with a matching hitbox, or a shorter hitbox), which is the
+  creator's call.
+- **Review and regression.**
+  - The teep and body kick were reviewed frame by frame in Blender, before and after.
+  - Ashka's clips were rebuilt and every animation reimported, and packaged as `pkg-29-teep`.
+  - The move script was recorded side by side with `pkg-28` (`anim-26`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-27`).
+
+### Stepping elbow and knee (package `pkg-30-steps`)
+
+- **What was wrong.** The game carries Ashka 27 cm forward on her horizontal elbow and her step-in knee, but in
+  both takes the performer stays on the spot. Her feet stayed planted while her body was carried forward, so the
+  reach step pushed her hips past her front foot. On the elbow her rear foot came off the floor and she lunged with
+  the back leg stretched out. On the knee her support leg trailed diagonally behind her.
+- **Fix (no gameplay change).**
+  - A new `steps` clip option: the named foot steps forward, lifted a little, and lands one travel ahead, so it is
+    back under her once the travel ends. On the elbow the front foot steps on frames 2–7 and the rear foot follows
+    on frames 6–12. On the knee the support foot skips forward 3 cm high on frames 2–6.
+  - In stepping moves the hips follow the game's travel as it happens, instead of catching up over the whole clip.
+  - The reach step now treats a foot as planted by its ball, which stays on the floor when the heel lifts, and
+    blends between planted and carried. With the old 6 cm cut-off, the first stepping version made the elbow's rear
+    foot jump 37 cm in one frame as it rose past the line.
+- **Result.** Elbow: she steps in, stays compact and upright, and the elbow lands at 0.58 m (hitbox 10–72 cm).
+  Knee: the support leg is under her hips and she drives the knee up with the torso leaning back; the knee lands at
+  0.54 m (hitbox 8–70 cm). On every strike, the largest per-frame jump of a planted foot or the hips is now a normal
+  step's.
+- **Checked and left alone.** Wren's kicks keep her support foot under her hips; on the spinning back kick she leans
+  away from the kick, as she should.
+- **Review and regression.**
+  - The elbow and knee were reviewed frame by frame in Blender, before and after.
+  - Ashka's clips were rebuilt and every animation reimported, and packaged as `pkg-30-steps`.
+  - The move script was recorded side by side with `pkg-29` (`anim-28`). Its first jab misses, so its light
+    strings never reach the second and third hits. A new string script (`strings_review.txt`, outside the
+    repository) walks in first. Recorded on both builds (`anim-30`), the jab, elbow and knee all connect.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-29`).
+- **Wren rebuilt with the same code** (package `pkg-31-wren`), so the code in the repository reproduces both
+  fighters' clips. The only measurable change is her jab's rear foot, 3 cm on one frame. The same four suites
+  passed, with 0 failures and 0 warnings (`anim-31`).
+
+### Flame elbow with planted feet (package `pkg-32-flame`)
+
+- **What was wrong.** Foot planting was off for Ashka's flame elbow; it was turned off while a foot-height bug
+  (since fixed) made her look as if she knelt. Without it her feet moved with her body. Through the strike her
+  front foot stayed on the floor but slid 79 cm over the move, 44 cm of it after it should have landed.
+- **Fix.** Planting is back on. The front foot now lands and stays put through the hit and the follow-through.
+  Sliding along the floor dropped from 85 to 59 cm for the front foot and from 35 to 29 cm for the rear. What is
+  left is the performer's own low shuffle step at the start and the reset step in recovery. Her hips stay at
+  standing height (87–93 cm), so the kneeling look does not return. The elbow still lands at 0.68 m.
+- **Review and regression.**
+  - Ashka's clips were rebuilt and every animation reimported, and packaged as `pkg-32-flame`.
+  - The move script was recorded side by side with `pkg-30` (`anim-32`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-33`).
+
+### Wren's spinning back kick steps back into stance (package `pkg-33-backkick`)
+
+- **What was wrong.** A sweep of every captured strike for foot sliding (the feet in world space, with the game's
+  travel added back) found one more: after Wren's spinning back kick lands, her left foot slid 46 cm along the
+  floor back into her stance.
+- **Fix.** That foot now steps: it lifts up to 11 cm on frames 33–46 and lands where her stance puts it (a step
+  option, `[first, last, "body"]`). Sliding in the recovery dropped from 46 to 6 cm. During the spin the ball of her
+  support foot sweeps around the heel; that is the performer's own pivot and is unchanged. The rest of the kick is
+  unchanged.
+- **Other strikes.**
+  - The roundhouse, the 720 and Ashka's kicks show only pivots: the ball of the foot moves while the ankle stays.
+  - Both jabs end with the front foot gliding back about 25 cm into stance (Wren 27 cm, Ashka 24 cm). That is a
+    boxer's push-back shuffle, so it is left as it is.
+  - The teep's support foot keeps its 12 cm push-off skid, which slides back in recovery.
+- **Option split.** "Hips follow the travel" is now its own clip option (`follow_travel`), used by Ashka's elbow
+  and knee; their clips came out identical, checked frame by frame.
+- **Review and regression.**
+  - Wren's clips were rebuilt and every animation reimported, and packaged as `pkg-33-backkick`.
+  - The move script was recorded side by side with `pkg-32` (`anim-34`). In game she steps back into her guard
+    after the kick instead of gliding.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-35`).
+
+### Hand-keyed moves: spinning elbow and throws (package `pkg-34-spin`)
+
+The same world-space check, run on the moves that are still keyed by script (the spinning elbow, both bursts, the
+rolls, the grab and the three scripted throws):
+- **Rolls, bursts and the grab:** sound. The feet leave the floor and go over in the rolls, and the bursts and the
+  grab hold their feet.
+- **Wren's spinning back elbow.**
+  - Before: her whole stance turned about a point between her feet, so both feet swept round the floor (162 cm and
+    56 cm of sliding). On frame 5 her lead foot jumped 56 cm while on the floor. On the hit frames the elbow was
+    2–7 cm in front of her, short of its hitbox (10–88 cm).
+  - Now: the lead foot steps across with the travel and she turns on its ball. The rear foot tucks in and swings
+    round in the air (7–11 cm up), lands back in stance, and the lead foot steps back out. Sliding is 11 cm and 25 cm.
+    The elbow lands 32–35 cm out, inside the hitbox.
+- **Throws that turn round.** Wren's suplex and Ashka's clinch-turn trip each switch sides with a 180° turn. Their
+  earlier keys never set a turn, so the sampler snapped the whole turn into a single frame.
+  - Suplex: Wren's body mirrored in one frame (her head jumped 123 cm).
+  - Clinch-turn trip: Ashka's foot jumped 67 cm and Wren's (as the victim) 107 cm.
+  - The suplex's victim also jumped 40 cm.
+  - Now every turn starts from 0° and is interpolated. In the suplex Wren comes up out of the bridge, turns on a
+    quick pivot hop and settles into her stance facing back.
+  - Her worst one-frame head move is now 41 cm, a fast but continuous turn.
+  - Her floor sliding dropped from 124/38 to 23/20 cm.
+- **Not changed.** In the throws the victim still drops to the floor in a few frames, because the landing sits on
+  the throw's damage frame. A slower fall would need the throw timing changed.
+- **Review and regression.**
+  - The spinning elbow and the suplex were reviewed frame by frame in Blender, before and after.
+  - Every animation was rebuilt (the scripted build, then the captured clips over it) and reimported, and packaged
+    as `pkg-34-spin`.
+  - The light strings and both fighters' throws were recorded on `pkg-33` and `pkg-34` (`anim-36`, folders ending
+    `-2`). The first throw recording walked in for 1.2 s, which left the fighters 34 cm apart, outside the 26 cm
+    grab range, so every grab missed on both builds. The script now walks for 1.6 s, and the grabs connect.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-37`).
+
+### Clinch knees and clinch-turn footwork (package `pkg-35-clinch`)
+
+- **The clinch knee never rose.** On both knee frames Ashka's right knee stayed at 56 cm, barely above its resting
+  49 cm, and her foot pushed out low (45 cm forward, 19 cm up): a straight-legged shove, not a knee.
+  - The pose was right; the leg IK failed. The hand-keyed build bakes each frame into the bones, so the IK started
+    from the last frame's straight planted leg and could not fold it.
+  - Tested on its own from the rest pose, the same target solves cleanly. The leg IK now starts from the rest pose
+    every frame (`animlib.Rig.apply`).
+  - The knee now drives up to 98 cm, 48 cm out, into the bent-over opponent. Her floor sliding in the throw dropped
+    from 14/54 to 8/8 cm.
+  - The other hand-keyed moves change by 3 cm or less, except the rolls, whose knees bend in a slightly different
+    plane (up to 16 cm).
+- **Clinch-turn trip.**
+  - Ashka's feet were spun with her body, so they swept round the floor.
+  - Now the feet are placed independently of the turn. Her lead foot pivots in place while the rear foot swings
+    round into the sweep, then the lead foot steps through and the rear foot steps into her stance facing back.
+    Each step lifts 16–17 cm.
+  - Swung round by the clinch, Wren (the victim) now stumbles, each foot lifting in turn: her floor dragging
+    dropped from 139 to 60 cm.
+- **Clinch-knees fall.** The trip and the start of the fall moved from frame 41 to 39; the landing stays on the
+  damage frame (44). That gives the fall 5 frames instead of 3, and its worst one-frame move dropped from 107 to
+  86 cm. A truly gradual fall would need a longer throw.
+- **The rolls' landing** (feet jumping from the tuck to the stance on one frame) was left for the next package. A
+  cross-fade made it worse, because the two positions are too far apart for those few frames.
+- **Review and regression.**
+  - The clinch knee and the clinch turn were reviewed frame by frame in Blender, before and after.
+  - Every animation was rebuilt and reimported, and packaged as `pkg-35-clinch`.
+  - Both fighters' throws were recorded on `pkg-34` and `pkg-35` (`anim-38`). In game Ashka's long coat and Wren's
+    body hide most of the knee; the coat's front panels flare up as it rises.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-39`).
+
+### Rolls (package `pkg-36-rolls`)
+
+- **The back roll was an arch, not a roll.** Its tuck mirrored the forward roll's: chest and head curled back, feet
+  and knees aimed behind the pelvis. Rolling back, it opened into a back-handspring arch with the legs folding the
+  wrong way (knees dropped to 5–16 cm while the feet stayed higher). Both rolls now curl forward (rounded back, chin
+  in, knees to the chest); only the turn and the sit-back differ. She sits back, rolls onto her shoulders with her
+  legs over, and comes over into a crouch.
+- **Take-off and landing jumps.**
+  - The dip before the roll named no pelvis-relative feet, so the sampler applied the tuck's from the dip's first
+    frame and the feet jumped into it (up to 60 cm).
+  - As the roll came upright the feet switched from the tuck to the stance on one frame (up to 52 cm).
+  - Now the feet are keyed in character space onto where the tuck really holds them. That was measured on both
+    fighters: within ~2 cm at take-off and ~4 cm at landing.
+  - On landing the lead foot comes down on its stance spot and the rear foot swings through the air onto its own.
+  - After frame 16 no foot moves more than 15–19 cm in a frame (it was 65–85 cm). Floor sliding is unchanged
+    (15–22 cm).
+- **The last quarter turn** eased in at double speed straight out of the constant-speed tumble, so the knees
+  whipped up to 66 cm in a frame. It now keeps the tumble's speed. The largest moves left are the head diving
+  through the first quarter turn, about 50 cm a frame, which is the roll's speed: it is half a second long.
+- **Review and regression.**
+  - Both rolls were reviewed frame by frame in Blender, before and after.
+  - Every animation was rebuilt and reimported, and packaged as `pkg-36-rolls`.
+  - The move script, which includes both rolls for both fighters, was recorded on `pkg-35` and `pkg-36`
+    (`anim-40`). In game the back roll now sits back, goes over the shoulders tucked and comes up in a crouch.
+    Before, it went straight-legged into an arch, then floated in a sitting pose.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-41`).
+
+### Hand-keyed arms (package `pkg-37-arms`)
+
+- **Hands missed their targets.** The arm IK had the same flaw as the legs: it started each frame from the last baked
+  arm. Measured as the distance from each hand to its target:
+  - Wren's burst missed by up to 19 cm, Ashka's by 27 cm, Ashka's back roll by 20 cm, the throw escapes by 8–10 cm.
+  - With the arms also starting from rest, the misses are 2 cm, 10 cm, 6 cm and 4–5 cm.
+  - The feet now hit every target exactly.
+  - No move gained a new jump. The bursts' elbows move most (28–47 cm), since those were the arms most off target.
+- **The rolls' hands jumped like their feet did.** The hands switched between the guard and the tuck in one frame:
+  81–94 cm at take-off, 70–86 cm on landing.
+  - Now they are keyed onto where the tuck holds them (measured on both fighters) and come up into the guard by
+    frame 24.
+  - Nothing in either roll now moves more than 49 cm in a frame, and that is the fast dive.
+- **Review and regression.**
+  - Every animation was rebuilt and reimported, and packaged as `pkg-37-arms`.
+  - The move script, which includes both bursts and both rolls, was recorded on `pkg-36` and `pkg-37` (`anim-42`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-43`).
+
 ## Known limitations
 
 - **Not verified by a person:**
@@ -156,7 +747,17 @@ Defects found and fixed during review:
   - exclusive fullscreen mode switching (borderless and windowed were tested)
 - **Art.**
   - The fighters are built by script from a MakeHuman base, so close-up detail (faces, hair cards) is modest.
-  - Animation is keyed by script.
+  - Most motion comes from motion capture (ACCAD, Mixamo) placed on researched stances (after the release; see
+    "Changes after the release"):
+    - the idles, walks and held guards;
+    - the jabs, crosses, elbows, knee and kicks;
+    - Wren's double-leg slam;
+    - the intros, wins and defeated poses;
+    - the hit, block, knockdown, KO and get-up.
+
+    Wren's spinning elbow, both bursts, the rolls, the grabs and the other three throws are still
+    keyed by script on the same stances. The creator's playtest on 2026-11-03 rejected the scripted animation as
+    unnatural; the creator has judged videos of the replacements but has not played them.
   - Coat panels can clip in the most extreme spins.
   - Only Wren's primary outfit is included.
 - **Presentation.** At 60 Hz on the test desktop with V-Sync (see Performance).

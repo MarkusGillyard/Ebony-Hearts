@@ -58,8 +58,20 @@ struct FEHMenuItem
 	TFunction<FString()> Value;          // optional right-hand value
 	TFunction<void(int32)> Change;        // left/right
 	TFunction<void()> Activate;           // confirm
+	// Optional painter for the right-hand value (button glyphs); draws right-aligned at the anchor.
+	TFunction<void(FEHPainter&, FVector2f, bool)> PaintValue;
 	FString Hint;
 	bool bHeader = false;
+};
+
+// One entry of a prompt row: a gameplay action or a menu command, and its label.
+struct FEHHint
+{
+	EEHAction Action = EEHAction::Count;
+	EEHNav Nav = EEHNav::Count;
+	FString Label;
+	static FEHHint Act(EEHAction A, const FString& L) { FEHHint H; H.Action = A; H.Label = L; return H; }
+	static FEHHint Menu(EEHNav N, const FString& L) { FEHHint H; H.Nav = N; H.Label = L; return H; }
 };
 
 struct FEHBanner
@@ -234,6 +246,8 @@ private:
 	TArray<FString> AutoLog;
 	TArray<float> FrameTimes;
 	bool bRecordFrames = false;
+	float InputLogLeft = 0.0f;       // automation: log every press and held-state change while > 0
+	TMap<int32, uint32> InputLogHeld;
 	int32 AutoMatches = 0;
 	double AutoStart = 0.0;
 
@@ -262,9 +276,28 @@ private:
 	void BuildSettingsMenu(int32 Page);
 	void BuildBindingsMenu(EEHBindingSet Set);
 	int32 SettingsPage = 0;
+	// Controls: one layout (BindingSet) at a time. Pages: 0 action list, 1 one action, 2 conflict, 3 restore confirm.
 	EEHBindingSet BindingSet = EEHBindingSet::KeyboardA;
-	int32 CaptureAction = -1;
+	bool bResetAllLayouts = false;   // page 3 restores every layout, not just BindingSet
+	int32 BindingPage = 0;
+	int32 BindingAction = 0;
+	int32 BindingListIndex = 0;
+	int32 CaptureAction = -1;        // >= 0 while waiting for the new button
 	int32 CaptureSlot = 0;
+	float CaptureLeft = 0.0f;        // an unanswered capture cancels itself after this many seconds
+	FKey PendingKey;
+	FEHBindingRef PendingConflict;
+	void BeginBindingCapture(int32 Slot);
+	// Applies a captured key: free keys are bound at once; a key another action uses opens the conflict page.
+	void ApplyCapturedKey(const FKey& Key);
+	void ResolveConflict(bool bSwap);
+	void BindingsChanged(const FString& Message);
+	EEHDeviceKind KindForSet(EEHBindingSet Set) const;
+	void PaintBindingValue(FEHPainter& P, FVector2f Right, EEHBindingSet Set, EEHAction Action, int32 OnlySlot, bool bSel);
+	FString KeyName(EEHBindingSet Set, const FKey& Key) const;
+	// The name a player sees for a button on a device kind ("Square", "X", "bottom face button", "J").
+	static FString ButtonNameOf(EEHDeviceKind Kind, const FKey& Key);
+	void AssignGamepadPlayers();
 
 	// Simulation
 	void SimStep();
@@ -295,11 +328,15 @@ private:
 	void PaintMoveList(FEHPainter& P);
 	void PaintCredits(FEHPainter& P);
 	void PaintError(FEHPainter& P);
-	// Draws one button glyph and returns its width.
-	float PaintPrompt(FEHPainter& P, FVector2f Pos, EEHAction Action, int32 Device, float Height = 30.0f);
-	void PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<TPair<EEHAction, FString>>& Items, int32 Device);
-	FString PromptText(EEHAction Action, int32 Device) const;
+	// Draws one key or button glyph at Pos (or only measures it) and returns its width.
+	float PaintKeyGlyph(FEHPainter& P, FVector2f Pos, EEHDeviceKind Kind, const FKey& Key, float Height, bool bMeasureOnly = false);
+	// The button a device's player presses for a gameplay action or a menu command, drawn as a glyph.
+	float PaintPrompt(FEHPainter& P, FVector2f Pos, const FEHHint& Hint, int32 Device, float Height = 30.0f);
+	void PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<FEHHint>& Items, int32 Device);
 	EEHDeviceKind PromptKind(int32 Device) const;
+	// The layout a prompt for this device reads: its keyboard side, or its controller layout.
+	EEHBindingSet PromptSet(int32 Device) const;
+	FKey PromptKey(const FEHHint& Hint, int32 Device) const;
 	void PaintHitboxes(FEHPainter& P);
 
 	// Automation
@@ -307,7 +344,11 @@ private:
 	void TickAutomation(float DeltaSeconds);
 	void AutoLogLine(const FString& Line);
 	void WriteEvidence(const FString& Name, const FString& Text);
-	void AutoInject(int32 Device, EEHAction Action);
+	// press/hold/release by name: a gameplay action presses the device's bound key, a menu command its fixed key.
+	bool AutoKey(int32 Device, const FString& Name, FKey& OutKey) const;
+	void AutoInject(int32 Device, const FKey& Key);
+	void RunBindingsSelfTest();
+	void RunInputSelfTest();
 	eh::InputFrame AutoBotInput(int32 Player);
 	void AutoReleaseBots();
 };

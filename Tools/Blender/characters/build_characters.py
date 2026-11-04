@@ -84,6 +84,8 @@ def build(cid):
     body, rig, parts, hinfo = Bd.build(cfg, name)
     R.add_twist_bones(rig)
     W = R.split_twist_weights(body, rig)
+    R.add_half_joints(rig)
+    W = R.split_half_weights(body, rig, W)
     M.set_weights(body, M.normalize_limit(W, cfg["weight_limit"]))
     hi = head_ctx(body, rig, parts)
     eyes_info = Bd.eye_centers(parts["eyes"])
@@ -132,6 +134,7 @@ def build(cid):
     report["hair"] = hair_info
     M.delete_faces(body, hide)
     R.twist_constraints(rig)
+    R.half_constraints(rig)
 
     # ---------------------------------------------------------------- bind, weights
     objs = [o for lst in mats.values() for o in lst]
@@ -255,6 +258,7 @@ def build(cid):
     report["lod1_triangles"] = export_lod1(lod1, rig, objs, cfg["lod1_ratio"])
     R.write_bones_json(rig, os.path.join(out, "bones.json"), cfg["display_name"], extra={
         "twist_bones": {tw[0]: {"parent": tw[1], "driven_by": tw[2], "factor": tw[3]} for tw in R.TWIST},
+        "half_joints": {h[0]: {"limb": h[1], "parent": h[2], "factor": 0.5} for h in R.HALF},
         "blender_only_helpers": [b.name for b in rig.data.bones if not b.use_deform],
     })
     report["fbx_settings"] = {k: (sorted(v) if isinstance(v, set) else v) for k, v in FBX_SETTINGS.items()}

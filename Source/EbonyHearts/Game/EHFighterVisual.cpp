@@ -39,40 +39,47 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 	case eh::FState::Neutral:
 		A.Key = F.walk > 0 ? FName(TEXT("WalkF")) : (F.walk < 0 ? FName(TEXT("WalkB")) : FName(TEXT("Idle")));
 		A.bLoop = true;
-		A.BlendSeconds = 0.12f;
+		A.BlendSeconds = 0.22f;
 		break;
 	case eh::FState::Guard:
 		A.Key = TEXT("Guard");
 		A.bLoop = true;
-		A.BlendSeconds = 0.05f;
+		A.BlendSeconds = 0.10f;
 		break;
 	case eh::FState::Attack:
 	{
 		const eh::MoveDef& M = Match.Character(Player).moves[static_cast<size_t>(F.move)];
 		A.Key = FName(UTF8_TO_TCHAR(M.anim.c_str()));
 		A.Frame = F.moveFrame;
-		A.BlendSeconds = M.kind == eh::MoveKind::Dodge ? 0.04f : 0.035f;
+		// Blend over most of the startup, so the move is entirely on its own keys by its first active frame.
+		int32 FirstActive = M.total;
+		for (const eh::HitDef& Hit : M.hits)
+		{
+			FirstActive = FMath::Min(FirstActive, Hit.frames.first);
+		}
+		const float Startup = static_cast<float>(FMath::Max(1, FirstActive - 1)) / static_cast<float>(eh::kTickHz);
+		A.BlendSeconds = M.kind == eh::MoveKind::Dodge ? 0.08f : FMath::Clamp(0.75f * Startup, 0.05f, 0.15f);
 		break;
 	}
 	case eh::FState::Hitstun:
 		A.Key = F.reaction >= 2 ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight"));
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.025f;
+		A.BlendSeconds = 0.06f;
 		break;
 	case eh::FState::Blockstun:
 		A.Key = TEXT("BlockHit");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.03f;
+		A.BlendSeconds = 0.06f;
 		break;
 	case eh::FState::Knockdown:
 		A.Key = F.reaction == 3 ? FName(TEXT("KnockdownLie")) : FName(TEXT("Knockdown"));
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.03f;
+		A.BlendSeconds = 0.08f;
 		break;
 	case eh::FState::Getup:
 		A.Key = TEXT("Getup");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.06f;
+		A.BlendSeconds = 0.15f;
 		break;
 	case eh::FState::Throwing:
 	case eh::FState::Thrown:
@@ -81,28 +88,28 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		const eh::ThrowDef& T = Owner.throws[static_cast<size_t>(F.throwIndex >= 0 ? F.throwIndex : 0)];
 		A.Key = FName(UTF8_TO_TCHAR((F.state == eh::FState::Throwing ? T.attackerAnim : T.victimAnim).c_str()));
 		A.Frame = FMath::Max(1, F.throwFrame);
-		A.BlendSeconds = 0.04f;
+		A.BlendSeconds = 0.10f;
 		break;
 	}
 	case eh::FState::Tech:
 		A.Key = TEXT("ThrowTech");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.04f;
+		A.BlendSeconds = 0.08f;
 		break;
 	case eh::FState::KO:
 		A.Key = TEXT("KO");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.04f;
+		A.BlendSeconds = 0.10f;
 		break;
 	case eh::FState::Win:
 		A.Key = TEXT("Win");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.15f;
+		A.BlendSeconds = 0.30f;
 		break;
 	case eh::FState::Defeated:
 		A.Key = TEXT("Defeated");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.15f;
+		A.BlendSeconds = 0.30f;
 		break;
 	}
 	return A;
@@ -213,8 +220,6 @@ void AEHFighterVisual::Setup(const FEHCharacterPresentation& InPresentation, int
 	Missing.Reset();
 	CurrentKey = NAME_None;
 	CurrentInstance = -1;
-	PreviousKey = NAME_None;
-	BlendLeft = 0.0f;
 	AuraIntensity = 0.0f;
 }
 
@@ -311,18 +316,12 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 		NewTime = (static_cast<double>(Choice.Frame) - 1.0 + (bFrozen ? 0.0 : Alpha)) / static_cast<double>(eh::kTickHz);
 	}
 	const bool bRestart = Choice.Key != CurrentKey || (!Choice.bLoop && NewTime + 1e-6 < CurrentTime - 0.5 / eh::kTickHz);
+	UEHAnimInstance* Inst = Cast<UEHAnimInstance>(Mesh->GetAnimInstance());
 	if (bRestart)
 	{
-		if (!CurrentKey.IsNone() && Choice.BlendSeconds > 0.0f)
+		if (Inst)
 		{
-			PreviousKey = CurrentKey;
-			PreviousTime = CurrentTime;
-			BlendTotal = Choice.BlendSeconds;
-			BlendLeft = Choice.BlendSeconds;
-		}
-		else
-		{
-			BlendLeft = 0.0f;
+			Inst->BeginTransition(CurrentKey.IsNone() ? 0.0f : Choice.BlendSeconds);
 		}
 		if (Choice.bLoop && Choice.Key != CurrentKey)
 		{
@@ -332,19 +331,17 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 		CurrentKey = Choice.Key;
 	}
 	CurrentTime = NewTime;
-	BlendLeft = FMath::Max(0.0f, BlendLeft - DeltaSeconds);
 
 	UAnimSequence* Cur = FindAnim(CurrentKey);
-	UAnimSequence* Prev = BlendLeft > 0.0f ? FindAnim(PreviousKey) : nullptr;
 	double CurSample = CurrentTime;
 	if (Cur)
 	{
 		const double Length = Cur->GetPlayLength();
 		CurSample = Choice.bLoop ? FMath::Fmod(CurrentTime, FMath::Max(Length, 1e-3)) : FMath::Clamp(CurrentTime, 0.0, Length);
 	}
-	if (UEHAnimInstance* Inst = Cast<UEHAnimInstance>(Mesh->GetAnimInstance()))
+	if (Inst)
 	{
-		Inst->SetSamples(Cur, CurSample, Prev, PreviousTime, BlendTotal > 0.0f ? BlendLeft / BlendTotal : 0.0f);
+		Inst->SetSample(Cur, CurSample);
 	}
 	UpdateAura(Time);
 }

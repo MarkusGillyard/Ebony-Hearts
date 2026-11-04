@@ -10,7 +10,7 @@
     {
       "id": "wren_takedown", "name": "Double-Leg Slam",
       "attackerAnim": "ThrowF", "victimAnim": "Victim_WrenThrowF",
-      "duration": 56, "damageFrame": 34, "damage": 110,
+      "duration": 74, "damageFrame": 34, "damage": 110,
       "holdX": 50, "landX": 120, "victimKnockdown": 34
     },
     {
@@ -22,18 +22,18 @@
   ],
   "moves": [
     {
-      "id": "L1", "name": "Jab", "anim": "L1", "kind": "strike", "button": "light", "dir": "any", "total": 15,
-      "hits": [{"frames": [5, 6], "box": [18, 128, 78, 156], "damage": 30, "hitstun": 15, "blockstun": 11, "hitstop": 7, "hitPush": 14, "blockPush": 24}],
-      "travel": [{"frames": [2, 5], "vx": 1.5}],
-      "hurt": [{"frames": [5, 10], "box": [0, 122, 70, 160]}],
-      "cancel": {"frames": [5, 14], "onHit": true, "onBlock": true, "into": ["L2", "@special"]}
+      "id": "L1", "name": "Jab", "anim": "L1", "kind": "strike", "button": "light", "dir": "any", "total": 20,
+      "hits": [{"frames": [8, 9], "box": [18, 128, 78, 156], "damage": 30, "hitstun": 17, "blockstun": 13, "hitstop": 7, "hitPush": 14, "blockPush": 24}],
+      "travel": [{"frames": [2, 8], "vx": 0.86}],
+      "hurt": [{"frames": [8, 14], "box": [0, 122, 70, 160]}],
+      "cancel": {"frames": [8, 19], "onHit": true, "onBlock": true, "into": ["L2", "@special"]}
     },
     {
-      "id": "L2", "name": "Cross", "anim": "L2", "kind": "strike", "button": "light", "chainOnly": true, "total": 19,
-      "hits": [{"frames": [6, 7], "box": [15, 125, 85, 155], "damage": 36, "hitstun": 17, "blockstun": 12, "hitstop": 8, "hitPush": 18, "blockPush": 28}],
-      "travel": [{"frames": [2, 6], "vx": 2.5}],
-      "hurt": [{"frames": [6, 12], "box": [0, 120, 78, 160]}],
-      "cancel": {"frames": [6, 16], "onHit": true, "onBlock": true, "into": ["L3", "@special"]}
+      "id": "L2", "name": "Cross", "anim": "L2", "kind": "strike", "button": "light", "chainOnly": true, "total": 24,
+      "hits": [{"frames": [9, 10], "box": [15, 125, 85, 155], "damage": 36, "hitstun": 19, "blockstun": 14, "hitstop": 8, "hitPush": 18, "blockPush": 28}],
+      "travel": [{"frames": [2, 9], "vx": 1.57}],
+      "hurt": [{"frames": [9, 16], "box": [0, 120, 78, 160]}],
+      "cancel": {"frames": [9, 21], "onHit": true, "onBlock": true, "into": ["L3", "@special"]}
     },
     {
       "id": "L3", "name": "Spinning Back Elbow", "anim": "L3", "kind": "strike", "button": "light", "chainOnly": true, "total": 30,
@@ -42,31 +42,31 @@
       "hurt": [{"frames": [9, 18], "box": [0, 118, 76, 162]}]
     },
     {
-      "id": "H", "name": "Roundhouse Kick", "anim": "H", "kind": "strike", "button": "heavy", "dir": "any", "total": 34,
-      "hits": [{"frames": [12, 14], "box": [30, 105, 140, 165], "damage": 88, "hitstun": 24, "blockstun": 16, "hitstop": 12, "hitPush": 70, "blockPush": 60, "heavy": true, "knockdownOnCounter": true}],
-      "travel": [{"frames": [3, 10], "vx": 1.5}],
-      "hurt": [{"frames": [10, 26], "box": [20, 95, 130, 150]}],
-      "cancel": {"frames": [12, 20], "onHit": true, "into": ["@special"]}
+      "id": "H", "name": "Roundhouse Kick", "anim": "H", "kind": "strike", "button": "heavy", "dir": "any", "total": 47,
+      "hits": [{"frames": [16, 18], "box": [30, 105, 140, 165], "damage": 88, "hitstun": 33, "blockstun": 25, "hitstop": 12, "hitPush": 70, "blockPush": 60, "heavy": true, "knockdownOnCounter": true}],
+      "travel": [{"frames": [4, 13], "vx": 1.2}],
+      "hurt": [{"frames": [13, 35], "box": [20, 95, 130, 150]}],
+      "cancel": {"frames": [16, 27], "onHit": true, "into": ["@special"]}
     },
     {
-      "id": "FH", "name": "Spinning Back Kick", "anim": "FH", "kind": "strike", "button": "heavy", "dir": "forward", "total": 38,
-      "hits": [{"frames": [15, 17], "box": [35, 100, 150, 150], "damage": 100, "hitstun": 26, "blockstun": 18, "hitstop": 13, "hitPush": 120, "blockPush": 95, "heavy": true, "knockdownOnCounter": true}],
-      "travel": [{"frames": [4, 14], "vx": 3.5}],
-      "hurt": [{"frames": [13, 28], "box": [20, 95, 135, 150]}]
+      "id": "FH", "name": "Spinning Back Kick", "anim": "FH", "kind": "strike", "button": "heavy", "dir": "forward", "total": 47,
+      "hits": [{"frames": [21, 23], "box": [35, 100, 150, 150], "damage": 100, "hitstun": 29, "blockstun": 21, "hitstop": 13, "hitPush": 120, "blockPush": 95, "heavy": true, "knockdownOnCounter": true}],
+      "travel": [{"frames": [5, 20], "vx": 2.41}],
+      "hurt": [{"frames": [18, 36], "box": [20, 95, 135, 150]}]
     },
     {
-      "id": "S", "name": "720 Hook Kick", "anim": "S", "kind": "strike", "button": "special", "dir": "neutral", "total": 58,
-      "hits": [{"frames": [26, 28], "box": [25, 120, 170, 186], "damage": 165, "chip": 16, "hitstun": 0, "blockstun": 18, "hitstop": 16, "hitPush": 160, "blockPush": 70, "heavy": true, "knockdown": true}],
-      "travel": [{"frames": [6, 24], "vx": 3.2}],
-      "airborne": [8, 32],
-      "hurt": [{"frames": [8, 32], "box": [-28, 30, 30, 192], "replaceBase": true}, {"frames": [26, 40], "box": [20, 115, 150, 175]}]
+      "id": "S", "name": "720 Hook Kick", "anim": "S", "kind": "strike", "button": "special", "dir": "neutral", "total": 78,
+      "hits": [{"frames": [35, 37], "box": [25, 120, 170, 186], "damage": 165, "chip": 16, "hitstun": 0, "blockstun": 29, "hitstop": 16, "hitPush": 160, "blockPush": 70, "heavy": true, "knockdown": true}],
+      "travel": [{"frames": [8, 32], "vx": 2.43}],
+      "airborne": [11, 42],
+      "hurt": [{"frames": [11, 42], "box": [-28, 30, 30, 192], "replaceBase": true}, {"frames": [35, 53], "box": [20, 115, 150, 175]}]
     },
     {
-      "id": "FS", "name": "Tornado Kick", "anim": "FS", "kind": "strike", "button": "special", "dir": "forward", "total": 39,
-      "hits": [{"frames": [13, 15], "box": [20, 110, 120, 172], "damage": 105, "chip": 10, "hitstun": 0, "blockstun": 16, "hitstop": 13, "hitPush": 140, "blockPush": 80, "heavy": true, "knockdown": true}],
-      "travel": [{"frames": [2, 14], "vx": 7.5}],
-      "airborne": [4, 18],
-      "hurt": [{"frames": [4, 18], "box": [-26, 25, 26, 188], "replaceBase": true}]
+      "id": "FS", "name": "Tornado Kick", "anim": "FS", "kind": "strike", "button": "special", "dir": "forward", "total": 52,
+      "hits": [{"frames": [17, 19], "box": [20, 110, 120, 172], "damage": 105, "chip": 10, "hitstun": 0, "blockstun": 25, "hitstop": 13, "hitPush": 140, "blockPush": 80, "heavy": true, "knockdown": true}],
+      "travel": [{"frames": [2, 18], "vx": 5.74}],
+      "airborne": [5, 23],
+      "hurt": [{"frames": [5, 23], "box": [-26, 25, 26, 188], "replaceBase": true}]
     },
     {
       "id": "BS", "name": "Spirit Enhanced Strikes", "anim": "BS", "kind": "buff", "button": "special", "dir": "back", "total": 44, "meterCost": 1000,
@@ -84,7 +84,7 @@
       "travel": [{"frames": [2, 18], "vx": 9.0}]
     },
     {
-      "id": "DB", "name": "Back Roll", "anim": "DB", "kind": "dodge", "button": "dodge", "dir": "any", "total": 28,
+      "id": "DB", "name": "Back Roll", "anim": "DB", "kind": "dodge", "button": "dodge", "dir": "any", "total": 32,
       "invulnStrike": [3, 13],
       "travel": [{"frames": [2, 16], "vx": -7.5}]
     }

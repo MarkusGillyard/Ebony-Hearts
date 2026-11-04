@@ -9,20 +9,21 @@ checks; they have not yet been validated by human playtesting.
 
 Movement is left/right. There are six combat actions, with no motion inputs and no chords:
 
-| Action | Keyboard (left side) | Keyboard (right side) | Gamepad |
-|---|---|---|---|
-| Light | J | Numpad 1 / , | South face (Cross / A) |
-| Heavy | K | Numpad 2 / . | East face (Circle / B) |
-| Special | L | Numpad 3 / / | North face (Triangle / Y) |
-| Grab | I | Numpad 5 / ; | West face (Square / X) |
-| Dodge | O | Numpad 6 / ' | L1 / LB (or L2 / LT) |
-| Block (hold) | Space | Numpad 0 / Right Shift | R1 / RB (or R2 / RT) |
-| Move | A / D | Arrow keys | D-pad or left stick |
-| Pause | Escape | Numpad 9 / = | Options / Menu |
-| Training reset | R | Numpad 7 / - | Share / View |
+| Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
+|---|---|---|---|---|
+| Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
+| Light | J, or Enter | Numpad 1, or , | Square | X |
+| Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
+| Special | L | Numpad 3, or / | R1 | RB |
+| Grab | I | Numpad 5, or ; | Cross, or L1 | A, or LB |
+| Dodge | O | Numpad 6, or ' | Circle | B |
+| Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
+| Pause | Escape | Numpad 9, or = | Options | Menu |
+| Training reset | R | Numpad 7, or - | Share | View |
 
-In menus, Light confirms and Heavy goes back. Every binding can be changed under Settings > Controls. A key can only be
-bound once across both keyboard layouts, and reassigning a taken key swaps or clears the old binding and says so.
+Grab has two independent default controller buttons (Cross / A and L1 / LB). Block reads the analog trigger. Menus use
+fixed controls separate from these gameplay layouts. Every gameplay action can be remapped; a taken button is never
+silently reassigned (swap, replace or cancel). See [Controls](Controls.md).
 Direction modifiers are relative to the opponent: "toward" and "away" are judged when the button is pressed, so a side
 switch between the press and the move cannot reverse it.
 
@@ -71,7 +72,7 @@ Detection outcomes:
 | Punish | +4 hitstun, x1.20 damage | Hitting a move's recovery, a whiffed grab or a dodge's vulnerable frames. |
 | Combo scaling | 100, 100, 80, 70, 60, 50, 40% | Per hit in a combo; the last value repeats. |
 | Hitstun decay | -2 per hit from the 3rd | Floor of 8 ticks. Combined with pushback this ends every route; a randomized search finds no combo longer than 5 hits. |
-| Knockdown | 42 lying + 20 rising | Fully invulnerable. After waking, the fighter cannot be grabbed for 6 ticks; after leaving hitstun or blockstun, for 4. |
+| Knockdown | 42 lying + 60 rising | Fully invulnerable. After waking, the fighter cannot be grabbed for 6 ticks; after leaving hitstun or blockstun, for 4. |
 | Block | hold | Instant on an actionable tick. No walking while blocking. Blockstun and pushback are per move. Specials chip, but chip never KOs. |
 | Timed block (deflect) | 4-tick window | A fresh Block press 0-3 ticks before contact deflects: 4 fewer blockstun ticks, no chip, more gauge. A press that does not deflect locks out deflects for the next 12 ticks, so mashing never works. Holding Block still blocks everything. |
 | Grab | startup 5, active 2 | Range is the gap between the fighters' fronts (Wren 26 cm, Ashka 30 cm). Whiff recovery 26-27. Beats blocking and recovery; cannot grab airborne, stunned, knocked-down or grab-invulnerable fighters. |
@@ -91,7 +92,7 @@ Shared structure: each fighter has a Light string, Heavy, toward + Heavy, three 
 **Wren Ku** is an all-rounder with kicking reach, spinning and flying techniques, and real grappling. Her Light string
 is jab, cross, spinning back elbow. Heavy is a long roundhouse kick; toward + Heavy is an advancing spinning back kick.
 Her specials:
-- **720 Hook Kick** (neutral). The signature technique, deliberately slow: startup 26 and airborne from frame 8. It can
+- **720 Hook Kick** (neutral). The signature technique, deliberately slow: startup 35 and airborne from frame 11. It can
   be read and answered, since hitting her in the air knocks her down. It has big reach and damage, and it is heavily punishable on block (see the table).
 - **Tornado Kick** (toward). Travels and ends Light strings.
 - **Spirit Enhanced Strikes** (away). Spends a full gauge. The golden lightning aura lasts 8 s (480 ticks), raises
@@ -110,8 +111,8 @@ is a long teep with large pushback. Her Lamplighter Flame variations:
 Her flame attacks deal energy damage, which is what Spirit Enhanced Strikes defends against. Her grabs are clinch knees
 (toward/neutral) and a clinch turn trip (away), which switches sides.
 
-Verified example combos (`Tests/Core`, `example_combos_each_fighter`): Light, Light, Light, and Light, Light into
-toward + Special, from up to 100 cm, for both fighters.
+Verified example combos (`Tests/Core`, `example_combos_each_fighter`): Light, Light, Light; Light, Light into
+toward + Special; and Light into toward + Special, from up to 100 cm, for both fighters.
 
 <!-- move-tables:begin -->
 
@@ -121,21 +122,21 @@ Health 1000; walk 2.8 cm/frame forward, 2.4 back; pushbox half-width 24 cm; stan
 
 | Input | Move | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Light | Jab | 5 | 2 | 9 | 82 | 30 | +1 | +5 | L2, @special on hit/block (5-14) | - | Fast check. Chains into Cross, cancels into specials. | `L1` |
-| Light, Light | Cross | 6 | 2 | 12 | 95 | 36 | -1 | +4 | L3, @special on hit/block (6-16) | - | Second hit of the string. Cancels into the third hit or a special. | `L2` |
+| Light | Jab | 8 | 2 | 11 | 83 | 30 | +1 | +5 | L2, @special on hit/block (8-19) | - | Fast check. Chains into Cross, cancels into specials. | `L1` |
+| Light, Light | Cross | 9 | 2 | 14 | 96 | 36 | -1 | +4 | L3, @special on hit/block (9-21) | - | Second hit of the string. Cancels into the third hit or a special. | `L2` |
 | Light x3 | Spinning Back Elbow | 9 | 3 | 19 | 109 | 52 | -7 | +1 | - | - | String ender. Pushes back; punishable up close on block. | `L3` |
-| Heavy | Roundhouse Kick | 12 | 3 | 20 | 152 | 88 | -6 | +2 (KD on counter) | @special on hit (12-20) | - | Long kick. Special-cancel on hit; knocks down on counter. | `H` |
-| toward + Heavy | Spinning Back Kick | 15 | 3 | 21 | 188 | 100 | -5 | +3 (KD on counter) | - | - | Advancing spin with big pushback; safe at tip range. | `FH` |
-| Special | 720 Hook Kick | 26 | 3 | 30 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
-| toward + Special | Tornado Kick | 13 | 3 | 24 | 202 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick. Ends light strings; knocks down. | `FS` |
+| Heavy | Roundhouse Kick | 16 | 3 | 29 | 152 | 88 | -6 | +2 (KD on counter) | @special on hit (16-27) | - | Long kick. Special-cancel on hit; knocks down on counter. | `H` |
+| toward + Heavy | Spinning Back Kick | 21 | 3 | 24 | 189 | 100 | -5 | +3 (KD on counter) | - | - | Advancing spin with big pushback; safe at tip range. | `FH` |
+| Special | 720 Hook Kick | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
+| toward + Special | Tornado Kick | 17 | 3 | 33 | 206 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick. Ends light strings; knocks down. | `FS` |
 | away + Special | Spirit Enhanced Strikes | applies 24 | - | 44 | - | - | - | - | - | 1000 | Full gauge: more strike damage, half damage from flame for 8 s. | `BS` |
 | Grab | Grab | 5 | 2 | 27 | grab 26 | - | - | throw | - | - | Beats blocking. Toward: double-leg slam. Away: belly-to-belly suplex, swaps sides. | `T` |
 | toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. Can be grabbed. | `DF` |
-| Dodge (away/neutral) | Back Roll | invuln 3-13 | - | 15 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
+| Dodge (away/neutral) | Back Roll | invuln 3-13 | - | 19 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
 
 | Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
 |---|---|---|---|---|---|---|
-| Double-Leg Slam | 56 | 34 | 110 | 120 cm in front | 34 | `ThrowF` / `Victim_WrenThrowF` |
+| Double-Leg Slam | 74 | 34 | 110 | 120 cm in front | 34 | `ThrowF` / `Victim_WrenThrowF` |
 | Belly-to-Belly Suplex | 60 | 38 | 120 | 110 cm behind (side switch) | 36 | `ThrowB` / `Victim_WrenThrowB` |
 
 ### Ashka Rook
@@ -144,17 +145,17 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
 
 | Input | Move | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Light | Jab | 5 | 2 | 8 | 76 | 28 | +2 | +6 | L2, @special on hit/block (5-13) | - | Fast jab. Chains into the elbow, cancels into specials. | `L1` |
-| Light, Light | Horizontal Elbow | 6 | 2 | 10 | 97 | 40 | +2 | +6 | L3, @special on hit/block (6-15) | - | Stepping horizontal elbow. Cancels into the knee or a special. | `L2` |
+| Light | Jab | 8 | 2 | 15 | 77 | 28 | +2 | +6 | L2, @special on hit/block (8-22) | - | Fast jab. Chains into the elbow, cancels into specials. | `L1` |
+| Light, Light | Horizontal Elbow | 9 | 2 | 20 | 99 | 40 | +2 | +6 | L3, @special on hit/block (9-26) | - | Stepping horizontal elbow. Cancels into the knee or a special. | `L2` |
 | Light x3 | Step-In Knee | 8 | 3 | 17 | 97 | 54 | -5 | +3 | - | - | Driving knee. String ender. | `L3` |
-| Heavy | Body Kick | 11 | 3 | 19 | 138 | 84 | -6 | +3 (KD on counter) | @special on hit (11-19) | - | Muay Thai body kick. Special-cancel on hit. | `H` |
-| toward + Heavy | Teep | 9 | 3 | 17 | 152 | 60 | -3 | +1 (KD on counter) | - | - | Teep. Long reach, huge pushback; controls space. | `FH` |
+| Heavy | Body Kick | 16 | 3 | 27 | 138 | 84 | -6 | +3 (KD on counter) | @special on hit (16-27) | - | Muay Thai body kick. Special-cancel on hit. | `H` |
+| toward + Heavy | Teep | 16 | 3 | 19 | 152 | 60 | -3 | +1 (KD on counter) | - | - | Teep. Long reach, huge pushback; controls space. | `FH` |
 | Special | Flame Elbow | 12 | 3 | 25 | 149 | 115 (chip 12) | -11 | knockdown | - | - | Leaping downward elbow wreathed in crimson flame. Knocks down. | `S` |
-| toward + Special | Flying Knee | 15 | 3 | 24 | 202 | 120 (chip 12) | -11 | knockdown | - | - | Flying knee with flame. Ends light strings; knocks down. | `FS` |
+| toward + Special | Flying Knee | 22 | 3 | 26 | 207 | 120 (chip 12) | -11 | knockdown | - | - | Flying knee with flame. Ends light strings; knocks down. | `FS` |
 | away + Special | Flame Burst | 7 | 4 | 39 | 125 | 115 (chip 12) | -28 | knockdown | - | 500 | Half gauge: invulnerable flame burst. Heavily punishable if blocked. | `BS` |
 | Grab | Clinch | 5 | 2 | 26 | grab 30 | - | - | throw | - | - | Beats blocking. Toward: clinch knees. Away: clinch turn, swaps sides. | `T` |
 | toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. Can be grabbed. | `DF` |
-| Dodge (away/neutral) | Back Roll | invuln 3-12 | - | 14 | - | - | - | - | - | - | Quick retreating roll. Recovery is punishable. | `DB` |
+| Dodge (away/neutral) | Back Roll | invuln 3-12 | - | 18 | - | - | - | - | - | - | Quick retreating roll. Recovery is punishable. | `DB` |
 
 | Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
 |---|---|---|---|---|---|---|

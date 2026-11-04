@@ -16,7 +16,7 @@
   "techFrames": 20,
   "techPush": 120,
   "knockdownFrames": 42,
-  "getupFrames": 20,
+  "getupFrames": 60,
   "wakeThrowInvuln": 6,
   "stunThrowInvuln": 4,
   "dodgeLockout": 14,

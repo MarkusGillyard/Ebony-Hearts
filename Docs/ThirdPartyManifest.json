@@ -392,6 +392,127 @@
    ]
   },
   {
+   "id": "accad/male2_bvh",
+   "title": "ACCAD mocap Data: Male 2 (149 BVH takes)",
+   "creator": "ACCAD (Advanced Computing Center for the Arts and Design), The Ohio State University, Open Motion Project",
+   "source_page": "https://accad.osu.edu/research/motion-lab/system-data",
+   "acquired": "2026-10-27",
+   "license": "CC BY 3.0 Unported (https://creativecommons.org/licenses/by/3.0/), as stated on the source page: \"Open Motion Project by ACCAD/The Ohio State University is licensed under a Creative Commons Attribution 3.0 Unported License.\"",
+   "license_url": null,
+   "use": "Base motion for both fighters' idle stances, Wren's 720 hook kick and tornado kick, Ashka's body kick, teep, bow intro and bow win, and both fighters' defeated pose; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Male2_bvh.zip",
+     "sha256": "f30dc56f8557d4b9f1bd6b8b0c4218c076471de0a9c1a20f3bc4a8b776cc14b1"
+    },
+    {
+     "file": "ACCAD_mocap_Data_Male_2.pdf",
+     "sha256": "55473cbd7af1364012e94da34d342ee7637f27a1190ce2dbf458832e37994ded"
+    }
+   ],
+   "attribution": "Motion capture: Open Motion Project by ACCAD / The Ohio State University, CC BY 3.0; retargeted and retimed for this game."
+  },
+  {
+   "id": "mixamo/animations",
+   "title": "Mixamo animations (21 of 31 clips exported; X Bot T-pose for calibration)",
+   "creator": "Adobe (Mixamo)",
+   "source_page": "https://www.mixamo.com/",
+   "acquired": "2026-11-03",
+   "license": "Adobe Mixamo: free; \"You can use both characters and animations royalty free for personal, commercial, and non-profit projects including ... Create video games.\" (https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html, last updated Sep 14, 2021, read 2026-11-03). Raw files are kept out of the public repository.",
+   "license_url": null,
+   "use": "Base motion for Wren's jab, cross, roundhouse, spinning back kick, walks, held guard, intro, win and double-leg slam (both sides), Ashka's held guard, Ashka's jab, horizontal elbow, step-in knee, flame elbow, flying knee and walks, and both fighters' hit, block, knockdown and KO reactions and get-up; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json). Raw exports are not in the repository",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "W_MmaKick_High.fbx",
+     "sha256": "35eeda910fd411b257dda0b96d6bcd9c3a90160dcdf8923a5cd98adae77a106e"
+    },
+    {
+     "file": "W_MmaKick_SpinningBack.fbx",
+     "sha256": "62d535bb0e360a21dd90ddfedf1f8cf9be5eafa3d9950e0957187ada084a2669"
+    },
+    {
+     "file": "BoxingStepForward_Medium.fbx",
+     "sha256": "6592d2aa585d8218cd6198e17b4c67abccfeb6e50950d2c1b2cb25ba77c9205d"
+    },
+    {
+     "file": "BoxingStepBackward_Medium.fbx",
+     "sha256": "32b2f6fdd5fc60e4636729d9df85d2979c6e99c96ebd3e407fedb02d72180d7c"
+    },
+    {
+     "file": "WarmingUp_Boxing.fbx",
+     "sha256": "27c04ca2111b101131f71f71ade666dbb64aea5f9398c099466e2cace0996d40"
+    },
+    {
+     "file": "Victory_Boxing.fbx",
+     "sha256": "cd70f32576e4556ba17b7a48cd5790f6786c803b37ce9f5802417bdfc5e38b08"
+    },
+    {
+     "file": "A_IllegalKnee_MuayThai.fbx",
+     "sha256": "e2ee733c4f8412555617fe51d33b7415d8419823c4989a17d97bcf64114e77d6"
+    },
+    {
+     "file": "A_ElbowPunch_Step.fbx",
+     "sha256": "1d3299d1effe4aa440a610fc8651fcceec668b66770d9266355551ab843cd6fd"
+    },
+    {
+     "file": "HeadHit_Light_Straight.fbx",
+     "sha256": "a7ec1975b5934cbc0a62a3f47baf83b5c041e9ae8a92b15e9273bd4b4d6d9704"
+    },
+    {
+     "file": "HeadHit_Big_Straight.fbx",
+     "sha256": "a079352250d60339724dc2423a4a68c5d246117e172840b2827e496445d3e566"
+    },
+    {
+     "file": "StandingBlockReactLarge.fbx",
+     "sha256": "849f115f599bfd16a1e601d8134e7860d68306d5192a98bd6a579b5566d06afd"
+    },
+    {
+     "file": "KnockedOut_Back.fbx",
+     "sha256": "12b0706f94829c117f59bce1be1d695768314c2f82a4c43ed84200bc5aa4f3e9"
+    },
+    {
+     "file": "Rig_XBot_TPose.fbx",
+     "sha256": "6d8bf17e3e35d6f4293c805a44242c7cdcf79f351ab9f0c38bcc7359a5d9da6c"
+    },
+    {
+     "file": "A_JabToElbowPunch.fbx",
+     "sha256": "6f90e34239d1523a6c438b60f175e47088b1031602082f02d7f87cc842684a16"
+    },
+    {
+     "file": "GettingUp_Back.fbx",
+     "sha256": "15eeb601af3b2b61849a5f3a465a1b4c5f3e9b0b0c308e618333c2282ee8a84b"
+    },
+    {
+     "file": "W_DoubleLegTakedown_Attacker.fbx",
+     "sha256": "409f88a5f34ee04490e4ab6550f55cc036f4534ebc519f4a4b8883b4a69015e5"
+    },
+    {
+     "file": "W_DoubleLegTakedown_Victim.fbx",
+     "sha256": "a0f0c90bf3f12eeb0adaab952fa9d3ffe23f59bd370479b8ef756a690c9df5df"
+    },
+    {
+     "file": "W_Boxing_LeadingHandJab.fbx",
+     "sha256": "c6ce66c114f0c66ffc8e3197dd723bd4791f793dc5e3c03eeb86390b32e00412"
+    },
+    {
+     "file": "W_Boxing_BackHandCross.fbx",
+     "sha256": "a71532928f56fce64cf7640465ef0a7b4844f6819e2e1c58df25ae79fa9ee67c"
+    },
+    {
+     "file": "W_MmaIdle.fbx",
+     "sha256": "429538732f6461a437a0cb7044c48a296f3a6e4a191826ddfa9c8bce382bdf38"
+    },
+    {
+     "file": "A_FlyingKneePunchCombo.fbx",
+     "sha256": "bca24c2100c537c8e244cfd52a3132ba8a99d7c7baf17b9cb6ee464e1c192fb0"
+    }
+   ]
+  },
+  {
    "id": "makehuman/system_assets",
    "title": "MakeHuman system assets",
    "creator": "MakeHuman Community",
