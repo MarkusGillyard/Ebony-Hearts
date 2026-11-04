@@ -883,6 +883,24 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-55`).
 
+### Wren's jab and cross from one performance (package `pkg-45-strings`)
+
+- **Why.** In the Dead or Alive 5 reference each string is one performance. Wren's cross came from a different capture
+  than her jab, so when the jab cancelled into the cross the pose jumped 18 cm at the hand-over.
+- **Change.**
+  - When the cross cancels out of the jab, the game now plays `L2_from_L1`: the cross from Mixamo's Jab Cross
+    (medium), a single performance of both punches. It starts from the jab's own pose at the cancel frame (6 frames
+    blended in), so the hand-over is 0 cm. A cross thrown from the stance still uses the standalone capture.
+  - A buffered string cancels on the jab's first active frame (frame 8) for both fighters. The new core test
+    `string_cancels_on_the_first_active_frame` pins this, since the string clip is built from that frame (265 checks).
+  - Ashka's jab-to-elbow capture was not used: it is the elbow capture the creator judged weaker than the current one.
+- **Review and regression.**
+  - Wren's captured animations were rebuilt and reimported, and packaged as `pkg-45-strings`.
+  - The light strings were recorded on `pkg-44` and `pkg-45` at 60 fps (`anim-58`), and the half-speed video keeps every
+    frame.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-59`).
+
 ## Known limitations
 
 - **Not verified by a person:**

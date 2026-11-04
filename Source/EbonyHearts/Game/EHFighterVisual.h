@@ -87,6 +87,8 @@ private:
 	TSet<FName> Missing;
 
 	FName CurrentKey;
+	FName ShownKey;               // the clip playing for CurrentKey: a string's own follow-up when there is one
+	bool bLastWasAttack = false;
 	int64 CurrentInstance = -1;
 	double CurrentTime = 0.0;
 	double LoopTime = 0.0;
@@ -110,7 +112,7 @@ private:
 	float AppliedFacingSign = 0.0f;
 	float DepthOffset = 0.0f;     // cm toward the camera: the close-range stagger
 
-	UAnimSequence* FindAnim(FName Key);
+	UAnimSequence* FindAnim(FName Key, bool bOptional = false);
 	void UpdateGraybox(const eh::Match& Match, float DeltaSeconds);
 	void UpdateAura(double Time);
 };

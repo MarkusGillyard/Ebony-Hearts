@@ -265,6 +265,34 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(m.State().f[1].combo >= 2 || m.State().f[1].health < g_ashka.maxHealth - 30, "press made during hitstop executed L2 as a combo");
 	});
 
+	Run("string_cancels_on_the_first_active_frame", [] {
+		// The jab's follow-up starts from the jab's pose at the frame it is cancelled on (the captured string clips,
+		// "L2_from_L1", start from frame 8), so the cancel frame of a buffered string must not drift: with the press
+		// made during hitstop it lands on the hit frame, where the animation holds through the hitstop.
+		for (int c = 0; c < 2; ++c)
+		{
+			Match m = MakeMatch(c, 1 - c);
+			m.TrainingPlace(Cm(-40), Cm(40));
+			Step(m, In(0, BtnLight));
+			int cancelledAt = -1;
+			int lastFrame = 1;
+			for (int t = 0; t < 40 && cancelledAt < 0; ++t)
+			{
+				const FighterState& f = m.State().f[0];
+				const InputFrame p0 = f.hitstop > 0 ? In(0, BtnLight) : InputFrame();
+				lastFrame = f.moveFrame;
+				const int32_t before = f.move;
+				Step(m, p0);
+				if (m.State().f[0].move != before && m.State().f[0].state == FState::Attack)
+				{
+					cancelledAt = lastFrame;
+				}
+			}
+			const int firstActive = Fighter(c).moves[static_cast<size_t>(Move(c, "L1"))].hits.front().frames.first;
+			EXPECT_EQ(cancelledAt, firstActive, std::string(FighterName(c)) + " jab cancels into the second hit on its first active frame");
+		}
+	});
+
 	Run("buffer_window_bounds", [] {
 		// A heavy pressed during the last bufferFrames ticks of recovery comes out on the first free frame;
 		// a press older than the window is discarded.

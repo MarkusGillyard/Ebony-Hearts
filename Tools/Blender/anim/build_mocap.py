@@ -332,6 +332,7 @@ def build(a):
                 wanted.add((spec[edge]["key"], spec[edge].get("frame", 1)))
     scripted = scripted_poses(a, arm, data, wanted)
     order = sorted(table, key=lambda k: 0 if table[k].get("loop") and k == "Idle" else 1)
+    built = {}
     for key in order:
         spec = table[key]
         if only and key not in only and not (key == "Idle" and guard_pose is None):
@@ -341,7 +342,8 @@ def build(a):
         src = make_source(a, spec, arm)
         src_fps = getattr(src, "fps", M.SRC_FPS)
         rt = M.Retarget(arm, src)
-        move = by_id.get(key)
+        # A string's own follow-up ("L2_from_L1") takes its move's timing from "move".
+        move = by_id.get(spec.get("move", key))
         loop = bool(spec.get("loop"))
         if spec.get("anchors"):
             # Explicit (game frame, source frame) pairs, for reactions whose impact and recovery need their own pace.
@@ -474,6 +476,14 @@ def build(a):
             for i in range(min(nout, total)):
                 k = total - nout + i
                 poses[k] = M.blend_pose(poses[k], guard_pose, A.ease("smooth", (i + 1) / nout))
+        if spec.get("start_from"):
+            # Starts from another clip's pose (a string's follow-up from the frame the first hit is cancelled on), so
+            # the two hits join where the game cuts from one to the other.
+            sf = spec["start_from"]
+            source = built[sf["key"]][sf["frame"] - 1]
+            n = min(sf.get("frames", 6), total)
+            for i in range(n):
+                poses[i] = M.blend_pose(source, poses[i], A.ease("smooth", i / n))
         if spec.get("start_pose"):
             # Starts from a scripted pose (the get-up rises out of the lying pose the knockdown ends in).
             sp = spec["start_pose"]
@@ -501,6 +511,7 @@ def build(a):
             M.half_joints(pose, half_prev)
         if key == "Idle":
             guard_pose = poses[0]
+        built[key] = poses
         if only and key not in only:
             continue
         emit_clip(a, arm, chains, hair, prefix, key, spec, move, poses, total, loop)

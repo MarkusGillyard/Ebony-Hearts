@@ -217,6 +217,9 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
     (lying after a throw lands, and held when a throw knocks out), `KnockdownLieRev` and `GetupRev` (the same after a
     throw marked `landsHeadToward`: lying head toward the thrower, and rising facing away then pivoting round), `Getup`, `ThrowTech`, `KO`, `Win`, `Defeated`, `Intro`, plus
     `Victim_<Thrower><Throw>` for each throw (both fighters need all four victim animations).
+  - Optional string keys `<Move>_from_<Previous>` (for example `L2_from_L1`): played instead of `<Move>` when it
+    cancels out of `<Previous>`, so a captured combo can supply both hits. A string key starts from `<Previous>`'s pose
+    at its first active frame, where a buffered string cancels (checked by a core test).
   - Throws are authored as a pair in the thrower's space, the victim at `holdX` facing the thrower. Each victim
     animation is exported in the space the game draws the victim in (its own, opened toward the camera and
     mirrored when facing left), so the pair meets as authored.

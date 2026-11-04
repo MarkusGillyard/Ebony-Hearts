@@ -5,6 +5,7 @@
     "WalkB": {"start_frame": 21, "fbx": "BoxingStepBackward_Medium.fbx", "src": [0, 24], "loop": true, "frames": 25, "sim_speed": -2.4, "loop_blend": 4, "plant_speed": 0.009, "stance": "wren"},
     "L1": {"fbx": "C_LeadJab_ShortHead.fbx", "src": [4, 12, 32], "stance": "wren", "guard": ["r"], "root_scale": [0.3, 0.3], "reach": {"part": "hand_l", "to": 0.7}},
     "L2": {"fbx": "C_Punching_Cross.fbx", "src": [4, 11, 24], "stance": "wren", "guard": ["l"], "reach": {"part": "hand_r", "to": 0.76}},
+    "L2_from_L1": {"fbx": "C_JabCross_Medium.fbx", "move": "L2", "src": [14, 21, 36], "stance": "wren", "guard": ["l"], "root_scale": [0.3, 0.3], "reach": {"part": "hand_r", "to": 0.76}, "start_from": {"key": "L1", "frame": 8, "frames": 6}},
     "H": {"fbx": "W_MmaKick_High.fbx", "src": [8, 19, 46], "stance": "wren", "blend_out": 8, "guard": ["l"], "guard_gain": 0.45},
     "FH": {"fbx": "W_MmaKick_SpinningBack.fbx", "src": [13, 29, 50], "stance": "wren", "stance_hands": false, "blend_out": 8, "root_scale": [0.3, 1.0], "steps": {"l": [33, 46, "body"]}, "step_lift": 0.07},
     "S": {"bvh": "Male2_G20_ReverseSpinCrescentRight", "src": [4, 28, 58], "stance": "wren", "stance_hands": false, "blend_out": 8, "air": {"height": 0.32, "spin": -360, "spin_frames": [9, 25], "tuck": "l"}},

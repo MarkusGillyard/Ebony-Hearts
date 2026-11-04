@@ -251,11 +251,13 @@ void AEHFighterVisual::Setup(const FEHCharacterPresentation& InPresentation, int
 	Anims.Reset();
 	Missing.Reset();
 	CurrentKey = NAME_None;
+	ShownKey = NAME_None;
+	bLastWasAttack = false;
 	CurrentInstance = -1;
 	AuraIntensity = 0.0f;
 }
 
-UAnimSequence* AEHFighterVisual::FindAnim(FName Key)
+UAnimSequence* AEHFighterVisual::FindAnim(FName Key, bool bOptional)
 {
 	if (Key.IsNone() || bGraybox)
 	{
@@ -268,7 +270,7 @@ UAnimSequence* AEHFighterVisual::FindAnim(FName Key)
 	const FString Name = Presentation.AnimPrefix + Key.ToString();
 	const FString Path = Presentation.AnimFolder / Name + TEXT(".") + Name;
 	UAnimSequence* Seq = LoadObject<UAnimSequence>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
-	if (Seq == nullptr)
+	if (Seq == nullptr && !bOptional)
 	{
 		Missing.Add(Key);
 	}
@@ -378,11 +380,24 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 			LoopTime = 0.0;
 			NewTime = 0.0;
 		}
+		const FName PreviousKey = CurrentKey;
 		CurrentKey = Choice.Key;
+		// A move cancelled out of another plays that string's own follow-up when one was captured
+		// ("<Move>_from_<Previous>": the two hits from one performance), so the string flows as one motion.
+		ShownKey = Choice.Key;
+		if (bLastWasAttack && F.state == eh::FState::Attack && !PreviousKey.IsNone() && PreviousKey != Choice.Key)
+		{
+			const FName Variant(*FString::Printf(TEXT("%s_from_%s"), *Choice.Key.ToString(), *PreviousKey.ToString()));
+			if (FindAnim(Variant, true))
+			{
+				ShownKey = Variant;
+			}
+		}
 	}
+	bLastWasAttack = F.state == eh::FState::Attack;
 	CurrentTime = NewTime;
 
-	UAnimSequence* Cur = FindAnim(CurrentKey);
+	UAnimSequence* Cur = FindAnim(ShownKey);
 	double CurSample = CurrentTime;
 	if (Cur)
 	{
