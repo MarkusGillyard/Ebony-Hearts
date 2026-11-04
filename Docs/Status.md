@@ -1,6 +1,6 @@
 # Status and handoff
 
-Updated 2026-11-03.
+Updated 2026-11-04.
 
 ## Where things stand
 
@@ -12,7 +12,21 @@ run on the test machine (see [Validation](Validation.md)). It is not declared co
   It is recorded as a Preservation failure.
 
 **Published.** On 2026-11-03, at the creator's request, `release/first-slice` was pushed to
-`MarkusGillyard/Ebony-Hearts` and opened as pull request #1 into `main`. Nothing has been merged, tagged or released.
+`MarkusGillyard/Ebony-Hearts` and opened as pull request #1 into `main`. On 2026-11-04 the creator asked for it to be
+updated with the animation work, and it was, as squashed commits on top. Nothing has been merged, tagged or released.
+
+**Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
+[validation report](Validation.md) (packages `pkg-21` to `pkg-45`):
+- **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
+  jab-to-cross string; Wren's double-leg slam and shoulder throw; the hit and block reactions, knockdowns, KO, both
+  get-ups; the intros, wins and defeated poses.
+- **Still keyed by script:** Ashka's two throws, the grabs, the rolls, both bursts and Wren's spinning back elbow. No
+  capture on hand fits them. Mixamo has no back roll or quick grab, and its session needs the creator to sign in
+  again before more downloads.
+- **Throws** are drawn as authored (the victim was drawn mirrored), switch sides cleanly, and keep a knocked-out
+  victim lying. **Effects:** the golden aura and the crimson flame were rebuilt.
+- **Display.** On the test desktop the monitor runs at 165 Hz but V-Sync paces everything at 60 Hz, so motion looks
+  like it skips. This is a system setting (see Validation, Known limitations).
 
 ## What was delivered
 
@@ -82,11 +96,15 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
    unfair, slow or unclear, and anything in the mix that is too loud, too quiet or grating.
 3. **Title card.** Done on 2026-11-03. The creator confirmed it is an authorized, AI-generated project asset (OpenAI
    ChatGPT image generation). Origin, rights and handling are in the [asset ledger](AssetLedger.md#creator-supplied).
-4. **Merge and release.** `release/first-slice` is published as one squashed commit. The local working history,
+4. **Animation review.** Watch the latest videos (the creator has been sent each one) and play the latest build.
+   For more captured motion (rolls, grabs, Ashka's throws), sign in to Mixamo again in the built-in browser.
+5. **Display setting (optional).** For smooth motion on the 165 Hz monitor, either run it at 59.97 Hz, or disable
+   compositing for full-screen windows in Cinnamon and play fullscreen.
+6. **Merge and release.** `release/first-slice` is published as squashed commits. The local working history,
    which includes an early commit with Python bytecode caches, is not published. Merging pull request #1 into
    `main`, tagging a version and making a GitHub release each need your explicit go-ahead.
 
 ## Next safe action
 
-Do the controller check and the playtest (items 1 and 2 above). After the playtest, the creator plans to have pull
+Do the controller check, the playtest and the animation review (items 1, 2 and 4 above). After the playtest, the creator plans to have pull
 request #1 merged into `main`. Nothing will be merged, tagged or released without that decision.
