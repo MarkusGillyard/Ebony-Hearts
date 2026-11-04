@@ -944,7 +944,8 @@ rolls, the grab and the three scripted throws):
   - the game thread was still loading engine modules, so no game code was running.
 
   It is a startup race in the engine's Linux audio backend. It is not specific to fullscreen and cannot be fixed in
-  the game's code. Relaunching works.
+  the game's code. The engine's SDL has no PipeWire driver (`SDL_AUDIO_DRIVER=pipewire` leaves the game silent), so
+  the PulseAudio path cannot be avoided by configuration. Relaunching works.
 - **Borderless window.** In 1 of 5 default launches, the borderless window came up constrained to the desktop work
   area (3440 × 1368, above the Cinnamon panel) instead of covering the panel. Play is unaffected.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback or online
