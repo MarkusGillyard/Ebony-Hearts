@@ -25,7 +25,8 @@
     "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "DF": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10}
+    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "ThrowTech": {"scripted": true, "blend_in": 0, "blend_out": 10}
   },
   "ashka": {
     "Idle": {"bvh": "Male2_D1_StandToReady", "mirror": true, "heading": 0, "src": [40, 88], "loop": true, "frames": 150, "loop_blend": 12, "stance": "ashka", "plant": false},
@@ -52,7 +53,8 @@
     "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "DF": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10}
+    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "ThrowTech": {"scripted": true, "blend_in": 0, "blend_out": 10}
   },
   "throws": {
     "wren_takedown": {"attacker": "W_DoubleLegTakedown_Attacker.fbx", "victim": "W_DoubleLegTakedown_Victim.fbx", "src": [20, 44, 84], "root_scale": [0.6, 0.45], "end_frames": [16, 12], "fist": [0.2, 0.3]},

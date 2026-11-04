@@ -915,6 +915,21 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-64`).
 
+### Every other hand-over measured (package `pkg-47-tech`)
+
+- **Audit.** Every non-attack hand-over was measured: a clip's last frame against the first frame of what plays next
+  (`tools/anim-review/handovers.py`, 21 per fighter).
+  - **0–2 cm:** the hit reactions, block hits, both get-ups, knockdowns, intros, wins and defeated poses.
+  - **Larger, but meant to be:** the guard raise (23–47 cm, the hands coming up) and the hit reactions' first frames
+    (10–21 cm, an impact).
+  - **Walks:** they stop 11–13 cm off the stance at an arbitrary phase, and the 0.22 s blend covers it.
+  - **The one script-keyed clip still off:** the throw escape ended 13–14 cm from the stance. It now settles into it
+    (`"scripted"`, end only, since it starts from the grab): 0 cm.
+- **Review and regression.**
+  - Packaged as `pkg-47-tech`.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-65`).
+
 ## Known limitations
 
 - **Not verified by a person:**
