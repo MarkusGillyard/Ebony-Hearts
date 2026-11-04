@@ -1,10 +1,10 @@
 {
   "wren": {
     "Idle": {"bvh": "Male2_E8_Bounce", "mirror": true, "heading": 0, "src": [52, 101], "loop": true, "frames": 134, "loop_blend": 10, "stance": "wren", "plant": false},
-    "WalkF": {"fbx": "BoxingStepForward_Medium.fbx", "src": [0, 28], "loop": true, "frames": 33, "sim_speed": 2.8, "loop_blend": 4, "plant_speed": 0.009, "stance": "wren"},
-    "WalkB": {"fbx": "BoxingStepBackward_Medium.fbx", "src": [0, 24], "loop": true, "frames": 25, "sim_speed": -2.4, "loop_blend": 4, "plant_speed": 0.009, "stance": "wren"},
-    "L1": {"fbx": "W_Boxing_LeadingHandJab.fbx", "src": [6, 13, 24], "stance": "wren", "guard": ["r"], "root_scale": [0.3, 0.5], "reach": {"part": "hand_l", "to": 0.7}},
-    "L2": {"fbx": "W_Boxing_BackHandCross.fbx", "src": [12, 20, 32], "stance": "wren", "guard": ["l"], "root_scale": [0.3, 0.7], "reach": {"part": "hand_r", "to": 0.76}},
+    "WalkF": {"start_frame": 11, "fbx": "BoxingStepForward_Medium.fbx", "src": [0, 28], "loop": true, "frames": 33, "sim_speed": 2.8, "loop_blend": 4, "plant_speed": 0.009, "stance": "wren"},
+    "WalkB": {"start_frame": 21, "fbx": "BoxingStepBackward_Medium.fbx", "src": [0, 24], "loop": true, "frames": 25, "sim_speed": -2.4, "loop_blend": 4, "plant_speed": 0.009, "stance": "wren"},
+    "L1": {"fbx": "C_LeadJab_ShortHead.fbx", "src": [4, 12, 32], "stance": "wren", "guard": ["r"], "root_scale": [0.3, 0.3], "reach": {"part": "hand_l", "to": 0.7}},
+    "L2": {"fbx": "C_Punching_Cross.fbx", "src": [4, 11, 24], "stance": "wren", "guard": ["l"], "reach": {"part": "hand_r", "to": 0.76}},
     "H": {"fbx": "W_MmaKick_High.fbx", "src": [8, 19, 46], "stance": "wren", "blend_out": 8, "guard": ["l"], "guard_gain": 0.45},
     "FH": {"fbx": "W_MmaKick_SpinningBack.fbx", "src": [13, 29, 50], "stance": "wren", "stance_hands": false, "blend_out": 8, "root_scale": [0.3, 1.0], "steps": {"l": [33, 46, "body"]}, "step_lift": 0.07},
     "S": {"bvh": "Male2_G20_ReverseSpinCrescentRight", "src": [4, 28, 58], "stance": "wren", "stance_hands": false, "blend_out": 8, "air": {"height": 0.32, "spin": -360, "spin_frames": [9, 25], "tuck": "l"}},
@@ -17,18 +17,24 @@
     "Intro": {"fbx": "WarmingUp_Boxing.fbx", "src": [0, 60], "frames": 120, "blend_in": 0, "blend_out": 10},
     "Win": {"fbx": "Victory_Boxing.fbx", "src": [4, 64], "frames": 120, "blend_in": 8, "blend_out": 0},
     "Getup": {"fbx": "GettingUp_Back.fbx", "src": [110, 175], "frames": 60, "root_anchor": "end", "root_scale": [0.3, 0.4], "blend_in": 0, "blend_out": 10, "start_pose": {"key": "KnockdownLie", "frames": 10}},
+    "GetupRev": {"fbx": "GettingUp_Back.fbx", "heading": 180, "src": [110, 175], "frames": 60, "root_anchor": "end", "root_scale": [0.3, 0.4], "blend_in": 0, "blend_out": 10, "start_pose": {"key": "KnockdownLieRev", "frames": 10}, "turn": {"frames": [26, 54], "deg": 180}},
     "Guard": {"fbx": "W_MmaIdle.fbx", "src": [0, 150], "loop": true, "frames": 150, "loop_blend": 12, "plant": false, "additive": "Guard"},
-    "Defeated": {"bvh": "Male2_D4_ReadyToRelax", "mirror": true, "src": [45, 110], "frames": 91, "blend_in": 8, "blend_out": 0, "end_pose": {"key": "Defeated", "frame": 91, "frames": 30}}
+    "Defeated": {"bvh": "Male2_D4_ReadyToRelax", "mirror": true, "src": [45, 110], "frames": 91, "blend_in": 8, "blend_out": 0, "end_pose": {"key": "Defeated", "frame": 91, "frames": 30}},
+    "L3": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "DF": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10}
   },
   "ashka": {
     "Idle": {"bvh": "Male2_D1_StandToReady", "mirror": true, "heading": 0, "src": [40, 88], "loop": true, "frames": 150, "loop_blend": 12, "stance": "ashka", "plant": false},
-    "WalkF": {"fbx": "BoxingStepForward_Medium.fbx", "src": [0, 28], "loop": true, "frames": 34, "sim_speed": 2.6, "loop_blend": 4, "plant_speed": 0.009, "stance": "ashka"},
-    "WalkB": {"fbx": "BoxingStepBackward_Medium.fbx", "src": [0, 24], "loop": true, "frames": 25, "sim_speed": -2.3, "loop_blend": 4, "plant_speed": 0.009, "stance": "ashka"},
-    "L1": {"fbx": "W_Boxing_LeadingHandJab.fbx", "src": [6, 13, 24], "stance": "ashka", "guard": ["r"], "root_scale": [0.3, 0.5], "reach": {"part": "hand_l", "to": 0.66}},
-    "L2": {"fbx": "A_JabToElbowPunch.fbx", "src": [40, 47, 62], "stance": "ashka", "guard": ["l"], "steps": {"l": [2, 7], "r": [6, 12]}, "follow_travel": true, "reach": {"part": "elbow_r", "to": 0.6, "max_shift": 0.45, "max_lean": 0.8}},
+    "WalkF": {"start_frame": 11, "fbx": "BoxingStepForward_Medium.fbx", "src": [0, 28], "loop": true, "frames": 34, "sim_speed": 2.6, "loop_blend": 4, "plant_speed": 0.009, "stance": "ashka"},
+    "WalkB": {"start_frame": 21, "fbx": "BoxingStepBackward_Medium.fbx", "src": [0, 24], "loop": true, "frames": 25, "sim_speed": -2.3, "loop_blend": 4, "plant_speed": 0.009, "stance": "ashka"},
+    "L1": {"fbx": "C_LeadJab_MedHead.fbx", "src": [4, 12, 34], "stance": "ashka", "guard": ["r"], "root_scale": [0.3, 0.2], "reach": {"part": "hand_l", "to": 0.66}},
+    "L2": {"fbx": "C_Elbow_IllegalCross.fbx", "src": [8, 20, 40], "stance": "ashka", "guard": ["l"], "reach": {"part": "elbow_r", "to": 0.6, "max_shift": 0.45, "max_lean": 0.8}},
     "L3": {"fbx": "A_IllegalKnee_MuayThai.fbx", "src": [15, 22, 40], "stance": "ashka", "blend_out": 8, "steps": {"l": [2, 6]}, "step_lift": 0.03, "follow_travel": true, "reach": {"part": "knee_r", "to": 0.56}},
     "H": {"bvh": "Male2_G15_RoundhouseBodyRight", "src": [9, 20, 42], "stance": "ashka", "blend_out": 8, "guard": ["l"], "reach": {"part": "foot_r", "to": 1.15, "balance": 0.6}},
-    "FH": {"bvh": "Male2_G17_PushKickLeft", "src": [74, 86, 102], "stance": "ashka", "blend_out": 8, "settle": {"feet": ["l", "r"], "frames": 10}, "guard": ["l", "r"], "reach": {"part": "foot_l", "to": 1.05, "max_shift": 0.3, "skid": 0.12, "balance": 0.6}},
+    "FH": {"bvh": "Male2_G17_PushKickLeft", "src": [74, 86, 102], "stance": "ashka", "blend_out": 8, "settle": {"feet": ["l", "r"], "frames": 10}, "guard": ["l", "r"], "reach": {"part": "foot_l", "to": 1.05, "max_shift": 0.3, "skid": 0.12, "balance": 0.6}, "extend": {"foot": "l", "to": 0.78, "height": 0.95}},
     "S": {"fbx": "A_ElbowPunch_Step.fbx", "src": [9, 18, 44], "stance": "ashka", "blend_out": 8, "guard": ["l"], "guard_gain": 0.5, "stance_motion": {"bounce": 0.6}, "reach": {"part": "elbow_r", "to": 0.7}},
     "HitLight": {"fbx": "HeadHit_Light_Straight.fbx", "anchors": [[1, 0], [4, 4], [12, 12], [30, 32]], "frames": 30, "stance": "ashka", "blend_in": 0, "blend_out": 6},
     "HitHeavy": {"fbx": "HeadHit_Big_Straight.fbx", "anchors": [[1, 0], [5, 6], [14, 16], [40, 43]], "frames": 40, "stance": "ashka", "blend_in": 0, "blend_out": 6},
@@ -36,13 +42,19 @@
     "Knockdown": {"fbx": "KnockedOut_Back.fbx", "anchors": [[1, 27], [6, 33], [12, 44], [26, 66], [30, 70], [43, 84]], "frames": 43, "root_scale": [0.25, 0.3], "plant": false, "blend_in": 3, "blend_out": 0, "end_pose": {"key": "KnockdownLie", "frames": 10}},
     "KO": {"fbx": "KnockedOut_Back.fbx", "anchors": [[1, 27], [10, 36], [50, 68], [121, 110]], "frames": 121, "root_scale": [0.25, 0.5], "plant": false, "blend_in": 3, "blend_out": 0},
     "Getup": {"fbx": "GettingUp_Back.fbx", "src": [110, 175], "frames": 60, "root_anchor": "end", "root_scale": [0.3, 0.4], "blend_in": 0, "blend_out": 10, "start_pose": {"key": "KnockdownLie", "frames": 10}},
+    "GetupRev": {"fbx": "GettingUp_Back.fbx", "heading": 180, "src": [110, 175], "frames": 60, "root_anchor": "end", "root_scale": [0.3, 0.4], "blend_in": 0, "blend_out": 10, "start_pose": {"key": "KnockdownLieRev", "frames": 10}, "turn": {"frames": [26, 54], "deg": 180}},
     "Guard": {"fbx": "W_MmaIdle.fbx", "src": [0, 150], "loop": true, "frames": 150, "loop_blend": 12, "plant": false, "additive": "Guard"},
     "Defeated": {"bvh": "Male2_D4_ReadyToRelax", "mirror": true, "src": [45, 110], "frames": 91, "blend_in": 8, "blend_out": 0, "end_pose": {"key": "Defeated", "frame": 91, "frames": 30}},
     "Intro": {"bvh": "Male2_D8_BowToReady", "mirror": true, "src": [12, 95], "frames": 121, "blend_in": 0, "blend_out": 12},
     "Win": {"bvh": "Male2_D7_WalkToBow", "src": [72, 160], "frames": 121, "blend_in": 10, "blend_out": 0},
-    "FS": {"fbx": "A_FlyingKneePunchCombo.fbx", "src": [9, 27, 48], "root_scale": [0.3, 0.9, 0.45], "plant": false, "blend_out": 8, "reach": {"part": "knee_r", "to": 0.7, "max_shift": 0.4}}
+    "FS": {"fbx": "A_FlyingKneePunchCombo.fbx", "src": [9, 27, 48], "root_scale": [0.3, 0.9, 0.45], "plant": false, "blend_out": 8, "reach": {"part": "knee_r", "to": 0.7, "max_shift": 0.4}},
+    "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "DF": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10}
   },
   "throws": {
-    "wren_takedown": {"attacker": "W_DoubleLegTakedown_Attacker.fbx", "victim": "W_DoubleLegTakedown_Victim.fbx", "src": [20, 44, 84], "root_scale": [0.6, 0.45], "end_frames": [16, 12], "fist": [0.2, 0.3]}
+    "wren_takedown": {"attacker": "W_DoubleLegTakedown_Attacker.fbx", "victim": "W_DoubleLegTakedown_Victim.fbx", "src": [20, 44, 84], "root_scale": [0.6, 0.45], "end_frames": [16, 12], "fist": [0.2, 0.3]},
+    "wren_suplex": {"attacker": "ShoulderThrow_Aggressor.fbx", "victim": "ShoulderThrow_Victim.fbx", "shared": true, "mirror": true, "src": [58, 104, 118], "yaw": [[58, -20], [104, -113]], "ease_in": 10, "root_scale": [0.4, 1.0], "end_frames": [16, 12], "fist": [0.2, 0.3]}
   }
 }

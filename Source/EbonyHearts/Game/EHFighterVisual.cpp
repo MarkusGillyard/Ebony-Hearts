@@ -6,6 +6,7 @@
 #include "EHAnimInstance.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
+#include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "ProceduralMeshComponent.h"
@@ -14,6 +15,7 @@ namespace EHVisualDetail
 {
 constexpr float UnitsToCm = 1.0f / static_cast<float>(eh::kUnitsPerCm);
 constexpr float TurnTowardCamera = 12.0f;   // degrees: fighters open slightly toward the camera for readability
+constexpr float CloseStagger = 10.0f;       // cm each fighter steps off the line in depth when chest to chest
 
 UStaticMesh* LoadShape(const TCHAR* Path)
 {
@@ -72,12 +74,14 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		A.BlendSeconds = 0.06f;
 		break;
 	case eh::FState::Knockdown:
-		A.Key = F.reaction == 3 ? FName(TEXT("KnockdownLie")) : FName(TEXT("Knockdown"));
+		// Landed from a throw: already lying, head away from the thrower (3) or toward it (4, over the shoulder).
+		A.Key = F.reaction == 4 ? FName(TEXT("KnockdownLieRev")) : (F.reaction == 3 ? FName(TEXT("KnockdownLie")) : FName(TEXT("Knockdown")));
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.08f;
 		break;
 	case eh::FState::Getup:
-		A.Key = TEXT("Getup");
+		// From lying head toward the opponent the fighter rises facing away and pivots round to face it.
+		A.Key = F.reaction == 4 ? FName(TEXT("GetupRev")) : FName(TEXT("Getup"));
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.15f;
 		break;
@@ -97,7 +101,9 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		A.BlendSeconds = 0.08f;
 		break;
 	case eh::FState::KO:
-		A.Key = TEXT("KO");
+		// Knocked out by a throw: already lying where the throw left the victim, so stay down rather than replay the
+		// knockout fall from standing.
+		A.Key = F.reaction == 4 ? FName(TEXT("KnockdownLieRev")) : (F.reaction == 3 ? FName(TEXT("KnockdownLie")) : FName(TEXT("KO")));
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.10f;
 		break;
@@ -211,11 +217,37 @@ void AEHFighterVisual::Setup(const FEHCharacterPresentation& InPresentation, int
 	Marker->SetVisibility(true);
 	if (UMaterialInterface* AuraBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/VFX/M_VFX_Additive.M_VFX_Additive")))
 	{
+		UTexture2D* BoltTex = LoadObject<UTexture2D>(nullptr, TEXT("/Game/VFX/T_FX_Bolt.T_FX_Bolt"));
 		AuraMaterial = UMaterialInstanceDynamic::Create(AuraBase, this);
-		AuraMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.74f, 0.22f));
-		AuraMaterial->SetScalarParameterValue(TEXT("Intensity"), 6.0f);
-		Aura->SetMaterial(0, AuraMaterial);
+		AuraMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.70f, 0.20f));
+		AuraMaterial->SetScalarParameterValue(TEXT("Intensity"), 0.0f);
+		AuraCoreMaterial = UMaterialInstanceDynamic::Create(AuraBase, this);
+		AuraCoreMaterial->SetVectorParameterValue(TEXT("Color"), FLinearColor(1.0f, 0.93f, 0.74f));
+		AuraCoreMaterial->SetScalarParameterValue(TEXT("Intensity"), 0.0f);
+		if (BoltTex)
+		{
+			AuraMaterial->SetTextureParameterValue(TEXT("Tex"), BoltTex);
+			AuraCoreMaterial->SetTextureParameterValue(TEXT("Tex"), BoltTex);
+		}
 	}
+	// The energy shell is set once and left on, dark until the aura rises: changing a mesh's overlay rebuilds its
+	// render proxy, which would hitch on the frame Spirit Enhanced Strikes lands.
+	AuraShellMaterial = nullptr;
+	AppliedShell = -1.0f;
+	if (!bGraybox && Presentation.AuraBones.Num() > 0)
+	{
+		if (UMaterialInterface* ShellBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/VFX/M_VFX_AuraShell.M_VFX_AuraShell")))
+		{
+			AuraShellMaterial = UMaterialInstanceDynamic::Create(ShellBase, this);
+			AuraShellMaterial->SetScalarParameterValue(TEXT("Intensity"), 0.0f);
+		}
+	}
+	if (!bGraybox)
+	{
+		Mesh->SetOverlayMaterial(AuraShellMaterial);
+	}
+	Arcs.Reset();
+	NextArcTime = 0.0;
 	Anims.Reset();
 	Missing.Reset();
 	CurrentKey = NAME_None;
@@ -273,6 +305,20 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	const eh::FighterState& F = Match.State().f[Player];
 	const float X = FMath::Lerp(static_cast<float>(PrevX), static_cast<float>(F.x), Alpha) * UnitsToCm;
 	FVector Loc(X, 0.0f, 0.0f);
+	// The pushboxes let the hips come within 46 cm, where the two bodies would pass through each other. Close in, ease
+	// them apart in depth (the fighter facing right toward the camera), so they stand staggered as real fighters do.
+	// Not during throws or their escapes, which are authored on the line.
+	{
+		const eh::FighterState& O = Match.State().f[1 - Player];
+		auto Paired = [](const eh::FighterState& S)
+		{
+			return S.state == eh::FState::Throwing || S.state == eh::FState::Thrown || S.state == eh::FState::Tech;
+		};
+		const float Gap = FMath::Abs(static_cast<float>(O.x - F.x)) * UnitsToCm;
+		const float Target = (Paired(F) || Paired(O)) ? 0.0f : (F.facing > 0 ? 1.0f : -1.0f) * CloseStagger * FMath::Clamp((75.0f - Gap) / 25.0f, 0.0f, 1.0f);
+		DepthOffset = FMath::FInterpTo(DepthOffset, Target, DeltaSeconds, 10.0f);
+		Loc.Y += DepthOffset;
+	}
 	// Small shake on the defender while hitstop holds both fighters still.
 	if (F.hitstop > 0 && (F.state == eh::FState::Hitstun || F.state == eh::FState::Blockstun || F.state == eh::FState::Knockdown))
 	{
@@ -286,6 +332,7 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	SetActorScale3D(FVector(FacingSign, 1.0f, 1.0f));
 	SetActorRotation(FRotator(0.0f, F.facing > 0 ? TurnTowardCamera : -TurnTowardCamera, 0.0f));
 	Mesh->SetRelativeRotation(FRotator(0.0f, Presentation.MeshYaw, 0.0f));
+	const bool bFacingFlipped = AppliedFacingSign != 0.0f && FacingSign != AppliedFacingSign;
 	if (FacingSign != AppliedFacingSign)
 	{
 		// The mirror reverses triangle winding. Rebuild the render proxies with the final transform whenever the sign
@@ -321,7 +368,10 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	{
 		if (Inst)
 		{
-			Inst->BeginTransition(CurrentKey.IsNone() ? 0.0f : Choice.BlendSeconds);
+			// A blend would start from the previous pose as it was held in the mesh's space, which the facing flip has
+			// just mirrored: after a back throw that is the thrower's turned-round finish shown facing away. Animations
+			// that switch sides end in the pose the next one starts from as seen after the flip, so cut straight to it.
+			Inst->BeginTransition(CurrentKey.IsNone() || bFacingFlipped ? 0.0f : Choice.BlendSeconds);
 		}
 		if (Choice.bLoop && Choice.Key != CurrentKey)
 		{
@@ -396,96 +446,191 @@ void AEHFighterVisual::UpdateGraybox(const eh::Match& Match, float DeltaSeconds)
 	}
 }
 
+bool AEHFighterVisual::RandomAuraPoint(FVector& Out) const
+{
+	if (bGraybox || AuraIntensity <= 0.01f || Presentation.AuraBones.Num() == 0)
+	{
+		return false;
+	}
+	const FName Bone = Presentation.AuraBones[FMath::RandRange(0, Presentation.AuraBones.Num() - 1)];
+	Out = BoneLocation(Bone, GetActorLocation() + FVector(0, 0, 100));
+	return true;
+}
+
 void AEHFighterVisual::UpdateAura(double Time)
 {
-	// Golden rim on the body: a steady glow with a faint crackle, so the aura reads even between bolt strikes.
-	const float Rim = AuraIntensity <= 0.01f ? 0.0f : AuraIntensity * (0.85f + 0.15f * FMath::Sin(static_cast<float>(Time) * 31.0f));
+	// Spirit Enhanced Strikes: energy streaming off the body (the overlay shell), short lightning arcs crackling
+	// between nearby limbs, and a warmer rim on the body's own materials. The body keeps its own colours.
+	const float Level = AuraIntensity <= 0.01f ? 0.0f : AuraIntensity;
+	const float Rim = Level * (0.85f + 0.15f * FMath::Sin(static_cast<float>(Time) * 31.0f));
 	if (!FMath::IsNearlyEqual(Rim, AppliedRim, 0.01f))
 	{
-		const FLinearColor RimColor = FMath::Lerp(FLinearColor(0.35f, 0.42f, 0.60f), FLinearColor(1.0f, 0.70f, 0.18f), FMath::Min(1.0f, Rim * 1.2f));
+		// Only a touch warmer: a strong rim tints the whole body and drowns her own colours.
+		const FLinearColor RimColor = FMath::Lerp(FLinearColor(0.35f, 0.42f, 0.60f), FLinearColor(0.80f, 0.62f, 0.38f), 0.5f * FMath::Min(1.0f, Rim));
 		for (UMaterialInstanceDynamic* MID : BodyMaterials)
 		{
 			MID->SetVectorParameterValue(TEXT("RimColor"), RimColor);
-			MID->SetScalarParameterValue(TEXT("RimIntensity"), 0.35f + 0.55f * Rim);
+			MID->SetScalarParameterValue(TEXT("RimIntensity"), 0.35f + 0.08f * Rim);
 		}
 		AppliedRim = Rim;
 	}
-	if (AuraIntensity <= 0.01f || AuraMaterial == nullptr)
+	if (AuraShellMaterial)
+	{
+		const float Shell = Level * 1.7f * (0.85f + 0.15f * FMath::Sin(static_cast<float>(Time) * 17.0f));
+		if (!FMath::IsNearlyEqual(Shell, AppliedShell, 0.01f))
+		{
+			AuraShellMaterial->SetScalarParameterValue(TEXT("Intensity"), Shell);
+			AppliedShell = Shell;
+		}
+	}
+	const int32 NumBones = Presentation.AuraBones.Num();
+	if (Level <= 0.0f || AuraMaterial == nullptr || NumBones < 2 || bGraybox)
 	{
 		if (Aura->GetNumSections() > 0)
 		{
 			Aura->ClearAllMeshSections();
 		}
+		Arcs.Reset();
 		return;
 	}
-	// Re-strike the bolts a few times per second; between strikes they hold, which reads as crackling.
-	if (Time - AuraSeedTime < 0.055 && Aura->GetNumSections() > 0)
+
+	constexpr int32 MaxArcs = 4;
+	constexpr int32 MainSegs = 8;
+	constexpr int32 BranchSegs = 3;
+	if (Arcs.Num() != MaxArcs)
 	{
-		AuraMaterial->SetScalarParameterValue(TEXT("Intensity"), 5.0f * AuraIntensity);
-		return;
+		Arcs.SetNum(MaxArcs);
 	}
-	AuraSeedTime = Time;
-	TArray<FVector> Anchors;
+	TArray<FVector> Bones;
+	Bones.Reserve(NumBones);
 	for (const FName& Bone : Presentation.AuraBones)
 	{
-		Anchors.Add(BoneLocation(Bone, GetActorLocation() + FVector(0, 0, 100)));
+		Bones.Add(BoneLocation(Bone, GetActorLocation() + FVector(0, 0, 100)));
 	}
-	if (Anchors.Num() < 2)
+	const FVector Centre = BoneLocation(TEXT("spine_02"), GetActorLocation() + FVector(0, 0, 110));
+
+	// Strike a new arc at irregular intervals (more often at full strength), between two bones a hand or a forearm
+	// apart, each end pushed out past the body's outline and toward the camera so it reads against the silhouette.
+	if (Time >= NextArcTime)
 	{
-		const FVector Base = GetActorLocation();
-		for (float Z : {30.0f, 70.0f, 110.0f, 140.0f, 165.0f})
+		int32 Slot = 0;
+		for (int32 i = 1; i < MaxArcs; ++i)
 		{
-			Anchors.Add(Base + FVector(0, 0, Z));
+			if (Arcs[i].Born + Arcs[i].Life < Arcs[Slot].Born + Arcs[Slot].Life)
+			{
+				Slot = i;
+			}
 		}
+		FAuraArc& A = Arcs[Slot];
+		A.From = FMath::RandRange(0, NumBones - 1);
+		A.To = (A.From + 1) % NumBones;
+		float Best = 1e9f;
+		for (int32 Try = 0; Try < 8; ++Try)
+		{
+			const int32 C = FMath::RandRange(0, NumBones - 1);
+			const float D = FVector::Dist(Bones[A.From], Bones[C]);
+			const float Score = FMath::Abs(D - 32.0f);
+			if (C != A.From && D > 10.0f && Score < Best)
+			{
+				Best = Score;
+				A.To = C;
+			}
+		}
+		auto Outward = [&](const FVector& P)
+		{
+			FVector Out = P - Centre;
+			Out.Y = 0.0f;
+			return Out.GetSafeNormal() * FMath::FRandRange(4.0f, 10.0f) + FVector(FMath::FRandRange(-3.0f, 3.0f), 9.0f, FMath::FRandRange(-3.0f, 3.0f));
+		};
+		A.OffFrom = Outward(Bones[A.From]);
+		A.OffTo = Outward(Bones[A.To]);
+		A.Born = Time;
+		A.Life = FMath::FRandRange(0.05f, 0.11f);
+		A.Seed = FMath::Rand();
+		NextArcTime = Time + FMath::FRandRange(0.02f, 0.09f) / FMath::Max(0.3f, Level);
 	}
-	FRandomStream Rng(static_cast<int32>(Time * 1000.0) ^ (Player * 7919));
-	TArray<FVector> Verts;
+
+	TArray<FVector> Verts[2];
 	TArray<int32> Tris;
 	TArray<FVector> Normals;
 	TArray<FVector2D> UVs;
 	TArray<FLinearColor> Colors;
 	TArray<FProcMeshTangent> Tangents;
-	const int32 Bolts = 5;
-	for (int32 B = 0; B < Bolts; ++B)
+	const float Widths[2] = {6.0f, 1.1f};   // glow, core
+	const FVector Collapsed = GetActorLocation();
+	auto Quad = [&](const FVector& P0, const FVector& P1, float Fade, int32 Layer)
 	{
-		const FVector A = Anchors[Rng.RandRange(0, Anchors.Num() - 1)] + Rng.VRand() * 12.0f;
-		const FVector Z = Anchors[Rng.RandRange(0, Anchors.Num() - 1)] + Rng.VRand() * 28.0f;
-		const int32 Segments = 6;
-		FVector Prev = A;
-		for (int32 S = 1; S <= Segments; ++S)
+		const FVector Dir = (P1 - P0).GetSafeNormal();
+		const FVector Side = FVector::CrossProduct(Dir, FVector(0, 1, 0)).GetSafeNormal() * Widths[Layer] * 0.5f;
+		Verts[Layer].Append({P0 - Side, P0 + Side, P1 - Side, P1 + Side});
+		if (Layer == 0)
 		{
-			FVector P = FMath::Lerp(A, Z, static_cast<float>(S) / Segments);
-			if (S < Segments)
-			{
-				P += Rng.VRand() * 7.0f;
-			}
-			// Ribbon facing the camera (+Y): offset along Z-ish perpendicular in the XZ plane.
-			const FVector Dir = (P - Prev).GetSafeNormal();
-			const FVector Side = FVector::CrossProduct(Dir, FVector(0, 1, 0)).GetSafeNormal() * (0.9f + Rng.FRand() * 0.8f);
-			const int32 V0 = Verts.Num();
-			Verts.Append({Prev - Side, Prev + Side, P - Side, P + Side});
+			const int32 V0 = (Verts[0].Num() - 4);
+			Tris.Append({V0, V0 + 2, V0 + 1, V0 + 1, V0 + 2, V0 + 3});
 			for (int32 k = 0; k < 4; ++k)
 			{
 				Normals.Add(FVector(0, 1, 0));
-				Colors.Add(FLinearColor::White);
+				Colors.Add(FLinearColor(Fade, Fade, Fade, Fade));
 				Tangents.Add(FProcMeshTangent(1, 0, 0));
 			}
 			UVs.Append({FVector2D(0, 0), FVector2D(1, 0), FVector2D(0, 1), FVector2D(1, 1)});
-			Tris.Append({V0, V0 + 2, V0 + 1, V0 + 1, V0 + 2, V0 + 3});
-			Prev = P;
+		}
+	};
+	for (const FAuraArc& A : Arcs)
+	{
+		const float Age = static_cast<float>(Time - A.Born);
+		const bool bAlive = A.Born >= 0.0 && Age < A.Life;
+		// The jag re-strikes once mid-life, which reads as crackle; between re-strikes the shape holds still.
+		FRandomStream Rng(A.Seed + (bAlive ? static_cast<int32>(Age / 0.035f) : 0));
+		const FVector P0 = Bones[A.From] + A.OffFrom;
+		const FVector P1 = Bones[A.To] + A.OffTo;
+		const float Fade = bAlive ? 1.0f - FMath::Square(Age / A.Life) : 0.0f;
+		const float Len = FVector::Dist(P0, P1);
+		const FVector Along = (P1 - P0).GetSafeNormal();
+		const FVector Perp = FVector::CrossProduct(Along, FVector(0, 1, 0)).GetSafeNormal();
+		FVector Points[MainSegs + 1];
+		for (int32 k = 0; k <= MainSegs; ++k)
+		{
+			const float T = static_cast<float>(k) / MainSegs;
+			const float Pin = FMath::Sin(T * PI);   // ends stay on their anchors
+			Points[k] = FMath::Lerp(P0, P1, T) + Perp * Rng.FRandRange(-0.22f, 0.22f) * Len * Pin + FVector(0, Rng.FRandRange(-2.0f, 2.0f), 0) * Pin;
+		}
+		const int32 Fork = 2 + Rng.RandRange(0, 3);
+		const float Turn = (Rng.FRand() < 0.5f ? -1.0f : 1.0f) * Rng.FRandRange(25.0f, 50.0f);
+		const FVector ForkDir = Along.RotateAngleAxis(Turn, FVector(0, 1, 0));
+		FVector Branch[BranchSegs + 1];
+		Branch[0] = Points[Fork];
+		for (int32 k = 1; k <= BranchSegs; ++k)
+		{
+			Branch[k] = Branch[k - 1] + ForkDir * (Len * 0.38f / BranchSegs) + Perp * Rng.FRandRange(-0.08f, 0.08f) * Len;
+		}
+		for (int32 Layer = 0; Layer < 2; ++Layer)
+		{
+			for (int32 k = 0; k < MainSegs; ++k)
+			{
+				Quad(bAlive ? Points[k] : Collapsed, bAlive ? Points[k + 1] : Collapsed + FVector(0, 0, 0.01f), Fade, Layer);
+			}
+			for (int32 k = 0; k < BranchSegs; ++k)
+			{
+				Quad(bAlive ? Branch[k] : Collapsed, bAlive ? Branch[k + 1] : Collapsed + FVector(0, 0, 0.01f), Fade * 0.7f, Layer);
+			}
 		}
 	}
-	// The bolt layout always has the same vertex count, so later strikes move the existing vertices. Creating a new
-	// section (or setting the material again) rebuilds the render proxy, which hitched while the aura was up.
-	const FProcMeshSection* Existing = Aura->GetNumSections() > 0 ? Aura->GetProcMeshSection(0) : nullptr;
-	if (Existing && Existing->ProcVertexBuffer.Num() == Verts.Num())
+	// The layout always has the same vertex count, so later frames move the existing vertices. Creating a section (or
+	// setting its material again) rebuilds the render proxy, which hitched while the aura was up.
+	for (int32 Layer = 0; Layer < 2; ++Layer)
 	{
-		Aura->UpdateMeshSection_LinearColor(0, Verts, Normals, UVs, Colors, Tangents);
+		const FProcMeshSection* Existing = Aura->GetNumSections() > Layer ? Aura->GetProcMeshSection(Layer) : nullptr;
+		if (Existing && Existing->ProcVertexBuffer.Num() == Verts[Layer].Num())
+		{
+			Aura->UpdateMeshSection_LinearColor(Layer, Verts[Layer], Normals, UVs, Colors, Tangents);
+		}
+		else
+		{
+			Aura->CreateMeshSection_LinearColor(Layer, Verts[Layer], Tris, Normals, UVs, Colors, Tangents, false);
+			Aura->SetMaterial(Layer, Layer == 0 ? AuraMaterial.Get() : AuraCoreMaterial.Get());
+		}
 	}
-	else
-	{
-		Aura->CreateMeshSection_LinearColor(0, Verts, Tris, Normals, UVs, Colors, Tangents, false);
-		Aura->SetMaterial(0, AuraMaterial);
-	}
-	AuraMaterial->SetScalarParameterValue(TEXT("Intensity"), 5.0f * AuraIntensity);
+	AuraMaterial->SetScalarParameterValue(TEXT("Intensity"), 3.2f * Level);
+	AuraCoreMaterial->SetScalarParameterValue(TEXT("Intensity"), 12.0f * Level);
 }

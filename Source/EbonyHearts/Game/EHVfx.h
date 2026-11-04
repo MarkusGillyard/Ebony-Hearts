@@ -29,6 +29,7 @@ public:
 	void Flame(const FVector& At, float Scale);
 	void FlameBurst(const FVector& At, int32 Facing);
 	void AuraFlash(const FVector& At);
+	void AuraMote(const FVector& At);
 	void Ripple(const FVector& At, float Scale);
 	void Splash(const FVector& At, float Scale);
 	bool HasMaterial() const { return BaseMaterial != nullptr; }
@@ -52,6 +53,7 @@ private:
 		FLinearColor Color = FLinearColor::White;
 		float Intensity = 1.0f;
 		EEHFxTex Tex = EEHFxTex::Glow;
+		bool bFire = false;       // a flame tongue from the fire pool: plays its flipbook over its life
 	};
 
 	UPROPERTY()
@@ -62,10 +64,23 @@ private:
 	TObjectPtr<UMaterialInterface> BaseMaterial;
 	UPROPERTY()
 	TArray<TObjectPtr<UTexture2D>> Textures;
+	// Flame tongues use their own pool so a quad never changes material (that rebuilds its render proxy).
+	UPROPERTY()
+	TArray<TObjectPtr<UStaticMeshComponent>> FirePool;
+	UPROPERTY()
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> FireMaterials;
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> FireMaterial;
 
 	TArray<FParticle> Particles;
+	TArray<FParticle> FireParticles;
+	int32 FireCursor = 0;
 	int32 Cursor = 0;
 	bool bReduceFlash = false;
 
 	FParticle& Spawn(EEHFxTex Tex, const FVector& Pos, float Life, float Size0, float Size1, const FLinearColor& Color, float Intensity);
+	// A flame tongue (M_VFX_Fire): dark crimson edges to a hot core; falls back to the flame sprite without the material.
+	FParticle& SpawnFire(const FVector& Pos, float Life, float Size0, float Size1, float Intensity);
+	void Ember(const FVector& At, float Scale);
+	void TickPool(TArray<FParticle>& List, TArray<TObjectPtr<UStaticMeshComponent>>& Comps, TArray<TObjectPtr<UMaterialInstanceDynamic>>& Mats, float DeltaSeconds);
 };

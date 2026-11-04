@@ -14,7 +14,7 @@ import sys
 import types
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -87,6 +87,66 @@ def stance_targets(st, idle=False, overrides=None):
             t["rock"] = st["idle"]["rock"]
     t.update(overrides or {})
     return t
+
+
+def emit_clip(a, arm, chains, hair, prefix, key, spec, move, poses, total, loop):
+    """Keys a finished clip on the armature, bakes the coat and the hair, and renders and exports it."""
+    action = bpy.data.actions.new(prefix + key)
+    arm.animation_data_create()
+    arm.animation_data.action = action
+    for frame, pose in enumerate(poses, start=1):
+        M.key_pose(arm, pose, frame)
+    M.bake_tracked(arm, total)
+    if chains:
+        A.bake_secondary(hair, chains, total, loop)
+    print(f"BUILDMOCAP {prefix}{key} clip={spec.get('clip') or spec.get('bvh') or spec.get('fbx') or 'scripted'} "
+          f"src={spec.get('anchors') or spec.get('src')} frames={total} loop={loop}")
+    if a.review:
+        preview.setup_camera()
+        if a.review_frames == "all":
+            frames = list(range(1, total + 1))
+        elif a.review_frames:
+            frames = [f for f in (int(x) for x in a.review_frames.split(",")) if 1 <= f <= total]
+        else:
+            frames = review_frames(key, total, move)
+        paths = preview.render_frames(frames, os.path.join(a.out, "review", "frames"), prefix + key)
+        print("REVIEW", prefix + key, ",".join(str(f) for f in frames), "|".join(paths))
+    if a.video:
+        preview.setup_camera()
+        reps = 3 if loop else 1
+        frames = [f for _ in range(reps) for f in range(1, total + 1)]
+        vdir = os.path.join(a.out, "video", prefix + key)
+        os.makedirs(vdir, exist_ok=True)
+        for k, f in enumerate(frames):
+            bpy.context.scene.frame_set(f)
+            bpy.context.scene.render.filepath = os.path.join(vdir, f"{k:04d}.png")
+            bpy.ops.render.render(write_still=True)
+        print("VIDEO", prefix + key, vdir, len(frames))
+    if not a.no_export:
+        export_action(arm, action, os.path.join(a.out, prefix + key + ".fbx"))
+
+
+def scripted_clip(a, arm, data, key):
+    """Every frame of a scripted move (moves.py) as local poses, authored with the scripted build's IK rig and its
+    travel; every constraint is muted again afterwards. Returns (poses, total)."""
+    import moves
+    defs = moves.wren_moves(data) if a.char == "wren" else moves.ashka_moves(data)
+    keys, total, travel, _ = defs[key]
+    rig = A.Rig(arm, a.char, a.height or None)
+    A.mute_constraints(rig, False)
+    rig.reset()
+    action = bpy.data.actions.new("scripted_" + key)
+    arm.animation_data_create()
+    arm.animation_data.action = action
+    A.author([(rig, keys, travel)], total)
+    A.mute_constraints(rig, True)
+    poses = []
+    for frame in range(1, total + 1):
+        bpy.context.scene.frame_set(frame)
+        poses.append({pb.name: (pb.location.copy(), pb.rotation_quaternion.copy()) for pb in arm.pose.bones})
+    arm.animation_data.action = None
+    bpy.data.actions.remove(action)
+    return poses, total
 
 
 def scripted_poses(a, arm, data, wanted):
@@ -276,6 +336,8 @@ def build(a):
         spec = table[key]
         if only and key not in only and not (key == "Idle" and guard_pose is None):
             continue
+        if spec.get("scripted"):
+            continue
         src = make_source(a, spec, arm)
         src_fps = getattr(src, "fps", M.SRC_FPS)
         rt = M.Retarget(arm, src)
@@ -381,6 +443,30 @@ def build(a):
             got = M.reach(rt, poses, r["part"], r["to"] * rt_scale(arm, a), a_, b_, max_shift=r.get("max_shift", 0.35),
                           max_lean=r.get("max_lean", 0.6), skid=r.get("skid", 0.0), balance=r.get("balance", 0.0))
             print(f"BUILDMOCAP reach {key} {r['part']} -> {got:.2f} m (target {r['to'] * rt_scale(arm, a):.2f})")
+        if spec.get("extend") and move and move.get("hits"):
+            # A kick that drives out to a straight leg on its active frames (mocap.extend).
+            e = spec["extend"]
+            a_, b_ = move["hits"][0]["frames"]
+            k = rt_scale(arm, a)
+            got = M.extend(rt, poses, e["foot"], e["to"] * k, e["height"] * k, a_, b_, e.get("ramp_in", 5), e.get("ramp_out", 6))
+            print(f"BUILDMOCAP extend {key} foot_{e['foot']} -> {got:.2f} m")
+        if spec.get("turn"):
+            # Rises facing away and pivots round over its feet to face the other way (the get-up from lying head toward
+            # the opponent): from the turn's first frame the body turns about the point between the feet, eased over
+            # the turn, and drifts back so it still ends on its own spot.
+            t0, t1 = spec["turn"]["frames"]
+            deg = spec["turn"]["deg"]
+            w0 = rt.fk(poses[t0 - 1])
+            pivot = (w0["foot_l"].translation + w0["foot_r"].translation) / 2.0
+            pivot.z = 0.0
+            end = rt.fk(poses[-1])["pelvis"].translation
+            drift = M.turn_about(Matrix.Translation(end), pivot, deg).translation - end
+            drift.z = 0.0
+            for i in range(t0 - 1, total):
+                k = A.ease("smooth", min(1.0, (i + 1 - t0) / max(1, t1 - t0)))
+                world = rt.fk(poses[i])
+                m = Matrix.Translation(-drift * k) @ M.turn_about(world["pelvis"], pivot, deg * k)
+                rt.set_world(poses[i], world, "pelvis", m)
         if guard_pose is not None and not loop:
             nin, nout = spec.get("blend_in", 3), spec.get("blend_out", 6)
             for i in range(min(nin, total)):
@@ -403,6 +489,11 @@ def build(a):
             for i in range(n):
                 k = total - n + i
                 poses[k] = M.blend_pose(poses[k], target, A.ease("smooth", (i + 1) / n))
+        if loop and spec.get("start_frame"):
+            # Loops restart from their first frame whenever they follow another animation: start the cycle on the
+            # frame closest to the idle's pose (feet nearest the stance), so a walk does not open with a foot jump.
+            k = spec["start_frame"] - 1
+            poses = poses[k:] + poses[:k]
         M.overlap(poses, loop)
         half_prev = {}
         for pose in poses:
@@ -412,39 +503,20 @@ def build(a):
             guard_pose = poses[0]
         if only and key not in only:
             continue
-        action = bpy.data.actions.new(prefix + key)
-        arm.animation_data_create()
-        arm.animation_data.action = action
-        for frame, pose in enumerate(poses, start=1):
-            M.key_pose(arm, pose, frame)
-        M.bake_tracked(arm, total)
-        if chains:
-            A.bake_secondary(hair, chains, total, loop)
-        print(f"BUILDMOCAP {prefix}{key} clip={spec.get('clip') or spec.get('bvh') or spec.get('fbx')} "
-              f"src={spec.get('anchors') or spec['src']} frames={total} loop={loop}")
-        if a.review:
-            preview.setup_camera()
-            if a.review_frames == "all":
-                frames = list(range(1, total + 1))
-            elif a.review_frames:
-                frames = [f for f in (int(x) for x in a.review_frames.split(",")) if 1 <= f <= total]
-            else:
-                frames = review_frames(key, total, move)
-            paths = preview.render_frames(frames, os.path.join(a.out, "review", "frames"), prefix + key)
-            print("REVIEW", prefix + key, ",".join(str(f) for f in frames), "|".join(paths))
-        if a.video:
-            preview.setup_camera()
-            reps = 3 if loop else 1
-            frames = [f for _ in range(reps) for f in range(1, total + 1)]
-            vdir = os.path.join(a.out, "video", prefix + key)
-            os.makedirs(vdir, exist_ok=True)
-            for k, f in enumerate(frames):
-                bpy.context.scene.frame_set(f)
-                bpy.context.scene.render.filepath = os.path.join(vdir, f"{k:04d}.png")
-                bpy.ops.render.render(write_still=True)
-            print("VIDEO", prefix + key, vdir, len(frames))
-        if not a.no_export:
-            export_action(arm, action, os.path.join(a.out, prefix + key + ".fbx"))
+        emit_clip(a, arm, chains, hair, prefix, key, spec, move, poses, total, loop)
+    for key, spec in table.items():
+        if not spec.get("scripted") or (only and key not in only):
+            continue
+        # A move keyed by script (moves.py) on the scripted stance, eased in from and out into the idle's first pose
+        # like the captured moves, so it hands over to and from the captured idle without a jump.
+        poses, total = scripted_clip(a, arm, data, key)
+        nin, nout = spec.get("blend_in", 4), spec.get("blend_out", 10)
+        for i in range(min(nin, total)):
+            poses[i] = M.blend_pose(guard_pose, poses[i], A.ease("smooth", (i + 1) / (nin + 1)))
+        for i in range(min(nout, total)):
+            k = total - nout + i
+            poses[k] = M.blend_pose(poses[k], guard_pose, A.ease("smooth", (i + 1) / nout))
+        emit_clip(a, arm, chains, hair, prefix, key, spec, by_id.get(key), poses, total, False)
     print("BUILDMOCAP done")
 
 

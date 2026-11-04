@@ -917,6 +917,31 @@ def reach(rt, poses, part, to, first, last, ramp_in=6, ramp_out=10, max_shift=0.
     return -rt.fk(poses[first - 1])[bone].translation.y
 
 
+def extend(rt, poses, side, to, height, first, last, ramp_in=5, ramp_out=6):
+    """Drives a kick out to a straight leg on its active frames (first..last, 1-based): the ankle goes `to` metres in
+    front of the hip joint at `height` metres, eased in over ramp_in frames and out over ramp_out, and the leg IK
+    straightens the knee to get there. A captured chamber that never extends (the knee bent the same way from lift to
+    retraction) then reads as a push kick. Returns the ankle's distance in front of the fighter on the first active
+    frame."""
+    foot, thigh = f"foot_{side}", f"thigh_{side}"
+    for i, pose in enumerate(poses):
+        f = i + 1
+        if f < first:
+            w = A.ease("smooth", max(0.0, 1.0 - (first - f) / max(1, ramp_in)))
+        elif f <= last:
+            w = 1.0
+        else:
+            w = A.ease("smooth", max(0.0, 1.0 - (f - last) / max(1, ramp_out)))
+        if w <= 0.0:
+            continue
+        world = rt.fk(pose)
+        ankle = world[foot].translation
+        hip = world[thigh].translation
+        target = Vector((ankle.x, hip.y - to, height))
+        rt.leg_ik(pose, world, side, ankle.lerp(target, w), None, world[foot].to_3x3())
+    return -rt.fk(poses[first - 1])[foot].translation.y
+
+
 # Follow-through: (bone, frames of lag, share of the lagging rotation). The upper spine, neck and head trail the body's
 # turns slightly, so the torso bends through a motion instead of turning as one piece.
 OVERLAP = (("spine_03", 1, 0.3), ("neck_01", 1, 0.35), ("head", 2, 0.35))

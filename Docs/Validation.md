@@ -738,6 +738,151 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-43`).
 
+### Captured jabs, cross and elbow; the teep extends (package `pkg-38-strikes`)
+
+- **Creator feedback (2026-11-04).** The punches, knees and elbows of both fighters still needed a lot more work. The
+  teep needed to look natural and smooth, and the knee hardly moved.
+- **New captures.** Picked from 28 Mixamo candidates by where the fist or elbow travels and how high it lands:
+  - Wren's jab is a short lead jab to the head, and her cross is a full cross.
+  - Ashka's jab is a medium lead jab to the head. Her horizontal elbow is a capture that throws the elbow itself,
+    so the elbow, not the fist, is aimed at the target.
+  - The old clips punched at chest height; the new ones land at head height (checked in game).
+  - In the hit frame, Wren's jab reaches 0.71 m and her cross 0.77 m; Ashka's jab reaches 0.64 m and her elbow
+    0.58 m. All four are on their targets.
+- **Teep.** The kicking leg is now solved toward a point ahead at hip height over the active frames, easing in and
+  out (`mocap.extend`). The knee chambers bent and then straightens through the hit, and the foot reaches 1.17 m
+  ahead instead of 0.93 m.
+- **Rejected.**
+  - A front snap kick and a side kick as the teep: different mechanics from a push kick.
+  - New knee clips: Ashka's knee already reaches 1.05–1.08 m inside its hitbox.
+- **Review and regression.**
+  - Both fighters' captured animations were rebuilt and reimported, and packaged as `pkg-38-strikes`.
+  - The move script and the light strings were recorded on `pkg-37` and `pkg-38` (`anim-44`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-45`).
+
+### Throws drawn as authored (packages `pkg-40-throws`, `pkg-41-throwko`)
+
+- **Creator feedback (2026-11-04).** The grab and throws looked completely broken and unrealistic.
+- **What was wrong.** A throw is authored as a pair in the thrower's space, with the victim at `holdX` facing the
+  thrower. The game draws each fighter in its own space, opened 12° toward the camera, and mirrors a fighter that
+  faces left. So in every throw:
+  - one of the two was drawn mirrored relative to how the pair was authored, so holds on one side of the body met
+    the other side;
+  - the pair stood 24° off square, with the victim about 9 cm off the line;
+  - after a back throw both fighters switch sides, and the game blended from the last pose as the mesh held it,
+    which the switch had just mirrored. The thrower twisted through a half turn (the arms-out pose after the suplex);
+  - every landing jumped by up to 24° into the knockdown.
+- **Fix.**
+  - Each victim animation is moved into the space the game draws the victim in, a turn and a mirror per throw
+    (`build_anims.stage_transforms`, `transform_pose`). The skeletons are symmetric to within 3 cm.
+  - Both bodies end exactly on the first frame of what is drawn after the landing: the thrower in its stance
+    (facing the victim after a back throw) and the victim lying at `landX`. Measured: 0 mm on every bone except the
+    double-leg's curled fingers (7 cm).
+  - The game now cuts instead of blending when a fighter's facing flips (`EHFighterVisual`).
+- **Clinch distance.** Ashka's clinch throws held the victim 42 cm away, and the two bodies overlapped through the
+  clinch. `holdX` is now 54 cm for both. It only places the victim during the throw; the landing still uses `landX`.
+- **Throw knockouts.** A throw that knocked the victim out played the standing knockout fall from the floor. The
+  victim now stays down in its lying pose (`reaction` 3 in `KO`). Covered by a new core test, `throw_ko_stays_down`
+  (261 checks).
+- **Researched, not used.** Mixamo has three two-person throws: Double Leg Takedown (Wren's slam), Shoulder Throw
+  and Hell Slammer. The last two land the victim with its head toward the thrower, but the knockdown and get-up
+  start lying head away. Using them needs a head-toward knockdown and get-up.
+- **Review and regression.**
+  - All four throws against both victims were rebuilt and reimported, and packaged as `pkg-40-throws`.
+  - The training throw script was recorded on `pkg-38` and `pkg-40` (`anim-46`).
+  - With the knockout fix added, the build was packaged as `pkg-41-throwko`. The smoke test, the controls
+    self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures and 0 warnings (`anim-48`).
+
+### Hand-overs between the stance and the moves (package `pkg-42-flow`)
+
+- **Creator feedback (2026-11-04).** The flow between the stances and the moves was not smooth and did not look like
+  a real fight. The creator pointed to Dead or Alive 5 as the reference for how fighters should move and flow.
+- **Research.**
+  - Dead or Alive 5's moves were performed by a team of motion actors, with an action coordinator, at a capture
+    studio (the game's production credits). Each character's stance, moves and strings come from one performance
+    style.
+  - Animators' practice for fighting games: start every attack from (or within a few centimetres of) the idle, so the
+    blend into it cannot be seen; keep the idle a clean pose to blend from; put the follow-through inside the attack
+    and settle back into the stance.
+- **Measured.** The worst joint between where one animation hands over and where the next starts, in cm
+  (`tools/anim-review/transitions.py`, `loop_phase.py`):
+  - The captured moves start 2–8 cm and end 0 cm from the idle.
+  - The scripted moves were 12–14 cm off at both ends: Wren's spinning back elbow, both bursts, the grabs and the
+    rolls were keyed on the scripted stance, not on the captured idle.
+  - Walks started 17–20 cm off (mid-stride).
+  - Strings hand over 15–57 cm apart, because the cross's arm is still out when the next hit starts. The game already
+    decays that offset over the next move's startup, so contact still lands on the move's own keys.
+- **Fix.**
+  - The scripted moves now ease in from and out into the idle's first pose, as the captured moves do (`build_mocap`
+    `"scripted"` entries). They start 1 cm and end 0 cm from it.
+  - Walk loops start on the frame closest to the stance (`"start_frame"`): 9–12 cm.
+- **Review and regression.**
+  - Every captured and scripted clip was rebuilt and reimported, and packaged as `pkg-42-flow`.
+  - The move script and the light strings were recorded on `pkg-41` and `pkg-42` (`anim-50`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-51`).
+
+### The golden aura and the crimson flame (package `pkg-43-aura`)
+
+- **Creator feedback (2026-11-04).** The auras looked so bad overall that a real critique was not possible.
+- **What was wrong.**
+  - Spirit Enhanced Strikes turned the rim of Wren's body materials gold at up to 0.9 intensity. That tinted her
+    whole body, so she read as mustard-coloured. Its lightning was five thin lines with no glow between random bones,
+    redrawn wherever they fell about 18 times a second, so they floated loose around her.
+  - The Lamplighter Flame was one static teardrop sprite in rose tones, so it read as flat pink cards.
+- **Now.**
+  - **Energy shell.** A second pass of Wren's own mesh (an overlay material, `M_VFX_AuraShell`): a fresnel rim, so
+    the glow sits on her silhouette, carried by two layers of noise streaming upward in world space. Her body keeps
+    its own colours; the body rim only warms slightly.
+  - **Lightning.** Short arcs between two bones 10–55 cm apart, each end pushed out past her outline toward the
+    camera. Each arc has a soft glow, a white-hot core and one fork, lives 3–7 frames, re-strikes its jag once, and
+    rides her limbs as she moves.
+  - **Motes.** About 30 gold motes a second stream up off her body.
+  - **Fire.** Each flame tongue plays a 16-frame flipbook (`T_FX_FireSheet`, procedural): licking up, tearing at the
+    tip, burning out. Its density is mapped from deep crimson at the edges to a hot red core (`M_VFX_Fire`). Embers
+    rise off it. Flame Burst rolls out a field of 24 tongues. Flame tongues have their own pool, so no quad ever
+    changes material.
+  - The overlay is set once when the fighter loads and stays dark until the aura rises. Changing a mesh's overlay
+    rebuilds its render proxy, which would hitch on the frame the aura lands.
+  - The rebuild never re-imports the title card once it exists (`build_content.py`).
+- **Review and regression.**
+  - Packaged as `pkg-43-aura`. The signature moves were recorded on `pkg-41` and `pkg-43` (`anim-52`).
+  - Frame times in Training with and without the aura (`perf_aura`, `anim-53`): median 16.66–16.67 ms and 99th
+    percentile 16.75–16.80 ms either way, with no hitches.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-53`).
+
+### Captured shoulder throw, head-toward get-up, close-range stagger (package `pkg-44-shoulder`)
+
+- **Why.** The creator asked for captured throws. Mixamo's other two-person throws (Shoulder Throw, Hell Slammer)
+  land the victim on its back with its head toward the thrower (measured: head 1.1 m, feet 2.3 m from the thrower),
+  but the knockdown and the get-up started lying head away.
+- **Head-toward landing.**
+  - A throw can be marked `landsHeadToward` (data). The victim then lies as `KnockdownLieRev` (the knockdown lie
+    turned round) and rises with `GetupRev`: the captured get-up turned round, so it sits up facing away, then pivots
+    180° over its feet while rising (`build_mocap` `"turn"`, turning its front past the camera). It ends in its stance
+    facing the opponent. The timing is unchanged (`reaction` 4, presentation only).
+  - A get-up from the stomach was considered. Mixamo's take 3–5 s and ACCAD's 3 s, too slow for the game's 1 s
+    get-up.
+  - New core test `shoulder_throw_lands_head_toward` (263 checks).
+- **Wren's back throw** is now the captured Shoulder Throw (it was the scripted belly-to-belly suplex): she ducks in,
+  loads the victim onto her shoulder and throws it over to land behind her.
+  - The pair is mirrored and turned as it plays (from 20° at the grip to 113° at the landing), so the victim lands
+    on the fight line behind her and she finishes facing it.
+  - Its duration is now 72 frames (was 60) and its damage frame 48 (was 38), under the creator's approval to lengthen
+    throws; the advantage after it is unchanged.
+- **Not used.** The Hell Slammer: in its usable stretch the victim never faces the thrower, so the throw would open
+  with a pop. Ashka's two throws stay scripted.
+- **Close-range stagger.** Within 75 cm the fighters are eased up to 10 cm apart in depth (the one facing right
+  toward the camera), so bodies standing chest to chest no longer pass through each other. It is off during throws
+  and throw escapes. Presentation only: the pushboxes are unchanged.
+- **Review and regression.**
+  - Every animation was rebuilt and reimported (34 per fighter), and packaged as `pkg-44-shoulder`.
+  - The training throw script was recorded on `pkg-43` and `pkg-44` (`anim-54`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-55`).
+
 ## Known limitations
 
 - **Not verified by a person:**
@@ -751,16 +896,25 @@ rolls, the grab and the three scripted throws):
     "Changes after the release"):
     - the idles, walks and held guards;
     - the jabs, crosses, elbows, knee and kicks;
-    - Wren's double-leg slam;
+    - Wren's double-leg slam and shoulder throw;
     - the intros, wins and defeated poses;
-    - the hit, block, knockdown, KO and get-up.
+    - the hit, block, knockdown, KO and both get-ups.
 
-    Wren's spinning elbow, both bursts, the rolls, the grabs and the other three throws are still
-    keyed by script on the same stances. The creator's playtest on 2026-11-03 rejected the scripted animation as
+    Wren's spinning elbow, both bursts, the rolls, the grabs and Ashka's two throws are still keyed by
+    script on the same stances. The creator's playtest on 2026-11-03 rejected the scripted animation as
     unnatural; the creator has judged videos of the replacements but has not played them.
   - Coat panels can clip in the most extreme spins.
+  - Walking all the way in brings the fighters chest to chest (the pushboxes keep their hips 46 cm apart). They are
+    staggered 20 cm apart in depth there, so the bodies no longer pass through each other, but guarding arms can
+    still cross.
   - Only Wren's primary outfit is included.
-- **Presentation.** At 60 Hz on the test desktop with V-Sync (see Performance).
+- **Presentation.** At 60 Hz on the test desktop with V-Sync (see Performance). The test monitor now runs at 165 Hz,
+  but V-Sync still paces the game at exactly 60 Hz there in windowed, borderless and fullscreen modes (`anim-56`:
+  16.667 ms frames). V-Sync off with a 120 fps limit gives a steady 8.334 ms, so the 60 Hz clock is the desktop's,
+  not the game's. Frames at 60 fps land unevenly on a 165 Hz screen (three refreshes, three, three, then two), which
+  looks like skipped frames on smooth motion. Remedies are system settings: run the monitor at 59.97 Hz, or let
+  full-screen windows bypass the compositor (Cinnamon: disable compositing for full-screen windows) and play
+  fullscreen.
 - **Borderless window.** In 1 of 5 default launches, the borderless window came up constrained to the desktop work
   area (3440 × 1368, above the Cinnamon panel) instead of covering the panel. Play is unaffected.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback or online

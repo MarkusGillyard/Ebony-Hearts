@@ -130,8 +130,9 @@ def knockdown(s):
     return keys, 43, None, False
 
 
-def knockdown_lie(s):
-    lie = lying(s)
+def knockdown_lie(s, head_toward=False):
+    """Lying on the back after a throw lands: head away from the opponent, or toward it (thrown over the shoulder)."""
+    lie = lying(s)(spin=180.0) if head_toward else lying(s)
     return [(1, lie, "smooth"), (22, lie(chest=(0, -2, 0)), "smooth"), (43, lie, "smooth")], 43, None, False
 
 
@@ -228,6 +229,7 @@ def wren_moves(data):
     out["HitHeavy"] = hit_heavy(s)
     out["Knockdown"] = knockdown(s)
     out["KnockdownLie"] = knockdown_lie(s)
+    out["KnockdownLieRev"] = knockdown_lie(s, head_toward=True)
     out["Getup"] = getup(s, True)
     out["KO"] = ko(s)
     out["ThrowTech"] = tech(s)
@@ -343,6 +345,7 @@ def ashka_moves(data):
     out["HitHeavy"] = hit_heavy(s)
     out["Knockdown"] = knockdown(s)
     out["KnockdownLie"] = knockdown_lie(s)
+    out["KnockdownLieRev"] = knockdown_lie(s, head_toward=True)
     out["Getup"] = getup(s, False)
     out["KO"] = ko(s)
     out["ThrowTech"] = tech(s)

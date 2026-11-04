@@ -413,6 +413,7 @@ bool LoadThrow(Ctx& ctx, const JsonValue& v, const std::string& p, ThrowDef& t)
 	if (!ReadCm(ctx, v, "holdX", p, t.holdX, 20.0, 200.0, true)) return false;
 	if (!ReadCm(ctx, v, "landX", p, t.landX, -400.0, 400.0, true)) return false;
 	if (!ReadInt(ctx, v, "victimKnockdown", p, t.victimKnockdown, 1, 240, true)) return false;
+	if (!ReadBool(ctx, v, "landsHeadToward", p, t.landsHeadToward)) return false;
 	if (t.landX > -40 * kUnitsPerCm && t.landX < 40 * kUnitsPerCm)
 	{
 		return ctx.Fail(p + ".landX", "landing closer than 40 cm would overlap the thrower");

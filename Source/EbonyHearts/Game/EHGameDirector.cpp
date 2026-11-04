@@ -559,6 +559,12 @@ void AEHGameDirector::UpdatePresentation(float DeltaSeconds, float Alpha)
 			Aura = F.auraFrames < 60 ? (FMath::Sin(static_cast<float>(RenderTime) * 40.0f) > 0.0f ? 0.8f : 0.25f) : 1.0f;
 		}
 		Visual[i]->SetAuraIntensity(Aura);
+		// Motes of the aura streaming up off the body, about thirty a second at full strength.
+		FVector MoteAt;
+		if (Aura > 0.0f && FMath::FRand() < 30.0f * Aura * DeltaSeconds && Visual[i]->RandomAuraPoint(MoteAt))
+		{
+			Vfx->AuraMote(MoteAt);
+		}
 		// Lamplighter Flame accents ride the striking limb around the active frames of flame moves.
 		if (F.state == eh::FState::Attack)
 		{

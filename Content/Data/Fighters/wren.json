@@ -14,10 +14,10 @@
       "holdX": 50, "landX": 120, "victimKnockdown": 34
     },
     {
-      "id": "wren_suplex", "name": "Belly-to-Belly Suplex",
+      "id": "wren_suplex", "name": "Shoulder Throw",
       "attackerAnim": "ThrowB", "victimAnim": "Victim_WrenThrowB",
-      "duration": 60, "damageFrame": 38, "damage": 120,
-      "holdX": 45, "landX": -110, "victimKnockdown": 36
+      "duration": 72, "damageFrame": 48, "damage": 120,
+      "holdX": 45, "landX": -110, "victimKnockdown": 36, "landsHeadToward": true
     }
   ],
   "moves": [

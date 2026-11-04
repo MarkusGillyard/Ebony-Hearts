@@ -44,6 +44,8 @@ public:
 	FVector HeadLocation() const;
 	TArray<FString> MissingAnimations() const;
 	void SetAuraIntensity(float Intensity) { AuraIntensity = Intensity; }
+	// A point on the body for an aura mote to stream off (one of the aura bones, at random); false without an aura.
+	bool RandomAuraPoint(FVector& Out) const;
 	void SetFlameIntensity(float Intensity) { FlameIntensity = Intensity; }
 	USkeletalMeshComponent* GetMesh() const { return Mesh; }
 
@@ -70,8 +72,12 @@ private:
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> MarkerMaterial;
 	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> AuraMaterial;
-	// Per-slot instances of the character materials; their rim turns gold while Spirit Enhanced Strikes is active.
+	TObjectPtr<UMaterialInstanceDynamic> AuraMaterial;       // the soft glow around each lightning arc
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> AuraCoreMaterial;   // the arc's thin white-hot core
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> AuraShellMaterial;  // energy drawn over the body (overlay) while the aura is up
+	// Per-slot instances of the character materials; their rim warms while Spirit Enhanced Strikes is active.
 	UPROPERTY()
 	TArray<TObjectPtr<UMaterialInstanceDynamic>> BodyMaterials;
 
@@ -86,9 +92,23 @@ private:
 	double LoopTime = 0.0;
 	float AuraIntensity = 0.0f;
 	float FlameIntensity = 0.0f;
-	double AuraSeedTime = 0.0;
+	// Lightning arcs live a few frames each, anchored to two nearby bones so they ride the body as it moves.
+	struct FAuraArc
+	{
+		int32 From = 0;
+		int32 To = 0;
+		FVector OffFrom = FVector::ZeroVector;
+		FVector OffTo = FVector::ZeroVector;
+		double Born = -1.0;
+		float Life = 0.0f;
+		int32 Seed = 0;
+	};
+	TArray<FAuraArc> Arcs;
+	double NextArcTime = 0.0;
+	float AppliedShell = -1.0f;
 	float AppliedRim = -1.0f;
 	float AppliedFacingSign = 0.0f;
+	float DepthOffset = 0.0f;     // cm toward the camera: the close-range stagger
 
 	UAnimSequence* FindAnim(FName Key);
 	void UpdateGraybox(const eh::Match& Match, float DeltaSeconds);

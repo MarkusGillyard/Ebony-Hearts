@@ -130,14 +130,14 @@ Health 1000; walk 2.8 cm/frame forward, 2.4 back; pushbox half-width 24 cm; stan
 | Special | 720 Hook Kick | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
 | toward + Special | Tornado Kick | 17 | 3 | 33 | 206 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick. Ends light strings; knocks down. | `FS` |
 | away + Special | Spirit Enhanced Strikes | applies 24 | - | 44 | - | - | - | - | - | 1000 | Full gauge: more strike damage, half damage from flame for 8 s. | `BS` |
-| Grab | Grab | 5 | 2 | 27 | grab 26 | - | - | throw | - | - | Beats blocking. Toward: double-leg slam. Away: belly-to-belly suplex, swaps sides. | `T` |
+| Grab | Grab | 5 | 2 | 27 | grab 26 | - | - | throw | - | - | Beats blocking. Toward: double-leg slam. Away: shoulder throw, swaps sides. | `T` |
 | toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. Can be grabbed. | `DF` |
 | Dodge (away/neutral) | Back Roll | invuln 3-13 | - | 19 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
 
 | Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
 |---|---|---|---|---|---|---|
 | Double-Leg Slam | 74 | 34 | 110 | 120 cm in front | 34 | `ThrowF` / `Victim_WrenThrowF` |
-| Belly-to-Belly Suplex | 60 | 38 | 120 | 110 cm behind (side switch) | 36 | `ThrowB` / `Victim_WrenThrowB` |
+| Shoulder Throw | 72 | 48 | 120 | 110 cm behind (side switch) | 36 | `ThrowB` / `Victim_WrenThrowB` |
 
 ### Ashka Rook
 
@@ -201,14 +201,25 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
   - Unreal world: X is the fighting axis (screen right), Z is up, the fighting plane is at Y = 0, the camera sits on
     +Y looking -Y, and the background recedes toward -Y.
   - Blender source: X right, +Y into depth, Z up, metres. FBX import flips Y.
-  - Fighters face +X when the simulation's facing is +1 and open 12° toward the camera.
+  - Fighters face +X when the simulation's facing is +1 and open 12° toward the camera. A fighter facing -1 is
+    mirrored along X, not turned.
+  - When a fighter's facing flips, its next animation starts without a blend (a blend would start from the old
+    pose, now mirrored). An animation that switches sides must end on the next one's first frame as drawn after
+    the flip.
+  - Within 75 cm of each other the fighters are staggered up to 10 cm apart in depth (the one facing right toward
+    the camera), so bodies standing chest to chest do not pass through each other. The stagger is off during throws
+    and throw escapes, which are authored on the line. Presentation only.
 - **Units.** Data is authored in centimetres and frames (60 Hz). The simulation uses integer units of 1/100 cm.
 - **Animation keys.** Asset `A_<Fighter>_<Key>` under `/Game/Characters/<Fighter>/Anims`, authored at 60 fps. The
   animation frame must equal the move frame, so contact happens on the move's first active frame.
   - Move keys come from the `anim` field.
   - State keys: `Idle`, `WalkF`, `WalkB`, `Guard`, `BlockHit`, `HitLight`, `HitHeavy`, `Knockdown`, `KnockdownLie`
-    (lying after a throw lands), `Getup`, `ThrowTech`, `KO`, `Win`, `Defeated`, `Intro`, plus
+    (lying after a throw lands, and held when a throw knocks out), `KnockdownLieRev` and `GetupRev` (the same after a
+    throw marked `landsHeadToward`: lying head toward the thrower, and rising facing away then pivoting round), `Getup`, `ThrowTech`, `KO`, `Win`, `Defeated`, `Intro`, plus
     `Victim_<Thrower><Throw>` for each throw (both fighters need all four victim animations).
+  - Throws are authored as a pair in the thrower's space, the victim at `holdX` facing the thrower. Each victim
+    animation is exported in the space the game draws the victim in (its own, opened toward the camera and
+    mirrored when facing left), so the pair meets as authored.
 - **Presentation data.** `Content/Data/presentation.json` holds display names, mesh and animation paths, effect bones
   and sound names. It never changes combat outcomes.
 - **Sounds.** `/Game/Audio/<Combat|UI|Ambience|Music>/S_<Name>`. Names that end in `_01`-`_03` are random variations.

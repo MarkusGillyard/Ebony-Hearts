@@ -360,6 +360,53 @@ int main(int argc, char** argv)
 		}
 	});
 
+	Run("shoulder_throw_lands_head_toward", [] {
+		// Wren's back throw lands the victim head toward her (reaction 4: the reversed lie and get-up), through the
+		// knockdown and the get-up; her forward throw lands it head away (reaction 3).
+		for (int dir : {-1, 0})
+		{
+			Match m = MakeMatch(0, 1);
+			m.TrainingPlace(Cm(-35), Cm(35));
+			Step(m, In(static_cast<int8_t>(dir < 0 ? -Toward(m, 0) : 0), BtnThrow));
+			bool knocked = false, rose = false, kept = true;
+			const uint8_t want = dir < 0 ? 4 : 3;
+			for (int t = 0; t < 260; ++t)
+			{
+				Step(m, InputFrame());
+				const FighterState& v = m.State().f[1];
+				if (v.state == FState::Knockdown || v.state == FState::Getup)
+				{
+					knocked = knocked || v.state == FState::Knockdown;
+					rose = rose || v.state == FState::Getup;
+					kept = kept && v.reaction == want;
+				}
+			}
+			EXPECT_TRUE(knocked && rose && kept, dir < 0 ? "back throw: lies and rises head toward the thrower" : "forward throw: lies and rises head away");
+		}
+	});
+
+	Run("throw_ko_stays_down", [] {
+		// A throw that knocks out leaves the victim lying where it landed: the presentation reads reaction 3 and keeps
+		// it on the floor instead of replaying the knockout fall from standing.
+		Match m = MakeMatch(0, 1, Mode::Versus);
+		Idle(m, g_rules.introFrames);
+		bool lying = false;
+		int guard = 0;
+		while (m.State().phase == Phase::Fight && guard++ < 20000)
+		{
+			const FighterState& w = m.State().f[0];
+			const bool canAct = w.state == FState::Neutral && m.State().f[1].state == FState::Neutral;
+			const int32_t gap = m.State().f[1].x - w.x;
+			Step(m, canAct ? (gap > Cm(60) ? In(1, 0) : In(0, BtnThrow)) : InputFrame());
+			if (m.State().f[1].state == FState::KO)
+			{
+				lying = m.State().f[1].reaction == 3;
+			}
+		}
+		EXPECT_TRUE(m.State().roundWinner == 0, "throws alone win the round");
+		EXPECT_TRUE(lying, "a throw KO leaves the victim lying (reaction 3)");
+	});
+
 	Run("throw_tech_window", [] {
 		for (int late : {0, 1})
 		{

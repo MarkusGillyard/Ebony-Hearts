@@ -133,6 +133,7 @@ struct ThrowDef
 	int32_t holdX = 0;          // victim offset from thrower during the sequence (units, +forward)
 	int32_t landX = 0;          // victim landing offset (units, negative lands behind = side switch)
 	int32_t victimKnockdown = 0;
+	bool landsHeadToward = false;   // presentation: the victim lands on its back with its head toward the thrower
 };
 
 struct CharacterDef

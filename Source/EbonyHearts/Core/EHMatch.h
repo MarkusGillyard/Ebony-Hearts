@@ -123,7 +123,7 @@ struct FighterState
 	int32_t lastBlockPress = -100000;
 	bool lastBlockPressTimed = false;
 	bool lastBlockPressDeflected = false;
-	uint8_t reaction = 0;     // presentation: 1 light hit, 2 heavy hit, 3 landed from a throw
+	uint8_t reaction = 0;     // presentation: 1 light hit, 2 heavy hit, 3 landed from a throw, 4 landed head toward the thrower
 	int32_t roundWins = 0;
 	int32_t idleFrames = 0;   // consecutive actionable frames (training refill)
 	Buffered buffer[kBufferCapacity];

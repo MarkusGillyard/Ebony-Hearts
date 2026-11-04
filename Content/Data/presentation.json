@@ -24,7 +24,7 @@
         "S": {"whoosh": "WhooshSpin", "fxBone": "foot_r", "shake": 0.6, "note": "Signature. Slow, airborne, devastating; very punishable if blocked."},
         "FS": {"whoosh": "WhooshSpin", "fxBone": "foot_l", "shake": 0.4, "note": "Travelling jump kick. Ends light strings; knocks down."},
         "BS": {"whoosh": "AuraCharge", "fxBone": "spine_03", "note": "Full gauge: more strike damage, half damage from flame for 8 s."},
-        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats blocking. Toward: double-leg slam. Away: belly-to-belly suplex, swaps sides."},
+        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats blocking. Toward: double-leg slam. Away: shoulder throw, swaps sides."},
         "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent. Can be grabbed."},
         "DB": {"whoosh": "Roll", "note": "Retreating roll. Recovery is punishable."}
       }

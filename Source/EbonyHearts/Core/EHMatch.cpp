@@ -550,13 +550,14 @@ void Match::AdvanceThrow(int a)
 		{
 			v.state = FState::KO;
 			v.stateFrame = 1;
+			v.reaction = d.landsHeadToward ? 4 : 3;   // presentation: already on the floor, not falling from a hit
 		}
 		else
 		{
 			v.state = FState::Knockdown;
 			v.stateFrame = 1;
 			v.stun = d.victimKnockdown;
-			v.reaction = 3;   // presentation: already on the floor, not falling from a hit
+			v.reaction = d.landsHeadToward ? 4 : 3;   // presentation: already on the floor, not falling from a hit
 			Emit(EventType::Knockdown, 1 - a, throwIndex, v.x, 0, d.victimKnockdown, 0);
 		}
 		v.throwKO = false;
