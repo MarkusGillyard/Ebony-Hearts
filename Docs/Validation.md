@@ -930,9 +930,14 @@ rolls, the grab and the three scripted throws):
   but V-Sync still paces the game at exactly 60 Hz there in windowed, borderless and fullscreen modes (`anim-56`:
   16.667 ms frames). V-Sync off with a 120 fps limit gives a steady 8.334 ms, so the 60 Hz clock is the desktop's,
   not the game's. Frames at 60 fps land unevenly on a 165 Hz screen (three refreshes, three, three, then two), which
-  looks like skipped frames on smooth motion. Remedies are system settings: run the monitor at 59.97 Hz, or let
-  full-screen windows bypass the compositor (Cinnamon: disable compositing for full-screen windows) and play
-  fullscreen.
+  looks like skipped frames on smooth motion. The desktop is Cinnamon 6.6.9 (Muffin 6.6.3) on X11 with one monitor
+  (DP-4) on the NVIDIA driver 595.99, and Muffin is set to keep compositing full-screen windows. The game's own
+  request to bypass the compositor (`SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR=1`) still left it at 60 Hz (`anim-60`).
+  Remedies are system settings: run the monitor at 59.97 Hz, or let full-screen windows bypass the compositor
+  (Cinnamon: disable compositing for full-screen windows) and play fullscreen.
+- **Exclusive fullscreen.** One launch in 26 at exclusive fullscreen crashed (signal 11) just after the display mode
+  switch, on the first launch after a long idle. It did not recur in 25 further fullscreen launches (3440 × 1440 and
+  1920 × 1080) or in 12 default borderless launches (`anim-60`). The shipping build gives no callstack.
 - **Borderless window.** In 1 of 5 default launches, the borderless window came up constrained to the desktop work
   area (3440 × 1368, above the Cinnamon panel) instead of covering the panel. Play is unaffected.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback or online
