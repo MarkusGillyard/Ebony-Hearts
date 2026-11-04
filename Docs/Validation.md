@@ -930,6 +930,23 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-65`).
 
+### The grabbed fighter eases into the throw (package `pkg-48-victim`)
+
+- **Measured.** A grabbed fighter's throw animation started 50–86 cm from the idle they were standing in. The victim
+  animations are expressed in the space the game draws them in, so their first frame is the stance with the feet the
+  other way round, and the captured victims start in their performers' poses. The game covered that in a 6-frame
+  blend.
+- **Fix.**
+  - `build_mocap` saves each fighter's idle first pose (`idle_pose.json` beside the clips).
+  - Each victim animation's first 10 frames now ease out of it, so the throw starts exactly where the victim stood:
+    0 cm from the idle. From the guard, only the raised hands differ (23–47 cm).
+  - The ends still hand over exactly (0 mm).
+- **Review and regression.**
+  - Every throw was rebuilt and reimported, and packaged as `pkg-48-victim`.
+  - The training throw script was recorded on `pkg-47` and `pkg-48` at 60 fps (`anim-66`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-67`).
+
 ## Known limitations
 
 - **Not verified by a person:**

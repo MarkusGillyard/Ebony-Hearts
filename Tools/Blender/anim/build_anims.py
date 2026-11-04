@@ -77,6 +77,7 @@ def build_throws(a, data):
     t_prefix = "A_" + a.char.capitalize() + "_"
     v_prefix = "A_" + a.victim_char.capitalize() + "_"
     grab_pose = grab_connect_pose(a, data, t_rig)
+    victim_idle = load_idle_pose(os.path.join(os.path.dirname(os.path.normpath(a.out)), a.victim_char, "idle_pose.json"))
     for td in data["throws"]:
         build = throws.THROWS[(a.char, td["id"])]
         t_keys, v_keys = build(throws.stance_of(a.victim_char), td)
@@ -115,6 +116,11 @@ def build_throws(a, data):
         for i in range(n_in):
             t_poses[i] = M.blend_pose(grab_pose, t_poses[i], A.ease("smooth", i / n_in))
         v_poses = [transform_pose(victim_arm, pose, to_own) for pose in v_poses]
+        # The grabbed fighter was standing in its idle (or guard): ease out of the idle's first pose instead of
+        # jumping to the throw's first frame (50-86 cm, the drawn-space stance has the feet the other way round).
+        if victim_idle:
+            for i in range(min(10, total)):
+                v_poses[i] = M.blend_pose(victim_idle, v_poses[i], A.ease("smooth", i / 10))
         report_handoff(td, t_rig, v_rig, t_poses[-1], v_poses[-1], shown_v)
         A.mute_constraints(t_rig, True)
         A.mute_constraints(v_rig, True)
@@ -227,6 +233,17 @@ def pose_world(arm, pose):
         world[b.name] = (world[b.parent.name] @ (rest[b.parent.name].inverted() @ rest[b.name]) if b.parent else rest[b.name]) @ basis
         stack.extend(b.children)
     return world
+
+
+def load_idle_pose(path):
+    """A fighter's idle first pose saved by build_mocap (None if it has not been built yet)."""
+    if not os.path.exists(path):
+        print(f"BUILDANIM no idle pose at {path}: victims start on their throw's first frame")
+        return None
+    with open(path) as f:
+        data = json.load(f)
+    from mathutils import Quaternion
+    return {name: (Vector(v["loc"]), Quaternion(v["rot"])) for name, v in data.items()}
 
 
 def grab_connect_pose(a, data, rig):

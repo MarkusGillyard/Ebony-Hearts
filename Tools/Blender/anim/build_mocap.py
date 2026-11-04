@@ -126,6 +126,16 @@ def emit_clip(a, arm, chains, hair, prefix, key, spec, move, poses, total, loop)
         export_action(arm, action, os.path.join(a.out, prefix + key + ".fbx"))
 
 
+def save_idle_pose(a, pose):
+    """The idle's first pose (local bone transforms) beside the exported clips, for the throw build: a grabbed fighter's
+    throw animation eases out of it."""
+    if a.no_export or not a.out:
+        return
+    data = {name: {"loc": list(loc), "rot": [q.w, q.x, q.y, q.z]} for name, (loc, q) in pose.items()}
+    with open(os.path.join(a.out, "idle_pose.json"), "w") as f:
+        json.dump(data, f)
+
+
 def scripted_clip(a, arm, data, key):
     """Every frame of a scripted move (moves.py) as local poses, authored with the scripted build's IK rig and its
     travel; every constraint is muted again afterwards. Returns (poses, total)."""
@@ -511,6 +521,7 @@ def build(a):
             M.half_joints(pose, half_prev)
         if key == "Idle":
             guard_pose = poses[0]
+            save_idle_pose(a, guard_pose)
         built[key] = poses
         if only and key not in only:
             continue
