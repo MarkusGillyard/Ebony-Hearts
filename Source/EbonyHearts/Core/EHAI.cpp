@@ -43,13 +43,13 @@ CpuTuning TuningFor(CpuLevel level)
 	switch (level)
 	{
 	case CpuLevel::Easy:
-		t = CpuTuning{26, 25, 0, 15, 10, 30, 25};
+		t = CpuTuning{26, 25, 0, 15, 10, 30, 25, 15, 3};
 		break;
 	case CpuLevel::Normal:
-		t = CpuTuning{18, 55, 5, 45, 35, 12, 40};
+		t = CpuTuning{18, 55, 5, 45, 35, 12, 40, 40, 6};
 		break;
 	case CpuLevel::Hard:
-		t = CpuTuning{11, 80, 20, 80, 60, 4, 50};
+		t = CpuTuning{11, 80, 20, 80, 60, 4, 50, 70, 8};
 		break;
 	}
 	return t;
@@ -121,6 +121,8 @@ InputFrame CpuController::Emit(const Match& match, uint8_t pressed, int8_t dirTo
 {
 	InputFrame in;
 	in.x = RawX(match, dirToward);
+	in.y = jumpNext_ ? 1 : 0;
+	jumpNext_ = false;
 	in.held = static_cast<uint8_t>(held_ | pressed);
 	// A physical button cannot become held without a press: emit the edge so CPU input matches a device.
 	in.pressed = static_cast<uint8_t>(pressed | (in.held & ~lastHeld_));
@@ -254,6 +256,39 @@ InputFrame CpuController::Decide(const Match& match)
 		--guardFrames_;
 	}
 
+	// Anti-air: a jump coming in is met with a jab (it reaches high) or blocked; decided once per seen jump.
+	if (opp.state == FState::Jump && opp.y > 0 && opp.jumpDir > 0 && actionable && press == 0 && dist < 130 * cm)
+	{
+		const int32_t jumpStart = obs.frame - opp.jumpFrame;
+		if (antiAirFor_ != jumpStart)
+		{
+			antiAirFor_ = jumpStart;
+			if (Roll(tune_.antiAirPct))
+			{
+				Queue(BtnLight, 0, 0);
+			}
+			else if (Roll(tune_.blockPct))
+			{
+				defend_ = true;
+				guardFrames_ = 40;
+			}
+		}
+	}
+	// Its own jump: an attack on the way down, once per jump.
+	if (me.state == FState::Jump && me.y > 0 && press == 0 && pendingDelay_ < 0)
+	{
+		const Rules& r = match.GetRules();
+		const int32_t jumpStart = cur.frame - me.jumpFrame;
+		if (airAttackFor_ != jumpStart && me.jumpFrame >= r.jumpSquat + r.jumpAir / 2 && dist < 150 * cm)
+		{
+			airAttackFor_ = jumpStart;
+			if (Roll(80))
+			{
+				Queue(Roll(60) ? BtnHeavy : BtnLight, 0, 0);
+			}
+		}
+	}
+
 	// Defence: the CPU reacts to an attack it has seen and that can reach it.
 	if (opp.state == FState::Attack && opp.move >= 0)
 	{
@@ -359,6 +394,11 @@ InputFrame CpuController::Decide(const Match& match)
 			if (dist < 80 * cm && opp.state != FState::Attack && Roll(35))
 			{
 				Queue(BtnThrow, roll < 50 ? 0 : -1, 0);
+			}
+			else if (gap <= pref + 60 * cm && gap >= pref - 40 * cm && Roll(tune_.jumpPct))
+			{
+				jumpNext_ = true;   // a jump in from mid range
+				walk_ = 1;
 			}
 			else if (gap <= pref + 10 * cm && gap >= pref - 60 * cm)
 			{

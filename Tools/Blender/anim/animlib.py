@@ -14,6 +14,9 @@ FPS = 60
 SPINE = (("spine_01", 0.30), ("spine_02", 0.30), ("spine_03", 0.40))
 NECK = (("neck_01", 0.40), ("head", 0.60))
 FINGERS = ("index", "middle", "ring", "pinky")
+# The thumb folds over the curled index and middle fingers (its tip ~2.6 cm from their middle joints on both rigs).
+# Curling it about its own Z, as before, left it sticking out past the fist or up like a thumbs-up.
+THUMB_WRAP = ((1, 20), (2, 40), (3, 40))
 
 
 def V(f, l, u):
@@ -392,10 +395,10 @@ class Rig:
                     fb = self.pb.get(f"{fing}_0{seg}_{side}")
                     if fb is not None:
                         fb.rotation_quaternion = Quaternion((1, 0, 0), math.radians(amount * curl))
-            for seg, amount in ((1, 25), (2, 40), (3, 35)):
+            for seg, amount in THUMB_WRAP:
                 tb = self.pb.get(f"thumb_0{seg}_{side}")
                 if tb is not None:
-                    tb.rotation_quaternion = Quaternion((0, 0, 1), math.radians(-amount * curl if side == "l" else amount * curl))
+                    tb.rotation_quaternion = Quaternion((1, 0, 0), math.radians(amount * curl))
 
 
 # ---------------------------------------------------------------------------------------------------- authoring

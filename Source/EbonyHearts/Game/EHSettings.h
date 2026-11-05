@@ -10,6 +10,7 @@ enum class EEHAction : uint8
 {
 	Left,
 	Right,
+	Jump,    // up
 	Light,
 	Heavy,
 	Special,

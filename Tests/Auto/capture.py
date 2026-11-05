@@ -2,9 +2,12 @@
 extracts still frames for frame-by-frame review.
 
 Usage:
-  python3 capture.py record <window title> <out.mp4> <seconds> [--delay S] [--fps N]
+  python3 capture.py record <window title> <out.mp4> <seconds> [--delay S] [--fps N] [--start-on FILE:TEXT]
   python3 capture.py frames <in.mp4> <out-dir> <fps>
-Capture reads the window's pixels only; it sends no input. Recording costs CPU, so never record during a perf run.
+--start-on waits, after the window appears, until FILE (e.g. the run's auto_log.txt, which the game appends to line by
+line) contains TEXT (e.g. match_start), then applies --delay: recordings of two builds then start on the same game
+event however long each takes to load, so before/after videos line up. Capture reads the window's pixels only; it sends
+no input. Recording costs CPU, so never record during a perf run.
 """
 import os
 import subprocess
@@ -23,8 +26,24 @@ def find_window(name, timeout):
     raise SystemExit("game window not found")
 
 
-def record(name, out, seconds, delay, fps):
+def wait_for(cue, timeout=240):
+    path, text = cue.rsplit(":", 1)
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as f:
+                if text in f.read():
+                    return
+        except OSError:
+            pass
+        time.sleep(0.02)
+    raise SystemExit(f"cue {text!r} not seen in {path}")
+
+
+def record(name, out, seconds, delay, fps, cue=None):
     xid = find_window(name, 240)
+    if cue:
+        wait_for(cue)
     time.sleep(delay)
     frames = int(seconds * fps)
     cmd = ["gst-launch-1.0", "-q", "-e", "ximagesrc", f"xid={xid}", "use-damage=false", f"num-buffers={frames}", "!",
@@ -50,7 +69,8 @@ def main():
         args = sys.argv[2:]
         delay = float(args[args.index("--delay") + 1]) if "--delay" in args else 0.0
         fps = int(args[args.index("--fps") + 1]) if "--fps" in args else 30
-        sys.exit(record(args[0], args[1], float(args[2]), delay, fps))
+        cue = args[args.index("--start-on") + 1] if "--start-on" in args else None
+        sys.exit(record(args[0], args[1], float(args[2]), delay, fps, cue))
     elif mode == "frames":
         sys.exit(extract(sys.argv[2], sys.argv[3], int(sys.argv[4])))
     raise SystemExit(__doc__)

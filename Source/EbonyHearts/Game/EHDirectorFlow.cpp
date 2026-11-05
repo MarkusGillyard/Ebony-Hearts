@@ -267,7 +267,7 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 {
 	// Order follows the controller: attacks and defence first, then movement and the training shortcut.
 	static const EEHAction Order[] = {EEHAction::Light, EEHAction::Heavy, EEHAction::Dodge, EEHAction::Throw, EEHAction::Block,
-		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Reset};
+		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Jump, EEHAction::Reset};
 	Menu.Reset();
 	BindingSet = Set;
 	const bool bPad = !EHIsKeyboardSet(Set);

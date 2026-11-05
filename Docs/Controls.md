@@ -21,6 +21,7 @@ by position.
 | Block (hold) | R2 | RT | right trigger |
 | Special | R1 | RB | right bumper |
 | Move | Left stick / D-pad | Left stick / D-pad | |
+| Jump | Left stick up / D-pad up | Left stick up / D-pad up | Up from neutral; hold toward or away to jump that way |
 | Pause | Options | Menu | |
 | Training reset | Share | View | |
 
@@ -43,6 +44,7 @@ These are unchanged from the first slice. Both sides can be remapped separately.
 | Action | Player 1 (left side) | Player 2 (right side) |
 |---|---|---|
 | Move | A / D | Arrow keys |
+| Jump | W | Up arrow |
 | Light attack | J, or Enter | Numpad 1, or , |
 | Heavy attack | K, or Backspace | Numpad 2, or . |
 | Special | L | Numpad 3, or / |

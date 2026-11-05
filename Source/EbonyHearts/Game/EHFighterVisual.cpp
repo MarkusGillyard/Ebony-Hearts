@@ -61,13 +61,32 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		}
 		const float Startup = static_cast<float>(FMath::Max(1, FirstActive - 1)) / static_cast<float>(eh::kTickHz);
 		A.BlendSeconds = M.kind == eh::MoveKind::Dodge ? 0.08f : FMath::Clamp(0.75f * Startup, 0.05f, 0.15f);
+		// The feet take until about the first active frame: from a walk the step in progress lands instead of the
+		// foot sliding into the stance in five frames.
+		if (M.kind == eh::MoveKind::Strike)
+		{
+			A.LegBlendSeconds = FMath::Clamp(1.25f * Startup, A.BlendSeconds, 0.16f);
+		}
 		break;
 	}
 	case eh::FState::Hitstun:
+	{
 		A.Key = F.reaction >= 2 ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight"));
+		// A hit can name its own reaction: a hook turns the head away from it, a body shot folds the body. The clip
+		// opens on its impact pose, held through the hitstop, so contact reads on the frame the strike lands.
+		const eh::CharacterDef& Attacker = Match.Character(1 - Player);
+		if (F.reactMove >= 0 && static_cast<size_t>(F.reactMove) < Attacker.moves.size())
+		{
+			const eh::MoveDef& M = Attacker.moves[static_cast<size_t>(F.reactMove)];
+			if (F.reactHit >= 0 && static_cast<size_t>(F.reactHit) < M.hits.size() && !M.hits[static_cast<size_t>(F.reactHit)].react.empty())
+			{
+				A.Key = FName(UTF8_TO_TCHAR(M.hits[static_cast<size_t>(F.reactHit)].react.c_str()));
+			}
+		}
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.06f;
 		break;
+	}
 	case eh::FState::Blockstun:
 		A.Key = TEXT("BlockHit");
 		A.Frame = F.stateFrame;
@@ -108,6 +127,18 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		A.Key = F.reaction == 4 ? FName(TEXT("KnockdownLieRev")) : (F.reaction == 3 ? FName(TEXT("KnockdownLie")) : FName(TEXT("KO")));
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.10f;
+		break;
+	case eh::FState::Jump:
+		// One clip runs the squat and the flight on the jump's own clock (a jump attack that ends in the air returns to
+		// it mid-flight); forward and back jumps have their own.
+		A.Key = F.jumpDir > 0 ? FName(TEXT("JumpF")) : (F.jumpDir < 0 ? FName(TEXT("JumpB")) : FName(TEXT("Jump")));
+		A.Frame = FMath::Max(1, static_cast<int32>(F.jumpFrame));
+		A.BlendSeconds = 0.06f;
+		break;
+	case eh::FState::Landing:
+		A.Key = TEXT("Land");
+		A.Frame = F.stateFrame;
+		A.BlendSeconds = 0.04f;
 		break;
 	case eh::FState::Win:
 		A.Key = TEXT("Win");
@@ -328,6 +359,10 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	{
 		Loc.X += FMath::Sin(static_cast<float>(Time) * 95.0f) * 1.6f * FMath::Min(1.0f, F.hitstop / 6.0f);
 	}
+	// A jump (or a body hit out of the air) lifts the whole fighter; the side marker stays on the floor.
+	const float Height = static_cast<float>(F.y) * UnitsToCm;
+	Loc.Z += Height;
+	Marker->SetRelativeLocation(FVector(0, 0, 4.0f - Height));
 	SetActorLocation(Loc);
 
 	// Facing left mirrors the fighter instead of turning it, so the stance, lead side and the chest opened toward
@@ -354,7 +389,12 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 		return;
 	}
 
-	const FEHAnimChoice Choice = EHChooseAnim(Match, Player);
+	FEHAnimChoice Choice = EHChooseAnim(Match, Player);
+	if (F.state == eh::FState::Hitstun && !bGraybox && FindAnim(Choice.Key) == nullptr)
+	{
+		// A hit's own reaction clip is missing from this fighter's set (reported by MissingAnimations): use the generic one.
+		Choice.Key = F.reaction >= 2 ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight"));
+	}
 	const bool bFrozen = F.hitstop > 0;
 	double NewTime = 0.0;
 	if (Choice.bLoop)
@@ -375,7 +415,7 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 			// A blend would start from the previous pose as it was held in the mesh's space, which the facing flip has
 			// just mirrored: after a back throw that is the thrower's turned-round finish shown facing away. Animations
 			// that switch sides end in the pose the next one starts from as seen after the flip, so cut straight to it.
-			Inst->BeginTransition(CurrentKey.IsNone() || bFacingFlipped ? 0.0f : Choice.BlendSeconds);
+			Inst->BeginTransition(CurrentKey.IsNone() || bFacingFlipped ? 0.0f : Choice.BlendSeconds, Choice.LegBlendSeconds);
 		}
 		if (Choice.bLoop && Choice.Key != CurrentKey)
 		{

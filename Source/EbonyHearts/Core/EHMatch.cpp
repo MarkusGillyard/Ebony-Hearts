@@ -195,8 +195,8 @@ Box Match::WorldBox(int i, const Box& local) const
 		w.x0 = f.x - local.x1;
 		w.x1 = f.x - local.x0;
 	}
-	w.y0 = local.y0;
-	w.y1 = local.y1;
+	w.y0 = local.y0 + f.y;
+	w.y1 = local.y1 + f.y;
 	return w;
 }
 
@@ -252,11 +252,11 @@ bool Match::StrikeHittable(int i) const
 bool Match::IsThrowable(int i) const
 {
 	const FighterState& f = s_.f[i];
-	if (f.throwInvuln > 0 || f.hitstop > 0)
+	if (f.throwInvuln > 0 || f.hitstop > 0 || InAir(i))
 	{
 		return false;
 	}
-	if (f.state == FState::Neutral || f.state == FState::Guard)
+	if (f.state == FState::Neutral || f.state == FState::Guard || f.state == FState::Jump || f.state == FState::Landing)
 	{
 		return true;
 	}
@@ -317,7 +317,7 @@ Box Match::GetPushbox(int player) const
 {
 	const FighterState& f = s_.f[player];
 	const int32_t hw = chars_[player].halfWidth;
-	return Box{f.x - hw, 0, f.x + hw, chars_[player].hurt.y1};
+	return Box{f.x - hw, f.y, f.x + hw, f.y + chars_[player].hurt.y1};
 }
 
 void Match::EndToNeutral(int i)
@@ -337,6 +337,51 @@ void Match::EndToNeutral(int i)
 	f.throwOwner = -1;
 	f.throwFrame = 0;
 	f.reaction = 0;
+	f.reactMove = -1;
+	f.reactHit = -1;
+	f.jumpFrame = 0;
+	f.jumpDir = 0;
+}
+
+bool Match::InAir(int i) const
+{
+	const FighterState& f = s_.f[i];
+	return f.y > 0 || f.jumpFrame > rules_.jumpSquat;
+}
+
+void Match::StartJump(int i, int8_t dir)
+{
+	FighterState& f = s_.f[i];
+	f.state = FState::Jump;
+	f.stateFrame = 1;
+	f.jumpFrame = 1;
+	f.jumpDir = dir;
+	f.walk = 0;
+	f.vy = 0;
+	Emit(EventType::Jump, i, -1, f.x, 0, dir, 0);
+}
+
+void Match::Land(int i)
+{
+	FighterState& f = s_.f[i];
+	const bool attacking = f.state == FState::Attack;
+	const bool jumping = f.state == FState::Jump || attacking;
+	f.y = 0;
+	f.vy = 0;
+	f.jumpFrame = 0;
+	if (!jumping)
+	{
+		return;
+	}
+	const int32_t frames = attacking ? rules_.airAttackLanding : rules_.jumpLanding;
+	EndToNeutral(i);
+	Emit(EventType::Land, i, -1, f.x, 0, 0, 0);
+	if (frames > 0)
+	{
+		f.state = FState::Landing;
+		f.stateFrame = 1;
+		f.stun = frames;
+	}
 }
 
 void Match::Ingest(int i, const InputFrame& in)
@@ -409,6 +454,30 @@ void Match::AdvanceState(int i, bool allowActions)
 	}
 	++f.stateFrame;
 
+	if (f.jumpFrame > 0)
+	{
+		++f.jumpFrame;
+		const int64_t t = f.jumpFrame - rules_.jumpSquat;   // frames in the air so far
+		const int64_t air = rules_.jumpAir;
+		if (t >= air)
+		{
+			Land(i);
+		}
+		else if (t > 0)
+		{
+			f.y = static_cast<int32_t>((4 * static_cast<int64_t>(rules_.jumpHeight) * t * (air - t)) / (air * air));
+		}
+	}
+	else if (f.y > 0)
+	{
+		f.vy += rules_.fallSpeed;
+		f.y = f.y > f.vy ? f.y - f.vy : 0;
+		if (f.y == 0)
+		{
+			f.vy = 0;
+		}
+	}
+
 	switch (f.state)
 	{
 	case FState::Attack:
@@ -422,6 +491,17 @@ void Match::AdvanceState(int i, bool allowActions)
 		}
 		if (f.moveFrame > m.total)
 		{
+			if (m.air && f.jumpFrame > 0)
+			{
+				// A jump attack that finishes before touching down: back to the jump, still in the air.
+				f.state = FState::Jump;
+				f.move = -1;
+				f.moveFrame = 0;
+				f.hitMask = 0;
+				f.connected = false;
+				f.connectedHit = false;
+				break;
+			}
 			if (m.kind == MoveKind::Dodge)
 			{
 				f.dodgeLockout = rules_.dodgeLockout;
@@ -430,6 +510,12 @@ void Match::AdvanceState(int i, bool allowActions)
 		}
 		break;
 	}
+	case FState::Landing:
+		if (--f.stun < 0)
+		{
+			EndToNeutral(i);
+		}
+		break;
 	case FState::Hitstun:
 	case FState::Blockstun:
 		if (--f.stun < 0)
@@ -593,7 +679,7 @@ int32_t Match::SelectMove(int i, uint8_t button, int8_t dir, bool cancel) const
 	{
 		const int32_t idx = cancel ? c.moves[static_cast<size_t>(f.move)].cancelIndices[n] : static_cast<int32_t>(n);
 		const MoveDef& m = c.moves[static_cast<size_t>(idx)];
-		if (m.button != button || (!cancel && m.chainOnly))
+		if (m.button != button || (!cancel && m.chainOnly) || m.air != InAir(i))
 		{
 			continue;
 		}
@@ -707,6 +793,14 @@ void Match::TryActions(int i, const InputFrame& in)
 		TryCancel(i);
 		return;
 	}
+	if (f.state == FState::Jump)
+	{
+		if (InAir(i))
+		{
+			StartFromBuffer(i, false);
+		}
+		return;
+	}
 	if (f.state != FState::Neutral && f.state != FState::Guard)
 	{
 		return;
@@ -734,6 +828,11 @@ void Match::TryActions(int i, const InputFrame& in)
 	{
 		f.state = FState::Neutral;
 		f.stateFrame = 1;
+	}
+	if (in.y > 0)
+	{
+		StartJump(i, DirToward(i, in.x));
+		return;
 	}
 	f.walk = DirToward(i, in.x);
 }
@@ -765,6 +864,11 @@ void Match::Move(bool allowCollision)
 					vx += seg.vx * f.facing;
 				}
 			}
+		}
+		if (f.jumpFrame > rules_.jumpSquat && (f.state == FState::Jump || f.state == FState::Attack))
+		{
+			// In the air the jump carries the body; a jump attack adds no travel of its own.
+			vx = (f.jumpDir > 0 ? rules_.jumpForward : (f.jumpDir < 0 ? -rules_.jumpBack : 0)) * f.facing;
 		}
 		int32_t push = 0;
 		if (f.pushFramesLeft > 0)
@@ -994,7 +1098,8 @@ void Match::ResolveCollisions()
 					punish = true;
 				}
 			}
-			const bool airborne = def.state == FState::Attack && chars_[d].moves[static_cast<size_t>(def.move)].airborne.Contains(def.moveFrame);
+			const bool airborne = def.y > 0 || def.jumpFrame > rules_.jumpSquat ||
+				(def.state == FState::Attack && chars_[d].moves[static_cast<size_t>(def.move)].airborne.Contains(def.moveFrame));
 			const int32_t combo = (def.state == FState::Hitstun) ? def.combo + 1 : 1;
 			const size_t scaleIndex = static_cast<size_t>(combo - 1) < rules_.comboScaling.size() ? static_cast<size_t>(combo - 1) : rules_.comboScaling.size() - 1;
 			int32_t dmg = Pct(h.damage, rules_.comboScaling[scaleIndex]);
@@ -1050,6 +1155,10 @@ void Match::ResolveCollisions()
 			fd.combo = combo;
 			fd.comboDamage = (combo == 1 ? 0 : def.comboDamage) + dmg;
 			fd.reaction = h.heavy ? 2 : 1;
+			fd.reactMove = atk.move;
+			fd.reactHit = static_cast<int8_t>(strikeHit[a]);
+			fd.jumpFrame = 0;   // a jump ends where it is hit; a body in the air falls
+			fd.jumpDir = 0;
 			fd.stateFrame = 1;
 			fd.pushRemaining = 0;
 			fd.pushFramesLeft = 0;
@@ -1396,6 +1505,10 @@ uint64_t Match::Hash() const
 		Mix(h, f.throwFrame);
 		Mix(h, f.roundWins);
 		Mix(h, f.bufferCount);
+		Mix(h, f.y);
+		Mix(h, f.vy);
+		Mix(h, f.jumpFrame);
+		Mix(h, f.jumpDir);
 	}
 	return h;
 }
@@ -1417,6 +1530,8 @@ const char* StateName(FState state)
 	case FState::KO: return "KO";
 	case FState::Win: return "Win";
 	case FState::Defeated: return "Defeated";
+	case FState::Jump: return "Jump";
+	case FState::Landing: return "Landing";
 	}
 	return "?";
 }
@@ -1442,6 +1557,8 @@ const char* EventName(EventType type)
 	case EventType::Timeout: return "Timeout";
 	case EventType::RoundEnd: return "RoundEnd";
 	case EventType::MatchEnd: return "MatchEnd";
+	case EventType::Jump: return "Jump";
+	case EventType::Land: return "Land";
 	}
 	return "?";
 }

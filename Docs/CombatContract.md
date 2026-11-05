@@ -7,11 +7,12 @@ checks; they have not yet been validated by human playtesting.
 
 ## Controls
 
-Movement is left/right. There are six combat actions, with no motion inputs and no chords:
+Movement is left/right, and up jumps. There are six combat actions, with no motion inputs and no chords:
 
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
 | Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
+| Jump | W | Up arrow | Left stick up / D-pad up | Left stick up / D-pad up |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
@@ -82,6 +83,8 @@ Detection outcomes:
 | Separation | 560 cm | The camera edge acts as a wall for whoever is retreating. |
 | Gauge | 0-1000 | Earned: hits 80% of damage dealt and 40% of damage taken; blocking +20 for the attacker and +30 for the defender; deflects +80. No gain while Spirit Enhanced Strikes is active. |
 | Rounds | first to 2, 75 s | KO wins the round. On timeout the higher health percentage wins and equal health is a draw. A double KO is a draw. A draw round awards no win. At most 5 rounds; if wins are still level after that, the match is drawn. |
+| Jump | up | Up from neutral jumps straight up, toward or away by the direction held (a held Block comes first). 4 squat ticks on the floor (grabbable, hit as standing), 36 ticks in the air on a 90 cm arc covering 126 cm toward or 105 cm away, then 4 ticks of landing recovery (6 after a jump attack). In the air a fighter cannot block or be grabbed, and any hit knocks it down; it falls to the floor. Pushboxes still apply, so a jump cannot pass over the opponent. |
+| Jump attacks | Light / Heavy in the air | Each fighter has a light and a heavy jump attack (startup 6 / 8 from the press), blockable standing; landing ends them. A buffered press in the squat comes out once airborne. |
 | Rematch / reset | full | A rematch builds a fresh simulation; Training reset rebuilds both fighters (gauge kept). |
 
 ## Character kits
@@ -130,6 +133,8 @@ Health 1000; walk 2.8 cm/frame forward, 2.4 back; pushbox half-width 24 cm; stan
 | Special | 720 Hook Kick | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
 | toward + Special | Tornado Kick | 17 | 3 | 33 | 206 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick. Ends light strings; knocks down. | `FS` |
 | away + Special | Spirit Enhanced Strikes | applies 24 | - | 44 | - | - | - | - | - | 1000 | Full gauge: more strike damage, half damage from flame for 8 s. | `BS` |
+| In a jump: Light | Jumping Punch | 6 | 6 | until landing | 66 | 40 | by height | by height | - | - | Punch on the way down. Jump in, then combo on landing. | `JL` |
+| In a jump: Heavy | Flying Kick | 8 | 7 | until landing | 96 | 60 | by height | by height | - | - | Flying kick to the body. Strong jump-in; blockable. | `JH` |
 | Grab | Grab | 5 | 2 | 27 | grab 26 | - | - | throw | - | - | Beats blocking. Toward: double-leg slam. Away: shoulder throw, swaps sides. | `T` |
 | toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. Can be grabbed. | `DF` |
 | Dodge (away/neutral) | Back Roll | invuln 3-13 | - | 19 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
@@ -153,6 +158,8 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
 | Special | Flame Elbow | 12 | 3 | 25 | 149 | 115 (chip 12) | -11 | knockdown | - | - | Leaping downward elbow wreathed in crimson flame. Knocks down. | `S` |
 | toward + Special | Flying Knee | 22 | 3 | 26 | 207 | 120 (chip 12) | -11 | knockdown | - | - | Flying knee with flame. Ends light strings; knocks down. | `FS` |
 | away + Special | Flame Burst | 7 | 4 | 39 | 125 | 115 (chip 12) | -28 | knockdown | - | 500 | Half gauge: invulnerable flame burst. Heavily punishable if blocked. | `BS` |
+| In a jump: Light | Jumping Elbow | 6 | 6 | until landing | 60 | 42 | by height | by height | - | - | Elbow on the way down. Jump in, then combo on landing. | `JL` |
+| In a jump: Heavy | Jumping Knee | 8 | 7 | until landing | 70 | 62 | by height | by height | - | - | Jumping knee to the body. Strong jump-in; blockable. | `JH` |
 | Grab | Clinch | 5 | 2 | 26 | grab 30 | - | - | throw | - | - | Beats blocking. Toward: clinch knees. Away: clinch turn, swaps sides. | `T` |
 | toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. Can be grabbed. | `DF` |
 | Dodge (away/neutral) | Back Roll | invuln 3-12 | - | 18 | - | - | - | - | - | - | Quick retreating roll. Recovery is punishable. | `DB` |
@@ -217,6 +224,12 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
     (lying after a throw lands, and held when a throw knocks out), `KnockdownLieRev` and `GetupRev` (the same after a
     throw marked `landsHeadToward`: lying head toward the thrower, and rising facing away then pivoting round), `Getup`, `ThrowTech`, `KO`, `Win`, `Defeated`, `Intro`, plus
     `Victim_<Thrower><Throw>` for each throw (both fighters need all four victim animations).
+  - Optional hit reaction keys: a hit's `react` names the clip its defender plays in hitstun (`Hit<...>`, for
+    example `HitHookR`, a hook landing on the defender's right side, or `HitBody`, a body shot that folds it), in place
+    of `HitLight` / `HitHeavy`. Facing left mirrors a fighter, so a strike from the attacker's right lands on the
+    defender's right. A reaction plays on the defender, so every fighter needs every reaction any fighter's hits
+    name (`build_mocap` refuses to build otherwise). It opens on its impact pose, held through the hitstop. A missing
+    clip falls back to `HitLight` / `HitHeavy` and is listed as missing. Presentation only.
   - Optional string keys `<Move>_from_<Previous>` (for example `L2_from_L1`): played instead of `<Move>` when it
     cancels out of `<Previous>`, so a captured combo can supply both hits. A string key starts from `<Previous>`'s pose
     at its first active frame, where a buffered string cancels (checked by a core test).

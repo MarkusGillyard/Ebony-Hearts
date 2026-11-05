@@ -30,27 +30,27 @@
     },
     {
       "id": "L2", "name": "Horizontal Elbow", "anim": "L2", "kind": "strike", "button": "light", "chainOnly": true, "total": 30,
-      "hits": [{"frames": [9, 10], "box": [10, 118, 72, 152], "damage": 40, "hitstun": 27, "blockstun": 23, "hitstop": 9, "hitPush": 16, "blockPush": 26}],
+      "hits": [{"frames": [9, 10], "box": [10, 118, 72, 152], "damage": 40, "hitstun": 27, "blockstun": 23, "hitstop": 9, "hitPush": 16, "blockPush": 26, "react": "HitHookR"}],
       "travel": [{"frames": [1, 9], "vx": 3.33}],
       "hurt": [{"frames": [9, 18], "box": [0, 116, 58, 154]}],
       "cancel": {"frames": [9, 26], "onHit": true, "onBlock": true, "into": ["L3", "@special"]}
     },
     {
       "id": "L3", "name": "Step-In Knee", "anim": "L3", "kind": "strike", "button": "light", "chainOnly": true, "total": 27,
-      "hits": [{"frames": [8, 10], "box": [8, 85, 70, 142], "damage": 54, "hitstun": 22, "blockstun": 14, "hitstop": 11, "hitPush": 85, "blockPush": 65, "heavy": true}],
+      "hits": [{"frames": [8, 10], "box": [8, 85, 70, 142], "damage": 54, "hitstun": 22, "blockstun": 14, "hitstop": 11, "hitPush": 85, "blockPush": 65, "heavy": true, "react": "HitBody"}],
       "travel": [{"frames": [2, 8], "vx": 4.5}],
       "hurt": [{"frames": [8, 16], "box": [0, 80, 60, 140]}]
     },
     {
       "id": "H", "name": "Body Kick", "anim": "H", "kind": "strike", "button": "heavy", "dir": "any", "total": 45,
-      "hits": [{"frames": [16, 18], "box": [28, 85, 130, 140], "damage": 84, "hitstun": 32, "blockstun": 23, "hitstop": 12, "hitPush": 65, "blockPush": 55, "heavy": true, "knockdownOnCounter": true}],
+      "hits": [{"frames": [16, 18], "box": [28, 85, 130, 140], "damage": 84, "hitstun": 32, "blockstun": 23, "hitstop": 12, "hitPush": 65, "blockPush": 55, "heavy": true, "knockdownOnCounter": true, "react": "HitBodyR"}],
       "travel": [{"frames": [4, 13], "vx": 0.84}],
       "hurt": [{"frames": [13, 34], "box": [20, 80, 122, 135]}],
       "cancel": {"frames": [16, 27], "onHit": true, "into": ["@special"]}
     },
     {
       "id": "FH", "name": "Teep", "anim": "FH", "kind": "strike", "button": "heavy", "dir": "forward", "total": 37,
-      "hits": [{"frames": [16, 18], "box": [30, 90, 145, 135], "damage": 60, "hitstun": 22, "blockstun": 18, "hitstop": 10, "hitPush": 150, "blockPush": 120, "knockdownOnCounter": true}],
+      "hits": [{"frames": [16, 18], "box": [30, 90, 145, 135], "damage": 60, "hitstun": 22, "blockstun": 18, "hitstop": 10, "hitPush": 150, "blockPush": 120, "knockdownOnCounter": true, "react": "HitBodyHeavy"}],
       "travel": [{"frames": [3, 14], "vx": 0.58}],
       "hurt": [{"frames": [14, 28], "box": [20, 85, 130, 130]}]
     },
@@ -71,6 +71,14 @@
       "id": "BS", "name": "Flame Burst", "anim": "BS", "kind": "strike", "button": "special", "dir": "back", "total": 49, "meterCost": 500,
       "hits": [{"frames": [7, 10], "box": [-20, 0, 125, 190], "damage": 115, "chip": 12, "hitstun": 0, "blockstun": 14, "hitstop": 15, "hitPush": 160, "blockPush": 110, "heavy": true, "knockdown": true, "energy": true}],
       "invulnStrike": [1, 10]
+    },
+    {
+      "id": "JL", "name": "Jumping Elbow", "anim": "JL", "kind": "strike", "button": "light", "dir": "any", "air": true, "total": 18,
+      "hits": [{"frames": [6, 11], "box": [6, 80, 60, 140], "damage": 42, "hitstun": 18, "blockstun": 14, "hitstop": 9, "hitPush": 18, "blockPush": 22, "react": "HitHookR"}]
+    },
+    {
+      "id": "JH", "name": "Jumping Knee", "anim": "JH", "kind": "strike", "button": "heavy", "dir": "any", "air": true, "total": 24,
+      "hits": [{"frames": [8, 14], "box": [10, 30, 70, 100], "damage": 62, "hitstun": 22, "blockstun": 16, "hitstop": 11, "hitPush": 40, "blockPush": 40, "heavy": true, "react": "HitBodyHeavy"}]
     },
     {
       "id": "T", "name": "Clinch", "anim": "T", "kind": "throw", "button": "throw", "dir": "any", "total": 32,

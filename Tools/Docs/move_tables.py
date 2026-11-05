@@ -41,6 +41,8 @@ def table(char, pres):
             inp = "Light x3"
         if m["kind"] == "dodge" and m.get("dir", "any") == "any":
             inp = "Dodge (away/neutral)"
+        if m.get("air"):
+            inp = "In a jump: " + BUTTON[m["button"]]
         hits = m.get("hits", [])
         if hits:
             first, last = hits[0]["frames"][0], hits[-1]["frames"][1]
@@ -56,6 +58,10 @@ def table(char, pres):
                 on_hit = f"{h['hitstun'] - remaining:+d}" + (" (KD on counter)" if h.get("knockdownOnCounter") else "")
             damage = "-" if m["kind"] == "throw" else str(h["damage"]) + (f" (chip {h['chip']})" if h.get("chip") else "")
             reach = f"{reach_cm(m):.0f}" if m["kind"] != "throw" else f"grab {m['throwRange']}"
+            if m.get("air"):
+                # Landing ends a jump attack, so its advantage depends on how high it connects.
+                recovery = "until landing"
+                on_block = on_hit = "by height"
         else:
             startup, active, recovery = "-", "-", str(m["total"])
             on_block = on_hit = damage = reach = "-"

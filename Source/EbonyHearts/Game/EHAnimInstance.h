@@ -9,7 +9,11 @@
 //
 // Planted feet are the exception: decaying the hips' and legs' offsets would carry a planted foot along with them, so
 // during a transition each foot that is on the floor in both poses eases in a straight line from where it was shown
-// to where the new animation puts it, and the leg reaches it (two-bone IK).
+// to where the new animation puts it, and the leg reaches it (two-bone IK). A foot with far to go (a strike started
+// mid-step) lifts on the way, so it steps there rather than sliding along the floor.
+//
+// The legs can settle over a longer time than the rest of the body (BeginTransition's LegSeconds): a strike's arms are
+// on their own keys by its first active frame, while the feet finish the step the walk was in.
 #pragma once
 
 #include "Animation/AnimInstance.h"
@@ -60,11 +64,14 @@ struct FEHAnimProxy : public FAnimInstanceProxy
 	FEHAnimSample Current;
 	int32 TransitionSerial = 0;
 	float TransitionSeconds = 0.0f;
+	float TransitionLegSeconds = 0.0f;
 
 	// Proxy-owned state (animation thread).
 	int32 HandledSerial = 0;
 	float Elapsed = 0.0f;
 	float Duration = 0.0f;
+	float LegDuration = 0.0f;    // the legs' own decay time (>= Duration)
+	TArray<uint8> IsLegBone;     // per compact bone: 1 for thighs, calves, feet, balls and hip half-joints
 	float FrameDelta = 1.0f / 60.0f;
 	TArray<FEHBoneOffset> Offsets;
 	TArray<FTransform> Shown1;   // the pose displayed last frame
@@ -85,12 +92,14 @@ class UEHAnimInstance : public UAnimInstance
 
 public:
 	void SetSample(UAnimSequence* Sequence, double Time);
-	// Starts a transition to the sequence set this frame. Seconds <= 0 cuts with no blend.
-	void BeginTransition(float Seconds);
+	// Starts a transition to the sequence set this frame. Seconds <= 0 cuts with no blend. LegSeconds (when longer)
+	// is the legs' own blend time.
+	void BeginTransition(float Seconds, float LegSeconds = 0.0f);
 
 	FEHAnimSample Current;
 	int32 TransitionSerial = 0;
 	float TransitionSeconds = 0.0f;
+	float TransitionLegSeconds = 0.0f;
 
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override { return new FEHAnimProxy(this); }

@@ -246,6 +246,11 @@ bool LoadHit(Ctx& ctx, const JsonValue& v, const std::string& p, int32_t total, 
 	if (!ReadBool(ctx, v, "knockdownOnCounter", p, hit.knockdownOnCounter)) return false;
 	if (!ReadBool(ctx, v, "energy", p, hit.energy)) return false;
 	if (!ReadBool(ctx, v, "heavy", p, hit.heavy)) return false;
+	if (!ReadString(ctx, v, "react", p, hit.react, false)) return false;
+	if (!hit.react.empty() && hit.react.rfind("Hit", 0) != 0)
+	{
+		return ctx.Fail(p + ".react", "a reaction clip is named Hit<...> (HitHookR, HitBody, ...)");
+	}
 	if (!hit.knockdown && hit.hitstun < 1)
 	{
 		return ctx.Fail(p + ".hitstun", "a hit that does not knock down needs hitstun >= 1");
@@ -269,6 +274,7 @@ bool LoadMove(Ctx& ctx, const JsonValue& v, const std::string& p, MoveDef& m)
 	text = "any";
 	if (!ReadString(ctx, v, "dir", p, text, false) || !ParseDir(ctx, text, p + ".dir", m.dir)) return false;
 	if (!ReadBool(ctx, v, "chainOnly", p, m.chainOnly)) return false;
+	if (!ReadBool(ctx, v, "air", p, m.air)) return false;
 	m.special = (m.button == BtnSpecial);
 	if (!ReadInt(ctx, v, "total", p, m.total, 1, 600, true)) return false;
 	if (!ReadInt(ctx, v, "meterCost", p, m.meterCost, 0, 100000, false)) return false;
@@ -330,6 +336,10 @@ bool LoadMove(Ctx& ctx, const JsonValue& v, const std::string& p, MoveDef& m)
 	if (!ReadRange(ctx, v, "invulnStrike", p, m.invulnStrike, m.total, false)) return false;
 	if (!ReadRange(ctx, v, "invulnThrow", p, m.invulnThrow, m.total, false)) return false;
 	if (!ReadRange(ctx, v, "noPush", p, m.noPush, m.total, false)) return false;
+	if (m.air && m.kind != MoveKind::Strike)
+	{
+		return ctx.Fail(p + ".air", "only strikes can be performed in the air");
+	}
 
 	if (const JsonValue* cancel = Member(v, "cancel"))
 	{
@@ -482,7 +492,7 @@ bool LoadCharacter(const JsonValue& root, CharacterDef& out, std::string& error)
 			{
 				for (size_t j = 0; j < out.moves.size(); ++j)
 				{
-					if (out.moves[j].special && out.moves[j].kind == MoveKind::Strike)
+					if (out.moves[j].special && out.moves[j].kind == MoveKind::Strike && out.moves[j].air == m.air)
 					{
 						m.cancelIndices.push_back(static_cast<int32_t>(j));
 						reachable[j] = true;
@@ -494,6 +504,7 @@ bool LoadCharacter(const JsonValue& root, CharacterDef& out, std::string& error)
 			if (idx < 0) return ctx.Fail(p + ".moves[" + std::to_string(i) + "].cancel.into", "unknown move \"" + target + "\"");
 			if (static_cast<size_t>(idx) == i) return ctx.Fail(p + ".moves[" + std::to_string(i) + "].cancel.into", "a move cannot cancel into itself");
 			if (out.moves[static_cast<size_t>(idx)].kind != MoveKind::Strike) return ctx.Fail(p + ".moves[" + std::to_string(i) + "].cancel.into", "cancels may only target strikes");
+			if (out.moves[static_cast<size_t>(idx)].air != m.air) return ctx.Fail(p + ".moves[" + std::to_string(i) + "].cancel.into", "a cancel stays on the ground or in the air");
 			m.cancelIndices.push_back(idx);
 			reachable[static_cast<size_t>(idx)] = true;
 		}
@@ -503,7 +514,7 @@ bool LoadCharacter(const JsonValue& root, CharacterDef& out, std::string& error)
 			for (size_t j = 0; j < i; ++j)
 			{
 				const MoveDef& other = out.moves[j];
-				if (!other.chainOnly && other.button == m.button && other.dir == m.dir && other.meterCost == m.meterCost)
+				if (!other.chainOnly && other.air == m.air && other.button == m.button && other.dir == m.dir && other.meterCost == m.meterCost)
 				{
 					return ctx.Fail(p + ".moves[" + std::to_string(i) + "]", "\"" + m.id + "\" has the same button and direction as \"" + other.id + "\" and could never be performed");
 				}
@@ -573,6 +584,14 @@ bool LoadRules(const JsonValue& root, Rules& r, std::string& error)
 	if (!ReadInt(ctx, root, "meterBlockDefender", p, r.meterBlockDefender, 0, 100000, true)) return false;
 	if (!ReadInt(ctx, root, "meterDeflect", p, r.meterDeflect, 0, 100000, true)) return false;
 	if (!ReadInt(ctx, root, "blockHitstopReduction", p, r.blockHitstopReduction, 0, 20, true)) return false;
+	if (!ReadInt(ctx, root, "jumpSquat", p, r.jumpSquat, 1, 15, true)) return false;
+	if (!ReadInt(ctx, root, "jumpAir", p, r.jumpAir, 10, 90, true)) return false;
+	if (!ReadInt(ctx, root, "jumpLanding", p, r.jumpLanding, 0, 30, true)) return false;
+	if (!ReadInt(ctx, root, "airAttackLanding", p, r.airAttackLanding, 0, 30, true)) return false;
+	if (!ReadCm(ctx, root, "jumpHeight", p, r.jumpHeight, 20.0, 250.0, true)) return false;
+	if (!ReadCm(ctx, root, "jumpForward", p, r.jumpForward, 0.0, 15.0, true)) return false;
+	if (!ReadCm(ctx, root, "jumpBack", p, r.jumpBack, 0.0, 15.0, true)) return false;
+	if (!ReadCm(ctx, root, "fallSpeed", p, r.fallSpeed, 0.05, 5.0, true)) return false;
 	const JsonValue* scaling = root.Find("comboScaling");
 	if (scaling == nullptr || !scaling->IsArray() || scaling->items.empty() || scaling->items.size() > 32)
 	{

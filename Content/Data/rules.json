@@ -34,5 +34,13 @@
   "meterBlockAttacker": 20,
   "meterBlockDefender": 30,
   "meterDeflect": 80,
-  "blockHitstopReduction": 2
+  "blockHitstopReduction": 2,
+  "jumpSquat": 4,
+  "jumpAir": 36,
+  "jumpLanding": 4,
+  "airAttackLanding": 6,
+  "jumpHeight": 90,
+  "jumpForward": 3.6,
+  "jumpBack": 3.0,
+  "fallSpeed": 0.6
 }

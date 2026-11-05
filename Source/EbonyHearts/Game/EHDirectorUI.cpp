@@ -911,7 +911,7 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	{
 		const FString Id = UTF8_TO_TCHAR(M.id.c_str());
 		// Inputs are drawn with the viewer's own buttons: direction words, then the action's button glyph.
-		const FString DirText = M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""));
+		const FString DirText = M.air ? TEXT("In a jump: ") : (M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT("")));
 		const EEHAction Act = M.button == eh::BtnLight ? EEHAction::Light : (M.button == eh::BtnHeavy ? EEHAction::Heavy : (M.button == eh::BtnSpecial ? EEHAction::Special : (M.button == eh::BtnThrow ? EEHAction::Throw : EEHAction::Dodge)));
 		int32 Repeats = 1;
 		FString Suffix;
@@ -921,7 +921,7 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 		const FString Startup = M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().frames.first);
 		const FString Damage = M.kind == eh::MoveKind::Throw ? FString::Printf(TEXT("%d"), Def.throws[0].damage) : (M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().damage));
 		const FText* Note = CP.MoveNotes.Find(Id);
-		const float Y = 236 + Line * 64;
+		const float Y = 230 + Line * 54;   // 13 rows fit the panel
 		P.Text(UTF8_TO_TCHAR(M.name.c_str()), FVector2f(Cols[0], Y), Fonts.Sized(Fonts.BodyBold, 22), Bone, 0.0f, 0.5f);
 		{
 			float X = Cols[1];

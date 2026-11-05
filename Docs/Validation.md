@@ -1227,13 +1227,134 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-90`).
 
+### Punches extend and elbows reach (package `pkg-61-punches`)
+
+- **Why.** The creator's playtest of `pkg-60` (2026-11-04/05): the punches and elbows looked like the arm never
+  extended, with no range. Measured, the jabs landed with the elbow at 129-132 degrees (fist 66-71 cm out against
+  72-78 cm boxes) and Wren's spinning back elbow reached 29-34 cm against an 88 cm box. Captured boxing jabs on Mixamo
+  stop at 134-150 degrees.
+- **Change.**
+  - A clip option, `straighten`, extends the punching arm by IK to about 172 degrees over its active frames, ramping
+    in and out.
+  - Wren's jab comes from Mixamo's Long Head Jab (its longest, src 9/15/24); both her crosses are straightened.
+  - Ashka's jab is retimed (src 7/12/22) and straightened; her horizontal elbow and Flame Elbow reach further
+    (66-68 cm and 81-87 cm, from 58-61 and 74-80).
+  - Wren's spinning back elbow is re-aimed with its pivot 8 cm further in.
+- **Measured.** Jabs and crosses land at 172-180 degrees: Wren's fist 72 cm out (box 78; the knuckles sit about
+  8 cm past the wrist), her crosses 78 cm (box 85), Ashka's jab 67 cm (box 72). Wren's elbow reaches 80-83 cm on its
+  active frames. No flips; nothing over 35 cm a frame in the punches.
+- **Review and regression.**
+  - Packaged as `pkg-61-punches`; each fighter's light string and single jabs recorded on `pkg-60` and `pkg-61`
+    (`anim-91`). The arms extend at contact. That script walked the fighters chest to chest (inside the jab's
+    reach), so the next review walks them in to near the jab's full reach.
+  - Credited (31 Mixamo clips).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-92`).
+
+### Hit reactions by where the hit lands; straight wrists, wrapped thumbs, natural necks (package `pkg-62-reactions`)
+
+- **Why.** The creator's playtest asked for more realistic reactions to contact, and noted that the necks, wrists and
+  fists bent or extended unnaturally.
+- **Reactions.**
+  - Every hit had played one straight head-snap. A hit can now name its defender's clip (`react` in the fighter
+    data; see the combat contract): hooks and the spinning elbow from the attacker's right turn the head away
+    (`HitHookR`, `HitHookRHeavy`); the teep, knee and spinning back kick fold the body (`HitBody`, `HitBodyHeavy`);
+    Ashka's body kick crumples the defender toward the kicked side (`HitBodyR`).
+  - Measured toward the attacker, the hook throws the head 19 cm away and turns the body 82 degrees; the body hit
+    folds it 17 cm forward and 50 cm down over the blow, as in the captures.
+  - Each reaction opens on its impact pose and holds it through the hitstop; before, the defender held the guard for
+    the 7-16 hitstop frames and only then reacted.
+  - The jab and cross reactions use a clean straight-punch capture (the head snaps straight back, 21 cm for the
+    cross); the jab keeps 60% of its motion.
+  - Mixamo boxing hit reactions: 18 exported, 7 used (credited; 36 Mixamo clips).
+- **Wrists, fists, necks.**
+  - Arm IK had kept each hand's captured world orientation while it moved the forearm (placing a guard, extending a
+    punch), cocking fists back 20-60 degrees and up to 160 in hit reactions. A final pass keeps every fist within
+    12 degrees of the forearm's line (open hands 30), keeping the forearm's twist.
+  - The thumb folds over the curled fingers; it had stuck out past the fist or up like a thumbs-up.
+  - The neck and head nod and tilt at most 30 degrees off the chest (42 for rolls, falls and get-ups); hit reactions
+    had bent it 45-65.
+  - Measured on every clip after the rebuild: wrists at most 12 degrees (open-handed rolls 23), necks at most 30
+    (knockdowns, KOs and get-ups 33-36; the keyed back roll's chin tuck 48).
+- **Tools.** `build_mocap --closeup` renders the hands and head; `--joints` prints each clip's worst wrist and neck;
+  `capture.py --start-on <log>:match_start` starts both builds' recordings on the same game event, so before/after
+  videos line up.
+- **Review and regression.**
+  - Packaged as `pkg-62-reactions`. A Training script walks each fighter to near the jab's full reach and throws the
+    light string twice, Heavy and toward + Heavy (Ashka also the Flame Elbow); recorded on `pkg-60` and `pkg-62`
+    (`anim-94`), aligned on the first match.
+  - The core tests pass (276 checks, including `hit_reactions_name_their_clip`).
+  - The smoke test warned `missing_anims=[HitHookRHeavy]` (`anim-95`): a reaction plays on the defender, but each
+    fighter had been given only the reactions its own hits name, so Ashka fell back to the generic heavy hit for
+    Wren's roundhouse (and Wren for Ashka's body kick). Fixed in `pkg-63` (every fighter gets every reaction;
+    `build_mocap` now refuses to build otherwise). The controls self-tests passed; the rest of the run was stopped in
+    favour of `pkg-63`.
+
+### Movement into strikes, guards that turn with the body, Ashka's kicks (package `pkg-63-flow`)
+
+- **Why.** The creator found moving and striking with Wren felt disjointed, and Ashka's kicks robotic and stiff.
+- **Measured first** (`walk_to_strike.py`, poses in the game root's space):
+  - A strike started mid-walk left the lead foot 15-26 cm from where the strike begins, for the game's 0.05-0.15 s
+    blend to cover (a skate along the floor).
+  - Wren's idle had kept 60% of its performer's foot shuffle; strikes started up to 7.5 cm off it (Ashka 3).
+  - Guarded strikes held the non-striking hand at the stance guard by the chest's position only, so it floated in
+    place while the body twisted (both fighters; most visible on Ashka, whose strikes kept 50-60% of the guard hand's
+    captured motion).
+- **Changes.**
+  - The legs settle over their own blend time (up to the strike's first active frame, at most 0.16 s) while the arms
+    still meet their keys on time, and a planted foot with more than 6 cm to go lifts (up to 7 cm) on the way: a
+    strike from a walk finishes the step instead of sliding into stance.
+  - Wren's idle keeps 25% of the foot shuffle (her feet now 3-4 cm from a strike's start).
+  - Guard hands turn and lean with the chest; their captured motion is measured in the chest's own frame. (The same
+    code had also measured one-shot clips' hands from the clip's average rather than its first frame; fixed.)
+  - Ashka's body kick is Mixamo's rear-leg roundhouse (hips turn over, torso leans back, the kicking-side arm swings),
+    her teep the lead-leg thrust kick (knee chambered, relaxed arms, steps down forward; credited, 38 Mixamo clips),
+    both keeping 85% of the
+    guard hand's motion; her jab, horizontal elbow and Flame Elbow keep 75%.
+  - Every fighter has every hit reaction (the `pkg-62` gap).
+- **Review and regression.** Packaged as `pkg-63-flow`. Recorded against `pkg-60` (what the creator played), each
+  pair aligned on the first match: punches and reactions (`anim-96`) and movement into strikes (`anim-97`: jabs from
+  walking forward and back, taps, walk into Heavy and into the light string). The smoke test (no missing animations),
+  the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures and 0 warnings
+  (`anim-98`).
+
+### Jumping (packages `pkg-64-jump` to `pkg-66-jump`)
+
+- **Why.** The creator's playtest: there was no jump, and jumping is a big part of fighting games.
+- **Simulation** (rules in `rules.json`, see the combat contract). Up from neutral jumps straight up, toward or away:
+  a 4-tick squat on the floor, 36 ticks in the air on a 90 cm arc (126 cm toward, 105 cm away), 4 ticks of landing
+  recovery (6 after a jump attack). Fighters have a height; their boxes rise with it. In the air a fighter cannot
+  block or be grabbed, and any hit knocks it down and it falls. Pushboxes still apply (no crossing over). Jump attacks
+  are moves marked `air`: Wren's Jumping Punch and Flying Kick, Ashka's Jumping Elbow and Jumping Knee. The CPU meets
+  a seen jump-in with a jab or a block and jumps in now and then.
+- **Input and presentation.** A Jump action: W, Up arrow, D-pad up and the left stick's up, remappable and saved by
+  name. The fighter is lifted by the simulation's height (the floor marker stays down); jump and landing sounds; the
+  move list shows "In a jump:".
+- **Animation.** The jump and landing come from Mixamo's Jumping From Action Idle (credited; 39 Mixamo clips), with
+  the guard held up (20% of the performer's arm swing), the rise left to the game (`root_z_cap`) and the squat dip
+  scaled to fit the 4-tick squat; forward and back jumps lean with the travel. The landing absorbs at 55%. The four
+  jump attacks are keyed by script on an airborne guard (legs drawn up). `pkg-64` showed hands moving 44-52 cm a frame
+  in the squat and a forearm flip in Wren's punch recovery, and the audit of `pkg-65` showed the jump attacks' strikes
+  moving 41-47 cm in a single frame; `pkg-65` and `pkg-66` fix them (every jump clip under 35 cm a frame, no flips).
+- **Tests.** Core: the arc, squat, landing and distances in all three directions; no block or grab in the air, the
+  anti-air knockdown and the fall; jump attacks hit and are blocked and land into recovery; in 36 CPU matches the CPU
+  jumped 133 times, attacked from the air 74 times and was knocked out of the air 49 times (33 cases, 629 checks).
+  The controls self-test checks D-pad up.
+- **Review and regression.** `pkg-64` recorded jumping straight up, forward and back and a jump-in for each fighter
+  (`anim-99`); `pkg-66` was recorded the same way with the jump-ins timed nearer the top of the arc (`anim-103`).
+  The smoke test, the controls self-tests (now checking D-pad up for Jump), the 25-step journey and the 12-match
+  matrix all passed on `pkg-66`, with 0 failures and 0 warnings (`anim-104`).
+
 ## Known limitations
 
 - **Not verified by a person:**
   - physical-controller buttons
-  - feel and balance (no human playtest)
+  - feel and balance of the latest build (the creator played `pkg-60` on 2026-11-04/05; the work on that feedback,
+    including jumping, has not been played yet)
   - the audio mix (no listening test)
   - exclusive fullscreen mode switching (borderless and windowed were tested)
+- **Jumping (first pass).** Jumps cannot cross over the opponent (pushboxes apply in the air), there is no crouch or
+  low attack to beat them, and the height, timing and jump-attack frame data are first values to tune by feel.
 - **Art.**
   - The fighters are built by script from a MakeHuman base, so close-up detail (faces, hair cards) is modest.
   - Most motion comes from motion capture (ACCAD, Mixamo) placed on researched stances (after the release; see

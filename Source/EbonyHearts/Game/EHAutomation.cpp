@@ -224,6 +224,7 @@ eh::InputFrame AEHGameDirector::AutoBotInput(int32 Player)
 	};
 	Apply(EEHAction::Left, Want.x < 0, false);
 	Apply(EEHAction::Right, Want.x > 0, false);
+	Apply(EEHAction::Jump, Want.y > 0, false);
 	Apply(EEHAction::Light, (Want.held & eh::BtnLight) != 0, (Want.pressed & eh::BtnLight) != 0);
 	Apply(EEHAction::Heavy, (Want.held & eh::BtnHeavy) != 0, (Want.pressed & eh::BtnHeavy) != 0);
 	Apply(EEHAction::Special, (Want.held & eh::BtnSpecial) != 0, (Want.pressed & eh::BtnSpecial) != 0);
@@ -748,6 +749,7 @@ void AEHGameDirector::RunBindingsSelfTest()
 		Check(D.Get(Pad, A::Block, 0) == EKeys::Gamepad_RightTrigger, P + TEXT(" block = R2 / RT"));
 		Check(D.Get(Pad, A::Special, 0) == EKeys::Gamepad_RightShoulder, P + TEXT(" special = R1 / RB"));
 		Check(D.Get(Pad, A::Left, 0) == EKeys::Gamepad_DPad_Left && D.Get(Pad, A::Right, 0) == EKeys::Gamepad_DPad_Right, P + TEXT(" movement = D-pad"));
+		Check(D.Get(Pad, A::Jump, 0) == EKeys::Gamepad_DPad_Up, P + TEXT(" jump = D-pad up"));
 		for (A Act : {A::Light, A::Heavy, A::Dodge, A::Block, A::Special})
 		{
 			Check(!D.Get(Pad, Act, 1).IsValid(), P + TEXT(" no hidden second button on ") + EHActionId(Act));

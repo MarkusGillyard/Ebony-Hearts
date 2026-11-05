@@ -14,6 +14,7 @@ const TCHAR* EHActionName(EEHAction Action)
 	{
 	case EEHAction::Left: return TEXT("Left");
 	case EEHAction::Right: return TEXT("Right");
+	case EEHAction::Jump: return TEXT("Jump");
 	case EEHAction::Light: return TEXT("Light");
 	case EEHAction::Heavy: return TEXT("Heavy");
 	case EEHAction::Special: return TEXT("Special");
@@ -31,6 +32,7 @@ const TCHAR* EHActionId(EEHAction Action)
 	{
 	case EEHAction::Left: return TEXT("MoveLeft");
 	case EEHAction::Right: return TEXT("MoveRight");
+	case EEHAction::Jump: return TEXT("Jump");
 	case EEHAction::Light: return TEXT("LightAttack");
 	case EEHAction::Heavy: return TEXT("HeavyAttack");
 	case EEHAction::Special: return TEXT("Special");
@@ -48,6 +50,7 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	{
 	case EEHAction::Left: return TEXT("Move left");
 	case EEHAction::Right: return TEXT("Move right");
+	case EEHAction::Jump: return TEXT("Jump");
 	case EEHAction::Light: return TEXT("Light attack");
 	case EEHAction::Heavy: return TEXT("Heavy attack");
 	case EEHAction::Special: return TEXT("Special");
@@ -126,6 +129,7 @@ FEHBindings FEHBindings::Defaults()
 	using A = EEHAction;
 	Set(S::KeyboardA, A::Left, EKeys::A);
 	Set(S::KeyboardA, A::Right, EKeys::D);
+	Set(S::KeyboardA, A::Jump, EKeys::W);
 	Set(S::KeyboardA, A::Light, EKeys::J, EKeys::Enter);
 	Set(S::KeyboardA, A::Heavy, EKeys::K, EKeys::BackSpace);
 	Set(S::KeyboardA, A::Special, EKeys::L);
@@ -136,6 +140,7 @@ FEHBindings FEHBindings::Defaults()
 
 	Set(S::KeyboardB, A::Left, EKeys::Left);
 	Set(S::KeyboardB, A::Right, EKeys::Right);
+	Set(S::KeyboardB, A::Jump, EKeys::Up);
 	Set(S::KeyboardB, A::Light, EKeys::NumPadOne, EKeys::Comma);
 	Set(S::KeyboardB, A::Heavy, EKeys::NumPadTwo, EKeys::Period);
 	Set(S::KeyboardB, A::Special, EKeys::NumPadThree, EKeys::Slash);
@@ -150,6 +155,7 @@ FEHBindings FEHBindings::Defaults()
 	{
 		Set(Pad, A::Left, EKeys::Gamepad_DPad_Left);
 		Set(Pad, A::Right, EKeys::Gamepad_DPad_Right);
+		Set(Pad, A::Jump, EKeys::Gamepad_DPad_Up);   // the left stick's up also jumps (EHInputRouter)
 		Set(Pad, A::Light, EKeys::Gamepad_FaceButton_Left);
 		Set(Pad, A::Heavy, EKeys::Gamepad_FaceButton_Top);
 		Set(Pad, A::Special, EKeys::Gamepad_RightShoulder);

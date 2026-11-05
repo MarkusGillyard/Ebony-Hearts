@@ -23,6 +23,7 @@ struct FEHAnimChoice
 	bool bLoop = false;
 	int64 Instance = 0;       // changes whenever a new instance of the state/move starts
 	float BlendSeconds = 0.08f;   // inertial blend from the previous pose; 0 cuts
+	float LegBlendSeconds = 0.0f; // the legs' own blend when longer (a strike started mid-step finishes the step)
 };
 
 // Pure function of simulation state: which animation and frame represent this fighter now.

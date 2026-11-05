@@ -7,6 +7,7 @@ Run: bin/blender.sh anim Tools/Blender/anim/build_mocap.py -- --blend <Char.blen
 Writes <out>/A_<Char>_<Key>.fbx like build_anims.py, so the Unreal import is unchanged.
 """
 import argparse
+import glob
 import json
 import math
 import os
@@ -24,6 +25,9 @@ import preview  # noqa: E402
 from build_anims import export_action, load_chains, pose_world, review_frames  # noqa: E402
 
 
+LIMP_HEAD = {"KO", "Knockdown", "KnockdownLie", "KnockdownLieRev", "Getup", "GetupRev", "Defeated", "DF", "DB"}
+
+
 def args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     p = argparse.ArgumentParser()
@@ -38,6 +42,8 @@ def args():
     p.add_argument("--only", default="")
     p.add_argument("--review", action="store_true")
     p.add_argument("--review-frames", default="", help='with --review: "all", or a comma list of frames')
+    p.add_argument("--closeup", action="store_true", help="with --review: close-ups of the hands and head instead")
+    p.add_argument("--joints", action="store_true", help="print each clip's worst wrist and neck bends (JOINTMAX)")
     p.add_argument("--no-export", action="store_true")
     p.add_argument("--height", type=float, default=0.0)
     p.add_argument("--video", action="store_true", help="render every frame (loops three times) for review footage")
@@ -101,6 +107,10 @@ def emit_clip(a, arm, chains, hair, prefix, key, spec, move, poses, total, loop)
         A.bake_secondary(hair, chains, total, loop)
     print(f"BUILDMOCAP {prefix}{key} clip={spec.get('clip') or spec.get('bvh') or spec.get('fbx') or 'scripted'} "
           f"src={spec.get('anchors') or spec.get('src')} frames={total} loop={loop}")
+    if a.joints:
+        jm = preview.joint_max(arm, total)
+        print(f"JOINTMAX {prefix}{key:24s} wrist {jm['wrist'][0]:5.1f} ({jm['wrist'][2]} f{jm['wrist'][1]}) "
+              f"neck {jm['neck'][0]:5.1f} (f{jm['neck'][1]})")
     if a.review:
         preview.setup_camera()
         if a.review_frames == "all":
@@ -109,7 +119,10 @@ def emit_clip(a, arm, chains, hair, prefix, key, spec, move, poses, total, loop)
             frames = [f for f in (int(x) for x in a.review_frames.split(",")) if 1 <= f <= total]
         else:
             frames = review_frames(key, total, move)
-        paths = preview.render_frames(frames, os.path.join(a.out, "review", "frames"), prefix + key)
+        if a.closeup:
+            paths = preview.render_closeups(arm, frames, os.path.join(a.out, "review", "closeup"), prefix + key)
+        else:
+            paths = preview.render_frames(frames, os.path.join(a.out, "review", "frames"), prefix + key)
         print("REVIEW", prefix + key, ",".join(str(f) for f in frames), "|".join(paths))
     if a.video:
         preview.setup_camera()
@@ -365,6 +378,15 @@ def build(a):
     with open(a.data) as f:
         data = json.load(f)
     by_id = {m["id"]: m for m in data["moves"]}
+    # A hit's reaction clip ("react") plays on the defender, so every fighter needs every reaction any fighter names.
+    reacts = set()
+    for path in glob.glob(os.path.join(os.path.dirname(os.path.abspath(a.data)), "*.json")):
+        with open(path) as f:
+            for m in json.load(f).get("moves", []):
+                reacts.update(h["react"] for h in m.get("hits", []) if h.get("react"))
+    missing = sorted(r for r in reacts if r not in table)
+    if missing:
+        raise SystemExit(f"{a.char}: no clip for the hit reactions {missing} (named in the fighter data)")
     bpy.ops.wm.open_mainfile(filepath=a.blend)
     arm = bpy.data.objects["Armature"]
     for pb in arm.pose.bones:
@@ -424,8 +446,22 @@ def build(a):
         rs = list(spec.get("root_scale", (1.0, 1.0)))
         rsx, rsy, rsz = rs[0], rs[1], (rs[2] if len(rs) > 2 else 1.0)
 
+        # gain: share of the capture's motion kept, measured from its source frame gain_from (default 0, a reaction's
+        # guard before the impact): a lighter version of the same performance, e.g. a jab's reaction from a cross's.
+        gain = spec.get("gain")
+        q_rest, p_rest = src.sample(float(spec.get("gain_from", 0))) if gain is not None else (None, None)
+
+        # root_z_cap: a source frame whose hip height caps the root, so a captured jump keeps its squat and landing dips
+        # but not its rise: in the game the jump's height is the simulation's (the fighter is lifted), not the clip's.
+        z_cap = src.pos[int(spec["root_z_cap"])].z if "root_z_cap" in spec else None
+
         def sample(frame):
             q, p = src.sample(tmap(frame))
+            if z_cap is not None and p.z > z_cap:
+                p = Vector((p.x, p.y, z_cap))
+            if gain is not None:
+                q = {n: q_rest[n].slerp(v if q_rest[n].dot(v) >= 0 else -v, gain) for n, v in q.items()}
+                p = p_rest.lerp(p, gain)
             p = Vector((start_xy.x + (p.x - start_xy.x) * rsx, start_xy.y + (p.y - start_xy.y) * rsy,
                         start_xy.z + (p.z - start_xy.z) * rsz))
             return q, p
@@ -493,6 +529,12 @@ def build(a):
                       spin_frames=air.get("spin_frames"), tuck=air.get("tuck"), tuck_share=air.get("tuck_share", 0.8))
         if spec.get("additive"):
             poses = M.additive(rt, poses, scripted[(spec["additive"], 1)])
+        if spec.get("straighten") and move and move.get("hits"):
+            # A punch that lands with a straight arm (mocap.straighten); the reach below then puts the fist on the hitbox.
+            st = spec["straighten"]
+            a_, b_ = move["hits"][0]["frames"]
+            ang = M.straighten(rt, poses, st["side"], a_, b_, st.get("angle", 172.0), st.get("ramp_in", 3), st.get("ramp_out", 5))
+            print(f"BUILDMOCAP straighten {key} arm_{st['side']} -> {ang:.0f} deg")
         if spec.get("reach") and move and move.get("hits"):
             # Strikes reach their hitbox: the fist, elbow, knee or foot is where the hit lands (mocap.reach).
             r = spec["reach"]
@@ -561,8 +603,15 @@ def build(a):
             poses = poses[k:] + poses[:k]
         M.overlap(poses, loop)
         half_prev = {}
+        # Fists stay in line with the forearm (open or limp hands may bend further); the neck keeps to a natural bend,
+        # more where a tucked or limp head is the motion (rolls, falls, lying, rising).
+        curl = spec.get("fist", 1.0)
+        wrist_max = spec.get("wrist_max", 12.0 if curl >= 0.8 else 30.0)
+        neck_max = spec.get("neck_max", 42.0 if key in LIMP_HEAD else 30.0)
         for pose in poses:
-            M.fist(pose, spec.get("fist", 1.0))
+            M.limit_wrists(pose, wrist_max)
+            M.limit_neck(pose, neck_max)
+            M.fist(pose, curl)
             M.half_joints(pose, half_prev)
         if spec.get("floor"):
             print(f"BUILDMOCAP {prefix}{key} lifted off the floor by up to {floor_clamp(arm, poses) * 100:.0f} cm")

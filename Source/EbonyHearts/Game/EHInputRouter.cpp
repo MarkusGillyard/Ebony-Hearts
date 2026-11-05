@@ -428,9 +428,10 @@ void FEHInputRouter::ProcessAxis(FEHDevice& D, const FKey& Axis, float V)
 		const bool bNewNav = SetNav(D, Command, bDown, true);
 		bool bNewAction = false;
 		EEHAction Action = EEHAction::Count;
-		if (bX)
+		if (bX || i == 1)
 		{
-			Action = i == 0 ? EEHAction::Left : EEHAction::Right;
+			// Left and right move; up jumps (down does nothing in a fight).
+			Action = bX ? (i == 0 ? EEHAction::Left : EEHAction::Right) : EEHAction::Jump;
 			bNewAction = SetAction(D, Action, bDown, true);
 		}
 		if (bNewNav || bNewAction)
@@ -486,6 +487,7 @@ eh::InputFrame FEHInputRouter::SampleForTick(int32 DeviceKey)
 	const bool L = (D->Held & Bit(EEHAction::Left)) != 0;
 	const bool R = (D->Held & Bit(EEHAction::Right)) != 0;
 	F.x = static_cast<int8_t>((R ? 1 : 0) - (L ? 1 : 0));
+	F.y = static_cast<int8_t>((D->Held & Bit(EEHAction::Jump)) != 0 ? 1 : 0);
 	auto Map = [](uint32 Bits) {
 		uint8 Out = 0;
 		if (Bits & Bit(EEHAction::Light)) Out |= eh::BtnLight;

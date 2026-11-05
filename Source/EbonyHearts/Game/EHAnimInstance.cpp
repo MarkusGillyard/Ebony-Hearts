@@ -42,6 +42,9 @@ FQuat Shortest(const FQuat& Q)
 // A foot counts as planted up to this height above the reference pose's ankle, and not at all from FullLift up.
 constexpr float PlantedSlack = 3.0f;
 constexpr float FullLift = 10.0f;
+// A planted foot that has further than StepFrom to go lifts on the way, up to StepLift at mid-transition.
+constexpr float StepFrom = 6.0f;
+constexpr float StepLift = 7.0f;
 
 float Planted(float AnkleZ, float RestZ)
 {
@@ -62,10 +65,11 @@ void UEHAnimInstance::SetSample(UAnimSequence* Sequence, double Time)
 	Current.Time = Time;
 }
 
-void UEHAnimInstance::BeginTransition(float Seconds)
+void UEHAnimInstance::BeginTransition(float Seconds, float LegSeconds)
 {
 	++TransitionSerial;
 	TransitionSeconds = Seconds;
+	TransitionLegSeconds = Seconds > 0.0f ? FMath::Max(Seconds, LegSeconds) : Seconds;
 }
 
 void FEHAnimProxy::ResolveLegs(const FCompactPose& Pose)
@@ -80,6 +84,17 @@ void FEHAnimProxy::ResolveLegs(const FCompactPose& Pose)
 		Legs[S].Calf = CompactIndex(Bones, Names[S][1]);
 		Legs[S].Foot = CompactIndex(Bones, Names[S][2]);
 		Legs[S].ThighHalf = CompactIndex(Bones, Names[S][3]);
+	}
+	IsLegBone.Init(0, Pose.GetNumBones());
+	for (const TCHAR* Name : {TEXT("thigh_l"), TEXT("calf_l"), TEXT("foot_l"), TEXT("ball_l"), TEXT("thigh_half_l"), TEXT("calf_twist_01_l"),
+	                          TEXT("thigh_twist_01_l"), TEXT("thigh_r"), TEXT("calf_r"), TEXT("foot_r"), TEXT("ball_r"), TEXT("thigh_half_r"),
+	                          TEXT("calf_twist_01_r"), TEXT("thigh_twist_01_r")})
+	{
+		const int32 I = CompactIndex(Bones, Name);
+		if (I >= 0)
+		{
+			IsLegBone[I] = 1;
+		}
 	}
 	PlantedHeight = 0.0f;
 	if (Legs[0].Foot >= 0)
@@ -109,7 +124,14 @@ void FEHAnimProxy::LockFeet(FCompactPose& Pose, FCSPose<FCompactPose>& Target, f
 		FTransform Thigh = Shown.GetComponentSpaceTransform(ThighI);
 		FTransform Calf = Shown.GetComponentSpaceTransform(CalfI);
 		FTransform Foot = Shown.GetComponentSpaceTransform(FootI);
-		const FVector Goal = Target.GetComponentSpaceTransform(FootI).GetLocation() + Leg.FootFrom * Fade;
+		FVector Goal = Target.GetComponentSpaceTransform(FootI).GetLocation() + Leg.FootFrom * Fade;
+		// Far to go: a quick step (lift peaking mid-way) instead of a slide along the floor.
+		const float Across = static_cast<float>(FVector(Leg.FootFrom.X, Leg.FootFrom.Y, 0.0).Size());
+		if (Across > StepFrom)
+		{
+			const float P = 1.0f - Fade;
+			Goal.Z += FMath::Min(StepLift, 0.35f * Across) * 4.0f * P * (1.0f - P);
+		}
 		const FVector Effector = FMath::Lerp(Foot.GetLocation(), Goal, Leg.Weight);
 		// Keep the knee bending the way it bends now.
 		const FVector Mid = (Thigh.GetLocation() + Foot.GetLocation()) * 0.5;
@@ -149,6 +171,7 @@ void FEHAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds)
 	Current = Instance->Current;
 	TransitionSerial = Instance->TransitionSerial;
 	TransitionSeconds = Instance->TransitionSeconds;
+	TransitionLegSeconds = Instance->TransitionLegSeconds;
 	FrameDelta = FMath::Max(DeltaSeconds, 1e-4f);
 	Elapsed = FMath::Min(Elapsed + DeltaSeconds, 1.0e6f);
 }
@@ -173,7 +196,7 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 	}
 	// The new animation's own pose, before any transition offset: where its feet are planted.
 	FCSPose<FCompactPose> Target;
-	const bool bTransition = TransitionSerial != HandledSerial || (Offsets.Num() == NumBones && Elapsed < Duration);
+	const bool bTransition = TransitionSerial != HandledSerial || (Offsets.Num() == NumBones && Elapsed < LegDuration);
 	if (bTransition && Legs[0].Foot >= 0)
 	{
 		Target.InitPose(Pose);
@@ -185,6 +208,7 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 		Offsets.Reset();
 		Elapsed = 0.0f;
 		Duration = TransitionSeconds;
+		LegDuration = FMath::Max(TransitionSeconds, TransitionLegSeconds);
 		for (FEHLeg& Leg : Legs)
 		{
 			Leg.Weight = 0.0f;
@@ -254,18 +278,20 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 		}
 	}
 
-	if (Offsets.Num() == NumBones && Elapsed < Duration)
+	if (Offsets.Num() == NumBones && Elapsed < LegDuration)
 	{
+		const bool bLegMask = IsLegBone.Num() == NumBones;
 		for (const FCompactPoseBoneIndex Bone : Pose.ForEachBoneIndex())
 		{
 			const FEHBoneOffset& O = Offsets[Bone.GetInt()];
 			FTransform& T = Pose[Bone];
-			const float Angle = Decay(O.Angle, O.AngleSpeed, Elapsed, Duration);
+			const float Dur = bLegMask && IsLegBone[Bone.GetInt()] ? LegDuration : Duration;
+			const float Angle = Decay(O.Angle, O.AngleSpeed, Elapsed, Dur);
 			if (Angle > 0.0f)
 			{
 				T.SetRotation((FQuat(FVector(O.Axis), Angle) * T.GetRotation()).GetNormalized());
 			}
-			const float Dist = Decay(O.Dist, O.DistSpeed, Elapsed, Duration);
+			const float Dist = Decay(O.Dist, O.DistSpeed, Elapsed, Dur);
 			if (Dist > 0.0f)
 			{
 				T.AddToTranslation(FVector(O.Dir) * Dist);
@@ -273,10 +299,10 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 		}
 		if (Legs[0].Foot >= 0)
 		{
-			LockFeet(Pose, Target, Decay(1.0f, 0.0f, Elapsed, Duration));
+			LockFeet(Pose, Target, Decay(1.0f, 0.0f, Elapsed, LegDuration));
 		}
 	}
-	else if (Offsets.Num() > 0 && Elapsed >= Duration)
+	else if (Offsets.Num() > 0 && Elapsed >= LegDuration)
 	{
 		Offsets.Reset();
 	}

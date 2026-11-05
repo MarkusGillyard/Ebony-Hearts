@@ -1,30 +1,36 @@
 # Status and handoff
 
-Updated 2026-11-04.
+Updated 2026-11-05.
 
 ## Where things stand
 
 **PARTIAL — NOT COMPLETE.** The slice is implemented, and the packaged Linux build passed every automated acceptance
 run on the test machine (see [Validation](Validation.md)). It is not declared complete because:
-- **People.** Three checks need a person: physical-controller buttons, a hands-on playtest of feel and balance, and a
-  listening pass on the mix.
+- **People.** Three checks need a person: physical-controller buttons, a hands-on playtest of the latest build (the
+  creator played `pkg-60` on 2026-11-04/05; the work on that feedback is not yet played), and a listening pass on the mix.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   It is recorded as a Preservation failure.
 
 **Published.** On 2026-11-03, at the creator's request, `release/first-slice` was pushed to
 `MarkusGillyard/Ebony-Hearts` and opened as pull request #1 into `main`. On 2026-11-04 the creator asked for it to be
-updated with the animation work, and it was, as squashed commits on top. Nothing has been merged, tagged or released.
+updated with the animation work, and it was, as squashed commits on top; it is updated the same way after each round.
+Nothing has been merged, tagged or released.
 
 **Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
-[validation report](Validation.md) (packages `pkg-21` to `pkg-60`):
+[validation report](Validation.md) (packages `pkg-21` to `pkg-66`):
 - **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
   jab-to-cross string; Wren's double-leg slam and shoulder throw; both fighters' forward roll; Wren's power-up; the hit and block
   reactions, knockdowns, KO, both get-ups; the intros, wins and defeated poses.
 - **Still keyed by script:** Ashka's two throws up to the trip (their victims then fall as captured), the grabs, the
-  back rolls, Ashka's Flame Burst and Wren's spinning back elbow. No capture tried so far fits them; Mixamo has no back roll
+  back rolls, Ashka's Flame Burst, Wren's spinning back elbow and the four jump attacks. No capture tried so far fits them; Mixamo has no back roll
   or quick grab.
 - **Throws** are drawn as authored (the victim was drawn mirrored), switch sides cleanly, and keep a knocked-out
   victim lying. Both fighters ease into a throw from where they stood, and an escape starts from where the throw was. Rolls stay above the floor, and a fighter knocked down lies on it. **Effects:** the golden aura and the crimson flame were rebuilt.
+**After the creator's playtest (2026-11-05)** (packages `pkg-61` to `pkg-66`): punches straighten to full extension
+and reach their boxes; each hit names its reaction (hooks turn the head away, body shots fold the body) and reactions
+show contact during hitstop; fists stay in line with the forearm, thumbs wrap and necks bend naturally; strikes from a
+walk finish the step; guards turn with the body; Ashka's body kick and teep are captured; and **jumping** is in the
+game (up on every device; jump attacks; anti-air; the CPU uses both). Jump values are first passes to tune by feel.
 - **Display.** On the test desktop the monitor runs at 165 Hz but V-Sync paces everything at 60 Hz, so motion looks
   like it skips. This is a system setting (see Validation, Known limitations).
 
@@ -88,7 +94,7 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
    on the title screen and pick Training. Check that each button does what the new layout says:
    - Square: Light. Triangle: Heavy. Circle: Dodge. Cross and L1: Grab. R1: Special.
    - R2: Block while held, stopping on release.
-   - D-pad or left stick: walk (toward + a button gives the toward move). Options: pause.
+   - D-pad or left stick: walk (toward + a button gives the toward move); up jumps. Options: pause.
    - In menus, Cross confirms and Circle goes back; on-screen prompts show PlayStation shapes.
    - In Settings > Controls > Controller - Player 1, move one action to another button and try Swap.
    Then unplug and replug the controller mid-match. Simulated DualShock 4 and Xbox 360 pads already pass these
@@ -97,7 +103,8 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
    unfair, slow or unclear, and anything in the mix that is too loud, too quiet or grating.
 3. **Title card.** Done on 2026-11-03. The creator confirmed it is an authorized, AI-generated project asset (OpenAI
    ChatGPT image generation). Origin, rights and handling are in the [asset ledger](AssetLedger.md#creator-supplied).
-4. **Animation review.** Watch the latest videos (the creator has been sent each one) and play the latest build.
+4. **Animation and jumping review.** Watch the latest videos (the creator has been sent each one) and play the latest
+   build: punches, reactions, moving into strikes, Ashka's kicks, and jumping (height, speed and the jump attacks).
    For more captured motion (rolls, grabs, Ashka's throws), sign in to Mixamo again in the built-in browser.
 5. **Display setting (optional).** For smooth motion on the 165 Hz monitor, either run it at 59.97 Hz, or disable
    compositing for full-screen windows in Cinnamon and play fullscreen.

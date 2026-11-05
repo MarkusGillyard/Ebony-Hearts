@@ -59,6 +59,13 @@ InputFrame In(int8_t x = 0, uint8_t pressed = 0, uint8_t held = 0)
 	return f;
 }
 
+InputFrame Up(int8_t x = 0, uint8_t pressed = 0, uint8_t held = 0)
+{
+	InputFrame f = In(x, pressed, held);
+	f.y = 1;
+	return f;
+}
+
 Match MakeMatch(int c0, int c1, Mode mode = Mode::Training)
 {
 	Match m;
@@ -151,8 +158,8 @@ int main(int argc, char** argv)
 	}
 
 	Run("data_loads_and_matches_contract", [] {
-		EXPECT_EQ(static_cast<int>(g_wren.moves.size()), 11, "Wren move count");
-		EXPECT_EQ(static_cast<int>(g_ashka.moves.size()), 11, "Ashka move count");
+		EXPECT_EQ(static_cast<int>(g_wren.moves.size()), 13, "Wren move count");
+		EXPECT_EQ(static_cast<int>(g_ashka.moves.size()), 13, "Ashka move count");
 		for (int c = 0; c < 2; ++c)
 		{
 			for (const char* id : {"L1", "L2", "L3", "H", "FH", "S", "FS", "BS", "T", "DF", "DB"})
@@ -342,6 +349,158 @@ int main(int argc, char** argv)
 			starts += HasEvent(m, EventType::MoveStart, 0);
 		}
 		EXPECT_EQ(starts, 1, "holding light performs one jab");
+	});
+
+	Run("hit_reactions_name_their_clip", [] {
+		// A hit can name its defender's reaction clip (presentation): the defender records which move and hit put it
+		// in hitstun, so the visual plays a hook turning the head away or a body shot folding the body.
+		for (int c = 0; c < 2; ++c)
+		{
+			Match m = MakeMatch(c, 1 - c);
+			m.TrainingPlace(Cm(-40), Cm(40));
+			Step(m, In(0, BtnHeavy));
+			bool hit = false;
+			for (int t = 0; t < 60 && !hit; ++t)
+			{
+				Step(m);
+				hit = HasEvent(m, EventType::Hit, 0);
+			}
+			const FighterState& d = m.State().f[1];
+			const int32_t h = Move(c, "H");
+			EXPECT_TRUE(hit && d.state == FState::Hitstun, std::string(FighterName(c)) + " heavy hits");
+			EXPECT_EQ(d.reactMove, h, std::string(FighterName(c)) + " defender records the heavy");
+			EXPECT_EQ(d.reactHit, 0, std::string(FighterName(c)) + " defender records the hit");
+			const std::string& react = Fighter(c).moves[static_cast<size_t>(h)].hits[0].react;
+			EXPECT_TRUE(react.rfind("Hit", 0) == 0, std::string(FighterName(c)) + " heavy names a reaction: " + react);
+			EXPECT_TRUE(Fighter(c).moves[static_cast<size_t>(Move(c, "L1"))].hits[0].react.empty(), "a jab keeps the generic reaction");
+		}
+		const std::string good = ReadFile(g_dataDir + "/Fighters/wren.json");
+		const std::string e = LoadError(Replace(good, "\"react\": \"HitHookR\"", "\"react\": \"Hook\""));
+		EXPECT_TRUE(e.find("hits[0].react") != std::string::npos, "a reaction not named Hit<...> is rejected: " + e);
+	});
+
+	Run("jump_arc_landing_and_directions", [] {
+		const Rules& r = g_rules;
+		for (int c = 0; c < 2; ++c)
+		{
+			for (int8_t dir : {static_cast<int8_t>(0), static_cast<int8_t>(1), static_cast<int8_t>(-1)})
+			{
+				const std::string tag = std::string(FighterName(c)) + " jump dir " + std::to_string(dir);
+				Match m = MakeMatch(c, 1 - c);
+				m.TrainingPlace(Cm(-150), Cm(150));
+				const int32_t x0 = m.State().f[0].x;
+				Step(m, Up(dir));   // fighter 0 is on the left, so raw +x is toward the opponent
+				EXPECT_TRUE(m.State().f[0].state == FState::Jump && m.State().f[0].y == 0, tag + ": the squat starts on the floor");
+				int32_t top = 0;
+				int air = 0, landing = 0, squat = 0;
+				bool back = false;
+				for (int t = 0; t < 120 && !back; ++t)
+				{
+					Step(m);
+					const FighterState& f = m.State().f[0];
+					top = f.y > top ? f.y : top;
+					air += f.y > 0 ? 1 : 0;
+					squat += (f.state == FState::Jump && f.y == 0) ? 1 : 0;
+					landing += f.state == FState::Landing ? 1 : 0;
+					back = f.state == FState::Neutral;
+					EXPECT_TRUE(f.facing == 1, tag + ": keeps facing in the air");
+				}
+				EXPECT_TRUE(back, tag + ": lands and recovers");
+				EXPECT_EQ(squat, r.jumpSquat - 1, tag + ": squat frames after the press");
+				EXPECT_EQ(air, r.jumpAir - 1, tag + ": frames in the air");
+				EXPECT_TRUE(top >= r.jumpHeight * 95 / 100 && top <= r.jumpHeight, tag + ": apex height " + std::to_string(top));
+				EXPECT_EQ(landing, r.jumpLanding, tag + ": landing recovery");
+				const int32_t dx = m.State().f[0].x - x0;
+				const int32_t want = dir > 0 ? r.jumpForward * (r.jumpAir - 1) : (dir < 0 ? -r.jumpBack * (r.jumpAir - 1) : 0);
+				EXPECT_EQ(dx, want, tag + ": distance travelled");
+			}
+		}
+	});
+
+	Run("jumps_cannot_block_or_be_thrown_and_anti_air_knocks_down", [] {
+		for (int c = 0; c < 2; ++c)
+		{
+			const std::string tag = FighterName(c);
+			Match m = MakeMatch(c, 1 - c);
+			m.TrainingPlace(Cm(-45), Cm(45));
+			Step(m, In(), Up());
+			while (m.State().f[1].y < Cm(40))
+			{
+				Step(m, In(), In(0, 0, BtnBlock));
+			}
+			EXPECT_TRUE(m.State().f[1].state == FState::Jump, tag + ": holding block in the air does not guard");
+			EXPECT_TRUE(!m.IsThrowable(1), tag + ": nobody is throwable in the air");
+			Step(m, In(0, BtnLight), In(0, 0, BtnBlock));
+			bool hit = false, down = false, floor = false;
+			for (int t = 0; t < 120; ++t)
+			{
+				hit = hit || HasEvent(m, EventType::Hit, 0);
+				const FighterState& d = m.State().f[1];
+				down = down || (d.state == FState::Knockdown && d.y > 0);
+				floor = floor || (down && d.y == 0 && (d.state == FState::Knockdown || d.state == FState::Getup));
+				Step(m, In(), In(0, 0, BtnBlock));
+			}
+			EXPECT_TRUE(hit, tag + ": the jab catches the jump");
+			EXPECT_TRUE(down, tag + ": a hit in the air knocks down");
+			EXPECT_TRUE(floor, tag + ": the body falls to the floor");
+		}
+	});
+
+	Run("jump_attacks_hit_block_and_land_into_recovery", [] {
+		const Rules& r = g_rules;
+		for (int c = 0; c < 2; ++c)
+		{
+			for (int blocking = 0; blocking < 2; ++blocking)
+			{
+				for (uint8_t button : {BtnLight, BtnHeavy})
+				{
+					const std::string tag = std::string(FighterName(c)) + (button == BtnLight ? " jump light" : " jump heavy") + (blocking ? " blocked" : "");
+					Match m = MakeMatch(c, 1 - c);
+					m.TrainingPlace(Cm(-75), Cm(75));
+					const InputFrame guard = blocking ? In(0, 0, BtnBlock) : In();
+					Step(m, Up(1), guard);
+					int32_t lastY = 0;
+					bool pressed = false, contact = false, standing = true, recovered = false, airMove = false;
+					int landing = 0;
+					for (int t = 0; t < 150 && !recovered; ++t)
+					{
+						const FighterState& a = m.State().f[0];
+						const bool falling = a.y > 0 && a.y < lastY;
+						lastY = a.y;
+						InputFrame in;
+						if (!pressed && falling && a.y < Cm(80))
+						{
+							in = In(0, button);
+							pressed = true;
+						}
+						Step(m, in, guard);
+						const FighterState& a2 = m.State().f[0];
+						const FighterState& d = m.State().f[1];
+						if (a2.state == FState::Attack)
+						{
+							airMove = airMove || Fighter(c).moves[static_cast<size_t>(a2.move)].air;
+						}
+						contact = contact || HasEvent(m, blocking ? EventType::Block : EventType::Hit, 0);
+						standing = standing && d.state != FState::Knockdown && d.y == 0;
+						landing += a2.state == FState::Landing ? 1 : 0;
+						recovered = pressed && a2.state == FState::Neutral;
+					}
+					EXPECT_TRUE(airMove, tag + ": the button gives the jump attack in the air");
+					EXPECT_TRUE(contact, tag + (blocking ? ": is blocked" : ": hits"));
+					EXPECT_TRUE(standing, tag + ": a standing defender stays on its feet");
+					EXPECT_TRUE(recovered, tag + ": the attacker lands and recovers");
+					EXPECT_TRUE(landing >= r.jumpLanding, tag + ": lands into recovery (" + std::to_string(landing) + ")");
+				}
+			}
+		}
+		// On the ground the same button gives the ground move, never the jump attack.
+		Match m = MakeMatch(0, 1);
+		m.TrainingPlace(Cm(-150), Cm(150));
+		Step(m, In(0, BtnLight));
+		EXPECT_EQ(static_cast<int>(m.State().f[0].move), static_cast<int>(Move(0, "L1")), "light on the ground is the jab");
+		const std::string good = ReadFile(g_dataDir + "/Fighters/wren.json");
+		const std::string e = LoadError(Replace(good, "\"kind\": \"throw\", \"button\": \"throw\", \"dir\": \"any\",", "\"kind\": \"throw\", \"button\": \"throw\", \"dir\": \"any\", \"air\": true,"));
+		EXPECT_TRUE(e.find("only strikes") != std::string::npos, "an air throw is rejected: " + e);
 	});
 
 	Run("duplicate_hit_prevention", [] {
@@ -966,6 +1125,7 @@ int main(int argc, char** argv)
 		int outOfBounds = 0;
 		int hardWins = 0;
 		int hardGames = 0;
+		int jumps = 0, jumpAttacks = 0, airDowns = 0;
 		for (int c0 = 0; c0 < 2; ++c0)
 		{
 			for (int c1 = 0; c1 < 2; ++c1)
@@ -985,10 +1145,14 @@ int main(int argc, char** argv)
 						while (m.State().phase != Phase::MatchEnd && ticks++ < 60 * 60 * 20)
 						{
 							const InputFrame in[2] = {a.Decide(m), b.Decide(m)};
+							const FighterState before[2] = {m.State().f[0], m.State().f[1]};
 							m.Tick(in);
+							jumps += HasEvent(m, EventType::Jump) ? 1 : 0;
 							for (int i = 0; i < 2; ++i)
 							{
 								const FighterState& f = m.State().f[i];
+								if (f.state == FState::Attack && before[i].state != FState::Attack && m.Character(i).moves[static_cast<size_t>(f.move)].air) ++jumpAttacks;
+								if (f.state == FState::Knockdown && before[i].state != FState::Knockdown && f.y > 0) ++airDowns;
 								const int32_t lim = g_rules.stageHalfWidth;
 								if (f.x < -lim || f.x > lim) ++outOfBounds;
 								sameState[i] = (f.state == last[i]) ? sameState[i] + 1 : 0;
@@ -1010,7 +1174,8 @@ int main(int argc, char** argv)
 		}
 		EXPECT_EQ(stuck, 0, "no fighter stuck in a non-neutral state");
 		EXPECT_EQ(outOfBounds, 0, "positions stay on stage");
-		std::printf("  info: %d CPU matches; Hard beat Easy %d/%d\n", matches, hardWins, hardGames);
+		std::printf("  info: %d CPU matches; Hard beat Easy %d/%d; %d jumps, %d jump attacks, %d knocked out of the air\n", matches, hardWins, hardGames, jumps, jumpAttacks, airDowns);
+		EXPECT_TRUE(jumps > 0 && jumpAttacks > 0 && airDowns > 0, "the CPU jumps in, attacks from the air and is anti-aired");
 		EXPECT_TRUE(hardWins * 2 > hardGames, "Hard CPU usually beats Easy CPU");
 	});
 

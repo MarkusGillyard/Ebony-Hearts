@@ -62,6 +62,7 @@ struct HitDef
 	bool knockdownOnCounter = false;
 	bool energy = false;      // flame/energy damage (reduced by Spirit Enhanced Strikes defence)
 	bool heavy = false;       // presentation: heavy reaction and impact
+	std::string react;        // presentation: the defender's reaction clip ("": HitLight, or HitHeavy when heavy)
 };
 
 struct TravelSeg
@@ -94,6 +95,7 @@ struct MoveDef
 	uint8_t button = 0;
 	DirReq dir = DirReq::Any;
 	bool chainOnly = false;       // reachable only through a cancel (string follow-ups)
+	bool air = false;             // performed only in the air (a jump attack); ends on landing
 	bool special = false;         // belongs to the special group for "@special" cancels and chip rules
 	int32_t total = 0;
 	int32_t meterCost = 0;
@@ -190,6 +192,17 @@ struct Rules
 	int32_t meterBlockDefender = 0;
 	int32_t meterDeflect = 0;
 	int32_t blockHitstopReduction = 0;
+	// Jumping: up leaves the floor after jumpSquat frames, flies jumpAir frames on a parabola jumpHeight high (units)
+	// moving jumpForward / jumpBack units a frame, and lands into jumpLanding frames of recovery (airAttackLanding
+	// after a jump attack). Pushboxes still apply in the air, so a jump cannot pass over the opponent.
+	int32_t jumpSquat = 0;
+	int32_t jumpAir = 0;
+	int32_t jumpLanding = 0;
+	int32_t airAttackLanding = 0;
+	int32_t jumpHeight = 0;
+	int32_t jumpForward = 0;
+	int32_t jumpBack = 0;
+	int32_t fallSpeed = 0;      // units a frame added to a falling body's speed (hit out of the air)
 };
 
 // Loaders validate everything the simulation relies on and report the first problem with a JSON path.

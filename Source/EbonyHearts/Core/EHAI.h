@@ -29,6 +29,8 @@ struct CpuTuning
 	int32_t techPct = 30;          // chance to escape a throw
 	int32_t dropPct = 15;          // chance an intended press is not made (execution errors)
 	int32_t aggressionPct = 35;    // chance per decision to step in rather than wait
+	int32_t antiAirPct = 40;       // chance to meet a seen jump-in with a jab (otherwise block it)
+	int32_t jumpPct = 6;           // chance per neutral decision to jump in from mid range
 };
 
 CpuTuning TuningFor(CpuLevel level);
@@ -65,6 +67,9 @@ private:
 	int32_t techDecidedFor_ = -1;
 	int32_t afterHitFrames_ = 0;
 	int32_t lastHealth_ = -1;
+	int32_t antiAirFor_ = -1;      // frame the opponent's jump started, once decided
+	int32_t airAttackFor_ = -1;    // frame the CPU's own jump started, once its jump attack is queued
+	bool jumpNext_ = false;        // emit up on the next input (a jump from neutral)
 
 	uint32_t Next();
 	bool Roll(int32_t pct);

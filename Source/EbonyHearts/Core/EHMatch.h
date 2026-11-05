@@ -14,6 +14,7 @@ namespace eh
 struct InputFrame
 {
 	int8_t x = 0;
+	int8_t y = 0;          // +1 up (jump), 0 none
 	uint8_t held = 0;
 	uint8_t pressed = 0;   // buttons that went down since the previous tick
 };
@@ -33,6 +34,8 @@ enum class FState : uint8_t
 	KO,
 	Win,
 	Defeated,    // lost on time; standing
+	Jump,        // jump squat, then in the air (y > 0); jump attacks come from here
+	Landing,     // touching down from a jump; recovering
 };
 
 enum class Phase : uint8_t { Intro, Fight, RoundEnd, MatchEnd };
@@ -57,6 +60,8 @@ enum class EventType : uint8_t
 	Timeout,
 	RoundEnd,
 	MatchEnd,
+	Jump,
+	Land,
 };
 
 enum EventFlags : uint8_t
@@ -123,7 +128,13 @@ struct FighterState
 	int32_t lastBlockPress = -100000;
 	bool lastBlockPressTimed = false;
 	bool lastBlockPressDeflected = false;
+	int32_t y = 0;            // height of the feet above the floor (units)
+	int32_t vy = 0;           // falling speed (units a frame) of a body hit out of the air
+	int16_t jumpFrame = 0;    // frames since the jump started (squat, then air); 0 on the ground
+	int8_t jumpDir = 0;       // -1 back, 0 straight up, +1 toward the opponent (at the jump start)
 	uint8_t reaction = 0;     // presentation: 1 light hit, 2 heavy hit, 3 landed from a throw, 4 landed head toward the thrower
+	int16_t reactMove = -1;   // presentation: the opponent's move and hit that put this fighter in hitstun
+	int8_t reactHit = -1;
 	int32_t roundWins = 0;
 	int32_t idleFrames = 0;   // consecutive actionable frames (training refill)
 	Buffered buffer[kBufferCapacity];
@@ -209,6 +220,9 @@ private:
 	void AddMeter(int i, int32_t amount);
 	bool StrikeHittable(int i) const;
 	int8_t DirToward(int i, int8_t rawX) const;
+	bool InAir(int i) const;                  // past the jump squat (or still falling from a hit)
+	void StartJump(int i, int8_t dir);
+	void Land(int i);
 };
 
 // Human-readable names for logs, tests and the training overlay.

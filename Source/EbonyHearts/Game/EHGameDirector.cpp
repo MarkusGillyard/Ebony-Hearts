@@ -534,6 +534,12 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::MatchEnd:
 			Audio.SetMusicDuck(0.5f);
 			break;
+		case eh::EventType::Jump:
+			Audio.PlayVaried(TEXT("Roll"), 3, EEHSoundCat::Effects, 0.35f);
+			break;
+		case eh::EventType::Land:
+			Audio.PlayVaried(TEXT("StepWater"), 3, EEHSoundCat::Effects, 0.6f);
+			break;
 		default:
 			break;
 		}

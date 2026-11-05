@@ -466,6 +466,8 @@ def captured_fall(td, fall, v_rig, poses, folder):
     half_prev = {}
     for frame in range(f0, total + 1):
         cap = at(frame, gap * A.ease("smooth", min(1.0, (frame - f0) / max(1, damage - f0))))
+        M.limit_wrists(cap, 30.0)            # a falling body's hands are open: they may bend more than a fist's
+        M.limit_neck(cap, 42.0)
         M.fist(cap, fall.get("fist", 0.3))
         M.half_joints(cap, half_prev)
         w = A.ease("smooth", (frame - f0) / n_in) if frame - f0 < n_in else 1.0
@@ -521,6 +523,8 @@ def capture_throw(a, td, cap, t_rig, v_rig, ends):
             poses[k] = M.blend_pose(poses[k], ends[arm.name], A.ease("smooth", (i + 1) / n_end))
         half_prev = {}
         for pose in poses:
+            M.limit_wrists(pose, 12.0 if curl >= 0.8 else 30.0)
+            M.limit_neck(pose, 42.0)          # thrown and throwing bodies tuck and whip their heads more than a guard
             M.fist(pose, curl)
             M.half_joints(pose, half_prev)
     print(f"BUILDANIM capture {td['id']}: gap {gap:.2f} m (holdX {hold:.2f}), victim set back {extra:+.2f} m")
@@ -601,6 +605,8 @@ def capture_shared(a, td, cap, t_rig, v_rig, folder, ends):
             poses[k] = M.blend_pose(poses[k], ends[arm.name], A.ease("smooth", (i + 1) / n_end))
         half_prev = {}
         for pose in poses:
+            M.limit_wrists(pose, 12.0 if curl >= 0.8 else 30.0)
+            M.limit_neck(pose, 42.0)          # thrown and throwing bodies tuck and whip their heads more than a guard
             M.fist(pose, curl)
             M.half_joints(pose, half_prev)
     print(f"BUILDANIM capture {td['id']} (shared): victim at the grip {-rel.y:.2f} m in front, {rel.x:+.2f} m to the "

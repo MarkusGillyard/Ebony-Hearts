@@ -416,7 +416,7 @@
   },
   {
    "id": "mixamo/animations",
-   "title": "Mixamo animations (30 clips exported; X Bot T-pose for calibration)",
+   "title": "Mixamo animations (39 clips exported; X Bot T-pose for calibration)",
    "creator": "Adobe (Mixamo)",
    "source_page": "https://www.mixamo.com/",
    "acquired": "2026-11-03 to 2026-11-05",
@@ -457,10 +457,6 @@
     {
      "file": "A_ElbowPunch_Step.fbx",
      "sha256": "1d3299d1effe4aa440a610fc8651fcceec668b66770d9266355551ab843cd6fd"
-    },
-    {
-     "file": "HeadHit_Light_Straight.fbx",
-     "sha256": "a7ec1975b5934cbc0a62a3f47baf83b5c041e9ae8a92b15e9273bd4b4d6d9704"
     },
     {
      "file": "HeadHit_Big_Straight.fbx",
@@ -549,6 +545,46 @@
     {
      "file": "C_Cast2H_UpwardPull.fbx",
      "sha256": "f0a54248b7a96afca836d5a69689515f5320bbae04ac724693621136b23e7e52"
+    },
+    {
+     "file": "C_LeadJab_LongHead.fbx",
+     "sha256": "816d79a35c7e14d2c74f307f4f8693b5a56bf604210635ec3aaa0b9821a66f31"
+    },
+    {
+     "file": "R_HeadHit_Medium_Left.fbx",
+     "sha256": "6f40ed119ec75a345eaaa6892a5740a95a33f08ede1828177a1461d623d15279"
+    },
+    {
+     "file": "R_HeadHit_Big_Left.fbx",
+     "sha256": "cc4140160c3da31099263c005e612c04bb1169be34b1b49074e4b3879e1eda5d"
+    },
+    {
+     "file": "R_StomachHit.fbx",
+     "sha256": "e50bb79533e22ee89780889b94945e69ca1c1765c83b2606214c41c53683acc9"
+    },
+    {
+     "file": "R_BodyHit_Straight.fbx",
+     "sha256": "44ff86aecaba0aa224bb1ab31d19855821341e382efc7d7ce6106c544b27add2"
+    },
+    {
+     "file": "R_SideHit_Big.fbx",
+     "sha256": "caed97f4538a88eca7dc07b8358c9e3f6c91fca9c1238e1d3af54938376ef9de"
+    },
+    {
+     "file": "R_HeadHit2_Medium_Straight.fbx",
+     "sha256": "ab083ad2ca8e61a0dc38c27e352b76230c29e8dc9afc589fb4645cf8eed3dc94"
+    },
+    {
+     "file": "K_Roundhouse_Rear.fbx",
+     "sha256": "528764a67e1639000cda1ae43ca9a49f315526c76587856097b4b80f0bc3a30d"
+    },
+    {
+     "file": "K_ThrustKick_Lead.fbx",
+     "sha256": "d4e70992155e42bfca345644c8d0aa70bb86d2ddf5f4a995b542dc671308c818"
+    },
+    {
+     "file": "J_Jump_ActionIdle.fbx",
+     "sha256": "b6a42b4a93f6532f5bd1d5dba3ac22e400db713a5c7a75e57c763f54ae9331fe"
     }
    ]
   },

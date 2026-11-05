@@ -670,24 +670,37 @@ def apply_stance(rt, poses, st, k, anchor="mean", hands=True):
                 knee = (w[f"calf_{side}"].translation - w[f"thigh_{side}"].translation).normalized()
                 pole = pole.lerp(knee, air)
             rt.leg_ik(poses[i], w, side, target, pole, rot)
-    # 4. Hands: stance guard positions that ride with the chest; captured hand motion kept around them.
+    # 4. Hands: stance guard positions that ride with the chest, turning and leaning with it (a guard hand that only
+    # followed the chest's position floated in place while the body twisted into a strike); the captured hand motion
+    # is kept around them, measured in the chest's own turning frame.
     if not hands:
         return
     sides = ("l", "r") if hands is True else tuple(hands)
     worlds = [rt.fk(p) for p in poses]
-    anchor = [w["spine_03"].translation.copy() for w in worlds]
-    amean = mean(anchor)
+    # (anchor, the parameter, says "start" or "mean": one-shots measure from their first frame.)
+    chest_at = [w["spine_03"].translation.copy() for w in worlds]
+    amean = mean(chest_at)
+    chest_q = [w["spine_03"].to_quaternion() for w in worlds]
+    if anchor == "start":
+        ref_q = chest_q[0].copy()
+    else:
+        acc = Quaternion((0.0, 0.0, 0.0, 0.0))
+        for q in chest_q:
+            acc = acc + (q if q.dot(chest_q[0]) >= 0 else -q)
+        ref_q = acc.normalized()
+    follow = st.get("hand_follow", 1.0)
+    turn = [Quaternion().slerp(q @ ref_q.inverted(), follow) for q in chest_q]
     for side in sides:
         hd = f"hand_{side}"
-        rel = [w[hd].translation - a for w, a in zip(worlds, anchor)]
+        rel = [t.inverted() @ (w[hd].translation - a) for w, a, t in zip(worlds, chest_at, turn)]
         rmean = mean(rel)
         hwant = char_space(*st[hd]) * k
         gain = st.get("hand_motion", 1.0)
         pole = char_space(*st[f"elbow_{side}"]) if f"elbow_{side}" in st else None
         for i in range(n):
             w = rt.fk(poses[i])
-            target = hwant + (anchor[i] - amean) + (rel[i] - rmean) * gain
-            rt.arm_ik(poses[i], w, side, target, pole)
+            target = chest_at[i] + turn[i] @ ((hwant - amean) + (rel[i] - rmean) * gain)
+            rt.arm_ik(poses[i], w, side, target, None if pole is None else turn[i] @ pole)
 
 
 def add_air(rt, poses, frames, height, spin=0.0, spin_frames=None, tuck=None, tuck_share=0.8):
@@ -846,6 +859,38 @@ REACH_PARTS = {"hand_l": "hand_l", "hand_r": "hand_r", "elbow_l": "lowerarm_l", 
                "knee_l": "calf_l", "knee_r": "calf_r", "foot_l": "ball_l", "foot_r": "ball_r"}
 
 
+def straighten(rt, poses, side, first, last, angle=172.0, ramp_in=3, ramp_out=5):
+    """Straightens a punching arm on its active frames (first..last, 1-based): the wrist moves out along the line from
+    the shoulder until the elbow opens to `angle` degrees, keeping the elbow's captured bend plane and the hand's
+    orientation, eased in over ramp_in frames and out over ramp_out. Captured boxing punches stop short of straight
+    (134-150 degrees), which on screen reads as an arm that never extends. Returns the elbow angle on the first active
+    frame."""
+    ua, la, hd = f"upperarm_{side}", f"lowerarm_{side}", f"hand_{side}"
+    w0 = rt.fk(poses[0])
+    upper = (w0[la].translation - w0[ua].translation).length
+    fore = (w0[hd].translation - w0[la].translation).length
+    full = math.sqrt(upper * upper + fore * fore - 2.0 * upper * fore * math.cos(math.radians(angle)))
+    for i, pose in enumerate(poses):
+        f = i + 1
+        if f < first:
+            w = A.ease("smooth", max(0.0, 1.0 - (first - f) / max(1, ramp_in)))
+        elif f <= last:
+            w = 1.0
+        else:
+            w = A.ease("smooth", max(0.0, 1.0 - (f - last) / max(1, ramp_out)))
+        if w <= 0.0:
+            continue
+        world = rt.fk(pose)
+        sh, wrist = world[ua].translation, world[hd].translation
+        d = wrist - sh
+        if d.length < 1e-4 or d.length >= full:
+            continue
+        rt.arm_ik(pose, world, side, sh + d.normalized() * (d.length + (full - d.length) * w))
+    w = rt.fk(poses[first - 1])
+    u, v = w[ua].translation - w[la].translation, w[hd].translation - w[la].translation
+    return math.degrees(u.angle(v))
+
+
 def reach(rt, poses, part, to, first, last, ramp_in=6, ramp_out=10, max_shift=0.35, max_lean=0.6, skid=0.0,
           balance=0.0):
     """Carries a strike into its hitbox: on the active frames (first..last, 1-based) the striking part (a fist, elbow,
@@ -964,6 +1009,54 @@ def overlap(poses, loop):
             pose[name] = (loc, q.slerp(q_lag, share))
 
 
+def limit_wrists(out, max_swing=12.0):
+    """Keeps each fist in line with its forearm: the wrist's bend off the rest line (its swing) is scaled down to
+    max_swing degrees, its twist (the forearm turning the palm) kept. Arm IK holds a hand's captured world orientation
+    while it moves the forearm (placing a guard, extending a punch), which left fists cocked back 20-60 degrees; a fist
+    lands and guards with the wrist straight."""
+    axis = Vector((0, 1, 0))
+    for side in ("l", "r"):
+        n = f"hand_{side}"
+        if n not in out:
+            continue
+        loc, q = out[n]
+        q = q.normalized()
+        v = Vector((q.x, q.y, q.z))
+        p = axis * v.dot(axis)
+        t = Quaternion((q.w, p.x, p.y, p.z))
+        t = t.normalized() if t.magnitude > 1e-9 else Quaternion()
+        sw = q @ t.inverted()
+        if sw.w < 0:
+            sw = -sw
+        ang = math.degrees(sw.angle)
+        if ang > max_swing:
+            sw = Quaternion().slerp(sw, max_swing / ang)
+        out[n] = (loc, sw @ t)
+
+
+def _swing_twist(q, axis=Vector((0, 1, 0))):
+    q = q.normalized()
+    v = Vector((q.x, q.y, q.z))
+    p = axis * v.dot(axis)
+    t = Quaternion((q.w, p.x, p.y, p.z))
+    t = t.normalized() if t.magnitude > 1e-9 else Quaternion()
+    sw = q @ t.inverted()
+    return (-sw if sw.w < 0 else sw), t
+
+
+def limit_neck(out, max_swing=30.0):
+    """Keeps the head on a natural neck: the neck's and head's nod and tilt off the rest line (their swings, summed)
+    are scaled down to max_swing degrees; turning the head left and right (their twists) is kept. Reaction captures
+    and the stance layer's head correction had bent the neck 45-65 degrees off the chest."""
+    parts = [(n, *_swing_twist(out[n][1])) for n in ("neck_01", "head") if n in out]
+    total = sum(math.degrees(sw.angle) for _, sw, _ in parts)
+    if total <= max_swing:
+        return
+    k = max_swing / total
+    for n, sw, t in parts:
+        out[n] = (out[n][0], Quaternion().slerp(sw, k) @ t)
+
+
 def fist(out, curl=1.0):
     for side in ("l", "r"):
         for fing in A.FINGERS:
@@ -971,10 +1064,10 @@ def fist(out, curl=1.0):
                 n = f"{fing}_0{seg}_{side}"
                 if n in out:
                     out[n] = (out[n][0], Quaternion((1, 0, 0), math.radians(amount * curl)))
-        for seg, amount in ((1, 25), (2, 40), (3, 35)):
+        for seg, amount in A.THUMB_WRAP:
             n = f"thumb_0{seg}_{side}"
             if n in out:
-                out[n] = (out[n][0], Quaternion((0, 0, 1), math.radians(-amount * curl if side == "l" else amount * curl)))
+                out[n] = (out[n][0], Quaternion((1, 0, 0), math.radians(amount * curl)))
 
 
 def blend_pose(a, b, t):
