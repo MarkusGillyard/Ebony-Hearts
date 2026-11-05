@@ -38,6 +38,8 @@ def ease(kind, t):
         return 1.0 - (1.0 - t) ** 3
     if kind == "snap":        # very fast out
         return 1.0 - (1.0 - t) ** 5
+    if kind == "fall":        # accelerating like a falling body: twice its mean speed at the end ("in" reaches three times)
+        return t * t
     if kind == "hold":
         return 0.0
     return t * t * (3.0 - 2.0 * t)   # smooth
@@ -141,10 +143,32 @@ def sample(keys, frame):
         return full[0][1]
     for j, ((f0, p0, _), (f1, p1, e1)) in enumerate(zip(full, full[1:])):
         if f0 <= frame <= f1:
+            t = (frame - f0) / max(1e-6, f1 - f0)
             if e1 == "smooth":
-                return _flow(full, j, frame)
-            return blend(p0, p1, ease(e1, (frame - f0) / max(1e-6, f1 - f0)))
+                return _switches(_flow(full, j, frame), p0, p1, t * t * (3.0 - 2.0 * t))
+            w = ease(e1, t)
+            return _switches(blend(p0, p1, w), p0, p1, w)
     return full[-1][1]
+
+
+def _control(p, limb):
+    """Which control a hand or foot is under in a pose, in the rig's order of precedence."""
+    side = limb[-1]
+    kinds = [f"{limb}_rel", f"{limb}_abs"] + ([f"foot_{side}_world"] if limb.startswith("foot") else []) + [limb]
+    return next((k for k in kinds if p.get(k) is not None), None)
+
+
+def _switches(out, p0, p1, w):
+    """A hand or foot whose control changes kind between two keys (character space, pelvis-relative, absolute or held
+    in the world) moves from where the first key's control puts it to where the second's does. Without this it held
+    on one control and jumped on a key: a channel missing from a key takes the next key's value, and a switch between
+    kinds happens on the key itself (60-80 cm in one frame in the clinch throws)."""
+    if 0.0 < w < 1.0:
+        for limb in ("hand_l", "hand_r", "foot_l", "foot_r"):
+            k0, k1 = _control(p0, limb), _control(p1, limb)
+            if k0 and k1 and k0 != k1:
+                out[f"{limb}_switch"] = (k0, p0[k0], k1, p1[k1], w)
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------- rig
@@ -295,13 +319,21 @@ class Rig:
             # Offset in the pelvis frame (follows the pelvis through rolls, falls and lying poses).
             return pel_pos + w_pel @ V(*S(vec))
 
+        def hand_at(kind, vec):
+            if kind.endswith("_rel"):
+                return rel(vec)
+            if kind.endswith("_abs"):
+                return V(*S(vec))
+            return place(V(*S(vec)))
+
         for side in ("l", "r"):
-            if p.get(f"hand_{side}_rel") is not None:
-                hand_pos = rel(p[f"hand_{side}_rel"])
-            elif p.get(f"hand_{side}_abs") is not None:
-                hand_pos = V(*S(p[f"hand_{side}_abs"]))
-            elif p.get(f"hand_{side}") is not None:
-                hand_pos = place(V(*S(p[f"hand_{side}"])))
+            switch = p.get(f"hand_{side}_switch")
+            kind = _control(p, f"hand_{side}")
+            if switch:
+                k0, v0, k1, v1, w = switch
+                hand_pos = hand_at(k0, v0).lerp(hand_at(k1, v1), w)
+            elif kind:
+                hand_pos = hand_at(kind, p[kind])
             else:
                 hand_pos = None
             if hand_pos is not None:
@@ -315,24 +347,28 @@ class Rig:
             for name in ("thigh", "calf", "upperarm", "lowerarm"):
                 self.pb[f"{name}_{side}"].rotation_quaternion = (1, 0, 0, 0)
         ankle = Vector((0, 0, self.head("foot_l").z))
+        def foot_at(kind, vec, side, fr):
+            restq = self.restq[f"foot_{side}"]
+            if kind.endswith("_rel"):
+                return rel(vec), w_pel @ fr @ restq
+            if kind.endswith("_abs"):
+                return V(*S(vec)) + ankle, fr @ restq
+            if kind.endswith("_world"):
+                f, l, u = vec
+                vec = (f - travel / k, l, u)
+            return place(V(*S(vec)) + ankle), spin @ fr @ restq
+
         for side in ("l", "r"):
             fr = rot(*p[f"foot_{side}_rot"])
             tgt = self.targets[f"leg_{side}"]
-            if p.get(f"foot_{side}_rel") is not None:
-                tgt.location = rel(p[f"foot_{side}_rel"])
-                tgt.rotation_quaternion = w_pel @ fr @ self.restq[f"foot_{side}"]
-            elif p.get(f"foot_{side}_abs") is not None:
-                tgt.location = V(*S(p[f"foot_{side}_abs"])) + ankle
-                tgt.rotation_quaternion = fr @ self.restq[f"foot_{side}"]
-            else:
-                foot = p.get(f"foot_{side}")
-                world = p.get(f"foot_{side}_world")
-                if world is not None:
-                    f, l, u = world
-                    foot = (f - travel / k, l, u)
-                if foot is not None:
-                    tgt.location = place(V(*S(foot)) + ankle)
-                    tgt.rotation_quaternion = spin @ fr @ self.restq[f"foot_{side}"]
+            switch = p.get(f"foot_{side}_switch")
+            kind = _control(p, f"foot_{side}")
+            if switch:
+                k0, v0, k1, v1, w = switch
+                (l0, q0), (l1, q1) = foot_at(k0, v0, side, fr), foot_at(k1, v1, side, fr)
+                tgt.location, tgt.rotation_quaternion = l0.lerp(l1, w), q0.slerp(q1, w)
+            elif kind:
+                tgt.location, tgt.rotation_quaternion = foot_at(kind, p[kind], side, fr)
             hip = place(self.head(f"thigh_{side}") + V(*S(p["pelvis"])))
             self.targets[f"leg_{side}_pole"].location = hip + spin @ w_pel @ V(*p[f"knee_{side}"]) if p.get("knee_follow_pelvis") else hip + spin @ V(*p[f"knee_{side}"])
         # Toes, wrists and fists are simple local rotations.

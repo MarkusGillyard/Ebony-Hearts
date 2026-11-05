@@ -1043,6 +1043,34 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-76`).
 
+### Hand and foot controls hand over smoothly; thrown victims fall slower (package `pkg-54-switch`)
+
+- **Measured** (`tools/anim-review/speeds.py`, new: every frame where a main joint moves more than 40 cm). The
+  victims of Ashka's two throws moved a hand 80–90 cm and the head 68–73 cm in single frames as they fell. A real
+  fist or foot peaks near 25–35 cm a frame, and the captured victims stay under 40.
+  - Before landing, the victim's hands are in character space. The lying pose holds them pelvis-relative. A channel
+    missing from a key takes the next key's value, so the hands jumped to the lying pose the frame after the
+    previous key.
+  - The Clinch Knees left the fall 8 frames, eased "in" (three times its mean speed at the end).
+- **Fix.**
+  - `animlib`: when a hand or foot changes control between two keys (character space, pelvis-relative,
+    absolute or held in the world), the rig now places it from both controls and moves it between them over the
+    segment. It used to hold on one and jump on a key. All hand-keyed clips and throws were rebuilt.
+  - A `"fall"` ease (quadratic, like a falling body) for both landings. The Clinch Knees bring the two knees a
+    little closer together, so the trip starts at frame 30 and the victim falls over 14 frames. The victim's arms fly
+    out to the sides as it is tripped.
+  - The victims now peak at 41–56 cm a frame (a hand flung out), the head at 38. No clip has a one-frame spike
+    (`stepping.py`), nothing goes through the floor, and the hand-overs are unchanged.
+- **Still fast (over 40 cm a frame).** The rolls' arms and dive (40–51 cm, a 0.5 s roll) and Ashka's burst
+  gesture (47). Also the foot of Wren's flying spin kick, which turns a full circle in 10 frames (56–77 cm). Slowing
+  these would mean new timing or captures.
+- **Review and regression.**
+  - Packaged as `pkg-54-switch`.
+  - The every-move Training script was recorded on `pkg-53` and `pkg-54` at 60 fps (`anim-77`). Nothing looks
+    broken in either fighter's moves.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-78`).
+
 ## Known limitations
 
 - **Not verified by a person:**

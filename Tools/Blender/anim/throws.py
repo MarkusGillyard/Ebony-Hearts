@@ -99,16 +99,22 @@ def ashka_clinch_knees(victim, td):
     down = pull(foot_r_world=(-0.23, -0.12, 0.0))
     trip = down(pelvis=(0.10, 0, -0.10), pelvis_rot=(20, 5, 0), chest=(30, 30, 0), foot_r_world=(0.35, 0.05, 0.10),
                 hand_l=(land - 0.30, 0.10, 0.70), hand_r=(land - 0.30, -0.10, 0.70))
-    # The knees drive up and the sweep goes through on smooth curves; "snap" put 60% of each in its first frame.
-    attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, pull, "smooth"), (18, knee, "smooth"), (24, down, "smooth"), (31, knee, "smooth"),
-                (36, down, "smooth"), (39, trip, "smooth"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
+    # The knees drive up and the sweep goes through on smooth curves; "snap" put 60% of each in its first frame. The
+    # knees come a little closer together so the trip starts at 30 and the victim has 14 frames to fall before landing
+    # on the damage frame (44); with 8 it dropped 70 cm a frame.
+    attacker = [(1, t, "smooth"), (6, plum, "snap"), (11, pull, "smooth"), (16, knee, "smooth"), (21, down, "smooth"), (26, knee, "smooth"),
+                (30, down, "smooth"), (34, trip, "smooth"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
     v = victim
     bent = victim_recoil(v, hold, 1.25)(chest=(0, 40, 0), head=(0, 35, 0), pelvis=(0.0, 0, -0.06))
     jolt = bent(chest=(0, 52, 0), pelvis=(0.0, 0, 0.0), head=(0, 40, 0))
-    fall = bent(pelvis=(-0.35, 0, -0.30), pelvis_rot=(0, -45, 0), chest=(0, -10, 0), head=(0, -20, 0), foot_l=(0.30, 0.12, 0.25))
+    # Tripped backwards the arms fly out to the sides, where the lying pose holds them (pelvis-relative), so the landing
+    # only carries them down with the body; switching on the landing moved a hand 60-90 cm in its last frame.
+    lie = lying(v)
+    fall = bent(pelvis=(-0.35, 0, -0.30), pelvis_rot=(0, -45, 0), chest=(0, -10, 0), head=(0, -20, 0), foot_l=(0.30, 0.12, 0.25),
+                hand_l=None, hand_r=None, hand_l_rel=lie["hand_l_rel"], hand_r_rel=lie["hand_r_rel"])
     end = landed(v, hold, land)
-    victim_keys = [(1, v, "smooth"), (6, victim_recoil(v, hold), "snap"), (12, bent, "smooth"), (18, jolt, "snap"), (24, bent, "smooth"),
-                   (31, jolt, "snap"), (36, bent, "smooth"), (39, fall, "in"), (44, end(head=(0, 20, -6)), "in"), (50, end, "out"), (64, end, "smooth")]
+    victim_keys = [(1, v, "smooth"), (6, victim_recoil(v, hold), "snap"), (11, bent, "smooth"), (16, jolt, "snap"), (21, bent, "smooth"),
+                   (26, jolt, "snap"), (30, bent, "smooth"), (36, fall, "fall"), (44, end(head=(0, 20, -6)), "fall"), (50, end, "out"), (64, end, "smooth")]
     return attacker, victim_keys
 
 
@@ -146,7 +152,7 @@ def ashka_clinch_turn(victim, td):
     off = held(spin=180.0, pivot=(hold, 0.0), pelvis=(-0.15, 0, -0.10), pelvis_rot=(0, -25, 0), foot_l=(0.25, 0.12, 0.25))
     end = landed(v, hold, land)
     victim_keys = [(1, v, "smooth"), (6, held, "snap"), (11, stumble_r, "smooth"), (16, swung, "smooth"), (21, stumble_l, "smooth"),
-                   (26, off, "smooth"), (38, end(head=(0, 20, -6)), "in"), (44, end, "out"), (56, end, "smooth")]
+                   (26, off, "smooth"), (38, end(head=(0, 20, -6)), "fall"), (44, end, "out"), (56, end, "smooth")]
     return attacker, victim_keys
 
 
