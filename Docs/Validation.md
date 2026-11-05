@@ -1017,6 +1017,32 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-74`).
 
+### No more one-frame jumps in the knees and the spin (package `pkg-53-pops`)
+
+- **Measured** (`tools/anim-review/stepping.py` on every clip: the largest one-frame move of the main joints, against
+  the frames either side). Three clips jumped:
+  - Ashka's Clinch Knees: the right knee moved 69–71 cm in one frame as each knee came up, and the foot 60 cm into the
+    sweep. The keys switched the foot from a planted target to a body-space one, and a switch of control happens
+    on the key itself, so the foot held still and then jumped. `"snap"` eases also put 60% of each knee into its
+    first frame.
+  - Wren's spinning back elbow: the turn went from 0 to 60 degrees in one frame as it began, and the hips with it (a
+    channel missing from a key takes the next key's value; her stance has no spin). A `"snap"` into the strike and an
+    `"out"` back to the guard moved her 106 degrees and her arms 47 cm in single frames.
+  - Ashka's Clinch Turn Trip: 15 cm, within what a fast step does.
+- **Fix.**
+  - The clinch knees keep the foot in world space throughout (a throw has no root travel), on smooth curves.
+  - The spinning elbow keys its spin from 0, with an extra key midway, and flows through the strike.
+  - The knee now moves at most 22 cm a frame and the sweep 29. The spin's fastest point is the rear foot swinging round
+    the pivot at 37 cm a frame, steady rather than a spike: the move turns 200 degrees in 6 frames about a pivot 40 cm
+    ahead, which only a new capture or new timing would change.
+- **Review and regression.**
+  - Packaged as `pkg-53-pops`.
+  - A Training script with Wren's light string into the spinning elbow twice and Ashka's Clinch Knees twice was
+    recorded on `pkg-52` and `pkg-53` at 60 fps (`anim-75`). The spin now turns through, strikes and comes back to
+    the stance one even step at a time. After the rebuild the audit flags only the Clinch Turn Trip's 15 cm step.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-76`).
+
 ## Known limitations
 
 - **Not verified by a person:**

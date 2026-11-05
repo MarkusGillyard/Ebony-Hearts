@@ -258,15 +258,21 @@ def wren_moves(data):
     piv = (0.20 + t3, 0.02)                                  # world; 20 cm ahead of her centre once the travel is done
     across = (piv[0] - 0.11, piv[1], 0.0)                    # lead ankle, its ball on the pivot
     home_l = (s["foot_l"][0] + t3, s["foot_l"][1], 0.0)      # the lead foot's stance spot after the travel
-    sb = w(pivot=piv, pivot_world=True, foot_l_world=across, foot_r_world=None, foot_r=(s["foot_r"][0] - 0.035, s["foot_r"][1], 0.0))
+    # spin=0 is keyed here: the stance has none, and a channel missing from a key takes the next key's value, which
+    # turned her 60 deg in one frame as the spin began.
+    sb = w(spin=0.0, pivot=piv, pivot_world=True, foot_l_world=across, foot_r_world=None, foot_r=(s["foot_r"][0] - 0.035, s["foot_r"][1], 0.0))
     elbow = sb(spin=-200, hand_r=(0.08, 0.12, 1.42), elbow_r=(0.6, 0.0, 0.1), hand_l=(0.10, 0.18, 1.35), chest=(-15, 8, 0), head=(-25, 0, 0), gaze=0.0,
                foot_r=(0.0, -0.08, 0.10))
     out["L3"] = ([(1, w, "smooth"),
                   (2, w(foot_l_world=((s["foot_l"][0] + across[0]) / 2, (s["foot_l"][1] + across[1]) / 2, 0.04), chest=(8, 6, 0)), "smooth"),
                   (3, sb(chest=(12, 8, 0)), "smooth"),
-                  (5, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.42), gaze=0.4, foot_r=(-0.10, -0.10, 0.08)), "in"),
-                  (9, elbow, "snap"), (11, elbow(spin=-225), "linear"),
-                  (16, sb(spin=-330, gaze=0.6, foot_r=(-0.15, -0.15, 0.06)), "out"),
+                  (5, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.42), gaze=0.4, foot_r=(-0.10, -0.10, 0.08)), "smooth"),
+                  # The turn flows through the strike: a snap into it turned her 106 deg in one frame, and an "out"
+                  # back to the guard moved the arms 47 cm in one.
+                  (7, sb(spin=-130, chest=(5, 9, 0), hand_r=(0.09, 0.09, 1.42), elbow_r=(0.5, 0.0, 0.0), gaze=0.2,
+                         foot_r=(-0.05, -0.09, 0.09)), "smooth"),
+                  (9, elbow, "smooth"), (11, elbow(spin=-225), "smooth"),
+                  (16, sb(spin=-330, gaze=0.6, foot_r=(-0.15, -0.15, 0.06)), "smooth"),
                   (19, sb(spin=-360, foot_r=s["foot_r"]), "smooth"),
                   (22, sb(spin=-360, foot_l_world=((across[0] + home_l[0]) / 2, (across[1] + home_l[1]) / 2, 0.05)), "smooth"),
                   (25, sb(spin=-360, foot_l_world=home_l), "smooth"),

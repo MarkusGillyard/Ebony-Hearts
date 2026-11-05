@@ -92,12 +92,16 @@ def ashka_clinch_knees(victim, td):
     plum = t(pelvis=(0.04, 0, -0.04), chest=(5, 12, 0), fist=0.0, gaze=1.0, hand_l=(hold - 0.06, 0.08, 1.45), hand_r=(hold - 0.06, -0.08, 1.45),
              elbow_l=(0.4, 0.15, -0.3), elbow_r=(0.4, -0.15, -0.3), foot_l_world=(0.25, 0.09, 0.0))
     pull = plum(hand_l=(hold - 0.10, 0.08, 1.22), hand_r=(hold - 0.10, -0.08, 1.22), chest=(5, 20, 0))
-    knee = pull(foot_r_world=None, foot_r=(0.20, -0.05, 0.62), knee_r=(0.9, 0.0, 0.7), pelvis=(0.08, 0, 0.0), pelvis_rot=(-10, -12, 0), ball_l=40)
+    # The knee and the trip keep the rear foot in world space like the planted keys either side of them (a throw has
+    # no root travel, so world and character space agree), so it moves between them instead of holding still and
+    # jumping 60-70 cm on the key (a switch of control happens at the key itself).
+    knee = pull(foot_r_world=(0.20, -0.05, 0.62), knee_r=(0.9, 0.0, 0.7), pelvis=(0.08, 0, 0.0), pelvis_rot=(-10, -12, 0), ball_l=40)
     down = pull(foot_r_world=(-0.23, -0.12, 0.0))
-    trip = down(pelvis=(0.10, 0, -0.10), pelvis_rot=(20, 5, 0), chest=(30, 30, 0), foot_r_world=None, foot_r=(0.35, 0.05, 0.10),
+    trip = down(pelvis=(0.10, 0, -0.10), pelvis_rot=(20, 5, 0), chest=(30, 30, 0), foot_r_world=(0.35, 0.05, 0.10),
                 hand_l=(land - 0.30, 0.10, 0.70), hand_r=(land - 0.30, -0.10, 0.70))
-    attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, pull, "smooth"), (18, knee, "snap"), (24, down, "smooth"), (31, knee, "snap"),
-                (36, down, "smooth"), (39, trip, "snap"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
+    # The knees drive up and the sweep goes through on smooth curves; "snap" put 60% of each in its first frame.
+    attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, pull, "smooth"), (18, knee, "smooth"), (24, down, "smooth"), (31, knee, "smooth"),
+                (36, down, "smooth"), (39, trip, "smooth"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
     v = victim
     bent = victim_recoil(v, hold, 1.25)(chest=(0, 40, 0), head=(0, 35, 0), pelvis=(0.0, 0, -0.06))
     jolt = bent(chest=(0, 52, 0), pelvis=(0.0, 0, 0.0), head=(0, 40, 0))
