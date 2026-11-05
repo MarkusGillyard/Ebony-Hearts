@@ -588,7 +588,9 @@ void Match::AdvanceThrow(int a)
 	}
 	v.x = hold;
 
-	if (t.throwFrame == d.damageFrame)
+		// RoundEnd lets an existing throw finish visually. Once a timeout result is
+		// awarded, its health comparison and winner must remain final.
+		if (s_.phase == Phase::Fight && t.throwFrame == d.damageFrame)
 	{
 		int32_t dmg = d.damage;
 		v.health -= dmg;
@@ -1477,38 +1479,74 @@ uint64_t Match::Hash() const
 {
 	uint64_t h = 1469598103934665603ULL;
 	Mix(h, static_cast<int64_t>(s_.phase));
+	Mix(h, static_cast<int64_t>(s_.mode));
 	Mix(h, s_.phaseFrame);
 	Mix(h, s_.round);
 	Mix(h, s_.timer);
 	Mix(h, s_.frame);
 	Mix(h, s_.roundWinner);
 	Mix(h, s_.matchWinner);
+	Mix(h, s_.timeout);
+	Mix(h, s_.doubleKO);
+	Mix(h, s_.advAttacker);
+	Mix(h, s_.advStartFrame);
+	Mix(h, s_.advReady[0]);
+	Mix(h, s_.advReady[1]);
+	Mix(h, s_.lastAdvantage);
+	Mix(h, s_.lastAdvantagePlayer);
+	Mix(h, s_.lastAdvantageValid);
 	for (const FighterState& f : s_.f)
 	{
 		Mix(h, f.x);
 		Mix(h, f.facing);
 		Mix(h, static_cast<int64_t>(f.state));
 		Mix(h, f.stateFrame);
+		Mix(h, f.walk);
 		Mix(h, f.move);
+		Mix(h, f.moveDir);
 		Mix(h, f.moveFrame);
 		Mix(h, f.hitMask);
+		Mix(h, f.connected);
+		Mix(h, f.connectedHit);
 		Mix(h, f.stun);
 		Mix(h, f.hitstop);
 		Mix(h, f.pushRemaining);
+		Mix(h, f.pushFramesLeft);
+		Mix(h, f.pushSource);
 		Mix(h, f.health);
 		Mix(h, f.meter);
 		Mix(h, f.combo);
+		Mix(h, f.comboDamage);
 		Mix(h, f.auraFrames);
 		Mix(h, f.dodgeLockout);
 		Mix(h, f.throwInvuln);
 		Mix(h, f.throwIndex);
+		Mix(h, f.throwOwner);
 		Mix(h, f.throwFrame);
+		Mix(h, f.throwKO);
+		Mix(h, f.lastBlockPress);
+		Mix(h, f.lastBlockPressTimed);
+		Mix(h, f.lastBlockPressDeflected);
 		Mix(h, f.roundWins);
-		Mix(h, f.bufferCount);
 		Mix(h, f.y);
 		Mix(h, f.vy);
 		Mix(h, f.jumpFrame);
 		Mix(h, f.jumpDir);
+		Mix(h, f.reaction);
+		Mix(h, f.reactMove);
+		Mix(h, f.reactHit);
+		Mix(h, f.idleFrames);
+		Mix(h, f.bufferCount);
+		for (int k = 0; k < f.bufferCount; ++k)
+		{
+			Mix(h, f.buffer[k].button);
+			Mix(h, f.buffer[k].dir);
+			Mix(h, f.buffer[k].age);
+		}
+		Mix(h, f.lastInput.x);
+		Mix(h, f.lastInput.y);
+		Mix(h, f.lastInput.held);
+		Mix(h, f.lastInput.pressed);
 	}
 	return h;
 }

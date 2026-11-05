@@ -996,7 +996,7 @@ int main(int argc, char** argv)
 		}
 	});
 
-	Run("ko_timeout_draw_and_double_ko", [] {
+		Run("ko_timeout_draw_and_double_ko", [] {
 		// KO ends the round and awards it.
 		Match m = MakeMatch(0, 1, Mode::Versus);
 		Idle(m, g_rules.introFrames);
@@ -1053,7 +1053,36 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(full.State().phase == Phase::MatchEnd, "CPU match reaches a result");
 		const int w = full.State().matchWinner;
 		EXPECT_TRUE(w == 2 || full.State().f[w].roundWins >= g_rules.roundsToWin || full.State().round == g_rules.maxRounds, "winner has the rounds");
-	});
+		});
+
+		Run("timeout_freezes_throw_damage_after_result", [] {
+			Rules shortRound = g_rules;
+			shortRound.introFrames = 1;
+			shortRound.roundFrames = 6;
+			CharacterDef fragile = g_ashka;
+			fragile.maxHealth = 100;
+			Match m;
+			std::string error;
+			EXPECT_TRUE(m.Setup(shortRound, g_wren, fragile, Mode::Versus, error), "short match setup");
+			Idle(m, shortRound.introFrames);
+			m.TrainingPlace(Cm(-35), Cm(35));
+			Step(m, In(0, BtnThrow));
+			while (m.State().phase == Phase::Fight)
+			{
+				Step(m);
+			}
+			EXPECT_TRUE(m.State().timeout && m.State().roundWinner == 2, "throw pending at a tied timeout");
+			const int32_t healthAtResult = m.State().f[1].health;
+			bool lateDamage = false;
+			for (int tick = 0; tick < 70 && m.State().phase == Phase::RoundEnd; ++tick)
+			{
+				Step(m);
+				lateDamage = lateDamage || HasEvent(m, EventType::ThrowDamage);
+			}
+			EXPECT_EQ(m.State().f[1].health, healthAtResult, "health cannot change after timeout result");
+			EXPECT_TRUE(!lateDamage, "no throw damage event after timeout result");
+			EXPECT_EQ(m.State().f[0].roundWins + m.State().f[1].roundWins, 0, "late throw cannot change the round award");
+		});
 
 	Run("reset_clears_state", [] {
 		Match m = MakeMatch(0, 1);
@@ -1068,6 +1097,20 @@ int main(int argc, char** argv)
 			EXPECT_TRUE(f.state == FState::Neutral && f.move == -1 && f.stun == 0 && f.hitstop == 0 && f.auraFrames == 0 && f.bufferCount == 0 && f.combo == 0 && f.pushFramesLeft == 0 && f.throwIndex == -1, "fighter fully reset");
 			EXPECT_EQ(f.health, Fighter(i).maxHealth, "health refilled");
 		}
+	});
+
+	Run("state_hash_includes_pending_inputs", [] {
+		Match heavy = MakeMatch(0, 1);
+		Match special = MakeMatch(0, 1);
+		heavy.TrainingPlace(Cm(-40), Cm(40));
+		special.TrainingPlace(Cm(-40), Cm(40));
+		Step(heavy, In(0, BtnLight));
+		Step(special, In(0, BtnLight));
+		Step(heavy, In(0, BtnHeavy));
+		Step(special, In(0, BtnSpecial));
+		EXPECT_EQ(heavy.State().f[0].move, special.State().f[0].move, "same visible current move");
+		EXPECT_TRUE(heavy.State().f[0].bufferCount > 0 && special.State().f[0].bufferCount > 0, "different pending inputs are buffered");
+		EXPECT_TRUE(heavy.Hash() != special.Hash(), "future-affecting buffered input changes the hash");
 	});
 
 	Run("replay_determinism_and_render_rate_independence", [] {
