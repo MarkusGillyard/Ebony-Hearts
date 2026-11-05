@@ -41,7 +41,7 @@ def lying(stance):
 
 def unrel(pose):
     """Back to world/character-space limbs after a pose that used pelvis-relative effectors."""
-    return pose(hand_l_rel=None, hand_r_rel=None, foot_l_rel=None, foot_r_rel=None, knee_follow_pelvis=False)
+    return pose(hand_l_rel=None, hand_r_rel=None, foot_l_rel=None, foot_r_rel=None, knee_follow_pelvis=False, elbow_follow=0.0)
 
 
 # ------------------------------------------------------------------------------------------------ shared moves
@@ -179,8 +179,8 @@ def rolls(s, move, forward):
              hand_l=None, hand_r=None, hand_l_rel=(0.20, 0.18, 0.10), hand_r_rel=(0.20, -0.18, 0.12),
              elbow_l=(0.3, 0.3, -0.2), elbow_r=(0.3, -0.3, -0.2),
              foot_l=None, foot_r=None, foot_l_rel=(0.30, 0.12, -0.30), foot_r_rel=(0.25, -0.12, -0.32),
-             foot_l_world=None, foot_r_world=None, knee_follow_pelvis=True, knee_l=(0.4, 0.1, 0.4), knee_r=(0.4, -0.1, 0.4))
-    dip = s(pelvis=(s["pelvis"][0] + 0.10 * sign, 0, -0.32), chest=(s["chest"][0], 30, 0), head=(0, 20, 0))
+             foot_l_world=None, foot_r_world=None, knee_follow_pelvis=True, elbow_follow=1.0, knee_l=(0.4, 0.1, 0.4), knee_r=(0.4, -0.1, 0.4))
+    dip = s(pelvis=(s["pelvis"][0] + 0.10 * sign, 0, -0.32), chest=(s["chest"][0], 30, 0), head=(0, 20, 0), elbow_follow=1.0)
     # Take-off. The dip names no pelvis-relative feet, so the tuck's used to apply from its first frame and the feet
     # jumped into it (up to 60 cm). Now they push off in character space onto where the tuck holds them at frame 6
     # (measured on both fighters, within ~2 cm) and the tuck takes over from frame 7.
@@ -208,7 +208,11 @@ def rolls(s, move, forward):
     hair_l, hair_r = ((0.21, 0.13, 0.78), (0.11, -0.21, 0.80)) if forward else ((0.28, 0.12, 0.62), (0.20, -0.23, 0.64))
     gl, gr = s["hand_l"], s["hand_r"]
     hmid_l, hmid_r = tuple((a + b) / 2 for a, b in zip(hair_l, gl)), tuple((a + b) / 2 for a, b in zip(hair_r, gr))
-    up = unrel(dip(pelvis_rot=(s["pelvis_rot"][0], 360 * sign + s["pelvis_rot"][1], 0), pelvis=(0, 0, -0.30)))
+    # Out of the forward roll the elbows keep aiming with the chest while she comes upright (the last key hands them back
+    # to the stance's aim); out of the back roll that swung an elbow 48 cm in a frame, so they go back to the stance's
+    # aim as she rises.
+    up = unrel(dip(pelvis_rot=(s["pelvis_rot"][0], 360 * sign + s["pelvis_rot"][1], 0), pelvis=(0, 0, -0.30)))(
+        elbow_follow=1.0 if forward else 0.0)
     keys += [(18, up(foot_l=air_l, foot_r=air_r, hand_l=hair_l, hand_r=hair_r), "linear"),
              (21, up(foot_l=mid_l, foot_r=mid_r, hand_l=hmid_l, hand_r=hmid_r), "smooth"),
              (24, up(foot_l=sl, foot_r=sr, hand_l=gl, hand_r=gr), "smooth"),
@@ -404,7 +408,11 @@ def ashka_moves(data):
     coil = s(pelvis=(-0.02, 0, -0.22), chest=(0, 22, 0), hand_l=(0.15, 0.12, 1.10), hand_r=(0.15, -0.12, 1.10), fist=0.0, head=(0, 15, 0))
     burst = s(pelvis=(0.04, 0, -0.10), chest=(0, -8, 0), head=(0, -10, 0), hand_l=(0.55, 0.30, 1.35), hand_r=(0.55, -0.28, 1.30), fist=0.0,
               elbow_l=(-0.2, 0.5, -0.3), elbow_r=(-0.2, -0.5, -0.3))
-    out["BS"] = ([(1, s, "smooth"), (5, coil, "in"), (7, burst, "snap"), (18, burst, "hold"), (30, coil(pelvis=(-0.05, 0, -0.15)), "smooth"), (49, s, "smooth")], 49, None, False)
+    # The thrust takes three frames on an "out" (fast, still landing on frame 7); a "snap" over two moved the palms 48 cm
+    # in one frame. Coming back, the hands stop a little further out than the coil: folded right back to the shoulder the
+    # arm has no defined bend, and the elbow swung 42 cm in one frame.
+    settle = coil(pelvis=(-0.05, 0, -0.15), hand_l=(0.28, 0.14, 1.08), hand_r=(0.28, -0.14, 1.08))
+    out["BS"] = ([(1, s, "smooth"), (4, coil, "smooth"), (7, burst, "out"), (18, burst, "hold"), (30, settle, "smooth"), (49, s, "smooth")], 49, None, False)
     # Grab: reach for a plum clinch behind the opponent's head.
     reach = w(pelvis=(0.08, 0, -0.04), chest=(10, 10, 0), hand_l=(0.55, 0.10, 1.45), hand_r=(0.55, -0.08, 1.45), fist=0.0,
               elbow_l=(0.3, 0.2, -0.4), elbow_r=(0.3, -0.2, -0.4), foot_l_world=(0.32, 0.09, 0.0))

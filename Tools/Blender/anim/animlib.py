@@ -263,7 +263,7 @@ class Rig:
         "spin": 0.0, "pivot": (0.0, 0.0), "clav_l": (0.0, 0.0, 0.0), "clav_r": (0.0, 0.0, 0.0), "fist": 0.0,
         "ball_l": 0.0, "ball_r": 0.0, "foot_l_rot": (0.0, 0.0, 0.0), "foot_r_rot": (0.0, 0.0, 0.0),
         "elbow_l": (-0.2, 0.25, -0.4), "elbow_r": (-0.2, -0.25, -0.4), "knee_l": (0.6, 0.1, 0.0), "knee_r": (0.6, -0.1, 0.0),
-        "wrist_l": (0.0, 0.0, 0.0), "wrist_r": (0.0, 0.0, 0.0), "gaze": 0.0, "root_f": 0.0,
+        "wrist_l": (0.0, 0.0, 0.0), "wrist_r": (0.0, 0.0, 0.0), "gaze": 0.0, "root_f": 0.0, "elbow_follow": 0.0,
     }
 
     def apply(self, pose, travel=0.0):
@@ -339,7 +339,14 @@ class Rig:
             if hand_pos is not None:
                 self.targets[f"arm_{side}"].location = hand_pos
             shoulder = place(self.head(f"upperarm_{side}") + V(*S(p["pelvis"])))
-            self.targets[f"arm_{side}_pole"].location = shoulder + spin @ V(*p[f"elbow_{side}"])
+            pole = shoulder + spin @ V(*p[f"elbow_{side}"])
+            if p["elbow_follow"] > 0.0:
+                # The elbow aims from where the shoulder really is and turns with the chest (rolls): kept in character
+                # space, the aim stayed put while the torso went upside down and the elbows swung across (44-51 cm
+                # in a frame). Numeric, so it eases in and out with the keys.
+                body = pel_pos + w_chest @ (self.head(f"upperarm_{side}") - pel_rest) + w_chest @ V(*p[f"elbow_{side}"])
+                pole = pole.lerp(body, p["elbow_follow"])
+            self.targets[f"arm_{side}_pole"].location = pole
         # Legs: feet in character space, or held in the world while the root travels. The limb IK starts from the rest
         # pose every frame: started from the last frame's baked limb it can stick (a straight planted leg would not fold
         # into a raised knee; hands missed their targets by up to 27 cm).

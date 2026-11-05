@@ -1071,6 +1071,31 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-78`).
 
+### Elbows that do not flip (package `pkg-55-elbows`)
+
+- **Measured** (`speeds.py`, then the arm's joints frame by frame).
+  - **Rolls:** the elbows jumped 44–51 cm in single frames as the body dove and came up. Each elbow aims at a
+    point kept in character space from where the shoulder would be standing, so as the torso went upside down
+    the aim stayed put and the elbow swung across.
+  - **Ashka's burst:** the palms thrust 48 cm in one frame (a `"snap"` over two frames). In the recovery the hands
+    came back to within 14 cm of the shoulders. A fully folded arm has no defined bend, and the elbow swung 42 cm
+    in one frame.
+- **Fix.**
+  - `animlib`: a numeric `elbow_follow` channel. Above 0 the elbow aims from where the shoulder really is and turns
+    with the chest. Being a number, it eases in and out with the keys. The rolls turn it on from the dip, and the
+    forward roll keeps it while rising. The back roll hands back to the stance's aim as it rises, since keeping it
+    swung an elbow 48 cm there.
+  - Ashka's burst thrusts over three frames on an `"out"`, still landing on frame 7. The recovering hands stop a
+    little further out than the coil.
+  - The rolls' elbows now move at most 36 cm a frame and the burst's palms 33. What is left over 40 is the forward
+    roll's dive (the head, 42–44 cm) and the back roll's legs swinging over (37–42), both the moves' own timing.
+- **Review and regression.**
+  - Packaged as `pkg-55-elbows`.
+  - A Training script with both rolls twice for each fighter and Ashka's burst twice was recorded on `pkg-54` and
+    `pkg-55` at 60 fps (`anim-79`). The burst coils, thrusts as the flame erupts and settles.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-80`).
+
 ## Known limitations
 
 - **Not verified by a person:**
