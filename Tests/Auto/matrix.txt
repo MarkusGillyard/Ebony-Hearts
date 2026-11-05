@@ -1,0 +1,70 @@
+# Match matrix: complete best-of-three matches through the device router (bots press keys on the player's device).
+# Covers both fighters, both sides, mirror matches, all CPU levels and two-player versus on one keyboard.
+wait 5
+press kbA Light
+wait 1
+log M01 wren(P1, bot normal) vs ashka(CPU easy), player left
+match wren ashka cpu 0 left
+bots 1 none
+wait_results 480
+screenshot m01_results
+log M02 rematch (same pairing, bot hard)
+bots 2 none
+results_pick 0
+wait_results 480
+results_pick 2
+log M03 ashka(P1) vs wren(CPU normal), player left
+match ashka wren cpu 1 left
+bots 1 none
+wait_results 480
+results_pick 2
+log M04 wren vs ashka(CPU hard), player on the right side
+match wren ashka cpu 2 right
+bots none 1
+wait_results 480
+screenshot m04_results
+results_pick 2
+log M05 mirror wren vs wren(CPU normal), player right
+match wren wren cpu 1 right
+bots none 2
+wait_results 480
+results_pick 2
+log M06 mirror ashka vs ashka(CPU hard)
+match ashka ashka cpu 2 left
+bots 2 none
+wait_results 480
+results_pick 2
+log M07 local versus wren(kbA bot) vs ashka(kbB bot)
+match wren ashka versus 1
+bots 1 2
+wait_results 480
+screenshot m07_results
+results_pick 2
+log M08 local versus ashka vs wren
+match ashka wren versus 1
+bots 2 0
+wait_results 480
+results_pick 2
+log M09 local versus mirror wren
+match wren wren versus 1
+bots 1 1
+wait_results 480
+results_pick 2
+log M10 local versus mirror ashka
+match ashka ashka versus 1
+bots 0 2
+wait_results 480
+results_pick 2
+log M11 ashka vs wren(CPU easy), player right
+match ashka wren cpu 0 right
+bots none 0
+wait_results 480
+results_pick 2
+log M12 wren vs ashka(CPU normal), bot easy
+match wren ashka cpu 1 left
+bots 0 none
+wait_results 480
+results_pick 2
+assets
+mem matrix_end
+quit

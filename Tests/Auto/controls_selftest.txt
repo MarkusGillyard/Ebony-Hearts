@@ -1,0 +1,8 @@
+# Control system self-tests in the packaged game: default layout, PlayStation/Xbox names, menu/gameplay separation,
+# conflict handling, save/load and version-1 migration (bindings_selftest), and the router path for every default
+# button, both grab buttons, the analog R2 / RT thresholds, directions and per-player layouts (input_selftest).
+wait 3
+bindings_selftest
+input_selftest
+devices
+quit

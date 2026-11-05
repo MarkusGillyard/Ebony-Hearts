@@ -1,0 +1,692 @@
+{
+ "generated_from": "original download records, SHA-256 verified on 2026-11-02/03",
+ "items": [
+  {
+   "id": "ambientcg/Rock035",
+   "title": "Rock 035",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Rock035",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel piers, arches, tracery (M_StoneDressed)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Rock035_1K-JPG.zip",
+     "sha256": "c5e4dbd7d5555734498834c1e09b799ef3d1f00c61fe08c0d953b93a8fb1bb95",
+     "url": "https://ambientcg.com/get?file=Rock035_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Ivory001B",
+   "title": "Ivory 001 B",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Ivory001B",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel candle wax (M_CandleWax)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Ivory001B_1K-JPG.zip",
+     "sha256": "e89909899fe42eaf817212f69953844b586a8950dfd976d29c08371ac8635f81",
+     "url": "https://ambientcg.com/get?file=Ivory001B_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "polyhaven/rusty_metal_04",
+   "title": "Rusty Metal 04",
+   "creator": "Amal Kumar (All) - Poly Haven",
+   "source_page": "https://polyhaven.com/a/rusty_metal_04",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel iron: stands, censers, chains (M_IronAged)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "rusty_metal_04_diff_1k.jpg",
+     "sha256": "37c6757c5b6b2229f61423c7e5013f970e4dafb48070d35f53ed6d08958ed288",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_diff_1k.jpg"
+    },
+    {
+     "file": "rusty_metal_04_nor_dx_1k.jpg",
+     "sha256": "f6db58c8394f4c4541f0812f1535d3b956e87cb64a98ed7a0fd5060080c970a8",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_nor_dx_1k.jpg"
+    },
+    {
+     "file": "rusty_metal_04_rough_1k.jpg",
+     "sha256": "02c2fe5dfd5f4f7a692659261b8c99e103f33fb1a4c363c3e763542fae32d4fe",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_rough_1k.jpg"
+    },
+    {
+     "file": "rusty_metal_04_ao_1k.jpg",
+     "sha256": "af1733e6b00b89853a885a53dea36cc445f8a8b5d0364fb0da4fd11cf1006531",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_ao_1k.jpg"
+    },
+    {
+     "file": "rusty_metal_04_disp_1k.jpg",
+     "sha256": "a654b6fcfa804ed611db781579a91d1b4c0ade5a8fd166f9343533edecdadf2c",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_disp_1k.jpg"
+    },
+    {
+     "file": "rusty_metal_04_arm_1k.jpg",
+     "sha256": "b040e35ed5e885d04b465761782a5d0ebd241175f562821f8fba35a12dccb789",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_arm_1k.jpg"
+    },
+    {
+     "file": "rusty_metal_04_metal_1k.jpg",
+     "sha256": "090689c9cc3d30f4d1a89dd1160fb85cec04d3492f75695bdc83bbb80b6ad30f",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rusty_metal_04/rusty_metal_04_metal_1k.jpg"
+    }
+   ]
+  },
+  {
+   "id": "polyhaven/monastery_stone_floor",
+   "title": "Monastery Stone Floor",
+   "creator": "Amal Kumar (All) - Poly Haven",
+   "source_page": "https://polyhaven.com/a/monastery_stone_floor",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel floor (M_FloorFlags)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "monastery_stone_floor_diff_2k.jpg",
+     "sha256": "aa12137fff1728bbbfe98b30480e33a34cba3b5c096575702c1d66939214e14a",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/monastery_stone_floor/monastery_stone_floor_diff_2k.jpg"
+    },
+    {
+     "file": "monastery_stone_floor_nor_dx_2k.jpg",
+     "sha256": "f8a78bf96eeb455cea5478951d7d79a75c272447db645fb0d88525e0be18739e",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/monastery_stone_floor/monastery_stone_floor_nor_dx_2k.jpg"
+    },
+    {
+     "file": "monastery_stone_floor_rough_2k.jpg",
+     "sha256": "61f87f8049b21153b6db25fdcd184c4297642ada2e31c07db03f6810c9f952c3",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/monastery_stone_floor/monastery_stone_floor_rough_2k.jpg"
+    },
+    {
+     "file": "monastery_stone_floor_ao_2k.jpg",
+     "sha256": "47751b7e429bbd8b6103c6d1170b5146202fd976be5eca0a70a321398166f1dd",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/monastery_stone_floor/monastery_stone_floor_ao_2k.jpg"
+    },
+    {
+     "file": "monastery_stone_floor_disp_2k.jpg",
+     "sha256": "164d97eb875ba7500f3d03f571d0187619cdd8ddfa2abad6851b04be83ff337e",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/monastery_stone_floor/monastery_stone_floor_disp_2k.jpg"
+    },
+    {
+     "file": "monastery_stone_floor_arm_2k.jpg",
+     "sha256": "05b540e571d2c7250bce9763f7ea0b03120d726fdc6e48f1a16fd7f922a5f891",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/monastery_stone_floor/monastery_stone_floor_arm_2k.jpg"
+    }
+   ]
+  },
+  {
+   "id": "polyhaven/medieval_blocks_03",
+   "title": "Medieval Blocks 03",
+   "creator": "Rob Tuytel (All) - Poly Haven",
+   "source_page": "https://polyhaven.com/a/medieval_blocks_03",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel walls and vaults (M_StoneAshlar)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "medieval_blocks_03_diff_2k.jpg",
+     "sha256": "63cc2220ed9e72c8dda620474c10fc26657552c5309c77c114b5ac725edfb902",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_blocks_03/medieval_blocks_03_diff_2k.jpg"
+    },
+    {
+     "file": "medieval_blocks_03_nor_dx_2k.jpg",
+     "sha256": "42583ebdaaec84eb94fe231a38dab37086f34b3848fc2d594dfa55d9ec4fe9c3",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_blocks_03/medieval_blocks_03_nor_dx_2k.jpg"
+    },
+    {
+     "file": "medieval_blocks_03_rough_2k.jpg",
+     "sha256": "6d84d13c65a63e968aaa3f77f7e06d8866f1323698a56ef3ca6d88a7b99d5c08",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_blocks_03/medieval_blocks_03_rough_2k.jpg"
+    },
+    {
+     "file": "medieval_blocks_03_ao_2k.jpg",
+     "sha256": "bc5ae6fd51cd89e977adfeefc5c9ebe41dbf156c39f0d975c4bff7378b513247",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_blocks_03/medieval_blocks_03_ao_2k.jpg"
+    },
+    {
+     "file": "medieval_blocks_03_disp_2k.jpg",
+     "sha256": "bd583b73aa9c496f0d8012c2d6acaa704d6acce912d7de1d5af723bbeffa9942",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_blocks_03/medieval_blocks_03_disp_2k.jpg"
+    },
+    {
+     "file": "medieval_blocks_03_arm_2k.jpg",
+     "sha256": "50b7486187a39cf92bdd27f2723b45d048458dae8eca20723f447bbfe7057b8c",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/medieval_blocks_03/medieval_blocks_03_arm_2k.jpg"
+    }
+   ]
+  },
+  {
+   "id": "polyhaven/weathered_planks",
+   "title": "Weathered Planks",
+   "creator": "Dario Barresi (Processing), Dimitrios Savva (Photography) - Poly Haven",
+   "source_page": "https://polyhaven.com/a/weathered_planks",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel pews and planks (M_WoodPew)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "weathered_planks_diff_2k.jpg",
+     "sha256": "e763f1257acdfdbb31764c9ec9d480fd4efa5cc008f8b63d73a916d53d938942",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_planks/weathered_planks_diff_2k.jpg"
+    },
+    {
+     "file": "weathered_planks_nor_dx_2k.jpg",
+     "sha256": "c9411c57f375f83952cd01b102d8b5cfccbd179a998eae061b48cae2149d323b",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_planks/weathered_planks_nor_dx_2k.jpg"
+    },
+    {
+     "file": "weathered_planks_rough_2k.jpg",
+     "sha256": "964c154545e1ac4e1cb4b2ba60960a1effa2c56c31a2c300bf78fcc499b17c52",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_planks/weathered_planks_rough_2k.jpg"
+    },
+    {
+     "file": "weathered_planks_ao_2k.jpg",
+     "sha256": "3f797b00bc63c54a45e17f8b6ffcd9a6709d29e88b51049dbda4b0430c7cc7c4",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_planks/weathered_planks_ao_2k.jpg"
+    },
+    {
+     "file": "weathered_planks_disp_2k.jpg",
+     "sha256": "cab181de40a1d0c6ed1877bc068557e5eb671121f1ae2edbf5f18481f1652e3e",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_planks/weathered_planks_disp_2k.jpg"
+    },
+    {
+     "file": "weathered_planks_arm_2k.jpg",
+     "sha256": "379c785034a890844ac6a88497680a6d8a972d1fe489a8031fab432e007361c4",
+     "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/weathered_planks/weathered_planks_arm_2k.jpg"
+    }
+   ]
+  },
+  {
+   "id": "kenney/impact-sounds",
+   "title": "Impact Sounds",
+   "creator": "Kenney (Kenney Vleugels), kenney.nl",
+   "source_page": "https://kenney.nl/assets/impact-sounds",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Layered under synthesized impacts, falls, steps",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "kenney_impact-sounds.zip",
+     "sha256": "029d734af1582474edf3a694d1b0cebc97c1c152f2f39fa34d4c2bafc5de77f8",
+     "url": "https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip"
+    }
+   ]
+  },
+  {
+   "id": "kenney/interface-sounds",
+   "title": "Interface Sounds",
+   "creator": "Kenney (Kenney Vleugels), kenney.nl",
+   "source_page": "https://kenney.nl/assets/interface-sounds",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Menu sounds (processed)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "kenney_interface-sounds.zip",
+     "sha256": "f2193d072726d6758a5f7871b2dcc54dcce0d5c35c6f0a62f92549b327c81232",
+     "url": "https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip"
+    }
+   ]
+  },
+  {
+   "id": "kenney/rpg-audio",
+   "title": "RPG Audio",
+   "creator": "Kenney (Kenney Vleugels), kenney.nl",
+   "source_page": "https://kenney.nl/assets/rpg-audio",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Cloth and creak layers",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "kenney_rpg-audio.zip",
+     "sha256": "6dbeaf8544da958d8f2adcb4a4a4b76c1ade34a05f8ab9edccd327da7375f38b",
+     "url": "https://kenney.nl/media/pages/assets/rpg-audio/8e99002d76-1677590336/kenney_rpg-audio.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Leather021",
+   "title": "Leather 021",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Leather021",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Ashka loafers detail",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Leather021_1K-JPG.zip",
+     "sha256": "2bad826aeb95973c7b2c37a853e9b1ee54184a82a086336551f38f1f4aa87909",
+     "url": "https://ambientcg.com/get?file=Leather021_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Leather026",
+   "title": "Leather 026",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Leather026",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Wren gloves; Ashka belt detail",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Leather026_1K-JPG.zip",
+     "sha256": "6af2f446f9855c641da2a072f128d30965431ffae3306d22d75dbfff99c04646",
+     "url": "https://ambientcg.com/get?file=Leather026_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Fabric040",
+   "title": "Fabric 040",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Fabric040",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Wren shorts; Ashka tie; strap detail",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Fabric040_1K-JPG.zip",
+     "sha256": "0e4d371712dd1ebf5253d323ed7cdbec97305500ddbd48efa8ae8541f9d60763",
+     "url": "https://ambientcg.com/get?file=Fabric040_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Fabric001",
+   "title": "Fabric 001",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Fabric001",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Ashka shirt; Wren hand and ankle wraps detail",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Fabric001_1K-JPG.zip",
+     "sha256": "cea13f8f2b44ba8a9d4bced83d26ab344e39502dba24b0b4025b7bd3a180a4c2",
+     "url": "https://ambientcg.com/get?file=Fabric001_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Fabric066",
+   "title": "Fabric 066",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Fabric066",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Chapel altar cloth; Ashka coat and trousers detail",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Fabric066_1K-JPG.zip",
+     "sha256": "bcd274190979010b2056cab1b10d0420da6e2f58a8e1cf37bc527d8a67772684",
+     "url": "https://ambientcg.com/get?file=Fabric066_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "ambientcg/Fabric034",
+   "title": "Fabric 034",
+   "creator": "ambientCG (Lennart Demes, per https://docs.ambientcg.com/legal/)",
+   "source_page": "https://ambientcg.com/view?id=Fabric034",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Wren sports top and waistband detail",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Fabric034_1K-JPG.zip",
+     "sha256": "10ce98f31a2fd336d2bcb82731d35502932f38da42446980bc91a08166d5fb53",
+     "url": "https://ambientcg.com/get?file=Fabric034_1K-JPG.zip"
+    }
+   ]
+  },
+  {
+   "id": "accad/male2_bvh",
+   "title": "ACCAD mocap Data: Male 2 (149 BVH takes)",
+   "creator": "ACCAD (Advanced Computing Center for the Arts and Design), The Ohio State University, Open Motion Project",
+   "source_page": "https://accad.osu.edu/research/motion-lab/system-data",
+   "acquired": "2026-10-27",
+   "license": "CC BY 3.0 Unported (https://creativecommons.org/licenses/by/3.0/), as stated on the source page: \"Open Motion Project by ACCAD/The Ohio State University is licensed under a Creative Commons Attribution 3.0 Unported License.\"",
+   "license_url": null,
+   "use": "Base motion for both fighters' idle stances, Wren's 720 hook kick and tornado kick, Ashka's body kick, teep, bow intro and bow win, and both fighters' defeated pose; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json)",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "Male2_bvh.zip",
+     "sha256": "f30dc56f8557d4b9f1bd6b8b0c4218c076471de0a9c1a20f3bc4a8b776cc14b1"
+    },
+    {
+     "file": "ACCAD_mocap_Data_Male_2.pdf",
+     "sha256": "55473cbd7af1364012e94da34d342ee7637f27a1190ce2dbf458832e37994ded"
+    }
+   ],
+   "attribution": "Motion capture: Open Motion Project by ACCAD / The Ohio State University, CC BY 3.0; retargeted and retimed for this game."
+  },
+  {
+   "id": "mixamo/animations",
+   "title": "Mixamo animations (40 clips exported; X Bot T-pose for calibration)",
+   "creator": "Adobe (Mixamo)",
+   "source_page": "https://www.mixamo.com/",
+   "acquired": "2026-11-03 to 2026-11-05",
+   "license": "Adobe Mixamo: free; \"You can use both characters and animations royalty free for personal, commercial, and non-profit projects including ... Create video games.\" (https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html, last updated Sep 14, 2021, read 2026-11-03). Raw files are kept out of the public repository.",
+   "license_url": null,
+   "use": "Base motion for Wren's jab, cross and jab-to-cross string, Spirit Enhanced Strikes, roundhouse, spinning back kick, walks, held guard, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's held guard, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, both fighters' hit, block, knockdown and KO reactions and get-ups, and the fall of the fighter Ashka throws; retargeted and retimed (Tools/Blender/anim/build_mocap.py, build_anims.py, mocap_clips.json). Raw exports are not in the repository",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "W_MmaKick_High.fbx",
+     "sha256": "35eeda910fd411b257dda0b96d6bcd9c3a90160dcdf8923a5cd98adae77a106e"
+    },
+    {
+     "file": "W_MmaKick_SpinningBack.fbx",
+     "sha256": "62d535bb0e360a21dd90ddfedf1f8cf9be5eafa3d9950e0957187ada084a2669"
+    },
+    {
+     "file": "BoxingStepForward_Medium.fbx",
+     "sha256": "6592d2aa585d8218cd6198e17b4c67abccfeb6e50950d2c1b2cb25ba77c9205d"
+    },
+    {
+     "file": "BoxingStepBackward_Medium.fbx",
+     "sha256": "32b2f6fdd5fc60e4636729d9df85d2979c6e99c96ebd3e407fedb02d72180d7c"
+    },
+    {
+     "file": "WarmingUp_Boxing.fbx",
+     "sha256": "27c04ca2111b101131f71f71ade666dbb64aea5f9398c099466e2cace0996d40"
+    },
+    {
+     "file": "Victory_Boxing.fbx",
+     "sha256": "cd70f32576e4556ba17b7a48cd5790f6786c803b37ce9f5802417bdfc5e38b08"
+    },
+    {
+     "file": "A_IllegalKnee_MuayThai.fbx",
+     "sha256": "e2ee733c4f8412555617fe51d33b7415d8419823c4989a17d97bcf64114e77d6"
+    },
+    {
+     "file": "A_ElbowPunch_Step.fbx",
+     "sha256": "1d3299d1effe4aa440a610fc8651fcceec668b66770d9266355551ab843cd6fd"
+    },
+    {
+     "file": "HeadHit_Big_Straight.fbx",
+     "sha256": "a079352250d60339724dc2423a4a68c5d246117e172840b2827e496445d3e566"
+    },
+    {
+     "file": "StandingBlockReactLarge.fbx",
+     "sha256": "849f115f599bfd16a1e601d8134e7860d68306d5192a98bd6a579b5566d06afd"
+    },
+    {
+     "file": "KnockedOut_Back.fbx",
+     "sha256": "12b0706f94829c117f59bce1be1d695768314c2f82a4c43ed84200bc5aa4f3e9"
+    },
+    {
+     "file": "Rig_XBot_TPose.fbx",
+     "sha256": "6d8bf17e3e35d6f4293c805a44242c7cdcf79f351ab9f0c38bcc7359a5d9da6c"
+    },
+    {
+     "file": "A_JabToElbowPunch.fbx",
+     "sha256": "6f90e34239d1523a6c438b60f175e47088b1031602082f02d7f87cc842684a16"
+    },
+    {
+     "file": "GettingUp_Back.fbx",
+     "sha256": "15eeb601af3b2b61849a5f3a465a1b4c5f3e9b0b0c308e618333c2282ee8a84b"
+    },
+    {
+     "file": "W_DoubleLegTakedown_Attacker.fbx",
+     "sha256": "409f88a5f34ee04490e4ab6550f55cc036f4534ebc519f4a4b8883b4a69015e5"
+    },
+    {
+     "file": "W_DoubleLegTakedown_Victim.fbx",
+     "sha256": "a0f0c90bf3f12eeb0adaab952fa9d3ffe23f59bd370479b8ef756a690c9df5df"
+    },
+    {
+     "file": "W_Boxing_LeadingHandJab.fbx",
+     "sha256": "c6ce66c114f0c66ffc8e3197dd723bd4791f793dc5e3c03eeb86390b32e00412"
+    },
+    {
+     "file": "W_Boxing_BackHandCross.fbx",
+     "sha256": "a71532928f56fce64cf7640465ef0a7b4844f6819e2e1c58df25ae79fa9ee67c"
+    },
+    {
+     "file": "W_MmaIdle.fbx",
+     "sha256": "429538732f6461a437a0cb7044c48a296f3a6e4a191826ddfa9c8bce382bdf38"
+    },
+    {
+     "file": "A_FlyingKneePunchCombo.fbx",
+     "sha256": "bca24c2100c537c8e244cfd52a3132ba8a99d7c7baf17b9cb6ee464e1c192fb0"
+    },
+    {
+     "file": "C_Elbow_IllegalCross.fbx",
+     "sha256": "f5498535cd377dbe032070e8b6084484533ffffce8c79ed786571ca1a8236da2"
+    },
+    {
+     "file": "C_JabCross_Medium.fbx",
+     "sha256": "d3ce2723321be00d368465757eefcbb835036a4d1ac95df47f5a158161f5bae5"
+    },
+    {
+     "file": "C_LeadJab_MedHead.fbx",
+     "sha256": "f19480c0a7aaf4cd0fa504ff92978487cb86a051dafecec58a82a78f98b9555e"
+    },
+    {
+     "file": "C_LeadJab_ShortHead.fbx",
+     "sha256": "4dad86e492cb3ad081a9e6fc07bf0e48f5201138e84424eb0cb8fa3871b94815"
+    },
+    {
+     "file": "C_Punching_Cross.fbx",
+     "sha256": "25d15c1bc45f3f23a97e6926cfb5b8c341c371b52455e6c4bedbf9d8da6ae8c4"
+    },
+    {
+     "file": "C_QuickRollToRun.fbx",
+     "sha256": "a24ff87666a55528cd235a3db84e37c3a6fd22f0bff89f1f73962b127f26a3c7"
+    },
+    {
+     "file": "ShoulderThrow_Aggressor.fbx",
+     "sha256": "a1abb303ac6b87bdb6403650deedf7d225d4a7cf935ade8797cc799ffd15e233"
+    },
+    {
+     "file": "ShoulderThrow_Victim.fbx",
+     "sha256": "681d3f65233c1d75cff79f2241aff3164ccaf3c96340c3feb9a0bb3a2567bd8b"
+    },
+    {
+     "file": "C_SweepFall.fbx",
+     "sha256": "dcf615df05dc631a10d9ffd24256c1c074079677f353fc09e78d6965f48f74c1"
+    },
+    {
+     "file": "C_Cast2H_UpwardPull.fbx",
+     "sha256": "f0a54248b7a96afca836d5a69689515f5320bbae04ac724693621136b23e7e52"
+    },
+    {
+     "file": "C_LeadJab_LongHead.fbx",
+     "sha256": "816d79a35c7e14d2c74f307f4f8693b5a56bf604210635ec3aaa0b9821a66f31"
+    },
+    {
+     "file": "R_HeadHit_Medium_Left.fbx",
+     "sha256": "6f40ed119ec75a345eaaa6892a5740a95a33f08ede1828177a1461d623d15279"
+    },
+    {
+     "file": "R_HeadHit_Big_Left.fbx",
+     "sha256": "cc4140160c3da31099263c005e612c04bb1169be34b1b49074e4b3879e1eda5d"
+    },
+    {
+     "file": "R_StomachHit.fbx",
+     "sha256": "e50bb79533e22ee89780889b94945e69ca1c1765c83b2606214c41c53683acc9"
+    },
+    {
+     "file": "R_BodyHit_Straight.fbx",
+     "sha256": "44ff86aecaba0aa224bb1ab31d19855821341e382efc7d7ce6106c544b27add2"
+    },
+    {
+     "file": "R_SideHit_Big.fbx",
+     "sha256": "caed97f4538a88eca7dc07b8358c9e3f6c91fca9c1238e1d3af54938376ef9de"
+    },
+    {
+     "file": "R_HeadHit2_Medium_Straight.fbx",
+     "sha256": "ab083ad2ca8e61a0dc38c27e352b76230c29e8dc9afc589fb4645cf8eed3dc94"
+    },
+    {
+     "file": "K_Roundhouse_Rear.fbx",
+     "sha256": "528764a67e1639000cda1ae43ca9a49f315526c76587856097b4b80f0bc3a30d"
+    },
+    {
+     "file": "K_ThrustKick_Lead.fbx",
+     "sha256": "d4e70992155e42bfca345644c8d0aa70bb86d2ddf5f4a995b542dc671308c818"
+    },
+    {
+     "file": "J_Jump_ActionIdle.fbx",
+     "sha256": "b6a42b4a93f6532f5bd1d5dba3ac22e400db713a5c7a75e57c763f54ae9331fe"
+    },
+    {
+     "file": "J_FlyingSidekick.fbx",
+     "sha256": "41c382d32db05a9c67ec2175d80d239c242e3474e8a25659efc3306473ed142a"
+    }
+   ]
+  },
+  {
+   "id": "makehuman/system_assets",
+   "title": "MakeHuman system assets",
+   "creator": "MakeHuman Community",
+   "source_page": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html (linked from MPFB src/mpfb/ui/weburls.py URL_SYSTEM_ASSETS)",
+   "acquired": "2026-10-26",
+   "license": "CC0-1.0",
+   "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+   "use": "Base body mesh hm08, eyes, eyebrows, eyelashes (via MPFB) for both fighters",
+   "modified": true,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "makehuman_system_assets_cc0.zip",
+     "sha256": "b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107",
+     "url": "https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip"
+    }
+   ],
+   "notes": "Skin textures and hair/clothes assets not used; files with conflicting author metadata excluded."
+  },
+  {
+   "id": "mpfb/2.0.18",
+   "title": "MPFB 2.0.18 (Blender extension)",
+   "creator": "MakeHuman Community",
+   "source_page": "https://extensions.blender.org/api/v1/extensions/?blender_version=5.2.2&platform=linux-x64 (id mpfb, version 2.0.18, blender_version_min 4.2.0, no max)",
+   "acquired": "2026-10-26",
+   "license": "GPL-3.0-or-later (code); CC0-1.0 (bundled assets)",
+   "use": "Build tool only (body shaping, game_engine rig and weights); not shipped",
+   "modified": false,
+   "raw_files_in_repo": false,
+   "original_downloads": [
+    {
+     "file": "add-on-mpfb-v2.0.18.zip",
+     "sha256": "c075b3e9b94b8e5556a5f03f4653602d02ea306de08126e8f55ed6dee28a2dad",
+     "url": "https://extensions.blender.org/download/sha256:c075b3e9b94b8e5556a5f03f4653602d02ea306de08126e8f55ed6dee28a2dad/add-on-mpfb-v2.0.18.zip"
+    }
+   ]
+  },
+  {
+   "id": "fonts/cinzel",
+   "title": "Cinzel (Regular, Bold) 2.000",
+   "creator": "The Cinzel Project Authors (Natanael Gama)",
+   "source_page": "https://github.com/NDISCOVER/Cinzel",
+   "acquired": "2026-11-03",
+   "license": "OFL-1.1",
+   "use": "Display type",
+   "modified": false,
+   "raw_files_in_repo": true,
+   "original_downloads": [
+    {
+     "file": "Cinzel-Bold.ttf",
+     "sha256": "0c23ec565db45c5508ee95889c60ad87debd167ca07167a43a5d68572b4e2eac"
+    },
+    {
+     "file": "Cinzel-Regular.ttf",
+     "sha256": "af0031129f27dc752e8629a80b793d27abea94027faa27cc660c3fc33f607a1f"
+    },
+    {
+     "file": "OFL_googlefonts.txt",
+     "sha256": "f2b3029aba64c378bf0963b62945eee15e564fe4330b934c8f2eb058282b5e83"
+    },
+    {
+     "file": "OFL.txt",
+     "sha256": "a46624198eeb4c2e442c38b0ff3bd8f52caeefd76675c36f410e2fb69014a239"
+    }
+   ]
+  },
+  {
+   "id": "fonts/alegreya-sans",
+   "title": "Alegreya Sans (Regular, Medium, Bold)",
+   "creator": "The Alegreya Sans Project Authors (Huerta Tipografica)",
+   "source_page": "https://github.com/google/fonts/tree/main/ofl/alegreyasans",
+   "acquired": "2026-11-03",
+   "license": "OFL-1.1",
+   "use": "Body type",
+   "modified": false,
+   "raw_files_in_repo": true,
+   "original_downloads": [
+    {
+     "file": "AlegreyaSans-Bold.ttf",
+     "sha256": "a3055a1893759bdbd7504bb22abc583769e7974c49353176eac0b03792c9fb8e"
+    },
+    {
+     "file": "AlegreyaSans-Medium.ttf",
+     "sha256": "4b89fe7804fd1485ec2757795a53ffdb66e1206dd56f844c2d72b3c944815b43"
+    },
+    {
+     "file": "AlegreyaSans-Regular.ttf",
+     "sha256": "8fab634196007afca839f1e5a6fb300976daff55d8528b590ef032f01b14ea10"
+    },
+    {
+     "file": "OFL.txt",
+     "sha256": "0677891e6a143f297350d260ad766ad33bfc18ed5fa4f213acf648d6b597ec1a"
+    }
+   ]
+  }
+ ]
+}

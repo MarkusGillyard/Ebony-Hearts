@@ -1,0 +1,66 @@
+{
+  "characters": {
+    "wren": {
+      "displayName": "Wren Ku",
+      "title": "Punt",
+      "style": "Mixed Martial Arts · Look See Do",
+      "gaugeLabel": "SPIRIT",
+      "mesh": "/Game/Characters/Wren/SK_Wren.SK_Wren",
+      "animFolder": "/Game/Characters/Wren/Anims",
+      "animPrefix": "A_Wren_",
+      "meshYaw": -90,
+      "meshScale": 1.0,
+      "primary": [0.12, 0.45, 0.80],
+      "accent": [1.0, 0.77, 0.32],
+      "graybox": [0.10, 0.28, 0.52],
+      "headBone": "head",
+      "auraBones": ["hand_l", "hand_r", "lowerarm_l", "lowerarm_r", "foot_l", "foot_r", "calf_l", "calf_r", "spine_03", "head"],
+      "moves": {
+        "L1": {"whoosh": "WhooshLight", "fxBone": "hand_l", "note": "Fast check. Chains into Cross, cancels into specials."},
+        "L2": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Second hit of the string. Cancels into the third hit or a special."},
+        "L3": {"whoosh": "WhooshHeavy", "fxBone": "lowerarm_r", "note": "String ender. Pushes back; punishable up close on block."},
+        "JL": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Punch on the way down. Jump in, then combo on landing."},
+        "JH": {"whoosh": "WhooshKick", "fxBone": "foot_l", "shake": 0.2, "note": "Flying kick to the body. Strong jump-in; blockable."},
+        "H": {"whoosh": "WhooshKick", "fxBone": "foot_r", "shake": 0.2, "note": "Long kick. Special-cancel on hit; knocks down on counter."},
+        "FH": {"whoosh": "WhooshSpin", "fxBone": "foot_r", "shake": 0.3, "note": "Advancing spin with big pushback; safe at tip range."},
+        "S": {"whoosh": "WhooshSpin", "fxBone": "foot_r", "shake": 0.6, "note": "Signature. Slow, airborne, devastating; very punishable if blocked."},
+        "FS": {"whoosh": "WhooshSpin", "fxBone": "foot_l", "shake": 0.4, "note": "Travelling jump kick. Ends light strings; knocks down."},
+        "BS": {"whoosh": "AuraCharge", "fxBone": "spine_03", "note": "Full gauge: more strike damage, half damage from flame for 8 s."},
+        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats blocking. Toward: double-leg slam. Away: shoulder throw, swaps sides."},
+        "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent. Can be grabbed."},
+        "DB": {"whoosh": "Roll", "note": "Retreating roll. Recovery is punishable."}
+      }
+    },
+    "ashka": {
+      "displayName": "Ashka Rook",
+      "title": "The Last Lamplighter",
+      "style": "Muay Thai · Flame Style",
+      "gaugeLabel": "FLAME",
+      "mesh": "/Game/Characters/Ashka/SK_Ashka.SK_Ashka",
+      "animFolder": "/Game/Characters/Ashka/Anims",
+      "animPrefix": "A_Ashka_",
+      "meshYaw": -90,
+      "meshScale": 1.0,
+      "primary": [0.75, 0.08, 0.10],
+      "accent": [0.95, 0.40, 0.30],
+      "graybox": [0.45, 0.08, 0.09],
+      "headBone": "head",
+      "auraBones": [],
+      "moves": {
+        "L1": {"whoosh": "WhooshLight", "fxBone": "hand_l", "note": "Fast jab. Chains into the elbow, cancels into specials."},
+        "L2": {"whoosh": "WhooshLight", "fxBone": "lowerarm_r", "note": "Stepping horizontal elbow. Cancels into the knee or a special."},
+        "L3": {"whoosh": "WhooshHeavy", "fxBone": "calf_r", "note": "Driving knee. String ender."},
+        "JL": {"whoosh": "WhooshLight", "fxBone": "lowerarm_r", "note": "Elbow on the way down. Jump in, then combo on landing."},
+        "JH": {"whoosh": "WhooshKick", "fxBone": "calf_r", "shake": 0.2, "note": "Jumping knee to the body. Strong jump-in; blockable."},
+        "H": {"whoosh": "WhooshKick", "fxBone": "foot_r", "shake": 0.2, "note": "Muay Thai body kick. Special-cancel on hit."},
+        "FH": {"whoosh": "WhooshKick", "fxBone": "foot_l", "shake": 0.15, "note": "Teep. Long reach, huge pushback; controls space."},
+        "S": {"whoosh": "WhooshSpin", "fxBone": "lowerarm_r", "flame": true, "shake": 0.4, "note": "Leaping downward elbow wreathed in crimson flame. Knocks down."},
+        "FS": {"whoosh": "WhooshKick", "fxBone": "calf_r", "flame": true, "shake": 0.45, "note": "Flying knee with flame. Ends light strings; knocks down."},
+        "BS": {"whoosh": "FlameRoar", "fxBone": "spine_03", "flame": true, "shake": 0.6, "note": "Half gauge: invulnerable flame burst. Heavily punishable if blocked."},
+        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats blocking. Toward: clinch knees. Away: clinch turn, swaps sides."},
+        "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent. Can be grabbed."},
+        "DB": {"whoosh": "Roll", "note": "Quick retreating roll. Recovery is punishable."}
+      }
+    }
+  }
+}

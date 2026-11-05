@@ -1,0 +1,29 @@
+# Soak: repeated matches, rematches, mirror and versus modes, pause, settings round trips and menu transitions.
+wait 5
+press kbA Light
+wait 1
+loop 12
+match wren ashka cpu 2 left
+bots 1 none
+wait 20
+pause
+wait 1
+pause
+wait_results 480
+mem soak_after_match_a
+results_pick 0
+wait_results 480
+results_pick 2
+settings_roundtrip
+match ashka ashka versus 1
+bots 2 0
+wait_results 480
+mem soak_after_match_b
+results_pick 2
+match wren wren training 1
+wait 15
+goto_main
+wait 1
+endloop
+assets
+quit

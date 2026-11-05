@@ -1,0 +1,98 @@
+# Punches at range and hit reactions: each fighter's light string from near the jab's full reach (twice), Heavy and
+# toward + Heavy (hook and body reactions), Ashka's Flame Elbow, against the standing partner in Training.
+# Same inputs on both builds; record with capture.py --start-on <auto_log.txt>:match_start.
+wait 5
+press kbA Light
+wait 1
+training_gauge full
+match wren ashka training 0 left
+wait 3
+hold kbA Right
+wait 1.08
+release kbA Right
+press kbA Light
+wait 0.15
+press kbA Light
+wait 0.2
+press kbA Light
+wait 1.4
+press kbA Reset
+wait 1.2
+hold kbA Right
+wait 1.08
+release kbA Right
+press kbA Light
+wait 0.15
+press kbA Light
+wait 0.2
+press kbA Light
+wait 1.4
+press kbA Reset
+wait 1.2
+hold kbA Right
+wait 0.85
+release kbA Right
+press kbA Heavy
+wait 1.6
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.6
+press kbA Heavy
+wait 0.1
+release kbA Right
+wait 1.6
+press kbA Reset
+wait 1.0
+goto_main
+wait 1
+match ashka wren training 0 left
+wait 3
+hold kbA Right
+wait 1.2
+release kbA Right
+press kbA Light
+wait 0.15
+press kbA Light
+wait 0.2
+press kbA Light
+wait 1.4
+press kbA Reset
+wait 1.2
+hold kbA Right
+wait 1.2
+release kbA Right
+press kbA Light
+wait 0.15
+press kbA Light
+wait 0.2
+press kbA Light
+wait 1.4
+press kbA Reset
+wait 1.2
+hold kbA Right
+wait 0.9
+release kbA Right
+press kbA Heavy
+wait 1.6
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.8
+press kbA Heavy
+wait 0.1
+release kbA Right
+wait 1.6
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.8
+release kbA Right
+press kbA Special
+wait 1.4
+press kbA Reset
+wait 1.0
+goto_main
+wait 1
+wait 25
+quit
