@@ -1178,6 +1178,31 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-86`).
 
+### Ashka's throws end in a captured fall (package `pkg-59-fall`)
+
+- **Source.** Mixamo's Sweep Fall (downloaded 2026-11-04): a fighter with the guard up has the feet swept, goes up
+  with the arms flung back, falls flat and lands on the back. Rendered on Wren it reads as a real trip fall.
+- **Build.** `build_anims` can now hand a keyed throw's victim over to a captured fall (`"victim_falls"` in
+  `mocap_clips.json`, `captured_fall`).
+  - From a chosen frame the victim follows the capture. It is placed where the keys have the hips then, and turned
+    to face the way they do (by hip line).
+  - It eases in over 6 frames.
+  - The capture's landing goes on the damage frame, and any gap to the lying spot is spread over the fall.
+  - The throw's end blend then settles the body into the lying pose the knockdown starts from.
+  - The Clinch Knees hand over at frame 30 (after the second knee) and the Clinch Turn Trip at frame 26 (after
+    the swing).
+  - The landings moved 19–28 cm onto the lying spot, and the facing is within 6–22 degrees of the lying pose. The
+    throws' end hand-overs are still 0 mm.
+- **Measured.** The victims now move at most 30 cm a frame (the keyed falls: 29–32), with no spikes (worst ratio 1.9),
+  no flips and nothing through the floor.
+- **Review and regression.**
+  - Packaged as `pkg-59-fall`.
+  - The training throw script was recorded on `pkg-58` and `pkg-59` at 60 fps (`anim-87`). In the Clinch Knees
+    Wren is swept with her arms flung up, falls back flat and lands legs-up on her back.
+  - Sweep Fall is now credited in the asset ledger and `ThirdPartyManifest.json` (29 Mixamo clips).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-88`).
+
 ## Known limitations
 
 - **Not verified by a person:**

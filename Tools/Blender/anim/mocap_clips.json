@@ -56,6 +56,10 @@
     "DB": {"scripted": true, "blend_in": 4, "blend_out": 10, "floor": true},
     "ThrowTech": {"scripted": true, "blend_in": 0, "blend_out": 10}
   },
+  "victim_falls": {
+    "ashka_clinch_knees": {"fbx": "C_SweepFall.fbx", "from": 30, "src": [21, 42, 60], "blend_in": 6},
+    "ashka_clinch_turn": {"fbx": "C_SweepFall.fbx", "from": 26, "src": [21, 42, 60], "blend_in": 6}
+  },
   "throws": {
     "wren_takedown": {"attacker": "W_DoubleLegTakedown_Attacker.fbx", "victim": "W_DoubleLegTakedown_Victim.fbx", "src": [20, 44, 84], "root_scale": [0.6, 0.45], "end_frames": [16, 12], "fist": [0.2, 0.3]},
     "wren_suplex": {"attacker": "ShoulderThrow_Aggressor.fbx", "victim": "ShoulderThrow_Victim.fbx", "shared": true, "mirror": true, "src": [58, 104, 118], "yaw": [[58, -20], [104, -113]], "ease_in": 10, "root_scale": [0.4, 1.0], "end_frames": [16, 12], "fist": [0.2, 0.3]}

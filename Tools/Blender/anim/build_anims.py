@@ -107,6 +107,10 @@ def build_throws(a, data):
             A.mute_constraints(t_rig, True)
             A.mute_constraints(v_rig, True)
             t_poses, v_poses = read_poses(thrower_arm, total), read_poses(victim_arm, total)
+            fall = victim_falls().get(td["id"])
+            if fall:
+                v_poses = captured_fall(td, fall, v_rig, v_poses,
+                                        os.path.join(os.environ.get("EH_WS", ""), "downloads", "thirdparty", "Mixamo"))
             # The scripted keys end on the old landing poses; settle into the exact ones.
             for poses, arm, n_end in ((t_poses, thrower_arm, 14), (v_poses, victim_arm, 12)):
                 for i in range(n_end):
@@ -401,6 +405,74 @@ def transform_pose(arm, pose, xf):
 def captured_throws():
     with open(os.path.join(HERE, "mocap_clips.json")) as f:
         return json.load(f).get("throws", {})
+
+
+def victim_falls():
+    with open(os.path.join(HERE, "mocap_clips.json")) as f:
+        return json.load(f).get("victim_falls", {})
+
+
+def hip_yaw(world):
+    """Facing of a posed body from its hip line (degrees)."""
+    left = world["thigh_l"].translation - world["thigh_r"].translation
+    return math.degrees(math.atan2(left.y, left.x))
+
+
+def captured_fall(td, fall, v_rig, poses, folder):
+    """A keyed throw's victim falls as captured ("victim_falls" in mocap_clips.json): from frame `from` it follows the
+    capture, which is placed where the keys have the victim's hips then and turned to face the way they do, eased in
+    over `blend_in` frames. The capture's landing goes on the damage frame and its settle on the throw's last frame;
+    the throw's end blend then settles the body into the lying pose the knockdown starts from."""
+    arm = v_rig.arm
+    f0, total, damage = fall["from"], td["duration"], td["damageFrame"]
+    s0, s_land, s_end = fall["src"]
+    path = os.path.join(folder, fall["fbx"])
+    keyed = None
+
+    def build(heading):
+        src = M.FbxSource(path, arm, heading_deg=heading)
+        return src, M.Retarget(arm, src)
+
+    src, rt = build(0.0)
+    keyed = rt.fk(poses[f0 - 1])
+    want = hip_yaw(keyed)
+    q, p = src.sample(s0)
+    got = hip_yaw(rt.fk(rt.local_pose(q, p, Vector((0.0, 0.0, 0.0)))))
+    turn = want - got
+    for heading in (turn, -turn):
+        src, rt = build(heading)
+        q, p = src.sample(s0)
+        if abs((hip_yaw(rt.fk(rt.local_pose(q, p, Vector((0.0, 0.0, 0.0))))) - want + 180.0) % 360.0 - 180.0) < 5.0:
+            break
+    start = src.pos[int(s0)].copy()
+    target = keyed["pelvis"].translation
+    off = Vector((target.x - start.x * rt.scale, target.y - start.y * rt.scale, 0.0))
+    scale = fall.get("root_scale", 1.0)
+    tmap = M.warp([(f0, s0), (damage, s_land), (total, s_end)])
+    n_in = fall.get("blend_in", 6)
+
+    def at(frame, shift):
+        q, p = src.sample(tmap(frame))
+        p = Vector((start.x + (p.x - start.x) * scale, start.y + (p.y - start.y) * scale, p.z))
+        return rt.local_pose(q, p, off + shift)
+
+    # Land where the keys do: the gap between the captured landing and the keyed lying hips is spread over the fall.
+    end_w = rt.fk(poses[total - 1])
+    land_w = rt.fk(at(damage, Vector((0.0, 0.0, 0.0))))
+    gap = end_w["pelvis"].translation - land_w["pelvis"].translation
+    gap.z = 0.0
+    yaw_gap = (hip_yaw(end_w) - hip_yaw(land_w) + 180.0) % 360.0 - 180.0
+    out = list(poses)
+    half_prev = {}
+    for frame in range(f0, total + 1):
+        cap = at(frame, gap * A.ease("smooth", min(1.0, (frame - f0) / max(1, damage - f0))))
+        M.fist(cap, fall.get("fist", 0.3))
+        M.half_joints(cap, half_prev)
+        w = A.ease("smooth", (frame - f0) / n_in) if frame - f0 < n_in else 1.0
+        out[frame - 1] = M.blend_pose(poses[frame - 1], cap, w)
+    print(f"BUILDANIM {td['id']} victim falls as captured ({fall['fbx']}) from frame {f0}, turned {heading:+.0f} deg; "
+          f"landing moved {gap.length * 100:.0f} cm onto the lying spot, facing {yaw_gap:+.0f} deg from the lying pose")
+    return out
 
 
 def capture_throw(a, td, cap, t_rig, v_rig, ends):

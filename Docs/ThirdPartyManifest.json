@@ -416,13 +416,13 @@
   },
   {
    "id": "mixamo/animations",
-   "title": "Mixamo animations (28 clips exported; X Bot T-pose for calibration)",
+   "title": "Mixamo animations (29 clips exported; X Bot T-pose for calibration)",
    "creator": "Adobe (Mixamo)",
    "source_page": "https://www.mixamo.com/",
    "acquired": "2026-11-03 to 2026-11-05",
    "license": "Adobe Mixamo: free; \"You can use both characters and animations royalty free for personal, commercial, and non-profit projects including ... Create video games.\" (https://helpx.adobe.com/creative-cloud/faq/mixamo-faq.html, last updated Sep 14, 2021, read 2026-11-03). Raw files are kept out of the public repository.",
    "license_url": null,
-   "use": "Base motion for Wren's jab, cross and jab-to-cross string, roundhouse, spinning back kick, walks, held guard, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's held guard, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, and both fighters' hit, block, knockdown and KO reactions and get-ups; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json). Raw exports are not in the repository",
+   "use": "Base motion for Wren's jab, cross and jab-to-cross string, roundhouse, spinning back kick, walks, held guard, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's held guard, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, both fighters' hit, block, knockdown and KO reactions and get-ups, and the fall of the fighter Ashka throws; retargeted and retimed (Tools/Blender/anim/build_mocap.py, build_anims.py, mocap_clips.json). Raw exports are not in the repository",
    "modified": true,
    "raw_files_in_repo": false,
    "original_downloads": [
@@ -541,6 +541,10 @@
     {
      "file": "ShoulderThrow_Victim.fbx",
      "sha256": "681d3f65233c1d75cff79f2241aff3164ccaf3c96340c3feb9a0bb3a2567bd8b"
+    },
+    {
+     "file": "C_SweepFall.fbx",
+     "sha256": "dcf615df05dc631a10d9ffd24256c1c074079677f353fc09e78d6965f48f74c1"
     }
    ]
   },

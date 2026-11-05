@@ -27,7 +27,7 @@ USED = {
     "kenney/interface-sounds": "Menu sounds (processed)",
     "kenney/rpg-audio": "Cloth and creak layers",
     "accad/male2_bvh": "Base motion for both fighters' idle stances, Wren's 720 hook kick and tornado kick, Ashka's body kick, teep, bow intro and bow win, and both fighters' defeated pose; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json)",
-    "mixamo/animations": "Base motion for Wren's jab, cross and jab-to-cross string, roundhouse, spinning back kick, walks, held guard, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's held guard, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, and both fighters' hit, block, knockdown and KO reactions and get-ups; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json). Raw exports are not in the repository",
+    "mixamo/animations": "Base motion for Wren's jab, cross and jab-to-cross string, roundhouse, spinning back kick, walks, held guard, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's held guard, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, both fighters' hit, block, knockdown and KO reactions and get-ups, and the fall of the fighter Ashka throws; retargeted and retimed (Tools/Blender/anim/build_mocap.py, build_anims.py, mocap_clips.json). Raw exports are not in the repository",
 }
 
 
