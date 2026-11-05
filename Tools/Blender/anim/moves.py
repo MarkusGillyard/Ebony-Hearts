@@ -163,7 +163,8 @@ def ko(s):
 def tech(s):
     push = s(hand_l=(0.55, 0.15, 1.25), hand_r=(0.52, -0.12, 1.22), fist=0.0, chest=(s["chest"][0] + 10, 5, 0), elbow_l=(0.1, 0.4, -0.4), elbow_r=(0.1, -0.4, -0.4))
     back = s(pelvis=(s["pelvis"][0] - 0.08, 0, s["pelvis"][2] - 0.03))
-    return [(1, s, "smooth"), (4, push, "snap"), (10, back, "smooth"), (21, s, "smooth")], 21, None, False
+    # The shove builds over four frames; a snap reached it in one, which read as a jump.
+    return [(1, s, "smooth"), (5, push, "smooth"), (10, back, "smooth"), (21, s, "smooth")], 21, None, False
 
 
 def rolls(s, move, forward):

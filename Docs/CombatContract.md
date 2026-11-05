@@ -220,6 +220,10 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
   - Optional string keys `<Move>_from_<Previous>` (for example `L2_from_L1`): played instead of `<Move>` when it
     cancels out of `<Previous>`, so a captured combo can supply both hits. A string key starts from `<Previous>`'s pose
     at its first active frame, where a buffered string cancels (checked by a core test).
+  - Optional throw escape keys `ThrowTech_from_<throw animation>_F<n>`, n = 2, 5 or 8 (for example
+    `ThrowTech_from_ThrowF_F5` for a thrower, `ThrowTech_from_Victim_WrenThrowB_F2` for a victim): played instead
+    of `ThrowTech` when the escape comes on throw frames 1–3, 4–6 or 7–9. Each starts from that throw animation's frame
+    n, so the escape begins where the pair was; `build_anims` makes them with the throws.
   - Throws are authored as a pair in the thrower's space, the victim at `holdX` facing the thrower. Each victim
     animation is exported in the space the game draws the victim in (its own, opened toward the camera and
     mirrored when facing left), so the pair meets as authored.

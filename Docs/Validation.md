@@ -947,6 +947,35 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-67`).
 
+### Throw escapes start from where the throw is (package `pkg-50-escape`)
+
+- **Measured** (`tools/anim-review/escapes.py`). An escape can come on any of a throw's first 9 frames
+  (`throwTechWindow`; the CPU escapes 1–7 frames after the grab lands). The escape always started from the stance:
+  - Wren's throws: 44–95 cm from the thrower and 13–116 cm from the victim over those frames.
+  - Ashka's throws: 19–25 cm from the thrower and 13–63 cm from the victim.
+  - The escape's shove also reached 87% of its reach in one frame (a 24 cm hand step).
+- **Fix.**
+  - `build_anims` now builds each body's escape alongside the throw, starting from the throw's frame 2, 5 or 8
+    (`ThrowTech_from_<throw animation>_F<n>`). The game plays the one for the frames the escape came on (1–3, 4–6
+    or 7–9).
+  - Each escape eases out of the throw's pose over 5–16 frames, longer the further it has to go. A fighter caught low
+    in Wren's double-leg rises over about a quarter second instead of springing up.
+  - The gap is now 0–25 cm, and the escape blends over 0.15 s instead of 0.08 s to cover it.
+  - The stock escape's shove builds over four frames (largest hand step 11 cm).
+  - Tried and dropped: holding the captured throws near their grip frame during the window. It changed the gaps
+    by under 5 cm, because the drift is the ease from the grab and the idle into the capture's grip pose, which the
+    throw needs.
+- **Review and regression.**
+  - Packaged as `pkg-50-escape`. The first package, `pkg-49-escape`, capped the ease at 12 frames, and its review
+    showed Wren springing up from the double-leg in about 8 frames; the cap is now 16.
+  - A versus script was recorded on `pkg-48` and `pkg-50` at 60 fps (`anim-68`). The second player escapes 6, 9 and
+    12 frames after the grab (throw frames 2, 5 and 8), on forward and back throws, with each fighter throwing.
+    - Escaping Wren's double-leg late, she sprang from her kneel to standing in about 4 frames on `pkg-48`. On
+      `pkg-50` she rises over about 12 while Ashka shoves.
+    - Early escapes now shove straight out of the grip.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-70`).
+
 ## Known limitations
 
 - **Not verified by a person:**

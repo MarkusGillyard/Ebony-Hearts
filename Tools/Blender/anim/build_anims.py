@@ -77,7 +77,9 @@ def build_throws(a, data):
     t_prefix = "A_" + a.char.capitalize() + "_"
     v_prefix = "A_" + a.victim_char.capitalize() + "_"
     grab_pose = grab_connect_pose(a, data, t_rig)
-    victim_idle = load_idle_pose(os.path.join(os.path.dirname(os.path.normpath(a.out)), a.victim_char, "idle_pose.json"))
+    anims = os.path.dirname(os.path.normpath(a.out))
+    victim_idle = load_idle_pose(os.path.join(anims, a.victim_char, "idle_pose.json"))
+    thrower_idle = load_idle_pose(os.path.join(anims, a.char, "idle_pose.json"))
     for td in data["throws"]:
         build = throws.THROWS[(a.char, td["id"])]
         t_keys, v_keys = build(throws.stance_of(a.victim_char), td)
@@ -156,7 +158,61 @@ def build_throws(a, data):
                 export_action(thrower_arm, t_act, os.path.join(a.out, t_act.name + ".fbx"))
             victim_arm.matrix_world = Matrix.Identity(4)
             export_action(victim_arm, v_act, os.path.join(a.out, "victim_" + a.victim_char, v_act.name + ".fbx"))
+        victim_arm.matrix_world = Matrix.Identity(4)
+        build_escapes(a, ((t_rig, a.char, a.blend, t_prefix, td["attackerAnim"], t_poses, thrower_idle, a.out),
+                          (v_rig, a.victim_char, a.victim_blend, v_prefix, td["victimAnim"], v_poses, victim_idle,
+                           os.path.join(a.out, "victim_" + a.victim_char)))[1 if a.skip_attacker else 0:])
     print("BUILDANIM throws done")
+
+
+ESCAPE_STARTS = (2, 5, 8)
+ESCAPE_JOINTS = ("pelvis", "head", "hand_l", "hand_r", "lowerarm_l", "lowerarm_r", "calf_l", "calf_r", "foot_l", "foot_r")   # EHFighterVisual: an escape on throw frames 1-3, 4-6 or 7-9 starts from frame 2, 5 or 8
+
+
+def build_escapes(a, sides):
+    """The throw escape (the scripted ThrowTech) for both bodies, starting from where the throw is. An escape can come
+    on any of the throw's first frames (rules throwTechWindow), while the pair is already easing into the throw, so
+    each body gets one per start frame ("ThrowTech_from_<throw anim>_F<n>"); the game plays the one nearest the frame
+    the escape came on and blends the rest. Each eases out of the throw's pose over the shove and into the idle's
+    first pose like the stock escape."""
+    for rig, char, blend, prefix, anim, poses, idle, out in sides:
+        keys, total, travel, _ = moves.tech(moves.WREN if char == "wren" else moves.ASHKA)
+        arm = rig.arm
+        A.mute_constraints(rig, False)
+        rig.reset()
+        tmp = bpy.data.actions.new("escape_tmp")
+        arm.animation_data.action = tmp
+        A.author([(rig, keys, travel)], total)
+        A.mute_constraints(rig, True)
+        tech = read_poses(arm, total)
+        arm.animation_data.action = None
+        bpy.data.actions.remove(tmp)
+        chains = load_chains(blend, arm)
+        tech_w = pose_world(arm, tech[0])
+        for start in ESCAPE_STARTS:
+            clip = list(tech)
+            # Ease out of the throw over longer the further it has gone (a smooth ease peaks at 1.5x its mean speed;
+            # keep that near 8 cm a frame), so a fighter caught low in a shoot rises over about a quarter second
+            # instead of springing up.
+            from_w = pose_world(arm, poses[start - 1])
+            dist = max((from_w[b].translation - tech_w[b].translation).length for b in ESCAPE_JOINTS if b in tech_w)
+            n_in, n_out = max(5, min(16, round(1.5 * dist / 0.08))), 10
+            for i in range(n_in):
+                clip[i] = M.blend_pose(poses[start - 1], clip[i], A.ease("smooth", i / n_in))
+            if idle:
+                for i in range(n_out):
+                    k = total - n_out + i
+                    clip[k] = M.blend_pose(clip[k], idle, A.ease("smooth", (i + 1) / n_out))
+            act = bpy.data.actions.new(f"{prefix}ThrowTech_from_{anim}_F{start}")
+            arm.animation_data.action = act
+            for frame, pose in enumerate(clip, start=1):
+                M.key_pose(arm, pose, frame)
+            M.bake_tracked(arm, total)
+            if chains:
+                A.bake_secondary(rig, chains, total, False)
+            print(f"BUILDANIM {act.name} frames={total} eased out of the throw over {n_in} ({dist * 100:.0f} cm)")
+            if not a.no_export:
+                export_action(arm, act, os.path.join(out, act.name + ".fbx"))
 
 
 TURN_TOWARD_CAMERA = 12.0   # EHFighterVisual: each fighter is shown opened this far toward the camera

@@ -98,7 +98,9 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 	case eh::FState::Tech:
 		A.Key = TEXT("ThrowTech");
 		A.Frame = F.stateFrame;
-		A.BlendSeconds = 0.08f;
+		// The escape can come on any of the throw's first frames, while the throw is already moving: blend long
+		// enough to absorb what the escape's first pose does not match.
+		A.BlendSeconds = 0.15f;
 		break;
 	case eh::FState::KO:
 		// Knocked out by a throw: already lying where the throw left the victim, so stay down rather than replay the
@@ -388,6 +390,18 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 		if (bLastWasAttack && F.state == eh::FState::Attack && !PreviousKey.IsNone() && PreviousKey != Choice.Key)
 		{
 			const FName Variant(*FString::Printf(TEXT("%s_from_%s"), *Choice.Key.ToString(), *PreviousKey.ToString()));
+			if (FindAnim(Variant, true))
+			{
+				ShownKey = Variant;
+			}
+		}
+		// An escaped throw starts from where the throw was: "ThrowTech_from_<throw anim>_F<n>" begins on the throw's
+		// frame 2, 5 or 8, for an escape on frames 1-3, 4-6 or 7-9 (the pair is already easing into the throw).
+		else if (F.state == eh::FState::Tech && !PreviousKey.IsNone())
+		{
+			const int32 ThrowFrame = FMath::RoundToInt(static_cast<float>(CurrentTime) * eh::kTickHz) + 1;
+			const int32 Start = 2 + 3 * FMath::Clamp((ThrowFrame - 1) / 3, 0, 2);
+			const FName Variant(*FString::Printf(TEXT("ThrowTech_from_%s_F%d"), *PreviousKey.ToString(), Start));
 			if (FindAnim(Variant, true))
 			{
 				ShownKey = Variant;

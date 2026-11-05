@@ -16,7 +16,7 @@ run on the test machine (see [Validation](Validation.md)). It is not declared co
 updated with the animation work, and it was, as squashed commits on top. Nothing has been merged, tagged or released.
 
 **Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
-[validation report](Validation.md) (packages `pkg-21` to `pkg-45`):
+[validation report](Validation.md) (packages `pkg-21` to `pkg-50`):
 - **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
   jab-to-cross string; Wren's double-leg slam and shoulder throw; the hit and block reactions, knockdowns, KO, both
   get-ups; the intros, wins and defeated poses.
@@ -24,7 +24,7 @@ updated with the animation work, and it was, as squashed commits on top. Nothing
   capture on hand fits them. Mixamo has no back roll or quick grab, and its session needs the creator to sign in
   again before more downloads.
 - **Throws** are drawn as authored (the victim was drawn mirrored), switch sides cleanly, and keep a knocked-out
-  victim lying. **Effects:** the golden aura and the crimson flame were rebuilt.
+  victim lying. Both fighters ease into a throw from where they stood, and an escape starts from where the throw was. **Effects:** the golden aura and the crimson flame were rebuilt.
 - **Display.** On the test desktop the monitor runs at 165 Hz but V-Sync paces everything at 60 Hz, so motion looks
   like it skips. This is a system setting (see Validation, Known limitations).
 
