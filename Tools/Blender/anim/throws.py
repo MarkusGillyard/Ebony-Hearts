@@ -107,14 +107,13 @@ def ashka_clinch_knees(victim, td):
     v = victim
     bent = victim_recoil(v, hold, 1.25)(chest=(0, 40, 0), head=(0, 35, 0), pelvis=(0.0, 0, -0.06))
     jolt = bent(chest=(0, 52, 0), pelvis=(0.0, 0, 0.0), head=(0, 40, 0))
-    # Tripped backwards the arms fly out to the sides, where the lying pose holds them (pelvis-relative), so the landing
-    # only carries them down with the body; switching on the landing moved a hand 60-90 cm in its last frame.
-    lie = lying(v)
-    fall = bent(pelvis=(-0.35, 0, -0.30), pelvis_rot=(0, -45, 0), chest=(0, -10, 0), head=(0, -20, 0), foot_l=(0.30, 0.12, 0.25),
-                hand_l=None, hand_r=None, hand_l_rel=lie["hand_l_rel"], hand_r_rel=lie["hand_r_rel"])
     end = landed(v, hold, land)
     victim_keys = [(1, v, "smooth"), (6, victim_recoil(v, hold), "snap"), (11, bent, "smooth"), (16, jolt, "snap"), (21, bent, "smooth"),
-                   (26, jolt, "snap"), (30, bent, "smooth"), (36, fall, "fall"), (44, end(head=(0, 20, -6)), "fall"), (50, end, "out"), (64, end, "smooth")]
+                   (26, jolt, "snap"), (30, bent, "smooth"),
+                   # One fall from the held clinch to the floor, accelerating like a falling body from rest as she is
+                   # tripped; the hands go out to where the lying pose holds them over the whole fall. Two segments
+                   # each starting from rest stalled the body in mid-air.
+                   (44, end(head=(0, 20, -6)), "fall"), (50, end, "out"), (64, end, "smooth")]
     return attacker, victim_keys
 
 

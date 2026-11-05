@@ -1096,6 +1096,24 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-80`).
 
+### One continuous fall in the Clinch Knees (package `pkg-56-fall`)
+
+- **Measured** (hips and head frame by frame through the fall). `pkg-54` split the Clinch Knees victim's fall into
+  two `"fall"` segments that each start from rest. The body fell at 12.6 cm a frame at frame 36, then 1.0 at 37: it
+  stalled in mid-air and fell again.
+- **Fix.** One fall from the held clinch (frame 30) to the floor on the damage frame (44). It accelerates from rest
+  as she is tripped: the hips reach 14 cm a frame and the head 31 at impact. The hands go out to where the lying pose
+  holds them over the whole fall; a hand peaks at 43–46 cm in the last frame (it was 50–56). The Clinch Turn Trip's
+  victim stumbles, steadies for two frames and falls, as it did before.
+- **Tried and dropped.** Evening the forward roll's turn (30 degrees a frame in the dive, 22.5 after it) slowed the
+  head but swung an elbow 45–49 cm a frame in the dive.
+- **Review and regression.**
+  - Packaged as `pkg-56-fall`.
+  - The training throw script was recorded on `pkg-55` and `pkg-56` at 60 fps (`anim-81`). No limb flips in any
+    victim (`flips.py`).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-82`).
+
 ## Known limitations
 
 - **Not verified by a person:**

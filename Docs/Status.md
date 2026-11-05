@@ -16,7 +16,7 @@ run on the test machine (see [Validation](Validation.md)). It is not declared co
 updated with the animation work, and it was, as squashed commits on top. Nothing has been merged, tagged or released.
 
 **Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
-[validation report](Validation.md) (packages `pkg-21` to `pkg-55`):
+[validation report](Validation.md) (packages `pkg-21` to `pkg-56`):
 - **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
   jab-to-cross string; Wren's double-leg slam and shoulder throw; the hit and block reactions, knockdowns, KO, both
   get-ups; the intros, wins and defeated poses.
