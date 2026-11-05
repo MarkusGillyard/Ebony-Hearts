@@ -21,7 +21,7 @@ sys.path.insert(0, HERE)
 import animlib as A  # noqa: E402
 import mocap as M  # noqa: E402
 import preview  # noqa: E402
-from build_anims import export_action, load_chains, review_frames  # noqa: E402
+from build_anims import export_action, load_chains, pose_world, review_frames  # noqa: E402
 
 
 def args():
@@ -184,6 +184,51 @@ def scripted_poses(a, arm, data, wanted):
         for c in pb.constraints:
             c.mute = True
     return out
+
+
+# How far the body's surface is below each bone where that side meets the floor (cm): the top of the skull, the back
+# of the neck and trunk, the shoulders, elbows, hands and knees.
+FLOOR_CLEARANCE = {"head_top": 3, "head": 9, "neck_01": 6, "spine_03": 11, "spine_02": 11, "spine_01": 11, "pelvis": 10,
+                   "upperarm_l": 6, "upperarm_r": 6, "lowerarm_l": 4, "lowerarm_r": 4, "hand_l": 2, "hand_r": 2,
+                   "calf_l": 5, "calf_r": 5}
+
+
+def floor_clamp(arm, poses):
+    """Lifts the body wherever a part would go through the floor ("floor": a roll turned the tucked body about its
+    hips and put the top of the head 20-25 cm under it). The lift is widened by a frame, then smoothed over one, so it
+    has no corners and every frame keeps at least the lift it needs; frames with a foot on the floor are not lifted
+    for their neighbours' sake.
+    Returns the largest lift (m)."""
+    bones = arm.data.bones
+    rest = {b.name: b.matrix_local for b in bones}
+    pelvis = bones["pelvis"]
+    need, planted = [], []
+    for pose in poses:
+        world = pose_world(arm, pose)
+        planted.append(min(world[b].translation.z for b in ("ball_l", "ball_r")) < 0.03)
+        low = 0.0
+        for name, cm in FLOOR_CLEARANCE.items():
+            if name == "head_top":
+                z = (world["head"] @ Vector((0.0, bones["head"].length, 0.0))).z
+            elif name in world:
+                z = world[name].translation.z
+            else:
+                continue
+            low = min(low, z - cm / 100.0)
+        need.append(-low)
+    n = len(need)
+    wide = [max(need[max(0, i - 1):i + 2]) for i in range(n)]
+    lift = [(wide[max(i - 1, 0)] + 2.0 * wide[i] + wide[min(i + 1, n - 1)]) / 4.0 for i in range(n)]
+    # A foot on the floor stays there: those frames take only the lift they need themselves.
+    lift = [need[i] if planted[i] else lift[i] for i in range(n)]
+    for pose, dz in zip(poses, lift):
+        if dz <= 0.0:
+            continue
+        world = pose_world(arm, pose)
+        parent = world[pelvis.parent.name] @ (rest[pelvis.parent.name].inverted() @ rest["pelvis"])
+        loc, q, _ = (parent.inverted() @ (Matrix.Translation((0.0, 0.0, dz)) @ world["pelvis"])).decompose()
+        pose["pelvis"] = (loc, q)
+    return max(need)
 
 
 def make_source(a, spec, arm):
@@ -538,6 +583,8 @@ def build(a):
         for i in range(min(nout, total)):
             k = total - nout + i
             poses[k] = M.blend_pose(poses[k], guard_pose, A.ease("smooth", (i + 1) / nout))
+        if spec.get("floor"):
+            print(f"BUILDMOCAP {prefix}{key} lifted off the floor by up to {floor_clamp(arm, poses) * 100:.0f} cm")
         emit_clip(a, arm, chains, hair, prefix, key, spec, by_id.get(key), poses, total, False)
     print("BUILDMOCAP done")
 

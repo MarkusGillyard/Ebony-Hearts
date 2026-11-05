@@ -976,6 +976,47 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-70`).
 
+### The rolls stay above the floor (package `pkg-51-rolls`)
+
+- **Measured** (`tools/anim-review/floor.py`, new: each frame's lowest body point, with the top of the head). In all
+  four rolls the top of the head went 20–25 cm below the floor for about five frames: the forward roll's frames 7–10
+  and the back roll's 10–14. The rolls turn the tucked body about its hips, so the head led into the floor. The other
+  hand-keyed moves keep their feet planted (0 cm of sliding) and nothing else goes through the floor; victims' toes
+  sink at most 3 cm early in a throw.
+- **Fix.**
+  - The roll tucks the chin and chest further (`moves.rolls`).
+  - `build_mocap` lifts a clip marked `"floor"` wherever a body part would go through the floor
+    (`floor_clamp`, the clearance under each bone is the body's thickness there). The lift is widened by a frame
+    and smoothed over one, and frames with a foot on the floor are lifted only as far as they need, so the push-off
+    and the landing stay planted.
+  - Rolls lift by up to 22–25 cm. Nothing goes below the floor now (lowest: a planted toe, −1 cm).
+- **Still to note.** At the roll's midpoint the body rests for about 5 frames on the top of the head, with the
+  shoulders 40 cm up, because the roll still turns about the hips. Rolling over the shoulders would mean
+  re-keying the roll, or a captured back roll (none on Mixamo or CMU).
+- **Review and regression.**
+  - Packaged as `pkg-51-rolls`.
+  - A Training script with both rolls twice for each fighter was recorded on `pkg-50` and `pkg-51` at 60 fps
+    (`anim-71`). On `pkg-50` Wren's head sinks into the floor as she goes over; on `pkg-51` it stays at floor level.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-72`).
+
+### Lying on the floor, not above it (package `pkg-52-lying`)
+
+- **Measured** (`floor.py`). The hand-keyed lying pose was about 10 cm above the floor: hips 23–24 cm and upper spine
+  22–23 cm up. The captured knockout lies with them at 13–14 cm and 11–12 cm. That pose is where a knockdown
+  settles, where every throw lands its victim and where both get-ups start, so knocked-down fighters hovered.
+- **Fix.** The lying pose's hips are 10 cm lower (`moves.lying`). The lying clips, the knockdown, both get-ups and
+  all four throws (with their escapes) were rebuilt. Lying now measures hips 14 cm, upper spine 13 cm and the top
+  of the head 15–16 cm, as the captured knockout does. The hand-overs are unchanged: knockdown to lying and lying to
+  get-up 0–0.1 cm, the throws' ends 0 mm.
+- **Review and regression.**
+  - Packaged as `pkg-52-lying`.
+  - The training throw script was recorded on `pkg-51` and `pkg-52` (`anim-73`). The lying victim is low in the
+    frame and dark against the floor there, so the recording shows little; the heights above are measured on the
+    clips.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-74`).
+
 ## Known limitations
 
 - **Not verified by a person:**

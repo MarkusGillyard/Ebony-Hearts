@@ -24,8 +24,8 @@
     "L3": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "DF": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "DF": {"scripted": true, "blend_in": 4, "blend_out": 10, "floor": true},
+    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10, "floor": true},
     "ThrowTech": {"scripted": true, "blend_in": 0, "blend_out": 10}
   },
   "ashka": {
@@ -52,8 +52,8 @@
     "FS": {"fbx": "A_FlyingKneePunchCombo.fbx", "src": [9, 27, 48], "root_scale": [0.3, 0.9, 0.45], "plant": false, "blend_out": 8, "reach": {"part": "knee_r", "to": 0.7, "max_shift": 0.4}},
     "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "DF": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "DF": {"scripted": true, "blend_in": 4, "blend_out": 10, "floor": true},
+    "DB": {"scripted": true, "blend_in": 4, "blend_out": 10, "floor": true},
     "ThrowTech": {"scripted": true, "blend_in": 0, "blend_out": 10}
   },
   "throws": {

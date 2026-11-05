@@ -30,8 +30,9 @@ def world_feet(stance):
 
 def lying(stance):
     """On the back, head away from the opponent, body centred on the root. Arms rest on the floor beside the head
-    (pelvis-relative: f points up from the floor once the pelvis lies back)."""
-    return stance(pelvis=(-0.15, 0.0, -0.72), pelvis_rot=(0, -88, 0), chest=(0, -4, 0), head=(0, 6, -10), gaze=0.0,
+    (pelvis-relative: f points up from the floor once the pelvis lies back). The hips and back lie where the
+    captured knockout's do (pelvis 14 cm, upper spine 13 cm up); 10 cm higher, the body floated above the floor."""
+    return stance(pelvis=(-0.15, 0.0, -0.82), pelvis_rot=(0, -88, 0), chest=(0, -4, 0), head=(0, 6, -10), gaze=0.0,
                   hand_l_rel=(-0.06, 0.48, 0.36), hand_r_rel=(-0.04, -0.46, 0.26), elbow_l=(0.0, 0.6, -0.3), elbow_r=(0.0, -0.6, -0.3),
                   foot_l=(0.72, 0.16, 0.02), foot_r=(0.62, -0.16, 0.10), foot_l_rot=(0, -60, 0), foot_r_rot=(0, -50, 0),
                   knee_l=(0.3, 0.2, 0.6), knee_r=(0.3, -0.2, 0.6), fist=0.3, ball_l=0, ball_r=0,
@@ -173,7 +174,8 @@ def rolls(s, move, forward):
     sign = 1 if forward else -1
     # Both rolls curl forward (rounded back, chin in, knees to the chest, hands at the shins); only the direction the
     # body turns differs. The back roll used to mirror the curl too, which arched it and folded the legs backwards.
-    tuck = s(gaze=0.0, chest=(0, 45, 0), head=(0, 35, 0), fist=0.6,
+    # Chin and chest tucked well in, so the back of the neck and the shoulders lead the roll rather than the head.
+    tuck = s(gaze=0.0, chest=(0, 50, 0), head=(0, 55, 0), fist=0.6,
              hand_l=None, hand_r=None, hand_l_rel=(0.20, 0.18, 0.10), hand_r_rel=(0.20, -0.18, 0.12),
              elbow_l=(0.3, 0.3, -0.2), elbow_r=(0.3, -0.3, -0.2),
              foot_l=None, foot_r=None, foot_l_rel=(0.30, 0.12, -0.30), foot_r_rel=(0.25, -0.12, -0.32),
