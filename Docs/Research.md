@@ -35,8 +35,8 @@ The numbers in the "Ebony Hearts" column are this game's own tuning. None of the
 Sekiro's deflect works because enemy strings are authored, learnable and do not adapt to the player. In a symmetrical
 fighter the attacker can delay and feint, so a timed block becomes a read rather than a reaction. It transfers safely
 only in a bounded form: a small window, a lockout against mashing, a payoff in frames only, and ordinary held blocking
-still working. Sekiro's posture break and its unblockable "perilous" attacks do not transfer. With no jump or crouch,
-an unblockable move would leave Dodge as the only answer.
+still working. Sekiro's posture break and its unblockable "perilous" attacks do not transfer. The game has a jump,
+but no crouch or low attack; an unblockable designed to defeat jump would leave Dodge as the only answer.
 
 ## Rejected or deferred
 

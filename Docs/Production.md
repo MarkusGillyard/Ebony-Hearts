@@ -1,7 +1,9 @@
 # Production and rebuild guide
 
-Everything in the slice is rebuilt from scripts and plain data in this repository. The editable art sources
-(`.blend`, generated textures and WAVs) are produced by the same scripts. This guide lists the order and the tools.
+The repository contains the build scripts, combat data, and imported game content. A full asset rebuild also needs
+external source inputs kept in the production workspace, including the original motion captures and editable
+character `.blend` files. The scripts generate other editable art, textures and WAVs. This guide lists the order
+and the tools; the checkout alone cannot reproduce every animation.
 
 ## Requirements
 
@@ -15,6 +17,9 @@ Everything in the slice is rebuilt from scripts and plain data in this repositor
   - Poly Haven and ambientCG surfaces
   - Kenney audio packs
   - Google Fonts / NDISCOVER font files (already in `Content/UI/Fonts`)
+  - ACCAD Male 2 BVH takes and Mixamo exports from the creator's Adobe account, as listed by hash in
+    `Docs/ThirdPartyManifest.json`
+  - Editable character `.blend` sources from the production workspace
 
 The working layout used to build this slice keeps the engine, caches, downloads, generated art and packages on a
 dedicated drive outside the repository. Paths in the scripts follow that layout. Adjust the root constants at the top

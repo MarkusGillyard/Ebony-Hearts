@@ -86,8 +86,8 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
     buttons.
   - **Human play.** No human playtest of balance, feel or difficulty took place.
   - **Listening.** No listening test of the mix took place.
-  - **Exclusive fullscreen.** Tested since: it works, apart from a rare startup crash in the engine's audio backend
-    (about one launch in 30 to 40, in any mode; see Validation, Known limitations).
+  - **Startup stability.** A rare crash was observed in exclusive fullscreen launch loops (one in 26 Shipping
+    launches and one in 40 Development launches). The cause remains unverified; see Validation, Known limitations.
 
 ## Remaining items for the creator
 

@@ -70,7 +70,8 @@ The creator's requests, in their priority order, plus a later note on necks, wri
   and the light jump attacks. No capture searched so far fits them.
 - **Not verified by a person.** The latest build has not been played (the creator played `pkg-60`); physical
   controller buttons; a listening pass. A rare
-  startup crash (about one launch in 30-40) is in the engine's Linux audio backend, before game code runs.
+  startup crash was observed in exclusive fullscreen launch loops (one in 26 Shipping launches and one in 40
+  Development launches). Its cause remains unverified; see Validation, Known limitations.
 
 ## 5. Commit structure
 

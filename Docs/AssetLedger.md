@@ -64,9 +64,10 @@ Files deliberately excluded:
 
 ## Rights summary
 
-Every shipped third-party input permits commercial use, modification and distribution of the cooked game. No paid,
-login-gated, non-commercial or unclear-licence asset is used. Only the OFL font files are redistributed as raw files.
-The other inputs are fetched from their original sources by the build and appear in the package only in cooked form.
+Every shipped third-party input permits commercial use, modification and distribution of the cooked game under its
+respective terms. The Mixamo exports came from the creator's Adobe account, so rebuilding those animations requires
+access to the account-sourced files recorded in the manifest. No paid, non-commercial or unclear-licence asset is
+used. Only the OFL font files are redistributed as raw files. Other inputs appear in the package only in cooked form.
 
 ## Required notices
 
