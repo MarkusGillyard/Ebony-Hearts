@@ -153,6 +153,9 @@ loading (no captured frame was long enough to drop a tick). VRAM in use during t
 round trips, versus and Training; 49 checks passed, 0 failures, 0 warnings, no missing assets. The game's resident
 memory held flat (median 1541 MiB in the first quarter, 1542 MiB in the last, peak 1551); VRAM stayed at 1023-1026 MiB.
 
+**Full match** (`review_match.txt`, recorded for review, `anim-108`): Wren as a Hard bot against Ashka on CPU Hard, two
+complete rounds (Ashka won 2-0), 0 failures and 0 warnings.
+
 ## Motion and visual review
 
 Every move and reaction animation was reviewed in three ways:

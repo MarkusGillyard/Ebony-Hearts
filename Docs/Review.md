@@ -37,7 +37,7 @@ The creator's requests, in their priority order, plus a later note on necks, wri
   `controls_selftest.txt`, `journey.txt`, `matrix.txt`. Each run writes `auto_log.txt`; a pass has no `FAIL` and no
   `WARN` lines.
 - **Motion.** `Tests/Auto/review_reactions.txt`, `review_flow.txt` and `review_jump.txt` reproduce the review videos
-  in Training. Record with `Tests/Auto/capture.py record "Ebony Hearts" out.mp4 <seconds> --fps 60 --start-on
+  in Training; `review_match.txt` records a full bot-versus-CPU match. Record with `Tests/Auto/capture.py record "Ebony Hearts" out.mp4 <seconds> --fps 60 --start-on
   <evidence dir>/auto_log.txt:match_start`, which starts on the first match so two builds' recordings line up.
 - **Animation sources.** The raw motion capture (Mixamo exports, ACCAD takes) and the Blender character files stay
   outside the repository (licence and size), so the clips cannot be rebuilt from this repository alone. The imported
