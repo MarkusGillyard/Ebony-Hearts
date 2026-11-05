@@ -10,13 +10,13 @@
     {
       "id": "ashka_clinch_knees", "name": "Clinch Knees",
       "attackerAnim": "ThrowF", "victimAnim": "Victim_AshkaThrowF",
-      "duration": 64, "damageFrame": 44, "damage": 115,
+      "duration": 74, "damageFrame": 54, "damage": 115,
       "holdX": 54, "landX": 115, "victimKnockdown": 34
     },
     {
       "id": "ashka_clinch_turn", "name": "Clinch Turn Trip",
       "attackerAnim": "ThrowB", "victimAnim": "Victim_AshkaThrowB",
-      "duration": 56, "damageFrame": 38, "damage": 105,
+      "duration": 66, "damageFrame": 48, "damage": 105,
       "holdX": 54, "landX": -105, "victimKnockdown": 36
     }
   ],

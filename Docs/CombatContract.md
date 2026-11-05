@@ -159,8 +159,8 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
 
 | Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
 |---|---|---|---|---|---|---|
-| Clinch Knees | 64 | 44 | 115 | 115 cm in front | 34 | `ThrowF` / `Victim_AshkaThrowF` |
-| Clinch Turn Trip | 56 | 38 | 105 | 105 cm behind (side switch) | 36 | `ThrowB` / `Victim_AshkaThrowB` |
+| Clinch Knees | 74 | 54 | 115 | 115 cm in front | 34 | `ThrowF` / `Victim_AshkaThrowF` |
+| Clinch Turn Trip | 66 | 48 | 105 | 105 cm behind (side switch) | 36 | `ThrowB` / `Victim_AshkaThrowB` |
 
 <!-- move-tables:end -->
 

@@ -1114,6 +1114,32 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-82`).
 
+### Ashka's throws give their falls time (package `pkg-57-throwtime`)
+
+- **Timing.** This uses the creator's approval to lengthen throws with advantage unchanged, as for Wren's two.
+  - The Clinch Knees now last 74 frames (was 64) with damage on frame 54 (was 44).
+  - The Clinch Turn Trip lasts 66 (was 56) with damage on 48 (was 38).
+  - The victim's knockdown after the throw (`victimKnockdown`) is unchanged, so the advantage after each throw is
+    the same. The lie between landing and the throw's end is unchanged too (20 and 18 frames).
+  - All 265 core checks pass. The move table in `CombatContract.md` was regenerated.
+- **Motion.** The extra frames go to the falls: 24 frames (0.4 s) in the Clinch Knees and 22 in the Turn Trip, from
+  rest, accelerating like a falling body. Ashka holds her sweep while the victim falls, then steps round.
+  - At impact the victim's head moves 18.6 cm a frame (was 31.5) and the hips 8.5.
+  - The fastest limb is an elbow at 29–32 cm (hands were 42–46).
+  - No flips; the throws' hand-overs are still 0 mm.
+- **Not changed.**
+  - The forward roll's dive (the head about 43 cm a frame): the rolls are hand-keyed dodges whose timing sets
+    their invulnerability.
+  - Wren's tornado kick (the foot up to 77 cm a frame): what makes it fast is the full turn added to a captured
+    roundhouse, not the capture.
+  - Both are the creator's call.
+- **Review and regression.**
+  - Packaged as `pkg-57-throwtime`.
+  - The training throw script was recorded on `pkg-56` and `pkg-57` at 60 fps (`anim-83`). In the Clinch Knees
+    the victim now tips back and goes down over about 16 frames after the trip, instead of dropping.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-84`). The CPU matches throw and are thrown with the new timings.
+
 ## Known limitations
 
 - **Not verified by a person:**

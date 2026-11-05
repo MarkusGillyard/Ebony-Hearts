@@ -103,7 +103,7 @@ def ashka_clinch_knees(victim, td):
     # knees come a little closer together so the trip starts at 30 and the victim has 14 frames to fall before landing
     # on the damage frame (44); with 8 it dropped 70 cm a frame.
     attacker = [(1, t, "smooth"), (6, plum, "snap"), (11, pull, "smooth"), (16, knee, "smooth"), (21, down, "smooth"), (26, knee, "smooth"),
-                (30, down, "smooth"), (34, trip, "smooth"), (46, trip, "hold"), (64, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
+                (30, down, "smooth"), (34, trip, "smooth"), (52, trip, "hold"), (74, t(foot_r_world=ASHKA["foot_r"]), "smooth")]
     v = victim
     bent = victim_recoil(v, hold, 1.25)(chest=(0, 40, 0), head=(0, 35, 0), pelvis=(0.0, 0, -0.06))
     jolt = bent(chest=(0, 52, 0), pelvis=(0.0, 0, 0.0), head=(0, 40, 0))
@@ -112,8 +112,9 @@ def ashka_clinch_knees(victim, td):
                    (26, jolt, "snap"), (30, bent, "smooth"),
                    # One fall from the held clinch to the floor, accelerating like a falling body from rest as she is
                    # tripped; the hands go out to where the lying pose holds them over the whole fall. Two segments
-                   # each starting from rest stalled the body in mid-air.
-                   (44, end(head=(0, 20, -6)), "fall"), (50, end, "out"), (64, end, "smooth")]
+                   # each starting from rest stalled the body in mid-air. The throw is 10 frames longer (damage on 54,
+                   # advantage unchanged) so the fall takes 24 frames, 0.4 s; in 14 the head hit the floor at 31 cm a frame.
+                   (54, end(head=(0, 20, -6)), "fall"), (60, end, "out"), (74, end, "smooth")]
     return attacker, victim_keys
 
 
@@ -137,9 +138,10 @@ def ashka_clinch_turn(victim, td):
     lead_down = planted(foot_l_abs=(-fl[0], -fl[1], 0.0))
     rear_step = lead_down(foot_r_abs=((swept[0] - fr_[0]) / 2, (swept[1] - fr_[1]) / 2, 0.07))
     rear_down = lead_down(foot_r_abs=(-fr_[0], -fr_[1], 0.0))
-    attacker = [(1, t, "smooth"), (6, plum, "snap"), (16, pivot, "smooth"), (26, trip, "smooth"), (38, planted, "in"),
-                (42, lead_step, "smooth"), (46, lead_down, "smooth"), (49, rear_step, "smooth"), (52, rear_down, "smooth"),
-                (56, unrel(t(spin=180.0, foot_l_world=None, foot_r_world=None, foot_l_abs=None, foot_r_abs=None,
+    # She holds the sweep while the victim falls (the throw is 10 frames longer for that fall), then steps round.
+    attacker = [(1, t, "smooth"), (6, plum, "snap"), (16, pivot, "smooth"), (26, trip, "smooth"), (38, planted, "in"), (48, planted, "hold"),
+                (52, lead_step, "smooth"), (56, lead_down, "smooth"), (59, rear_step, "smooth"), (62, rear_down, "smooth"),
+                (66, unrel(t(spin=180.0, foot_l_world=None, foot_r_world=None, foot_l_abs=None, foot_r_abs=None,
                              foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0))), "smooth")]
     v = victim(spin=0.0, pivot=(hold, 0.0))
     held = victim_recoil(v, hold, 1.25)(chest=(0, 30, 0), head=(0, 25, 0))
@@ -151,7 +153,7 @@ def ashka_clinch_turn(victim, td):
     off = held(spin=180.0, pivot=(hold, 0.0), pelvis=(-0.15, 0, -0.10), pelvis_rot=(0, -25, 0), foot_l=(0.25, 0.12, 0.25))
     end = landed(v, hold, land)
     victim_keys = [(1, v, "smooth"), (6, held, "snap"), (11, stumble_r, "smooth"), (16, swung, "smooth"), (21, stumble_l, "smooth"),
-                   (26, off, "smooth"), (38, end(head=(0, 20, -6)), "fall"), (44, end, "out"), (56, end, "smooth")]
+                   (26, off, "smooth"), (48, end(head=(0, 20, -6)), "fall"), (54, end, "out"), (66, end, "smooth")]
     return attacker, victim_keys
 
 
