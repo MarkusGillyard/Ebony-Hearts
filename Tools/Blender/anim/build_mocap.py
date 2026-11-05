@@ -190,7 +190,7 @@ def scripted_poses(a, arm, data, wanted):
 # of the neck and trunk, the shoulders, elbows, hands and knees.
 FLOOR_CLEARANCE = {"head_top": 3, "head": 9, "neck_01": 6, "spine_03": 11, "spine_02": 11, "spine_01": 11, "pelvis": 10,
                    "upperarm_l": 6, "upperarm_r": 6, "lowerarm_l": 4, "lowerarm_r": 4, "hand_l": 2, "hand_r": 2,
-                   "calf_l": 5, "calf_r": 5}
+                   "calf_l": 5, "calf_r": 5, "ball_l": 0, "ball_r": 0}
 
 
 def floor_clamp(arm, poses):
@@ -564,6 +564,8 @@ def build(a):
         for pose in poses:
             M.fist(pose, spec.get("fist", 1.0))
             M.half_joints(pose, half_prev)
+        if spec.get("floor"):
+            print(f"BUILDMOCAP {prefix}{key} lifted off the floor by up to {floor_clamp(arm, poses) * 100:.0f} cm")
         if key == "Idle":
             guard_pose = poses[0]
             save_idle_pose(a, guard_pose)

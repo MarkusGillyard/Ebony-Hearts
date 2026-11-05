@@ -1143,6 +1143,41 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-84`). The CPU matches throw and are thrown with the new timings.
 
+### A captured forward roll (package `pkg-58-roll`)
+
+- **Source.** The creator signed in to Mixamo again on 2026-11-05. Nine candidates were exported and kept outside the
+  repository (hashes in the download log). Probed with `tools/anim-review`:
+  - **Used:** Quick Roll To Run, a quick shoulder roll out of a run.
+  - **Not used:**
+    - Dive Roll: a 4-second leaping dive over 3.6 m.
+    - Run To Rolling: turns sideways as it rises.
+    - Au To Role: a cartwheel that drifts 4.7 m sideways.
+    - Standing Yell: starts from a deep crouch.
+    - Yelling Out: tried on Wren's Spirit Enhanced Strikes; with her stance it read as one arm swung back, not a
+      gathering of power, so the hand-keyed version stays.
+  - **Kept for later:** Sprinting Forward Roll (another shoulder roll) and Rockin' Shackle A (a grab and arm twist).
+  - Mixamo has no back roll, so the back roll stays hand-keyed.
+- **Build.** Both fighters' forward roll (`DF`) now comes from the capture, from its dive to its rise.
+  - Its dive, inverted moment, back contact and rise land on frames 6, 10, 14 and 20 of the 30.
+  - Its travel is scaled to the game's 1.53 m, and the body keeps pace with the game's travel.
+  - The hands are open for the floor.
+  - `build_mocap`'s floor lift now also runs on captured clips marked `"floor"` and checks the toes. The roll's
+    lowest point is 0 cm, and the back roll, rebuilt with the same lift, is unchanged.
+- **Measured.** It is a real roll: the hands reach the floor (frames 6–9), the head passes 13 cm over it (frame 10),
+  the body rolls across the upper back onto the hips (19 cm, frames 12–15) and rises over a knee. The hand-keyed
+  roll balanced for about 5 frames on the top of the head. The roll starts 6–8 cm from the idle and ends on it
+  (0 cm). The fastest part is the hands reaching for the floor (42–45 cm a frame; the hand-keyed roll's dive moved
+  the head 42–44). No flips.
+- **Credits.** The ledger and `ThirdPartyManifest.json` now list every Mixamo clip the build uses (28, with
+  hashes). Earlier additions were missing: the jab, cross and elbow captures, the jab-to-cross string, the shoulder
+  throw pair and the roll. `AssetLedger.md` matches.
+- **Review and regression.**
+  - Packaged as `pkg-58-roll`.
+  - The roll script was recorded on `pkg-57` and `pkg-58` at 60 fps (`anim-85`). In game she leans and dives, rolls
+    over the shoulder onto her back, sits, rises on one knee and is in stance by frame 30.
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-86`).
+
 ## Known limitations
 
 - **Not verified by a person:**
