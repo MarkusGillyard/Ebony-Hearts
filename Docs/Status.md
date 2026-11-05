@@ -16,12 +16,12 @@ run on the test machine (see [Validation](Validation.md)). It is not declared co
 updated with the animation work, and it was, as squashed commits on top. Nothing has been merged, tagged or released.
 
 **Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
-[validation report](Validation.md) (packages `pkg-21` to `pkg-59`):
+[validation report](Validation.md) (packages `pkg-21` to `pkg-60`):
 - **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
-  jab-to-cross string; Wren's double-leg slam and shoulder throw; both fighters' forward roll; the hit and block
+  jab-to-cross string; Wren's double-leg slam and shoulder throw; both fighters' forward roll; Wren's power-up; the hit and block
   reactions, knockdowns, KO, both get-ups; the intros, wins and defeated poses.
 - **Still keyed by script:** Ashka's two throws up to the trip (their victims then fall as captured), the grabs, the
-  back rolls, both bursts and Wren's spinning back elbow. No capture tried so far fits them; Mixamo has no back roll
+  back rolls, Ashka's Flame Burst and Wren's spinning back elbow. No capture tried so far fits them; Mixamo has no back roll
   or quick grab.
 - **Throws** are drawn as authored (the victim was drawn mirrored), switch sides cleanly, and keep a knocked-out
   victim lying. Both fighters ease into a throw from where they stood, and an escape starts from where the throw was. Rolls stay above the floor, and a fighter knocked down lies on it. **Effects:** the golden aura and the crimson flame were rebuilt.

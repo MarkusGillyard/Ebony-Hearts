@@ -22,7 +22,7 @@
     "Guard": {"fbx": "W_MmaIdle.fbx", "src": [0, 150], "loop": true, "frames": 150, "loop_blend": 12, "plant": false, "additive": "Guard"},
     "Defeated": {"bvh": "Male2_D4_ReadyToRelax", "mirror": true, "src": [45, 110], "frames": 91, "blend_in": 8, "blend_out": 0, "end_pose": {"key": "Defeated", "frame": 91, "frames": 30}},
     "L3": {"scripted": true, "blend_in": 4, "blend_out": 10},
-    "BS": {"scripted": true, "blend_in": 4, "blend_out": 10},
+    "BS": {"fbx": "C_Cast2H_UpwardPull.fbx", "anchors": [[1, 12], [12, 26], [24, 41], [44, 58]], "frames": 44, "root_scale": [0.3, 0.3], "fist": 0.2, "blend_in": 4, "blend_out": 10},
     "T": {"scripted": true, "blend_in": 4, "blend_out": 10},
     "DF": {"fbx": "C_QuickRollToRun.fbx", "anchors": [[1, 11], [6, 16], [10, 21], [14, 26], [20, 34], [30, 41]], "frames": 30, "root_scale": [0.6, 0.6], "follow_travel": true, "plant": false, "floor": true, "fist": 0.2, "blend_in": 6, "blend_out": 10},
     "DB": {"scripted": true, "blend_in": 4, "blend_out": 10, "floor": true},

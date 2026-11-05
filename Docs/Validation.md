@@ -1203,6 +1203,30 @@ rolls, the grab and the three scripted throws):
   - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
     and 0 warnings (`anim-88`).
 
+### Wren's power-up from a capture (package `pkg-60-powerup`)
+
+- **Source.** Mixamo's Standing 2H Cast Spell 01 ("two-handed casting spell, upward pull"). The creator signed in on
+  2026-11-05.
+  - Its shape is the one Wren's Spirit Enhanced Strikes was keyed to: sink and gather, then rise and open. She sinks
+    into a deep crouch with the hands at the knees, then rises with both arms raised overhead.
+  - Anchors put the deepest gather on frame 12 and the arms opening on frame 24, where the aura applies.
+  - Its own forward drift is cut to 30%.
+- **Ruled out.**
+  - For Ashka's Flame Burst: the two-handed magic attacks. The burst erupts on frame 7, and fitting their coil and
+    thrust into that would run them about 5×.
+  - For Wren: Wide Arm Spell Casting, which steps half a metre sideways.
+  - Searched with nothing usable: a back roll (Mixamo has only back flips), a spinning elbow or backfist, and a
+    forward two-handed grab.
+- **Measured.** At most 29 cm a frame (the hands), no spikes or flips, nothing through the floor. It starts 8 cm from
+  the idle and ends on it.
+- **Review and regression.**
+  - Packaged as `pkg-60-powerup`.
+  - A Training script with each fighter's burst twice, full gauge, was recorded on `pkg-59` and `pkg-60` at 60 fps
+    (`anim-89`). Wren gathers in a deep crouch, rises, and the golden aura flares as her arms open overhead.
+  - Credited in the asset ledger and `ThirdPartyManifest.json` (30 Mixamo clips).
+  - The smoke test, the controls self-tests, the 25-step journey and the 12-match matrix all passed, with 0 failures
+    and 0 warnings (`anim-90`).
+
 ## Known limitations
 
 - **Not verified by a person:**
