@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 USED = {
     "polyhaven/monastery_stone_floor": "Chapel floor (M_FloorFlags)",
@@ -31,6 +32,12 @@ USED = {
 }
 
 
+def download_name(url):
+    parsed = urlsplit(url)
+    # ambientCG download URLs use /get?file=<archive>; the path alone is not a filename.
+    return os.path.basename(parse_qs(parsed.query).get("file", [parsed.path])[0])
+
+
 def main():
     tp, fonts = Path(sys.argv[1]), Path(sys.argv[2])
     ledger = json.loads((tp / "ledger.json").read_text())
@@ -44,7 +51,7 @@ def main():
         elif isinstance(files, dict):
             hashes = [{"file": os.path.basename(k), "sha256": v} for k, v in files.items()]
         else:
-            hashes = [{"file": os.path.basename(item.get("download_url", "")), "sha256": item.get("sha256"), "url": item.get("download_url")}]
+            hashes = [{"file": download_name(item.get("download_url", "")), "sha256": item.get("sha256"), "url": item.get("download_url")}]
         lic = item.get("license")
         out.append({
             "id": item["id"], "title": item.get("title"), "creator": item.get("creator"),
