@@ -633,6 +633,10 @@ bool FEHSettings::Save(const FString& PathOverride) const
 	}
 	// Write to a temporary file first so an interrupted save never leaves a truncated settings file.
 	const FString Path = PathOverride.IsEmpty() ? FilePath() : PathOverride;
+	if (!IFileManager::Get().MakeDirectory(*FPaths::GetPath(Path), true))
+	{
+		return false;
+	}
 	const FString Temp = Path + TEXT(".tmp");
 	return FFileHelper::SaveStringToFile(Text, *Temp) && IFileManager::Get().Move(*Path, *Temp, true, true);
 }

@@ -77,8 +77,13 @@ def content_hash(package):
 
 def main():
     package, out, name, commit = sys.argv[1:5]
-    package = os.path.abspath(package)
+    if not name or name in (".", "..") or os.path.basename(name) != name:
+        raise SystemExit(f"release name must be a single directory name: {name}")
+    package = os.path.realpath(package)
+    out = os.path.realpath(out)
     release = os.path.join(out, name)
+    if os.path.commonpath((package, release)) == package:
+        raise SystemExit(f"release dir must be outside package: {release}")
     if os.path.exists(release):
         raise SystemExit(f"release dir exists: {release}")
     debug = set()

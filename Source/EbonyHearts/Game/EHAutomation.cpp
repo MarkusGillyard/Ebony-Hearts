@@ -130,6 +130,13 @@ void AEHGameDirector::InitAutomation()
 	{
 		EvidenceDir = FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("EbonyHearts"), TEXT("Evidence"), FDateTime::UtcNow().ToString(TEXT("%Y%m%d-%H%M%S")));
 	}
+	if (!IFileManager::Get().MakeDirectory(*EvidenceDir, true))
+	{
+		UE_LOG(LogTemp, Error, TEXT("EbonyHearts automation: cannot create evidence directory %s"), *EvidenceDir);
+		AutoLines.Empty();
+		EvidenceDir.Empty();
+		return;
+	}
 	AutoStart = FPlatformTime::Seconds();
 	AutoLogLine(FString::Printf(TEXT("auto start script=%s lines=%d"), *ScriptPath, AutoLines.Num()));
 }
@@ -144,14 +151,20 @@ void AEHGameDirector::AutoLogLine(const FString& Line)
 	const FString Stamped = FString::Printf(TEXT("[%9.3f] %s"), T, *Line);
 	AutoLog.Add(Stamped);
 	UE_LOG(LogTemp, Display, TEXT("EHAUTO %s"), *Stamped);
-	FFileHelper::SaveStringToFile(Stamped + LINE_TERMINATOR, *FPaths::Combine(EvidenceDir, TEXT("auto_log.txt")), FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append);
+	if (!FFileHelper::SaveStringToFile(Stamped + LINE_TERMINATOR, *FPaths::Combine(EvidenceDir, TEXT("auto_log.txt")), FFileHelper::EEncodingOptions::AutoDetect, &IFileManager::Get(), FILEWRITE_Append))
+	{
+		UE_LOG(LogTemp, Error, TEXT("EbonyHearts automation: cannot append auto_log.txt in %s"), *EvidenceDir);
+	}
 }
 
 void AEHGameDirector::WriteEvidence(const FString& Name, const FString& Text)
 {
 	if (!EvidenceDir.IsEmpty())
 	{
-		FFileHelper::SaveStringToFile(Text, *FPaths::Combine(EvidenceDir, Name));
+		if (!FFileHelper::SaveStringToFile(Text, *FPaths::Combine(EvidenceDir, Name)))
+		{
+			UE_LOG(LogTemp, Error, TEXT("EbonyHearts automation: cannot write %s in %s"), *Name, *EvidenceDir);
+		}
 	}
 }
 
@@ -829,6 +842,8 @@ void AEHGameDirector::RunBindingsSelfTest()
 	T.Bindings.Clear(S::GamepadP1, A::Throw, 1);
 	const FString RoundPath = FPaths::Combine(Dir, TEXT("roundtrip.json"));
 	Check(T.Save(RoundPath), TEXT("save"));
+	const FString FreshPath = FPaths::Combine(Dir, TEXT("new-profile"), TEXT("Settings.json"));
+	Check(T.Save(FreshPath), TEXT("save creates an absent settings parent directory"));
 	FString Warning;
 	const FEHSettings L = FEHSettings::Load(&Warning, RoundPath);
 	bSame = Warning.IsEmpty();
