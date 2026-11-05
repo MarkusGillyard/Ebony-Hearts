@@ -8,7 +8,9 @@ move data are in the [combat contract](CombatContract.md).
 **Build under review:** package `pkg-67-jumpkick` (Shipping, Linux), built from this commit's game code and content;
 everything changed after it is documentation and tests. The release archive's name and SHA-256 are in the pull
 request description. On that package the smoke test, controls self-tests, 25-step journey and 12-match matrix all
-passed with 0 failures and 0 warnings (see the validation report).
+passed with 0 failures and 0 warnings. On the extracted release, frame times match the original release (60 s fight:
+median 16.67 ms, p99 16.74, worst 17.2, no frame over 33 ms) and a 59-minute, 36-match soak passed with flat memory
+(see the validation report, "Re-run on the build under review").
 
 ## 1. What was asked and what changed
 
@@ -67,7 +69,7 @@ The creator's requests, in their priority order, plus a later note on necks, wri
 - **Still keyed by script.** Wren's spinning back elbow, Ashka's Flame Burst and clinch, the grabs, the back rolls
   and the light jump attacks. No capture searched so far fits them.
 - **Not verified by a person.** The latest build has not been played (the creator played `pkg-60`); physical
-  controller buttons; a listening pass. Soak and performance were not re-run since the original release. A rare
+  controller buttons; a listening pass. A rare
   startup crash (about one launch in 30-40) is in the engine's Linux audio backend, before game code runs.
 
 ## 5. Commit structure

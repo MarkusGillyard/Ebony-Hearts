@@ -34,8 +34,8 @@ The archive contains no symbolic links. Debug symbols stay with the original pac
 | Chapel quality | **PASS** | 39 meshes, 299 instances and 358k triangles. The fighting strip is clear, the rose-window moonlight falls behind it, and the candles, wet floor and water sheen work. Camera and collision are stable across 12 + 36 matches. Ambience bed and music play. Evidence: `review`, `footage_contact.jpg`. |
 | Player journey | **PASS** | In the packaged build: Versus CPU, local Versus, Training, Lesson, results and rematch, settings (saved and reloaded), move list, credits and quit (`journey`, 24/24 screen checks, `matrix`, `soak`). |
 | Audio/visual usability | **PASS**; listening **NOT_VERIFIED** | The HUD, callouts, banners and move list are readable at 1080p and 3440 × 1440. Interface scale, reduced flashes and reduced shake are applied and survive a save/reload (`journey`, `soak`). Their visual effect was not separately reviewed. No debug or placeholder output appears in the package. Sounds play at runtime with none missing (10144 sounds played in the soak). Nobody listened to the mix. |
-| Performance | **PASS** | Packaged on FLOWBOX at 1920 × 1080 and at the native 3440 × 1440, both at 100% render scale. Frame-time medians are 16.67 ms with V-Sync and p99 stays under 17 ms. There are 0 frames over 33 ms across the release's captures. VRAM peaks around 1009 MiB at native resolution (of 6 GB), and engine memory is about 1.5 GB (of 14 GB). Startup to the title screen takes about 2.3 s. See Performance. |
-| Stability | **PASS** | Matrix: 12/12 complete matches with 0 failures. Soak: 52 minutes, 36 complete matches with rematches, pauses, 12 settings save/reload round trips, Training and menu transitions; 0 failures or stuck states, 0 warnings; clean exit. Resident memory 1494 MiB in the first tenth and 1504 MiB in the last (peak 1511), with no sustained growth. VRAM peaked at 1040 MiB total. `matrix`, `soak` (`resources.csv`). |
+| Performance | **PASS** | Packaged on FLOWBOX at 1920 × 1080 and at the native 3440 × 1440, both at 100% render scale. Frame-time medians are 16.67 ms with V-Sync and p99 stays under 17 ms. There are 0 frames over 33 ms across the release's captures. VRAM peaks around 1009 MiB at native resolution (of 6 GB), and engine memory is about 1.5 GB (of 14 GB). Startup to the title screen takes about 2.3 s. See Performance. Re-run on the build under review (2026-11-05): medians 16.67 ms, p99 at most 16.78 ms, 0 frames over 33 ms. |
+| Stability | **PASS** | Matrix: 12/12 complete matches with 0 failures. Soak: 52 minutes, 36 complete matches with rematches, pauses, 12 settings save/reload round trips, Training and menu transitions; 0 failures or stuck states, 0 warnings; clean exit. Resident memory 1494 MiB in the first tenth and 1504 MiB in the last (peak 1511), with no sustained growth. VRAM peaked at 1040 MiB total. `matrix`, `soak` (`resources.csv`). Re-run on the build under review (`EbonyHearts-Slice-3602345`, 2026-11-05): 12/12 matrix; a 59-minute, 36-match soak with 0 failures and flat memory. |
 | Assets/rights | **PASS** | Every shipped third-party input is CC0 or OFL (`Docs/AssetLedger.md`, `ThirdPartyManifest.json`). The package carries `THIRD_PARTY_NOTICES.txt` and the in-game credits. No ripped, paid, non-commercial or unclear-licence material is used. The creator-supplied title card is AI-generated (OpenAI ChatGPT image generation). The creator confirmed it as an authorized project asset on 2026-11-03 (`Docs/AssetLedger.md`). |
 | Reproducibility | **PASS** | Exact commit, content hash and archive checksums are recorded. The rebuild order is in `Docs/Production.md`. Every asset is rebuilt by scripts in this repository, and editable sources are kept in the workspace. The clean-directory launch from a path with spaces succeeded. |
 | Preservation | **FAIL** (one historical incident, disclosed) | Legacy checkouts stayed read-only and untouched. Every write went to the task drive through a sandbox. No recursive cleanup ran, and no symbolic-link fixtures were made. However, early in the work the Unreal Editor crashed once and its crash reporter sent one report to Epic Games (2026-11-03 05:17 UTC) before an opt-out was set. Such reports usually contain the engine log, machine details and a minidump, which include project file paths. No further reports were sent. |
@@ -132,6 +132,26 @@ Aura check with the default borderless launch (Training, `perf_aura.txt`; this w
     (`perf_aura.txt`), ruled out the sampler and the aura effect.
   - **Fix.** Banners now use one size, and the title screen pre-rasterises those glyphs.
   - **Result.** The final build shows 0 frames over 33 ms across all of its captures (worst frame 17.8 ms).
+
+
+### Re-run on the build under review (2026-11-05)
+
+The release under review (`EbonyHearts-Slice-3602345`, the `pkg-67-jumpkick` build), extracted to a fresh folder, on
+the same machine and method as above (1920 × 1080 window, V-Sync on; evidence `anim-107`):
+
+| Capture | Frames | Median ms | p95 | p99 | Max | 1% low fps | Hitches >33 ms | GPU median / p99 ms | Game / render thread ms | Engine memory, peak |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Fight, 60 s | 3602 | 16.67 | 16.71 | 16.74 | 17.2 | 59.6 | 0 | 6.86 / 8.32 | 0.76 / 1.36 | 1455 MB |
+| Menus, 20 s | 1202 | 16.67 | 16.71 | 16.73 | 16.9 | 59.6 | 0 | 6.76 / 7.90 | 0.73 / 1.37 | 1460 MB |
+| First match, cold first launch | 1502 | 16.67 | 16.71 | 16.74 | 16.8 | 59.7 | 0 | 6.87 / 7.94 | 0.75 / 1.35 | 1538 MB |
+| Training, no aura / aura / aura again | 602 / 422 / 422 | 16.67 | 16.72 | 16.74-16.78 | 17.7 | 58.6-59.6 | 0 | 6.91-6.99 / 8.15-8.76 | 0.75-0.90 / 1.33-1.44 | 1541 MB |
+
+The game's dropped-tick counter read 13-32 at the end of each capture; it counts from launch, so these come from
+loading (no captured frame was long enough to drop a tick). VRAM in use during the fight peaked at 1026 MiB.
+
+**Soak** (`soak.txt`, with the resource sampler): 59 minutes, 36 complete matches with rematches, pauses, settings
+round trips, versus and Training; 49 checks passed, 0 failures, 0 warnings, no missing assets. The game's resident
+memory held flat (median 1541 MiB in the first quarter, 1542 MiB in the last, peak 1551); VRAM stayed at 1023-1026 MiB.
 
 ## Motion and visual review
 

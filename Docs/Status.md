@@ -31,6 +31,7 @@ and reach their boxes; each hit names its reaction (hooks turn the head away, bo
 show contact during hitstop; fists stay in line with the forearm, thumbs wrap and necks bend naturally; strikes from a
 walk finish the step; guards turn with the body; Ashka's body kick and teep are captured; and **jumping** is in the
 game (up on every device; jump attacks; anti-air; the CPU uses both). Jump values are first passes to tune by feel.
+On the build under review, performance and a 59-minute soak were re-run and match the original release.
 - **Display.** On the test desktop the monitor runs at 165 Hz but V-Sync paces everything at 60 Hz, so motion looks
   like it skips. This is a system setting (see Validation, Known limitations).
 
