@@ -1131,7 +1131,10 @@ rolls, the grab and the three scripted throws):
   - The forward roll's dive (the head about 43 cm a frame): the rolls are hand-keyed dodges whose timing sets
     their invulnerability.
   - Wren's tornado kick (the foot up to 77 cm a frame): what makes it fast is the full turn added to a captured
-    roundhouse, not the capture.
+    roundhouse, not the capture. Lengthening its startup from 17 to 22 frames was tried, with advantage
+    unchanged and the turn spread over the longer jump. It broke Wren's L1 → Tornado Kick and L1 → L2 → Tornado
+    Kick combos, which the core tests pin: the kick no longer lands inside the earlier hits' hitstun. It also
+    pushed the longest stretch without control past its bound, so it was reverted.
   - Both are the creator's call.
 - **Review and regression.**
   - Packaged as `pkg-57-throwtime`.
