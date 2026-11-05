@@ -21,8 +21,9 @@ Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Stat
 - **Fighters.** Wren Ku (MMA, bouncy all-rounder; signature 720 Hook Kick; Spirit Enhanced Strikes, a golden lightning
   aura) and Ashka Rook (Muay Thai, long upright guard; Lamplighter Flame, crimson).
 - **Stage.** The Drowned Chapel: a flooded chapel nave lit by moonlight through a rose window, candles and water.
-- **Six actions:** light, heavy, special, grab/throw, dodge/roll and block. Movement is left/right only. Each action
-  has a "toward" or "away" variant judged when the button is pressed. There are no motion inputs and no chords.
+- **Six actions:** light, heavy, special, grab/throw, dodge/roll and block. Movement is left/right, and up jumps
+  (straight up, toward or away), with a light and a heavy jump attack each. Each action has a "toward" or "away"
+  variant judged when the button is pressed. There are no motion inputs and no chords.
 - **Modes.** Versus CPU (Easy, Normal, Hard), local Versus, Training (dummy modes, hitbox and frame-advantage display,
   position reset), and a ten-step guided Lesson. Also results with rematch, settings, a move list, credits and a quit
   confirmation.
@@ -48,6 +49,7 @@ can take over that side.
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
 | Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
+| Jump | W | Up arrow | Left stick up / D-pad up | Left stick up / D-pad up |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
@@ -122,6 +124,9 @@ Tests/Core/run_core_tests.sh
   provenance, licences and notices.
 - [Docs/Research.md](Docs/Research.md): the design decisions taken from fighting-game references, and how each was tested.
 - [Docs/Validation.md](Docs/Validation.md): acceptance matrix, build identity, test results and performance.
+- [Docs/Review.md](Docs/Review.md): a guide for independent review of the latest round: what changed, where, and how
+  to check it.
+- [Docs/Status.md](Docs/Status.md): where things stand and what is left for the creator.
 
 ## Known limitations
 
@@ -138,14 +143,16 @@ Tests/Core/run_core_tests.sh
   - Both fighters stand in researched stances (Wren MMA, Ashka Muay Thai; see `Docs/Research.md`). Most motion comes
     from motion capture (ACCAD and Mixamo):
     - the idles, walks and held guards;
-    - Wren's jab, cross and four kicks;
+    - Wren's jab, cross (and jab-to-cross string), four kicks and Spirit Enhanced Strikes;
     - Ashka's jab, both elbows, step-in knee, flying knee, body kick and teep;
-    - Wren's double-leg slam (both sides);
+    - Wren's double-leg slam and shoulder throw (both sides), and the falls of the fighters Ashka throws;
+    - both fighters' forward roll, jump and landing, and heavy jump attack;
     - both fighters' intros, wins and defeated poses;
-    - both fighters' hit, block, knockdown, KO and get-up.
+    - both fighters' hit reactions (by where each hit lands), block, knockdown, KO and get-ups.
 
-    The remaining moves are keyed by script on the same stances: Wren's spinning elbow, both bursts, rolls, grabs
-    and the other three throws. Moves blend into each other with inertial transitions. Coat panels
+    The remaining moves are keyed by script on the same stances: Wren's spinning elbow, Ashka's Flame Burst, the back
+    rolls, grabs, Ashka's clinch and the light jump attacks. Moves blend into each other with inertial transitions,
+    the legs settling over their own time so a strike from a walk finishes the step. Coat panels
     and braids are spring-simulated, and they can clip in the most extreme spins.
   - Only Wren's primary outfit is in the slice.
 - **Audio.** Music, ambience and most effects are synthesized for the slice, with CC0 layers. There are no voices.

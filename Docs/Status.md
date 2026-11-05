@@ -17,16 +17,16 @@ updated with the animation work, and it was, as squashed commits on top; it is u
 Nothing has been merged, tagged or released.
 
 **Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
-[validation report](Validation.md) (packages `pkg-21` to `pkg-66`):
+[validation report](Validation.md) (packages `pkg-21` to `pkg-67`):
 - **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
   jab-to-cross string; Wren's double-leg slam and shoulder throw; both fighters' forward roll; Wren's power-up; the hit and block
   reactions, knockdowns, KO, both get-ups; the intros, wins and defeated poses.
 - **Still keyed by script:** Ashka's two throws up to the trip (their victims then fall as captured), the grabs, the
-  back rolls, Ashka's Flame Burst, Wren's spinning back elbow and the four jump attacks. No capture tried so far fits them; Mixamo has no back roll
+  back rolls, Ashka's Flame Burst, Wren's spinning back elbow and the two light jump attacks. No capture tried so far fits them; Mixamo has no back roll
   or quick grab.
 - **Throws** are drawn as authored (the victim was drawn mirrored), switch sides cleanly, and keep a knocked-out
   victim lying. Both fighters ease into a throw from where they stood, and an escape starts from where the throw was. Rolls stay above the floor, and a fighter knocked down lies on it. **Effects:** the golden aura and the crimson flame were rebuilt.
-**After the creator's playtest (2026-11-05)** (packages `pkg-61` to `pkg-66`): punches straighten to full extension
+**After the creator's playtest (2026-11-05)** (packages `pkg-61` to `pkg-67`): punches straighten to full extension
 and reach their boxes; each hit names its reaction (hooks turn the head away, body shots fold the body) and reactions
 show contact during hitstop; fists stay in line with the forearm, thumbs wrap and necks bend naturally; strikes from a
 walk finish the step; guards turn with the body; Ashka's body kick and teep are captured; and **jumping** is in the
@@ -113,6 +113,8 @@ EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
    `main`, tagging a version and making a GitHub release each need your explicit go-ahead.
 
 ## Next safe action
+
+For an independent review of the latest round, start with [Review](Review.md).
 
 Do the controller check, the playtest and the animation review (items 1, 2 and 4 above). After the playtest, the creator plans to have pull
 request #1 merged into `main`. Nothing will be merged, tagged or released without that decision.

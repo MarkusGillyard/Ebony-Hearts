@@ -47,6 +47,7 @@ of each script for another machine.
 | `perf.txt`, `perf_cold.txt`, `perf_aura.txt` | 60 s fight and 20 s menu frame-time captures after warm-up; the first match from its start; Training with and without Spirit Enhanced Strikes |
 | `soak.txt` | Repeated matches, rematches, pauses, settings round trips and menu transitions (30+ minutes) |
 | `signature.txt`, `review.txt` | Training signature moves and a full match, for stills and footage |
+| `review_reactions.txt`, `review_flow.txt`, `review_jump.txt` | Training reviews of the playtest work: light strings from near full reach, Heavy and toward + Heavy (hit reactions); jabs from walking, taps, walk into strikes (movement into strikes); jumps in all directions and jump-ins. Record with `capture.py ... --start-on <evidence>/auto_log.txt:match_start` so two builds' recordings line up |
 | `xinput_drive.py` | Drives a running game with real X11 key events (XTest) |
 | `virtual_pad.py` | A virtual Xbox 360 pad (uinput): menus and fight, and disconnect/reconnect |
 | `capture.py` | Records footage of the game window with GStreamer and extracts frames |

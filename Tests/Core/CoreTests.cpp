@@ -1086,6 +1086,12 @@ int main(int argc, char** argv)
 			rec.Tick(in);
 		}
 		const uint64_t expected = rec.Hash();
+		int jumps = 0;
+		for (const InputFrame& in : tape)
+		{
+			jumps += in.y > 0 ? 1 : 0;
+		}
+		EXPECT_TRUE(jumps > 0, "the recorded match includes jumps, so the height and jump state are replayed too");
 		for (int hz : {30, 60, 75, 144, 165, 240})
 		{
 			Match m = MakeMatch(0, 1, Mode::Versus);

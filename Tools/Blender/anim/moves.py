@@ -221,7 +221,8 @@ def rolls(s, move, forward):
 
 
 # ------------------------------------------------------------------------------------------------ jump attacks
-# The game lifts the fighter (the jump's height is the simulation's), so these are airborne poses at standing hip
+# The light jump attacks (the heavy ones are captured: mocap_clips.json). The game lifts the fighter (the jump's
+# height is the simulation's), so these are airborne poses at standing hip
 # height: the legs drawn up under the body (pelvis-relative feet), never on the floor. They begin and end in that
 # airborne guard, so the jump clip hands over to them and they hand back to it (or land) without a jump.
 def air_guard(s, **kw):
@@ -243,19 +244,6 @@ def jump_punch(s, move):
     return keys, total, None, False
 
 
-def flying_kick(s, move):
-    """Wren's flying kick: the lead knee chambers up and the leg drives out, heel first, at the body below; the torso
-    leans back against it and the rear leg stays tucked."""
-    total = move["total"]
-    a = air_guard(s)
-    ch = s["chest"]
-    chamber = a(foot_l_rel=(0.28, 0.10, -0.22), knee_l=(1.0, 0.1, 0.7), chest=(ch[0], ch[1] - 6, 0))
-    kick = a(foot_l_rel=(0.80, 0.08, -0.34), knee_l=(0.3, 0.1, 1.0), foot_r_rel=(-0.12, -0.13, -0.38),
-             chest=(ch[0] + 6, ch[1] - 20, 0), head=(0, -6, 0), hand_r=(-0.05, -0.30, 1.20), gaze=0.6)
-    keys = [(1, a, "smooth"), (4, chamber, "in"), (8, kick, "smooth"), (14, kick, "hold"), (total, a, "smooth")]
-    return keys, total, None, False
-
-
 def jump_elbow(s, move):
     """Ashka's jumping elbow: the right elbow raised high, then brought down and forward through the head below."""
     total = move["total"]
@@ -265,20 +253,6 @@ def jump_elbow(s, move):
     strike = a(hand_r=(0.22, 0.02, 1.30), elbow_r=(0.8, -0.2, -0.4), chest=(ch[0] + 22, ch[1] + 20, 0), clav_r=(15, 0, 0),
                head=(0, 10, 0), gaze=0.5)
     keys = [(1, a, "smooth"), (3, raised, "smooth"), (6, strike, "smooth"), (11, strike, "hold"), (total, a, "smooth")]
-    return keys, total, None, False
-
-
-def jump_knee(s, move):
-    """Ashka's jumping knee: the rear knee driven up and forward into the body, hips through, both hands reaching to
-    pull the head down onto it; the lead leg hangs below."""
-    total = move["total"]
-    a = air_guard(s)
-    ch = s["chest"]
-    chamber = a(foot_r_rel=(-0.02, -0.12, -0.34), knee_r=(1.0, -0.1, 0.3), hand_l=(0.36, 0.12, 1.42), hand_r=(0.36, -0.12, 1.42))
-    knee = a(foot_r_rel=(0.12, -0.10, -0.18), knee_r=(1.0, -0.1, 0.9), foot_l_rel=(-0.22, 0.13, -0.78), knee_l=(0.5, 0.1, 0.0),
-             pelvis=(s["pelvis"][0] + 0.08, 0, s["pelvis"][2]), chest=(ch[0], ch[1] - 10, 0),
-             hand_l=(0.46, 0.12, 1.32), hand_r=(0.46, -0.12, 1.32), gaze=0.6)
-    keys = [(1, a, "smooth"), (4, chamber, "in"), (8, knee, "smooth"), (14, knee, "hold"), (total, a, "smooth")]
     return keys, total, None, False
 
 
@@ -306,7 +280,6 @@ def wren_moves(data):
     out["DB"] = rolls(s, m["DB"], False)
     if "JL" in m:
         out["JL"] = jump_punch(s, m["JL"])
-        out["JH"] = flying_kick(s, m["JH"])
 
     # Light 1: jab. The lead foot steps in with the 6 cm of travel; contact on frame 5.
     jab = w(hand_l=(0.66, 0.06, 1.43), pelvis_rot=(-30, 6, 0), chest=(-8, 10, 2), clav_l=(-18, 0, 0), elbow_l=(-0.1, 0.45, -0.3),
@@ -431,7 +404,6 @@ def ashka_moves(data):
     out["DB"] = rolls(s, m["DB"], False)
     if "JL" in m:
         out["JL"] = jump_elbow(s, m["JL"])
-        out["JH"] = jump_knee(s, m["JH"])
     jab = w(hand_l=(0.66, 0.06, 1.44), pelvis_rot=(-15, 4, 0), chest=(-6, 6, 0), clav_l=(-16, 0, 0), elbow_l=(-0.1, 0.45, -0.3), foot_l_world=(0.26, 0.09, 0.0))
     out["L1"] = ([(1, w, "smooth"), (3, w(hand_l=(0.33, 0.11, 1.40)), "in"), (5, jab, "snap"), (7, jab, "hold"),
                   (14, w(foot_l_world=(0.26, 0.09, 0.0), foot_r_world=(-0.17, -0.12, 0.0)), "smooth")], 14, m["L1"]["travel"], False)

@@ -45,7 +45,8 @@ The archive contains no symbolic links. Debug symbols stay with the original pac
 
 ### Combat core
 
-`Tests/Core/run_core_tests.sh`: 26 test cases, 257 checks, 0 failures. The required combat cases are covered:
+`Tests/Core/run_core_tests.sh`: 33 test cases, 630 checks, 0 failures (26 cases and 257 checks at the original
+release). The required combat cases are covered:
 - both fighters on both sides
 - buffering during hitstop and recovery
 - held versus pressed buttons
@@ -61,6 +62,10 @@ The archive contains no symbolic links. Debug symbols stay with the original pac
 - reset
 - malformed-data rejection with useful errors
 - identical replay hashes with the simulation driven at 30, 60, 75, 144, 165 and 240 Hz with frame-time jitter
+- per-hit reaction keys recorded on the defender, and malformed ones rejected
+- jumping: the arc, squat, landing and distances in all three directions; no block or grab in the air; the anti-air
+  knockdown and the fall; jump attacks hitting, blocked and landing into recovery; the CPU jumping in, attacking from
+  the air and being anti-aired
 
 ### Packaged runs (release f3ae5ab)
 
@@ -1338,12 +1343,25 @@ rolls, the grab and the three scripted throws):
   moving 41-47 cm in a single frame; `pkg-65` and `pkg-66` fix them (every jump clip under 35 cm a frame, no flips).
 - **Tests.** Core: the arc, squat, landing and distances in all three directions; no block or grab in the air, the
   anti-air knockdown and the fall; jump attacks hit and are blocked and land into recovery; in 36 CPU matches the CPU
-  jumped 133 times, attacked from the air 74 times and was knocked out of the air 49 times (33 cases, 629 checks).
+  jumped 133 times, attacked from the air 74 times and was knocked out of the air 49 times; the replay-determinism
+  test's recorded match now must include jumps (33 cases, 630 checks).
   The controls self-test checks D-pad up.
 - **Review and regression.** `pkg-64` recorded jumping straight up, forward and back and a jump-in for each fighter
   (`anim-99`); `pkg-66` was recorded the same way with the jump-ins timed nearer the top of the arc (`anim-103`).
   The smoke test, the controls self-tests (now checking D-pad up for Jump), the 25-step journey and the 12-match
   matrix all passed on `pkg-66`, with 0 failures and 0 warnings (`anim-104`).
+
+### Captured jump heavies (package `pkg-67-jumpkick`)
+
+- **Change.** The heavy jump attacks were keyed poses (Wren's read as a lunge). Wren's Flying Kick now comes from
+  Mixamo's Flying Sidekick From A Run (the body laid back, the lead leg driven out level through the active frames),
+  Ashka's Jumping Knee from her own flying-knee capture (the knee driven up mid-leap, ending before the combo's
+  punch). As with the jump, the game supplies the height and travel (`root_z_cap`, no root travel). Credited (40
+  Mixamo clips). The light jump attacks stay keyed.
+- **Measured.** Wrists within 11 degrees, necks within 19; under 35 cm a frame; no flips.
+- **Review and regression.** The jump review recorded on `pkg-67` (`anim-105`): the flying kick connects at head
+  height with the body laid back. The smoke test, the controls self-tests, the 25-step journey and the 12-match
+  matrix all passed, with 0 failures and 0 warnings (`anim-106`).
 
 ## Known limitations
 

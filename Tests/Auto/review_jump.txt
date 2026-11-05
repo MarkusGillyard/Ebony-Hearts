@@ -1,0 +1,108 @@
+# Jumping: straight up, forward and back, then jump-in Heavy and jump-in Light from walking range, each fighter
+# against the standing partner in Training. Record with capture.py --start-on <auto_log.txt>:match_start.
+wait 5
+press kbA Light
+wait 1
+training_gauge full
+match wren ashka training 0 left
+wait 2.5
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 1.3
+hold kbA Right
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.9
+release kbA Right
+wait 0.6
+press kbA Reset
+wait 1.0
+hold kbA Left
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.9
+release kbA Left
+wait 0.6
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.15
+press kbA Heavy
+wait 0.6
+release kbA Right
+wait 1.0
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.15
+press kbA Light
+wait 0.6
+release kbA Right
+wait 1.0
+press kbA Reset
+wait 1.0
+goto_main
+wait 1
+match ashka wren training 0 left
+wait 2.5
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 1.3
+hold kbA Right
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.9
+release kbA Right
+wait 0.6
+press kbA Reset
+wait 1.0
+hold kbA Left
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.9
+release kbA Left
+wait 0.6
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.15
+press kbA Heavy
+wait 0.6
+release kbA Right
+wait 1.0
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.15
+press kbA Light
+wait 0.6
+release kbA Right
+wait 1.0
+press kbA Reset
+wait 1.0
+goto_main
+wait 1
+wait 25
+quit

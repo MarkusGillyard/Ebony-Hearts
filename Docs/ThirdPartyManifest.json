@@ -416,7 +416,7 @@
   },
   {
    "id": "mixamo/animations",
-   "title": "Mixamo animations (39 clips exported; X Bot T-pose for calibration)",
+   "title": "Mixamo animations (40 clips exported; X Bot T-pose for calibration)",
    "creator": "Adobe (Mixamo)",
    "source_page": "https://www.mixamo.com/",
    "acquired": "2026-11-03 to 2026-11-05",
@@ -585,6 +585,10 @@
     {
      "file": "J_Jump_ActionIdle.fbx",
      "sha256": "b6a42b4a93f6532f5bd1d5dba3ac22e400db713a5c7a75e57c763f54ae9331fe"
+    },
+    {
+     "file": "J_FlyingSidekick.fbx",
+     "sha256": "41c382d32db05a9c67ec2175d80d239c242e3474e8a25659efc3306473ed142a"
     }
    ]
   },
