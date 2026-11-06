@@ -14,6 +14,8 @@
 #include "EHSettings.h"
 #include "EHUICanvas.h"
 #include "GameFramework/Actor.h"
+#include "GenericPlatform/GenericApplication.h"
+#include "GenericPlatform/GenericWindow.h"
 
 #include "EHGameDirector.generated.h"
 
@@ -21,6 +23,16 @@ class ACameraActor;
 class AEHFighterVisual;
 class AEHVfx;
 class UTexture2D;
+
+// Where the game window sits relative to the monitor it is on.
+struct FEHWindowFit
+{
+	FPlatformRect Window;
+	FPlatformRect Monitor;
+	FPlatformRect WorkArea;
+	EWindowMode::Type Mode = EWindowMode::Windowed;
+	bool bCoversMonitor = false;
+};
 
 // Move id string for a fighter's move index (empty for -1).
 inline FString EHMoveId(const eh::Match& Match, int32 Player, int32 Move)
@@ -233,6 +245,12 @@ private:
 	FEHSettings DiskDisplay;
 	bool bSessionDisplayOverride = false;
 	float DisplayConfirmLeft = 0.0f;
+	// After each display change: seconds until the fullscreen check, and how often it had to ask again.
+	static constexpr float DisplayVerifyDelay = 0.5f;
+	static constexpr int32 MaxDisplayReasserts = 2;
+	float DisplayVerifyIn = 0.0f;
+	int32 DisplayReasserts = 0;
+	int32 TotalDisplayReasserts = 0;
 
 	// Automation
 	FString AutoScript;
@@ -256,7 +274,12 @@ private:
 	void ApplySettings(bool bDisplay);
 	void SaveSettings();
 	// Writes the settings file; display values overridden by launch flags keep their saved values.
-	bool WriteSettings() const;
+	bool WriteSettings();
+	// Writes the engine's GameUserSettings.ini, which sizes the window before BeginPlay, with the saved display values,
+	// and leaves the engine's settings object on them.
+	void SaveEngineDisplay(const FEHSettings& Saved);
+	bool DescribeGameWindow(FEHWindowFit& Out) const;
+	void VerifyFullscreenApplied();
 	void ShowToast(const FString& Text);
 
 	// Flow

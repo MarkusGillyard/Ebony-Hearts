@@ -2,6 +2,7 @@
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "ComponentRecreateRenderStateContext.h"
 #include "EHFighterVisual.h"
 #include "EHVfx.h"
 #include "Engine/Engine.h"
@@ -10,6 +11,8 @@
 #include "Framework/Application/SlateApplication.h"
 #include "GameFramework/GameUserSettings.h"
 #include "GameFramework/PlayerController.h"
+#include "GenericPlatform/GenericApplication.h"
+#include "Widgets/SWindow.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
@@ -32,6 +35,11 @@ bool ReadContent(const FString& Relative, FString& Out)
 float HorizontalFov()
 {
 	return 2.0f * FMath::RadiansToDegrees(FMath::Atan(FMath::Tan(FMath::DegreesToRadians(VerticalFov * 0.5f)) * Aspect));
+}
+
+EWindowMode::Type ToWindowMode(int32 SettingsMode)
+{
+	return SettingsMode == 0 ? EWindowMode::Fullscreen : (SettingsMode == 1 ? EWindowMode::WindowedFullscreen : EWindowMode::Windowed);
 }
 }
 using namespace EHDirectorDetail;
@@ -212,25 +220,96 @@ void AEHGameDirector::ApplySettings(bool bDisplay)
 	{
 		return;
 	}
-	const EWindowMode::Type WM = Settings.WindowMode == 0 ? EWindowMode::Fullscreen : (Settings.WindowMode == 1 ? EWindowMode::WindowedFullscreen : EWindowMode::Windowed);
+	const EWindowMode::Type WM = ToWindowMode(Settings.WindowMode);
 	G->SetFullscreenMode(WM);
-	if (WM != EWindowMode::WindowedFullscreen)
-	{
-		G->SetScreenResolution(Settings.Resolution);
-	}
-	else
-	{
-		G->SetScreenResolution(G->GetDesktopResolution());
-	}
+	G->SetScreenResolution(WM == EWindowMode::WindowedFullscreen ? G->GetDesktopResolution() : Settings.Resolution);
 	G->SetVSyncEnabled(Settings.bVSync);
 	G->SetFrameRateLimit(static_cast<float>(Settings.FrameCap));
 	G->SetOverallScalabilityLevel(Settings.Quality);
 	// Unreal's resolution scale runs 0-100 %, so the setting is passed as the percentage it shows.
 	G->SetResolutionScaleValueEx(static_cast<float>(Settings.RenderScale));
-	G->ApplySettings(false);
+	// UGameUserSettings::ApplySettings minus its save: the applied display may be a launch-flag override or an
+	// unconfirmed change, and the engine ini must keep the saved one.
+	{
+		FGlobalComponentRecreateRenderStateContext RecreateOnce;
+		G->ApplyResolutionSettings(false);
+		G->ApplyNonResolutionSettings();
+	}
+	G->RequestUIUpdate();
+	SaveEngineDisplay(DiskDisplay);
+	DisplayVerifyIn = DisplayVerifyDelay;
+	DisplayReasserts = 0;
 }
 
-bool AEHGameDirector::WriteSettings() const
+bool AEHGameDirector::DescribeGameWindow(FEHWindowFit& Out) const
+{
+	TSharedPtr<SWindow> GameWindow = GEngine && GEngine->GameViewport ? GEngine->GameViewport->GetWindow() : nullptr;
+	if (!GameWindow.IsValid())
+	{
+		return false;
+	}
+	FDisplayMetrics Metrics;
+	FDisplayMetrics::RebuildDisplayMetrics(Metrics);
+	const FVector2D Pos = GameWindow->GetPositionInScreen();
+	const FVector2D Size = GameWindow->GetSizeInScreen();
+	Out.Window = FPlatformRect(FMath::RoundToInt(Pos.X), FMath::RoundToInt(Pos.Y), FMath::RoundToInt(Pos.X + Size.X), FMath::RoundToInt(Pos.Y + Size.Y));
+	Out.Monitor = FPlatformRect(0, 0, Metrics.PrimaryDisplayWidth, Metrics.PrimaryDisplayHeight);
+	Out.WorkArea = Metrics.PrimaryDisplayWorkAreaRect;
+	const FIntPoint Centre((Out.Window.Left + Out.Window.Right) / 2, (Out.Window.Top + Out.Window.Bottom) / 2);
+	for (const FMonitorInfo& Info : Metrics.MonitorInfo)
+	{
+		if (Centre.X >= Info.DisplayRect.Left && Centre.X < Info.DisplayRect.Right && Centre.Y >= Info.DisplayRect.Top && Centre.Y < Info.DisplayRect.Bottom)
+		{
+			Out.Monitor = Info.DisplayRect;
+			Out.WorkArea = Info.WorkArea;
+		}
+	}
+	Out.Mode = GameWindow->GetWindowMode();
+	Out.bCoversMonitor = Out.Window.Left == Out.Monitor.Left && Out.Window.Top == Out.Monitor.Top && Out.Window.Right == Out.Monitor.Right && Out.Window.Bottom == Out.Monitor.Bottom;
+	return true;
+}
+
+void AEHGameDirector::VerifyFullscreenApplied()
+{
+	// A fullscreen request SDL sends while the window manager is still taking over a newly created window can be lost
+	// on X11: the window is then shown decorated and clamped to the work area. The engine's reshape path repeats the
+	// request; it is used only when a fullscreen or borderless window does not cover its monitor.
+	FEHWindowFit Fit;
+	if (!DescribeGameWindow(Fit) || Fit.Mode == EWindowMode::Windowed || Fit.bCoversMonitor || DisplayReasserts >= MaxDisplayReasserts)
+	{
+		return;
+	}
+	TSharedPtr<SWindow> GameWindow = GEngine->GameViewport->GetWindow();
+	TSharedPtr<FGenericWindow> Native = GameWindow.IsValid() ? GameWindow->GetNativeWindow() : nullptr;
+	if (!Native.IsValid())
+	{
+		return;
+	}
+	UE_LOG(LogTemp, Display, TEXT("EbonyHearts: the window manager did not apply fullscreen (window %dx%d+%d+%d); requesting it again"),
+		Fit.Window.Right - Fit.Window.Left, Fit.Window.Bottom - Fit.Window.Top, Fit.Window.Left, Fit.Window.Top);
+	Native->ReshapeWindow(Fit.Monitor.Left, Fit.Monitor.Top, Fit.Monitor.Right - Fit.Monitor.Left, Fit.Monitor.Bottom - Fit.Monitor.Top);
+	++DisplayReasserts;
+	++TotalDisplayReasserts;
+	DisplayVerifyIn = DisplayVerifyDelay;
+}
+
+void AEHGameDirector::SaveEngineDisplay(const FEHSettings& Saved)
+{
+	UGameUserSettings* G = GEngine ? GEngine->GetGameUserSettings() : nullptr;
+	if (G == nullptr)
+	{
+		return;
+	}
+	// The values stay set after the save: the engine saves this object again when it exits (UGameEngine::PreExit),
+	// which would otherwise store the session's live display. The live display is applied and needs no copy here.
+	const EWindowMode::Type SavedMode = ToWindowMode(Saved.WindowMode);
+	G->SetFullscreenMode(SavedMode);
+	G->SetScreenResolution(SavedMode == EWindowMode::WindowedFullscreen ? G->GetDesktopResolution() : Saved.Resolution);
+	G->SetVSyncEnabled(Saved.bVSync);
+	G->SaveSettings();
+}
+
+bool AEHGameDirector::WriteSettings()
 {
 	FEHSettings ToSave = Settings;
 	if (bSessionDisplayOverride)
@@ -239,7 +318,13 @@ bool AEHGameDirector::WriteSettings() const
 		ToSave.Resolution = DiskDisplay.Resolution;
 		ToSave.bVSync = DiskDisplay.bVSync;
 	}
-	return ToSave.Save();
+	if (!ToSave.Save())
+	{
+		return false;
+	}
+	DiskDisplay = ToSave;
+	SaveEngineDisplay(DiskDisplay);
+	return true;
 }
 
 void AEHGameDirector::SaveSettings()
@@ -272,6 +357,14 @@ void AEHGameDirector::Tick(float DeltaSeconds)
 		FrameTimes.Add(DeltaSeconds * 1000.0f);
 	}
 	HandleConnections();
+	if (DisplayVerifyIn > 0.0f)
+	{
+		DisplayVerifyIn -= DeltaSeconds;
+		if (DisplayVerifyIn <= 0.0f)
+		{
+			VerifyFullscreenApplied();
+		}
+	}
 	TickAutomation(DeltaSeconds);
 	HandleNav();
 
