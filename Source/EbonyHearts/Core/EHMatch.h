@@ -164,6 +164,9 @@ struct MatchState
 	bool lastAdvantageValid = false;
 };
 
+// Hash of everything in the state that can change what happens next (replay and determinism checks).
+uint64_t HashState(const MatchState& state);
+
 class Match
 {
 public:

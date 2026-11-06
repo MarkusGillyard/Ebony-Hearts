@@ -588,9 +588,9 @@ void Match::AdvanceThrow(int a)
 	}
 	v.x = hold;
 
-		// RoundEnd lets an existing throw finish visually. Once a timeout result is
-		// awarded, its health comparison and winner must remain final.
-		if (s_.phase == Phase::Fight && t.throwFrame == d.damageFrame)
+	// RoundEnd lets an existing throw finish visually. Once a timeout result is
+	// awarded, its health comparison and winner must remain final.
+	if (s_.phase == Phase::Fight && t.throwFrame == d.damageFrame)
 	{
 		int32_t dmg = d.damage;
 		v.health -= dmg;
@@ -1475,27 +1475,27 @@ void Match::Tick(const InputFrame inputs[2])
 	}
 }
 
-uint64_t Match::Hash() const
+uint64_t HashState(const MatchState& state)
 {
 	uint64_t h = 1469598103934665603ULL;
-	Mix(h, static_cast<int64_t>(s_.phase));
-	Mix(h, static_cast<int64_t>(s_.mode));
-	Mix(h, s_.phaseFrame);
-	Mix(h, s_.round);
-	Mix(h, s_.timer);
-	Mix(h, s_.frame);
-	Mix(h, s_.roundWinner);
-	Mix(h, s_.matchWinner);
-	Mix(h, s_.timeout);
-	Mix(h, s_.doubleKO);
-	Mix(h, s_.advAttacker);
-	Mix(h, s_.advStartFrame);
-	Mix(h, s_.advReady[0]);
-	Mix(h, s_.advReady[1]);
-	Mix(h, s_.lastAdvantage);
-	Mix(h, s_.lastAdvantagePlayer);
-	Mix(h, s_.lastAdvantageValid);
-	for (const FighterState& f : s_.f)
+	Mix(h, static_cast<int64_t>(state.phase));
+	Mix(h, static_cast<int64_t>(state.mode));
+	Mix(h, state.phaseFrame);
+	Mix(h, state.round);
+	Mix(h, state.timer);
+	Mix(h, state.frame);
+	Mix(h, state.roundWinner);
+	Mix(h, state.matchWinner);
+	Mix(h, state.timeout);
+	Mix(h, state.doubleKO);
+	Mix(h, state.advAttacker);
+	Mix(h, state.advStartFrame);
+	Mix(h, state.advReady[0]);
+	Mix(h, state.advReady[1]);
+	Mix(h, state.lastAdvantage);
+	Mix(h, state.lastAdvantagePlayer);
+	Mix(h, state.lastAdvantageValid);
+	for (const FighterState& f : state.f)
 	{
 		Mix(h, f.x);
 		Mix(h, f.facing);
@@ -1549,6 +1549,11 @@ uint64_t Match::Hash() const
 		Mix(h, f.lastInput.pressed);
 	}
 	return h;
+}
+
+uint64_t Match::Hash() const
+{
+	return HashState(s_);
 }
 
 const char* StateName(FState state)

@@ -996,7 +996,7 @@ int main(int argc, char** argv)
 		}
 	});
 
-		Run("ko_timeout_draw_and_double_ko", [] {
+	Run("ko_timeout_draw_and_double_ko", [] {
 		// KO ends the round and awards it.
 		Match m = MakeMatch(0, 1, Mode::Versus);
 		Idle(m, g_rules.introFrames);
@@ -1053,36 +1053,36 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(full.State().phase == Phase::MatchEnd, "CPU match reaches a result");
 		const int w = full.State().matchWinner;
 		EXPECT_TRUE(w == 2 || full.State().f[w].roundWins >= g_rules.roundsToWin || full.State().round == g_rules.maxRounds, "winner has the rounds");
-		});
+	});
 
-		Run("timeout_freezes_throw_damage_after_result", [] {
-			Rules shortRound = g_rules;
-			shortRound.introFrames = 1;
-			shortRound.roundFrames = 6;
-			CharacterDef fragile = g_ashka;
-			fragile.maxHealth = 100;
-			Match m;
-			std::string error;
-			EXPECT_TRUE(m.Setup(shortRound, g_wren, fragile, Mode::Versus, error), "short match setup");
-			Idle(m, shortRound.introFrames);
-			m.TrainingPlace(Cm(-35), Cm(35));
-			Step(m, In(0, BtnThrow));
-			while (m.State().phase == Phase::Fight)
-			{
-				Step(m);
-			}
-			EXPECT_TRUE(m.State().timeout && m.State().roundWinner == 2, "throw pending at a tied timeout");
-			const int32_t healthAtResult = m.State().f[1].health;
-			bool lateDamage = false;
-			for (int tick = 0; tick < 70 && m.State().phase == Phase::RoundEnd; ++tick)
-			{
-				Step(m);
-				lateDamage = lateDamage || HasEvent(m, EventType::ThrowDamage);
-			}
-			EXPECT_EQ(m.State().f[1].health, healthAtResult, "health cannot change after timeout result");
-			EXPECT_TRUE(!lateDamage, "no throw damage event after timeout result");
-			EXPECT_EQ(m.State().f[0].roundWins + m.State().f[1].roundWins, 0, "late throw cannot change the round award");
-		});
+	Run("timeout_freezes_throw_damage_after_result", [] {
+		Rules shortRound = g_rules;
+		shortRound.introFrames = 1;
+		shortRound.roundFrames = 6;
+		CharacterDef fragile = g_ashka;
+		fragile.maxHealth = 100;
+		Match m;
+		std::string error;
+		EXPECT_TRUE(m.Setup(shortRound, g_wren, fragile, Mode::Versus, error), "short match setup");
+		Idle(m, shortRound.introFrames);
+		m.TrainingPlace(Cm(-35), Cm(35));
+		Step(m, In(0, BtnThrow));
+		while (m.State().phase == Phase::Fight)
+		{
+			Step(m);
+		}
+		EXPECT_TRUE(m.State().timeout && m.State().roundWinner == 2, "throw pending at a tied timeout");
+		const int32_t healthAtResult = m.State().f[1].health;
+		bool lateDamage = false;
+		for (int tick = 0; tick < 70 && m.State().phase == Phase::RoundEnd; ++tick)
+		{
+			Step(m);
+			lateDamage = lateDamage || HasEvent(m, EventType::ThrowDamage);
+		}
+		EXPECT_EQ(m.State().f[1].health, healthAtResult, "health cannot change after timeout result");
+		EXPECT_TRUE(!lateDamage, "no throw damage event after timeout result");
+		EXPECT_EQ(m.State().f[0].roundWins + m.State().f[1].roundWins, 0, "late throw cannot change the round award");
+	});
 
 	Run("reset_clears_state", [] {
 		Match m = MakeMatch(0, 1);
@@ -1111,6 +1111,190 @@ int main(int argc, char** argv)
 		EXPECT_EQ(heavy.State().f[0].move, special.State().f[0].move, "same visible current move");
 		EXPECT_TRUE(heavy.State().f[0].bufferCount > 0 && special.State().f[0].bufferCount > 0, "different pending inputs are buffered");
 		EXPECT_TRUE(heavy.Hash() != special.Hash(), "future-affecting buffered input changes the hash");
+	});
+
+	Run("state_hash_covers_every_field", [] {
+		// Every field of the combat state can change what happens next, so changing any one must change the hash.
+		// The size checks fail when a field is added; add it to HashState() and to the lists below.
+		static_assert(sizeof(FighterState) == 156, "FighterState changed: hash the new field and add it here");
+		static_assert(sizeof(MatchState) == 360, "MatchState changed: hash the new field and add it here");
+		Match m = MakeMatch(0, 1, Mode::Versus);
+		Idle(m, g_rules.introFrames + 3);
+		MatchState base = m.State();
+		EXPECT_EQ(HashState(base), m.Hash(), "the match hash is the state hash");
+		for (FighterState& f : base.f)
+		{
+			f.bufferCount = 2;
+			f.buffer[0] = Buffered{BtnLight, 1, 3};
+			f.buffer[1] = Buffered{BtnHeavy, 0, 1};
+		}
+		const uint64_t h0 = HashState(base);
+		using MatchEdit = std::function<void(MatchState&)>;
+		const std::vector<std::pair<const char*, MatchEdit>> matchFields = {
+			{"phase", [](MatchState& s) { s.phase = s.phase == Phase::Fight ? Phase::RoundEnd : Phase::Fight; }},
+			{"mode", [](MatchState& s) { s.mode = s.mode == Mode::Versus ? Mode::Training : Mode::Versus; }},
+			{"phaseFrame", [](MatchState& s) { ++s.phaseFrame; }},
+			{"round", [](MatchState& s) { ++s.round; }},
+			{"timer", [](MatchState& s) { ++s.timer; }},
+			{"frame", [](MatchState& s) { ++s.frame; }},
+			{"roundWinner", [](MatchState& s) { s.roundWinner = 1; }},
+			{"matchWinner", [](MatchState& s) { s.matchWinner = 1; }},
+			{"timeout", [](MatchState& s) { s.timeout = !s.timeout; }},
+			{"doubleKO", [](MatchState& s) { s.doubleKO = !s.doubleKO; }},
+			{"advAttacker", [](MatchState& s) { s.advAttacker = 1; }},
+			{"advStartFrame", [](MatchState& s) { ++s.advStartFrame; }},
+			{"advReady[0]", [](MatchState& s) { ++s.advReady[0]; }},
+			{"advReady[1]", [](MatchState& s) { ++s.advReady[1]; }},
+			{"lastAdvantage", [](MatchState& s) { ++s.lastAdvantage; }},
+			{"lastAdvantagePlayer", [](MatchState& s) { s.lastAdvantagePlayer = 1; }},
+			{"lastAdvantageValid", [](MatchState& s) { s.lastAdvantageValid = !s.lastAdvantageValid; }},
+		};
+		using FighterEdit = std::function<void(FighterState&)>;
+		const std::vector<std::pair<const char*, FighterEdit>> fighterFields = {
+			{"x", [](FighterState& f) { ++f.x; }},
+			{"facing", [](FighterState& f) { f.facing = static_cast<int8_t>(-f.facing); }},
+			{"state", [](FighterState& f) { f.state = f.state == FState::Neutral ? FState::Guard : FState::Neutral; }},
+			{"stateFrame", [](FighterState& f) { ++f.stateFrame; }},
+			{"walk", [](FighterState& f) { f.walk = static_cast<int8_t>(f.walk + 1); }},
+			{"move", [](FighterState& f) { f.move = static_cast<int16_t>(f.move + 1); }},
+			{"moveDir", [](FighterState& f) { f.moveDir = static_cast<int8_t>(f.moveDir + 1); }},
+			{"moveFrame", [](FighterState& f) { ++f.moveFrame; }},
+			{"hitMask", [](FighterState& f) { f.hitMask ^= 1u; }},
+			{"connected", [](FighterState& f) { f.connected = !f.connected; }},
+			{"connectedHit", [](FighterState& f) { f.connectedHit = !f.connectedHit; }},
+			{"stun", [](FighterState& f) { ++f.stun; }},
+			{"hitstop", [](FighterState& f) { ++f.hitstop; }},
+			{"pushRemaining", [](FighterState& f) { ++f.pushRemaining; }},
+			{"pushFramesLeft", [](FighterState& f) { ++f.pushFramesLeft; }},
+			{"pushSource", [](FighterState& f) { f.pushSource = static_cast<int8_t>(f.pushSource + 1); }},
+			{"health", [](FighterState& f) { --f.health; }},
+			{"meter", [](FighterState& f) { ++f.meter; }},
+			{"combo", [](FighterState& f) { ++f.combo; }},
+			{"comboDamage", [](FighterState& f) { ++f.comboDamage; }},
+			{"auraFrames", [](FighterState& f) { ++f.auraFrames; }},
+			{"dodgeLockout", [](FighterState& f) { ++f.dodgeLockout; }},
+			{"throwInvuln", [](FighterState& f) { ++f.throwInvuln; }},
+			{"throwIndex", [](FighterState& f) { f.throwIndex = static_cast<int16_t>(f.throwIndex + 1); }},
+			{"throwOwner", [](FighterState& f) { f.throwOwner = static_cast<int8_t>(f.throwOwner + 1); }},
+			{"throwFrame", [](FighterState& f) { ++f.throwFrame; }},
+			{"throwKO", [](FighterState& f) { f.throwKO = !f.throwKO; }},
+			{"lastBlockPress", [](FighterState& f) { ++f.lastBlockPress; }},
+			{"lastBlockPressTimed", [](FighterState& f) { f.lastBlockPressTimed = !f.lastBlockPressTimed; }},
+			{"lastBlockPressDeflected", [](FighterState& f) { f.lastBlockPressDeflected = !f.lastBlockPressDeflected; }},
+			{"y", [](FighterState& f) { ++f.y; }},
+			{"vy", [](FighterState& f) { ++f.vy; }},
+			{"jumpFrame", [](FighterState& f) { f.jumpFrame = static_cast<int16_t>(f.jumpFrame + 1); }},
+			{"jumpDir", [](FighterState& f) { f.jumpDir = static_cast<int8_t>(f.jumpDir + 1); }},
+			{"reaction", [](FighterState& f) { f.reaction = static_cast<uint8_t>(f.reaction + 1); }},
+			{"reactMove", [](FighterState& f) { f.reactMove = static_cast<int16_t>(f.reactMove + 1); }},
+			{"reactHit", [](FighterState& f) { f.reactHit = static_cast<int8_t>(f.reactHit + 1); }},
+			{"roundWins", [](FighterState& f) { ++f.roundWins; }},
+			{"idleFrames", [](FighterState& f) { ++f.idleFrames; }},
+			{"bufferCount", [](FighterState& f) { f.bufferCount = 1; }},
+			{"buffer[1].button", [](FighterState& f) { f.buffer[1].button = BtnSpecial; }},
+			{"buffer[1].dir", [](FighterState& f) { f.buffer[1].dir = -1; }},
+			{"buffer[1].age", [](FighterState& f) { ++f.buffer[1].age; }},
+			{"lastInput.x", [](FighterState& f) { f.lastInput.x = static_cast<int8_t>(f.lastInput.x + 1); }},
+			{"lastInput.y", [](FighterState& f) { f.lastInput.y = static_cast<int8_t>(f.lastInput.y + 1); }},
+			{"lastInput.held", [](FighterState& f) { f.lastInput.held ^= BtnBlock; }},
+			{"lastInput.pressed", [](FighterState& f) { f.lastInput.pressed ^= BtnLight; }},
+		};
+		for (const auto& [name, edit] : matchFields)
+		{
+			MatchState s = base;
+			edit(s);
+			EXPECT_TRUE(HashState(s) != h0, std::string("hash covers ") + name);
+		}
+		for (int p = 0; p < 2; ++p)
+		{
+			for (const auto& [name, edit] : fighterFields)
+			{
+				MatchState s = base;
+				edit(s.f[p]);
+				EXPECT_TRUE(HashState(s) != h0, "hash covers f[" + std::to_string(p) + "]." + name);
+			}
+			// Slots past bufferCount are never read, so they must not change the hash.
+			MatchState stale = base;
+			stale.f[p].buffer[kBufferCapacity - 1] = Buffered{BtnThrow, 1, 9};
+			EXPECT_TRUE(HashState(stale) == h0, "hash ignores unused buffer slots of f[" + std::to_string(p) + "]");
+		}
+	});
+
+	Run("timeout_throw_boundaries_both_sides", [] {
+		// Each fighter throws the other; the round then times out one tick before, on, and one tick after the tick
+		// the throw's damage lands. Damage on the last fought tick counts; damage after the result does not.
+		for (int thrower = 0; thrower < 2; ++thrower)
+		{
+			const int victim = 1 - thrower;
+			const std::string who = thrower == 0 ? "wren throws: " : "ashka throws: ";
+			auto Start = [&](int32_t roundFrames, Match& m) {
+				Rules r = g_rules;
+				r.introFrames = 1;
+				r.roundFrames = roundFrames;
+				std::string error;
+				EXPECT_TRUE(m.Setup(r, g_wren, g_ashka, Mode::Versus, error), who + "setup");
+				Idle(m, r.introFrames);
+				m.TrainingPlace(Cm(-35), Cm(35));
+				const InputFrame press = In(0, BtnThrow);
+				Step(m, thrower == 0 ? press : InputFrame(), thrower == 1 ? press : InputFrame());
+			};
+			// Fight tick (the press is tick 1) on which the damage lands, in a round long enough not to time out.
+			Match probe;
+			Start(2000, probe);
+			int damageTick = 0;
+			for (int tick = 2; tick < 400 && damageTick == 0; ++tick)
+			{
+				Step(probe);
+				if (HasEvent(probe, EventType::ThrowDamage, victim) || HasEvent(probe, EventType::ThrowDamage, thrower))
+				{
+					damageTick = tick;
+				}
+			}
+			EXPECT_TRUE(damageTick > 2, who + "throw connects and deals damage");
+			if (damageTick <= 2)
+			{
+				continue;
+			}
+			const int32_t full = probe.Character(victim).maxHealth;
+			for (int offset = -1; offset <= 1; ++offset)
+			{
+				const std::string at = who + "timeout at damage tick " + (offset < 0 ? "-1: " : (offset == 0 ? "+0: " : "+1: "));
+				Match m;
+				Start(damageTick + offset, m);
+				int damageEvents = 0;
+				while (m.State().phase == Phase::Fight)
+				{
+					Step(m);
+					damageEvents += HasEvent(m, EventType::ThrowDamage) ? 1 : 0;
+				}
+				EXPECT_TRUE(m.State().timeout, at + "the round ends by timeout");
+				const bool counted = offset >= 0;
+				EXPECT_EQ(damageEvents, counted ? 1 : 0, at + "damage events while fighting");
+				EXPECT_TRUE(counted ? m.State().f[victim].health < full : m.State().f[victim].health == full, at + "victim health at the result");
+				EXPECT_EQ(m.State().roundWinner, counted ? thrower : 2, at + "round winner");
+				EXPECT_EQ(m.State().f[thrower].roundWins, counted ? 1 : 0, at + "thrower's round wins");
+				const int32_t healthAtResult = m.State().f[victim].health;
+				const int8_t winnerAtResult = m.State().roundWinner;
+				int lateDamage = 0;
+				bool healthFrozen = true;
+				while (m.State().phase == Phase::RoundEnd)
+				{
+					Step(m);
+					lateDamage += HasEvent(m, EventType::ThrowDamage) ? 1 : 0;
+					healthFrozen = healthFrozen && (m.State().phase != Phase::RoundEnd || m.State().f[victim].health == healthAtResult);
+				}
+				EXPECT_TRUE(healthFrozen, at + "health frozen after the result");
+				EXPECT_EQ(lateDamage, 0, at + "no damage after the result");
+				EXPECT_EQ(winnerAtResult, counted ? thrower : 2, at + "result unchanged through the round end");
+				EXPECT_TRUE(m.State().phase == Phase::Intro && m.State().round == 2, at + "next round starts");
+				for (int p = 0; p < 2; ++p)
+				{
+					const FighterState& f = m.State().f[p];
+					EXPECT_TRUE(f.health == m.Character(p).maxHealth && f.state == FState::Neutral && f.throwIndex == -1 && f.throwOwner == -1 && f.throwFrame == 0 && f.y == 0,
+						at + "fighter " + std::to_string(p) + " starts the next round fresh");
+				}
+			}
+		}
 	});
 
 	Run("replay_determinism_and_render_rate_independence", [] {
