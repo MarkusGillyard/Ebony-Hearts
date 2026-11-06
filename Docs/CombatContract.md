@@ -102,7 +102,8 @@ Her specials:
   strike damage to 120% and halves the damage of energy (flame) attacks. It cannot stack, gauge does not build while it
   is active, and it is lost if she is hit before it applies on frame 24.
 
-Her grabs are a double-leg slam (toward/neutral) and a belly-to-belly suplex (away), which switches sides.
+Her grabs are a double-leg slam (toward/neutral) and a shoulder throw (away), which switches sides. (The shoulder
+throw keeps the data id `wren_suplex` from the scripted belly-to-belly suplex it replaced in `pkg-44-shoulder`.)
 
 **Ashka Rook** is a composed Muay Thai specialist who controls space with teeps and wins up close with elbows, knees and
 the clinch. Her Light string is jab, stepping horizontal elbow, step-in knee. Heavy is a Thai body kick; toward + Heavy
