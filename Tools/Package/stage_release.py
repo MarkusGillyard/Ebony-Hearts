@@ -2,16 +2,18 @@
 
 Usage: python3 stage_release.py <BuildCookRun archive dir>/Linux <out dir> <release name> <source commit>
 
-- Copies the package except the files listed in Manifest_DebugFiles_Linux.txt (symbols stay with the original package).
+- Copies the package except its symbol files (.debug/.sym) and debug manifest; symbols stay with the original package.
 - Adds THIRD_PARTY_NOTICES.txt (the asset ledger's third-party table, the engine notices and the font licences) and
   VERSION.txt (source commit, content hash, engine, build time).
 - Writes <release name>.tar.gz plus SHA256SUMS (archive) and <release name>.files.sha256 (every file in the release).
-Refuses to write into an existing release directory; never deletes anything.
+Checks the whole package before writing: refuses links, special files, a package without paks or game binary, and
+any existing release folder, archive or file list of the same name. Never deletes or overwrites anything.
 """
 import hashlib
 import os
 import re
 import shutil
+import stat
 import sys
 import tarfile
 import time
@@ -75,7 +77,39 @@ def content_hash(package):
     return h.hexdigest()
 
 
+def build_config(package):
+    bins = os.path.join(package, "EbonyHearts", "Binaries", "Linux")
+    if os.path.isfile(os.path.join(bins, "EbonyHearts-Linux-Shipping")):
+        return "Shipping"
+    if os.path.isfile(os.path.join(bins, "EbonyHearts")):
+        return "Development"
+    raise SystemExit(f"no game binary in {bins}")
+
+
+def files_to_ship(package):
+    """Relative paths of the files to copy. Refuses links and anything that is not a plain file or folder; leaves out
+    the symbol files (.debug/.sym) and the debug manifest, so symbols stay with the original package."""
+    ship = []
+    for root, dirs, files in os.walk(package, followlinks=False):
+        for d in dirs:
+            if os.path.islink(os.path.join(root, d)):
+                raise SystemExit(f"symlink in package: {os.path.join(root, d)}")
+        for f in files:
+            src = os.path.join(root, f)
+            if os.path.islink(src):
+                raise SystemExit(f"symlink in package: {src}")
+            if not stat.S_ISREG(os.lstat(src).st_mode):
+                raise SystemExit(f"not a regular file in package: {src}")
+            rel = os.path.normpath(os.path.relpath(src, package))
+            if rel == "Manifest_DebugFiles_Linux.txt" or rel.endswith((".debug", ".sym")):
+                continue
+            ship.append(rel)
+    return sorted(ship)
+
+
 def main():
+    if len(sys.argv) != 5:
+        raise SystemExit("usage: stage_release.py <package>/Linux <out dir> <release name> <source commit>")
     package, out, name, commit = sys.argv[1:5]
     if not name or name in (".", "..") or os.path.basename(name) != name:
         raise SystemExit(f"release name must be a single directory name: {name}")
@@ -84,33 +118,21 @@ def main():
     release = os.path.join(out, name)
     if os.path.commonpath((package, release)) == package:
         raise SystemExit(f"release dir must be outside package: {release}")
-    if os.path.exists(release):
-        raise SystemExit(f"release dir exists: {release}")
-    debug = set()
-    manifest = os.path.join(package, "Manifest_DebugFiles_Linux.txt")
-    if os.path.exists(manifest):
-        for line in open(manifest, encoding="utf-8"):
-            rel = line.split("\t")[0].strip()
-            if rel.endswith((".debug", ".sym")):
-                debug.add(os.path.normpath(rel))
+    for existing in (release, os.path.join(out, f"{name}.tar.gz"), os.path.join(out, f"{name}.files.sha256")):
+        if os.path.lexists(existing):
+            raise SystemExit(f"release output exists: {existing}")
+    if not os.path.isfile(os.path.join(package, "EbonyHearts.sh")):
+        raise SystemExit(f"not a packaged build (no EbonyHearts.sh): {package}")
+    paks = os.path.join(package, "EbonyHearts", "Content", "Paks")
+    if not os.path.isdir(paks) or not os.listdir(paks):
+        raise SystemExit(f"no content paks in {paks}")
+    config = build_config(package)
+    ship = files_to_ship(package)
     os.makedirs(release)
-    copied = 0
-    for root, dirs, files in os.walk(package, followlinks=False):
-        rel_root = os.path.relpath(root, package)
-        for d in dirs:
-            if os.path.islink(os.path.join(root, d)):
-                raise SystemExit(f"symlink in package: {os.path.join(root, d)}")
-        for f in files:
-            rel = os.path.normpath(os.path.join(rel_root, f))
-            src = os.path.join(root, f)
-            if os.path.islink(src):
-                raise SystemExit(f"symlink in package: {src}")
-            if rel in debug or rel == "Manifest_DebugFiles_Linux.txt":
-                continue
-            dst = os.path.join(release, rel)
-            os.makedirs(os.path.dirname(dst), exist_ok=True)
-            shutil.copy2(src, dst)
-            copied += 1
+    for rel in ship:
+        dst = os.path.join(release, rel)
+        os.makedirs(os.path.dirname(dst), exist_ok=True)
+        shutil.copy2(os.path.join(package, rel), dst)
     with open(os.path.join(release, "THIRD_PARTY_NOTICES.txt"), "w", encoding="utf-8") as f:
         f.write(notices(package))
     built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(os.path.getmtime(os.path.join(package, "EbonyHearts.sh"))))
@@ -118,7 +140,7 @@ def main():
         f.write(f"Ebony Hearts - first playable slice ({name})\n"
                 f"Source commit: {commit}\n"
                 f"Content hash (SHA-256 over the pak files): {content_hash(package)}\n"
-                f"Engine: Unreal Engine 5.8.4, Shipping, Linux x86-64 (Vulkan SM6)\n"
+                f"Engine: Unreal Engine 5.8.4, {config}, Linux x86-64 (Vulkan SM6)\n"
                 f"Packaged: {built}\n"
                 f"Launch: ./EbonyHearts.sh\n")
     files = []
@@ -126,15 +148,15 @@ def main():
         for f in fs:
             p = os.path.join(root, f)
             files.append((os.path.relpath(p, release), sha256(p)))
-    with open(os.path.join(out, f"{name}.files.sha256"), "w") as f:
+    with open(os.path.join(out, f"{name}.files.sha256"), "x") as f:
         for rel, h in sorted(files):
             f.write(f"{h}  {name}/{rel}\n")
     archive = os.path.join(out, f"{name}.tar.gz")
-    with tarfile.open(archive, "w:gz", compresslevel=6) as tar:
+    with tarfile.open(archive, "x:gz", compresslevel=6) as tar:
         tar.add(release, arcname=name)
     with open(os.path.join(out, "SHA256SUMS"), "a") as f:
         f.write(f"{sha256(archive)}  {name}.tar.gz\n")
-    print(f"staged {copied} package files (+2 notices/version) -> {release}")
+    print(f"staged {len(ship)} package files (+2 notices/version) -> {release}")
     print(f"archive {archive} {os.path.getsize(archive)} bytes")
 
 
