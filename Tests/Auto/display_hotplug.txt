@@ -1,0 +1,18 @@
+# Monitor standby and wake while the game changes window mode (EH-07). Launch windowed, e.g. -windowed -ResX=1280 -ResY=720.
+# Each probe queues an output disconnect, leaves a window move outstanding and enters fullscreen, then queues the
+# reconnect and returns to a window; the game resizes through its own settings path in between.
+wait 4
+platform_check
+display windowed 1280 720
+wait 2
+loop 5
+display_hotplug_probe
+wait 2
+display windowed 1600 900
+wait 2
+display windowed 1280 720
+wait 2
+endloop
+platform_check
+screenshot hotplug_after
+quit

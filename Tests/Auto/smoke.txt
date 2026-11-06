@@ -15,6 +15,7 @@ wait 12
 perf_end perf_smoke
 screenshot 05_fight_later
 assets
+platform_check
 mem after_match
 goto_main
 wait 1

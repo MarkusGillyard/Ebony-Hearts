@@ -1,0 +1,5 @@
+# Start-up stability (Tests/Auto/launch_loop.py): show the title, check the platform layer and the window size, quit.
+wait 6
+platform_check
+window_check
+quit

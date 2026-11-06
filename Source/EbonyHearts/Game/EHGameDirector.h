@@ -268,6 +268,8 @@ private:
 	TMap<int32, uint32> InputLogHeld;
 	int32 AutoMatches = 0;
 	double AutoStart = 0.0;
+	float AudioProbeLeft = 0.0f;     // automation: seconds of off-thread audio submits left (Development builds)
+	int64 AudioProbeCalls = 0;
 
 	// Lifecycle helpers
 	bool LoadData();
@@ -365,6 +367,8 @@ private:
 	// Automation
 	void InitAutomation();
 	void TickAutomation(float DeltaSeconds);
+	void RunDisplayHotplugProbe();
+	void TickAudioProbe(float DeltaSeconds);
 	void AutoLogLine(const FString& Line);
 	void WriteEvidence(const FString& Name, const FString& Text);
 	// press/hold/release by name: a gameplay action presses the device's bound key, a menu command its fixed key.

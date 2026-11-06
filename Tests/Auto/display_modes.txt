@@ -1,0 +1,29 @@
+# Window mode transitions after start-up (session only): fullscreen, borderless and windowed in turn, title kept on
+# screen. window_check after each change reports a fullscreen or borderless window that does not cover its monitor.
+wait 4
+platform_check
+window_check
+loop 4
+display fullscreen 1920 1080
+wait 2.5
+window_check
+screenshot modes_fullscreen
+display borderless
+wait 2.5
+window_check
+display fullscreen 1920 1080
+wait 2.5
+window_check
+display windowed 1280 720
+wait 2.5
+window_check
+screenshot modes_windowed
+display borderless
+wait 2.5
+window_check
+endloop
+press kbA Light
+wait 1
+expect_screen 2
+platform_check
+quit

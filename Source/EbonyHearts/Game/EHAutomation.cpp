@@ -3,6 +3,8 @@
 // into the router too, so matches exercise the same sampling path as a keyboard or gamepad.
 #include "EHGameDirector.h"
 
+#include "AudioDevice.h"
+#include "AudioMixerDevice.h"
 #include "DynamicRHI.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
@@ -17,6 +19,10 @@
 #include "Misc/Paths.h"
 #include "RenderTimer.h"
 #include "UnrealClient.h"
+#include "Widgets/SWindow.h"
+#if EH_LINUX_PLATFORM
+#include "EHLinuxPlatform.h"
+#endif
 
 namespace EHAutoDetail
 {
@@ -295,6 +301,12 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 	{
 		return;
 	}
+#if !UE_BUILD_SHIPPING
+	if (AudioProbeLeft > 0.0f)
+	{
+		TickAudioProbe(DeltaSeconds);
+	}
+#endif
 	if (bRecordFrames)
 	{
 		GpuTimes.Add(FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles()));
@@ -717,6 +729,62 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 				Loops.Pop();
 			}
 		}
+		else if (Cmd == TEXT("platform_check"))
+		{
+#if EH_LINUX_PLATFORM
+			const EHLinux::FPlatformReport P = EHLinux::GetPlatformReport();
+			AutoLogLine(FString::Printf(TEXT("%s platform_check audio_output=%d delivered=%llu dropped=%llu display_guard=%d deferred=%llu replayed=%llu displays=[%s]"),
+				P.bAudioOutputActive && P.bDisplayGuardActive ? TEXT("ok") : TEXT("FAIL"), P.bAudioOutputActive, P.AudioBuffersDelivered, P.AudioSubmitsDropped,
+				P.bDisplayGuardActive, P.DisplayEventsDeferred, P.DisplayEventsReplayed, *EHLinux::DescribeDisplays()));
+#else
+			AutoLogLine(TEXT("ok platform_check (no platform layer on this target)"));
+#endif
+		}
+		else if (Cmd == TEXT("window_check"))
+		{
+			// Fullscreen and borderless must cover the whole monitor, not just its work area (the panel-sized window).
+			FEHWindowFit Fit;
+			if (!DescribeGameWindow(Fit))
+			{
+				AutoLogLine(TEXT("FAIL window_check: no game window"));
+			}
+			else
+			{
+				const bool bOk = Fit.Mode == EWindowMode::Windowed || Fit.bCoversMonitor;
+				auto Rect = [](const FPlatformRect& R) { return FString::Printf(TEXT("%dx%d+%d+%d"), R.Right - R.Left, R.Bottom - R.Top, R.Left, R.Top); };
+				AutoLogLine(FString::Printf(TEXT("%s window_check mode=%s window=%s monitor=%s workarea=%s reasserted=%d"), bOk ? TEXT("ok") : TEXT("FAIL"),
+					Fit.Mode == EWindowMode::Fullscreen ? TEXT("fullscreen") : (Fit.Mode == EWindowMode::WindowedFullscreen ? TEXT("borderless") : TEXT("windowed")),
+					*Rect(Fit.Window), *Rect(Fit.Monitor), *Rect(Fit.WorkArea), TotalDisplayReasserts));
+			}
+		}
+		else if (Cmd == TEXT("display"))
+		{
+			// display fullscreen|borderless|windowed [W H]: a display change through the game's own path, for this
+			// session only.
+			const FString DisplayMode = Arg(1, TEXT("windowed"));
+			Settings.WindowMode = DisplayMode == TEXT("fullscreen") ? 0 : (DisplayMode == TEXT("borderless") ? 1 : 2);
+			if (T.IsValidIndex(3))
+			{
+				Settings.Resolution = FIntPoint(FCString::Atoi(*T[2]), FCString::Atoi(*T[3]));
+			}
+			bSessionDisplayOverride = true;
+			ApplySettings(true);
+			AutoLogLine(FString::Printf(TEXT("display %s %dx%d"), *DisplayMode, Settings.Resolution.X, Settings.Resolution.Y));
+		}
+		else if (Cmd == TEXT("display_hotplug_probe"))
+		{
+			RunDisplayHotplugProbe();
+		}
+		else if (Cmd == TEXT("audio_offthread_submit"))
+		{
+#if UE_BUILD_SHIPPING
+			AutoLogLine(TEXT("FAIL audio_offthread_submit runs in Development builds only"));
+#else
+			AudioProbeLeft = FCString::Atof(*Arg(1, TEXT("5")));
+			AudioProbeCalls = 0;
+			AutoLogLine(FString::Printf(TEXT("audio_offthread_submit start %.1fs"), AudioProbeLeft));
+#endif
+		}
 		else if (Cmd == TEXT("quit"))
 		{
 			AutoLogLine(FString::Printf(TEXT("quit after %d matches, sounds played %d"), AutoMatches, Audio.PlayedCount()));
@@ -730,6 +798,71 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 		}
 	}
 }
+
+void AEHGameDirector::RunDisplayHotplugProbe()
+{
+#if EH_LINUX_PLATFORM
+	// A monitor entering standby while the game goes fullscreen: the disconnect is queued and a window-manager request
+	// is left outstanding, so SDL's fullscreen call waits on the window manager with the disconnect next in its queue.
+	TSharedPtr<SWindow> Window = GEngine && GEngine->GameViewport ? GEngine->GameViewport->GetWindow() : nullptr;
+	TSharedPtr<FGenericWindow> Native = Window.IsValid() ? Window->GetNativeWindow() : nullptr;
+	if (!Native.IsValid() || Native->GetWindowMode() != EWindowMode::Windowed)
+	{
+		AutoLogLine(TEXT("FAIL display_hotplug_probe needs a windowed game window"));
+		return;
+	}
+	void* Handle = Native->GetOSWindowHandle();
+	const EHLinux::FPlatformReport Before = EHLinux::GetPlatformReport();
+	FString Error;
+	if (!EHLinux::QueueOutputChange(Handle, false, Error))
+	{
+		AutoLogLine(FString::Printf(TEXT("FAIL display_hotplug_probe: %s"), *Error));
+		return;
+	}
+	EHLinux::LeaveMoveOutstanding(Handle);
+	Native->SetWindowMode(EWindowMode::Fullscreen);
+	const EHLinux::FPlatformReport Mid = EHLinux::GetPlatformReport();
+	// The monitor wakes while the game returns to a window.
+	const bool bWakeQueued = EHLinux::QueueOutputChange(Handle, true, Error);
+	Native->SetWindowMode(EWindowMode::Windowed);
+	AutoLogLine(FString::Printf(TEXT("%s display_hotplug_probe standby_deferred=%llu wake_queued=%d displays=[%s]"),
+		bWakeQueued ? TEXT("ok") : TEXT("FAIL"), Mid.DisplayEventsDeferred - Before.DisplayEventsDeferred, bWakeQueued, *EHLinux::DescribeDisplays()));
+#else
+	AutoLogLine(TEXT("ok display_hotplug_probe (no platform layer on this target)"));
+#endif
+}
+
+#if !UE_BUILD_SHIPPING
+void AEHGameDirector::TickAudioProbe(float DeltaSeconds)
+{
+	// The audio render thread submits one buffer of silence from its own thread when the stream starts; this repeats
+	// that call from the game thread while SDL keeps requesting audio.
+	static TArray<uint8> Silence;
+	if (Silence.Num() == 0)
+	{
+		Silence.SetNumZeroed(1 << 16);
+	}
+	FAudioDeviceHandle Main = GEngine ? GEngine->GetMainAudioDevice() : FAudioDeviceHandle();
+	Audio::FMixerDevice* Mixer = Main.IsValid() ? static_cast<Audio::FMixerDevice*>(Main.GetAudioDevice()) : nullptr;
+	Audio::IAudioMixerPlatformInterface* Platform = Mixer ? Mixer->GetAudioMixerPlatform() : nullptr;
+	if (Platform == nullptr)
+	{
+		AutoLogLine(TEXT("FAIL audio_offthread_submit: no audio mixer platform"));
+		AudioProbeLeft = 0.0f;
+		return;
+	}
+	for (int32 i = 0; i < 8; ++i)
+	{
+		Platform->SubmitBuffer(Silence.GetData());
+		++AudioProbeCalls;
+	}
+	AudioProbeLeft -= DeltaSeconds;
+	if (AudioProbeLeft <= 0.0f)
+	{
+		AutoLogLine(FString::Printf(TEXT("ok audio_offthread_submit calls=%lld"), AudioProbeCalls));
+	}
+}
+#endif
 
 // ---------------------------------------------------------------------------------------------------------------
 // Self-tests for the control system, run in the packaged game so they cover the shipped code.
