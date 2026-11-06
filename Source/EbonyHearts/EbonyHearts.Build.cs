@@ -12,5 +12,11 @@ public class EbonyHearts : ModuleRules
 		});
 		// The combat core is plain C++ shared with the standalone test build in Tests/Core.
 		PublicIncludePaths.Add(System.IO.Path.Combine(ModuleDirectory, "Core"));
+		bool bLinux = Target.Platform == UnrealTargetPlatform.Linux;
+		if (bLinux)
+		{
+			PrivateDependencyModuleNames.Add("EbonyHeartsLinux");
+		}
+		PrivateDefinitions.Add("EH_LINUX_PLATFORM=" + (bLinux ? "1" : "0"));
 	}
 }

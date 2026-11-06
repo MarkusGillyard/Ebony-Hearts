@@ -8,6 +8,12 @@
 			"Name": "EbonyHearts",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "EbonyHeartsLinux",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"PlatformAllowList": ["Linux"]
 		}
 	],
 	"Plugins": [
