@@ -54,6 +54,7 @@ of each script for another machine.
 | `signature.txt`, `review.txt` | Training signature moves and a full match, for stills and footage |
 | `review_match.txt` | A full bot-versus-CPU match (both Hard) for footage of normal play |
 | `review_reactions.txt`, `review_flow.txt`, `review_jump.txt` | Training reviews of the playtest work: light strings from near full reach, Heavy and toward + Heavy (hit reactions); jabs from walking, taps, walk into strikes (movement into strikes); jumps in all directions and jump-ins. Record with `capture.py ... --start-on <evidence>/auto_log.txt:match_start` so two builds' recordings line up |
+| `review_playtest.txt` | The 2026-11-07 playtest changes: Wren's light string into the spinning elbow, Ashka's body roundhouse, and each fighter's jump-in through a held guard into a light string (Dummy: Block all). Record at most 38 s from `match_start` |
 | `launch_quit.txt` with `launch_loop.py` | Start-up stability: one launch at a time, each attempt classified (clean, crash, timeout, silent, audio_fail, fail) with exit status, signal, audio sink and monitors, and a check for leftover processes. `python3 Tests/Auto/launch_loop.py --launcher <release>/EbonyHearts.sh --runs N --out <empty dir> [--fresh-profile] -- [game args]` |
 | `display_modes.txt` | Fullscreen, borderless and windowed in turn after start-up, with `window_check` after each change |
 | `display_hotplug.txt` | A monitor entering standby and waking while the game changes window mode (queued XRandR disconnect and reconnect); start windowed |

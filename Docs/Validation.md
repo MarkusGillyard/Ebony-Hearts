@@ -2,13 +2,83 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-060a75f/<run>`; the
-original release's runs are under `evidence/rc-f3ae5ab/<run>`.
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-d2f7cb7/<run>`, the
+previous candidate's under `evidence/rc-060a75f/<run>` and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `060a75f` (2026-11-07)
+## Current candidate `d2f7cb7` (2026-11-07, creator playtest round)
+
+**Result: PASS on every objective check run; ready for the creator's next playtest.** This round answers the creator's
+playtest of `060a75f` and their later request to repurpose Grab's buttons (see [Review](Review.md)). This is the
+engineer's own verification, not an independent review, and nobody has played this build yet.
+
+### Build identity
+
+| Item | Value |
+|---|---|
+| Source | `d2f7cb7` (a fast-forward of `release/first-slice` at `22fa565`), packaged from a working tree with no uncommitted code or data. Later commits change documentation and a review script only. |
+| Release archive | `EbonyHearts-Slice-d2f7cb7.tar.gz`, 326 475 726 bytes, SHA-256 `34555785c4db7f27016350914b177d4178ccfccaab6d522d2a03283be2b06044` |
+| Content hash | `6344d74d93d808fde3bd5148beae6f7cf26412e1e4fb7797e284582a8062d490` (SHA-256 over the pak files, in `VERSION.txt`) |
+| Build | Unreal Engine 5.8.4, Shipping, Linux x86-64, Vulkan SM6. 830 packages cooked, 0 warnings, 0 errors. |
+| Release check | Extracted into a new folder whose path contains a space; every file matched `EbonyHearts-Slice-d2f7cb7.files.sha256`. |
+| Test machine | FLOWBOX as described for `060a75f` below (32 GB RAM), with the 3440 × 1440 monitor only; the 4K TV the creator played on was disconnected again. |
+| Superseded on the way | `EbonyHearts-Slice-d1ede0e` and `EbonyHearts-Slice-b445999` (same content; earlier CPU and controls code). The `d1ede0e` battery was stopped after its controller runs (all passing) when the CPU anti-air problem below was found; `b445999` passed the full battery below before the button request. Both stay in the release folder. |
+
+### Results on the candidate
+
+Evidence: `evidence/rc-d2f7cb7/battery/<run>`. A pass has exit 0, no `FAIL` or `WARN` line, and the script's own
+completion marker.
+
+| Suite | Result | Notes |
+|---|---|---|
+| Combat core | **PASS** | 43 cases, 889 checks, 0 failures |
+| Packaging safety, move tables | **PASS** | 9 tests; `move_tables.py` regenerates the contract unchanged |
+| Smoke | **PASS** | No missing animations or sounds; platform check ok |
+| Controls | **PASS** | `bindings_selftest` 92 checks (new layout, three buttons per action, a version-2 settings file migrated), `input_selftest` 33 checks (Cross / A jumps in the direction held, L1 / LB blocks), remap, persistence and Controls UI runs |
+| Journey | **PASS** | 24/24 screen checks, then Quit through the menu (Training now jumps where it grabbed) |
+| Real X11 keyboard | **PASS** | Title, menu, fight (including the I key, now jump), pause, quit |
+| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts: every button gave its action (Cross / A: jump, confirm in menus; L1 / LB: block); menu-and-fight, disconnect and reconnect, remapping with Swap |
+| Matrix | **PASS** | 12/12 complete matches (both fighters, both sides, mirrors, all CPU levels, local versus), 4 610 sounds, no missing animations or sounds; memory 1 503 MiB at the end (peak 1 521) |
+| Review scripts | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_jump`, `review_playtest`. Footage of `review_playtest` on this build and on `060a75f`, side by side and at half speed: `evidence/rc-d2f7cb7/before-after` (the jump-in hits through the held guard and the light string combos after it; on `060a75f` it is blocked) |
+| Signature footage | **PASS** | aura and flame rendered |
+| Frame times, 1080p windowed, V-Sync on | **PASS** | Fight 60 s: 3 601 frames, median 16.67 ms, p99 16.75, max 17.08, none over 33 ms, GPU median 7.0 ms; menu 20 s: max 16.82 |
+| Frame times, default borderless 3440 × 1440 | **PASS** | Fight 60 s: median 16.67 ms, p99 16.76, max 17.05, none over 33 ms, GPU median 10.1 ms; menu 20 s: max 17.05 |
+| First match from its start (cold) | **PASS** | 1 502 frames, median 16.67 ms, p99 16.79, max 17.25, none over 33 ms |
+
+Not re-run this round, because the code they cover did not change: the one-hour soak, display-mode changes, the monitor
+standby probe and the start-up loops (`060a75f`, below). Every run above also started the game cleanly: 21 more starts.
+
+### The new animations, measured
+
+| Clip | Check | Before | After |
+|---|---|---|---|
+| Wren, Light 3 (spinning elbow), first active frame | right elbow, forward and height (hitbox x 10-88, y 120-162 cm) | elbow pointing up with the fist behind the head | elbow 86 cm out, 139 cm up, 22 cm ahead of the fist |
+| | fast or flipping joints (`speeds.py`, `flips.py`) | rear foot 42 cm in one frame (frames 4-5) | none |
+| | hand-over into and out of the idle (`transitions.py`) | 1 cm / 0 cm | 1 cm / 0 cm |
+| Ashka, Heavy (Body Roundhouse), active frames 16-18 | kicking shin (hitbox x 28-130, y 85-140 cm) | foot forward, body square: a front kick | knee 55 cm out at 100-106 cm, ankle 92-99 cm out at 98-109 cm: the shin level at body height |
+| | standing foot | | ball held at 26-27 cm (no slide) |
+| | fast or flipping joints, hand-over | no fast joints; 2 cm / 0 cm | none; 3 cm / 0 cm |
+
+### Jumping and the CPU
+
+A scripted player who does nothing but jump in (toward from mid range, Heavy at the top, a light string on landing)
+against each CPU level, 24 matches per level, simulated with the game's own `CpuController` (`Tests/Core` has the
+regression check, `cpu_anti_airs_jump_ins`):
+
+| CPU | Jump-in player wins, `22fa565` | now | Jump-ins knocked out of the air, `22fa565` | now |
+|---|---|---|---|---|
+| Easy | 24 / 24 | 24 / 24 | 14% | 12% |
+| Normal | 22 / 24 | 19 / 24 | 18% | 51% |
+| Hard | 0 / 24 | 5 / 24 | 64% | 64% |
+
+The Normal CPU used to see a jump only after its full 18-frame reaction delay, when the jump attack was already out.
+Normal against Easy, CPU against CPU, wins 19 / 24 (19 / 24 before), and Hard still wins every match against Normal.
+Endless jumping still beats Easy and Normal, as it did before this round, because a landed jump-in combo is worth far
+more than the jab that anti-airs it; Hard handles it.
+
+## Candidate `060a75f` (2026-11-07, start-up crash round; superseded by `d2f7cb7`)
 
 **Result: PASS on every objective check run; ready for the creator's playtest.** This is the engineer's own
-verification of the objective gates, not an independent review, and the creator has not yet played this build.
+verification of the objective gates, not an independent review, and the creator has not yet played this build. The creator played it on 2026-11-07 (TV, PS4 controller); the current candidate answers that playtest.
 
 ### Build identity
 

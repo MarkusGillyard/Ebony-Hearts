@@ -1,6 +1,6 @@
 # Playtest review (2026-11-07 changes), Training against the standing partner, then against Dummy "Block all":
 # Wren's light string into the spinning elbow (twice), Ashka's body roundhouse (twice), and for each fighter a jump-in
-# Heavy into the held guard followed by a light string on landing (Light pressed every 0.1 s through the landing, since
+# Heavy into the held guard followed by a light string on landing (Light pressed every 0.05 s through the landing, since
 # script waits are not frame-exact; each press stays buffered for 6 frames). Record with
 # capture.py ... --start-on <evidence>/auto_log.txt:match_start for at most 38 s: the script quits about 42 s after
 # the first match starts, and a capture still running when the window closes is lost.
@@ -51,21 +51,37 @@ press kbA Heavy
 release kbA Right
 wait 0.25
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
 wait 1.4
 screenshot rp_wren_done
 # The dummy setting carries over to the next match: back to Stand.
@@ -111,21 +127,37 @@ press kbA Heavy
 release kbA Right
 wait 0.25
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
 press kbA Light
-wait 0.1
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
 wait 4.0
 screenshot rp_ashka_done
 quit
