@@ -1050,9 +1050,13 @@ void Match::ResolveCollisions()
 		const HitDef& h = m.hits[static_cast<size_t>(strikeHit[a])];
 		// A jump attack keeps a grounded defender in stun until its attacker has landed and recovered, so a jump-in is
 		// worth the same at any height: the attacker lands, recovers (airAttackLanding if the attack is still running at
-		// touchdown, jumpLanding otherwise) and then has jumpInHit/BlockAdvantage frames on the defender.
+		// touchdown, jumpLanding otherwise) and then has jumpInHit/BlockAdvantage frames on the defender. Only a jump-in
+		// that opens contact does this: on a defender already in hit- or blockstun a jump attack takes its own stun
+		// (hitstun decay included), or jumping again on landing and hitting on the way up looped until a KO.
+		const bool jumpAttack = m.air && atk.jumpFrame > rules_.jumpSquat;
+		const bool opensContact = def.state != FState::Hitstun && def.state != FState::Blockstun;
 		int32_t jumpInRecovery = -1;
-		if (m.air && atk.jumpFrame > rules_.jumpSquat)
+		if (jumpAttack && opensContact)
 		{
 			const int32_t airLeft = rules_.jumpSquat + rules_.jumpAir - atk.jumpFrame;
 			const int32_t attackLeft = m.total - atk.moveFrame + 1;
@@ -1072,7 +1076,7 @@ void Match::ResolveCollisions()
 		// A held guard stops ground strikes; against a jump attack it takes a timed press (or blockstun already running)
 		// unless the rules let a held Block stop jump-ins too.
 		const bool guarding = def.state == FState::Blockstun ||
-			(def.state == FState::Guard && (jumpInRecovery < 0 || timed || rules_.heldBlockStopsJumpIns));
+			(def.state == FState::Guard && (!jumpAttack || timed || rules_.heldBlockStopsJumpIns));
 		const int dirAway = atk.facing;   // defender slides in the attacker's facing direction
 
 		if (guarding)

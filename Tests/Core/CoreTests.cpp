@@ -1766,6 +1766,65 @@ int main(int argc, char** argv)
 		}
 	});
 
+	Run("jump_ins_cannot_loop", [] {
+		// After a jump-in hit, jumping again on the first free frame (toward, up or away) and attacking on the way up must
+		// not keep the defender stunned: the landing-relative stun applies only to a jump-in that opens contact, so these
+		// routes end like any other combo (hitstun decay and pushback), standing or holding Block.
+		int longest = 0;
+		std::string where;
+		for (int c = 0; c < 2; ++c)
+		{
+			for (int defBlock = 0; defBlock < 2; ++defBlock)
+			{
+				for (int dir = -1; dir <= 1; ++dir)
+				{
+					for (uint8_t button : {BtnLight, BtnHeavy})
+					{
+						for (int press = 5; press <= 30; press += 1)
+						{
+							for (int dist = 60; dist <= 200; dist += 20)
+							{
+								Match m = MakeMatch(c, 1 - c);
+								m.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
+								int jumps = 0;
+								int maxCombo = 0;
+								for (int t = 0; t < 900; ++t)
+								{
+									const FighterState& a = m.State().f[0];
+									const FighterState& d = m.State().f[1];
+									InputFrame ai;
+									const int8_t toward = static_cast<int8_t>(d.x > a.x ? 1 : -1);
+									if (a.state == FState::Neutral || a.state == FState::Guard)
+									{
+										ai = Up(static_cast<int8_t>((jumps == 0 ? 1 : dir) * toward));
+									}
+									if (a.state == FState::Jump && a.jumpFrame == (jumps <= 1 ? 22 : press))
+									{
+										ai = In(0, jumps <= 1 ? static_cast<uint8_t>(BtnHeavy) : button);
+									}
+									Step(m, ai, defBlock ? In(0, 0, BtnBlock) : InputFrame());
+									jumps += HasEvent(m, EventType::Jump, 0) ? 1 : 0;
+									maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+									if (m.State().f[1].state == FState::Knockdown || m.State().phase != Phase::Fight)
+									{
+										break;
+									}
+								}
+								if (maxCombo > longest)
+								{
+									longest = maxCombo;
+									where = std::string(c == 0 ? "wren" : "ashka") + (defBlock ? " vs block" : " vs stand") + " dir " + std::to_string(dir) +
+										(button == BtnLight ? " light" : " heavy") + " at jump frame " + std::to_string(press) + " from " + std::to_string(dist) + " cm";
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		EXPECT_TRUE(longest <= 3, "repeated jump-ins after a jump-in hit end within 3 hits (longest " + std::to_string(longest) + ": " + where + ")");
+	});
+
 	Run("one_attack_per_jump", [] {
 		for (int c = 0; c < 2; ++c)
 		{
