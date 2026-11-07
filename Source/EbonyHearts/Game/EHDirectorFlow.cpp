@@ -339,7 +339,7 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 		for (int32 K = 0; K < EHKeysPerAction; ++K)
 		{
 			FEHMenuItem I;
-			I.Label = K == 0 ? TEXT("Primary") : TEXT("Secondary");
+			I.Label = K == 0 ? TEXT("Primary") : (K == 1 ? TEXT("Secondary") : TEXT("Third"));
 			I.PaintValue = [this, Set, A, K](FEHPainter& P, FVector2f Right, bool bSel) { PaintBindingValue(P, Right, Set, A, K, bSel); };
 			I.Activate = [this, K] { BeginBindingCapture(K); };
 			I.Hint = bPad ? TEXT("Confirm, then press the new button. Options / Menu cancels.") : TEXT("Confirm, then press the new key. Escape cancels.");
@@ -349,7 +349,7 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 		{
 			if (Settings.Bindings.Get(Set, A, K).IsValid())
 			{
-				Menu.Add(Button(K == 0 ? TEXT("Remove primary") : TEXT("Remove secondary"), [this, A, K] {
+				Menu.Add(Button(K == 0 ? TEXT("Remove primary") : (K == 1 ? TEXT("Remove secondary") : TEXT("Remove third")), [this, A, K] {
 					const FString Name = KeyName(BindingSet, Settings.Bindings.Get(BindingSet, A, K));
 					Settings.Bindings.Clear(BindingSet, A, K);
 					BindingsChanged(FString::Printf(TEXT("%s removed from %s."), *Name, EHActionLabel(A)));

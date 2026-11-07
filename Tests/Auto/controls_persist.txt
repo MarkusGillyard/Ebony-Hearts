@@ -3,9 +3,11 @@
 wait 3
 expect_binding controller1 Light 0 Gamepad_FaceButton_Top
 expect_binding controller1 Heavy 0 Gamepad_FaceButton_Left
-expect_binding controller1 Grab 0 Gamepad_FaceButton_Bottom
-expect_binding controller1 Grab 1 Gamepad_LeftShoulder
+expect_binding controller1 Jump 1 Gamepad_FaceButton_Bottom
+expect_binding controller1 Block 1 none
 expect_binding controller1 Dodge 0 none
+expect_binding keyboard2 Light 2 NumPadFour
+expect_binding keyboard2 Jump 2 Semicolon
 expect_binding controller2 Block 1 Gamepad_LeftTrigger
 expect_binding keyboard1 Light 0 U
 press kbA Light

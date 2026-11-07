@@ -45,7 +45,7 @@ press kbA Up
 press kbA Light
 wait 1
 expect_screen 2
-# Training: Wren against Ashka; turn hitboxes on (pause item 6), grab and heavy, reset, leave.
+# Training: Wren against Ashka; turn hitboxes on (pause item 6), jump and heavy, reset, leave.
 press kbA Down
 press kbA Down
 press kbA Light
@@ -69,7 +69,7 @@ wait 1
 hold kbA Right
 wait 0.8
 release kbA Right
-press kbA Throw
+press kbA Jump
 wait 2
 press kbA Heavy
 wait 0.25

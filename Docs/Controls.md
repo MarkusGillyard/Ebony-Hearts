@@ -9,9 +9,19 @@ Controls screens and button prompts).
 
 Grappling is not part of the game for now (`"grappling": false` in `Content/Data/rules.json`; see the
 [Combat contract](CombatContract.md)). The Grab action is hidden from the Controls screen, button prompts and the
-Lesson, but it keeps its bindings so it works again as soon as grappling is switched back on. Until then its default
-buttons (Cross / A, L1 / LB, I, Numpad 5 and ;) do nothing in a match, and remapping another action onto one of them
-takes it from the hidden Grab without a conflict prompt. The tables below show the full layout, Grab included.
+Lesson, and its former default buttons have new jobs (creator's request, 2026-11-07):
+
+| Former Grab button | Now |
+|---|---|
+| Cross / A | Jump (beside D-pad up and the left stick's up) |
+| L1 / LB | Block (beside R2 / RT) |
+| I (keyboard, left side) | Jump (beside W) |
+| Numpad 5 and ; (keyboard, right side) | Jump (beside the Up arrow) |
+
+A jump button jumps the way the stick or movement keys point, exactly like up. Grab keeps no default button. If
+grappling is switched back on, give it buttons under Controls; its former defaults were Cross or L1, I, and Numpad 5
+or ; (`EHFormerGrabKey` in `EHSettings.cpp`). A button left on the hidden Grab by an older layout is taken without a
+conflict prompt when another action is remapped onto it.
 
 ## Default controller layout
 
@@ -25,17 +35,17 @@ by position.
 | Light attack | Square | X | left face button |
 | Heavy attack | Triangle | Y | top face button |
 | Dodge / Roll | Circle | B | right face button |
-| Grab / Throw (switched off) | Cross, or L1 | A, or LB | bottom face button, or left bumper |
-| Block (hold) | R2 | RT | right trigger |
+| Block (hold) | R2, or L1 | RT, or LB | right trigger, or left bumper |
 | Special | R1 | RB | right bumper |
 | Move | Left stick / D-pad | Left stick / D-pad | |
-| Jump | Left stick up / D-pad up | Left stick up / D-pad up | Up from neutral; hold toward or away to jump that way |
+| Jump | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up | bottom face button; hold toward or away to jump that way |
 | Pause | Options | Menu | |
 | Training reset | Share | View | |
 
 Notes:
-- **Grab has two separate buttons.** Cross / A and L1 / LB are two bindings for the same action, not a combination.
-  Pressing both counts as one grab. The grab stays held until both buttons are released.
+- **Jump and Block have two buttons each.** Cross / A and D-pad up (and the left stick's up) all jump; R2 / RT and
+  L1 / LB both block. They are separate bindings for the same action, not a combination: pressing two counts as one, and
+  the action stays held until all are released.
 - **Block follows the trigger.** R2 / RT blocks while held and stops on release. It reads the analog trigger with fixed
   thresholds: pressed at 30 % travel, released below 20 %. The engine's own digital trigger press is ignored, so one
   squeeze is exactly one press. A controller that never reports an analog trigger falls back to digital presses after its
@@ -47,16 +57,15 @@ Notes:
 
 ## Keyboard layouts
 
-These are unchanged from the first slice. Both sides can be remapped separately.
+These are the first slice's layouts, with the former Grab keys now jumping. Both sides can be remapped separately.
 
 | Action | Player 1 (left side) | Player 2 (right side) |
 |---|---|---|
 | Move | A / D | Arrow keys |
-| Jump | W | Up arrow |
+| Jump | W, or I | Up arrow, Numpad 5, or ; |
 | Light attack | J, or Enter | Numpad 1, or , |
 | Heavy attack | K, or Backspace | Numpad 2, or . |
 | Special | L | Numpad 3, or / |
-| Grab / Throw (switched off) | I | Numpad 5, or ; |
 | Dodge / Roll | O | Numpad 6, or ' |
 | Block (hold) | Space | Numpad 0, or Right Shift |
 | Pause | Escape | Numpad 9, or = |
@@ -96,11 +105,11 @@ Open **Settings > Controls**, then pick a layout:
 - Keyboard - Player 1 (left side)
 - Keyboard - Player 2 (right side)
 
-Each layout lists every action with its primary and secondary buttons.
+Each layout lists every action with its buttons: up to three (primary, secondary and third).
 
 **On an action's page you can:**
-- **Change** the primary or secondary button: choose it, then press the new button.
-- **Remove** the primary or secondary button.
+- **Change** the primary, secondary or third button: choose it, then press the new button.
+- **Remove** any of them.
 - **Reset** the action to its default.
 
 **Under the list:**
@@ -122,7 +131,7 @@ Each layout lists every action with its primary and secondary buttons.
 - **Missing buttons.** An action may be left without a button. The list then shows **Unbound**, and leaving the layout
   warns about it.
 
-Changes save immediately to `Settings.json` in the game's Saved folder, under format version 2. Each layout is stored by
+Changes save immediately to `Settings.json` in the game's Saved folder, under format version 3. Each layout is stored by
 its id (`controller1`, `controller2`, `keyboard1`, `keyboard2`), and each action by a stable id:
 - `MoveLeft`, `MoveRight`
 - `LightAttack`, `HeavyAttack`
@@ -132,6 +141,10 @@ its id (`controller1`, `controller2`, `keyboard1`, `keyboard2`), and each action
 Loading rules:
 - **Version 1 files** from the first slice keep their keyboard layouts. Their controller layout moves to the new default,
   with a notice.
+- **Version 1 and 2 files** (before grappling was switched off): Grab's former default buttons leave Grab and take their
+  new jobs (jump; L1 / LB block) wherever that slot is free and the button is not used elsewhere, with a notice. A
+  button the player had given Grab themselves stays with Grab. This is also how the right keyboard's ; reaches Jump's
+  third slot.
 - **Broken layouts.** A layout with a duplicate or reserved key resets to its defaults on load, and the other layouts are
   kept.
 

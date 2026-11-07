@@ -1,7 +1,7 @@
 // Device-level input for the whole game. Reads raw key/gamepad events from Slate (before any widget), keeps
 // per-device state, latches presses so a tap between two simulation ticks is never lost, and turns device state into
 // combat InputFrames. Two maps run side by side on every press: the fixed menu map (EHMenuCommand) feeds a queue of
-// menu commands, and the player's remappable gameplay layout feeds combat. So Cross / A confirms in menus and grabs in
+// menu commands, and the player's remappable gameplay layout feeds combat. So Cross / A confirms in menus and jumps in
 // a match, and no remapping can take menu navigation away.
 #pragma once
 

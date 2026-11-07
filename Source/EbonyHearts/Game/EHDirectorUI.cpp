@@ -294,7 +294,11 @@ void AEHGameDirector::PaintBindingValue(FEHPainter& P, FVector2f Right, EEHBindi
 		const FKey Key = Settings.Bindings.Get(Set, Action, K);
 		if (!Key.IsValid())
 		{
-			X -= P.Text(TEXT("-"), FVector2f(X - 8.0f, Right.Y), F, A(Muted, 0.6f), 1.0f, 0.5f).X + 26.0f;
+			// An empty slot is shown only on its own row (the list shows just the buttons an action has).
+			if (OnlySlot >= 0)
+			{
+				X -= P.Text(TEXT("-"), FVector2f(X - 8.0f, Right.Y), F, A(Muted, 0.6f), 1.0f, 0.5f).X + 26.0f;
+			}
 			return;
 		}
 		const float W = PaintKeyGlyph(P, FVector2f::ZeroVector, Kind, Key, H, true);
@@ -311,8 +315,10 @@ void AEHGameDirector::PaintBindingValue(FEHPainter& P, FVector2f Right, EEHBindi
 		P.Text(TEXT("Unbound"), Right, F, Crimson, 1.0f, 0.5f);
 		return;
 	}
-	DrawSlot(1);
-	DrawSlot(0);
+	for (int32 K = EHKeysPerAction - 1; K >= 0; --K)
+	{
+		DrawSlot(K);
+	}
 }
 
 void AEHGameDirector::PaintBackdrop(FEHPainter& P, float Dim)

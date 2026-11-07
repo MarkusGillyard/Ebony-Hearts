@@ -12,23 +12,23 @@ Movement is left/right, and up jumps. There are five combat actions in play, wit
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
 | Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
-| Jump | W | Up arrow | Left stick up / D-pad up | Left stick up / D-pad up |
+| Jump | W, or I | Up arrow, Numpad 5, or ; | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
-| Grab (switched off, see below) | I | Numpad 5, or ; | Cross, or L1 | A, or LB |
 | Dodge | O | Numpad 6, or ' | Circle | B |
-| Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
+| Block (hold) | Space | Numpad 0, or Right Shift | R2, or L1 | RT, or LB |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
 **Grappling is switched off** (`"grappling": false` in `rules.json`, after the creator's playtest of 2026-11-07). The grab
 move, both fighters' throws, escapes, their animations and this document's grab rules are kept for later; with the
 switch off no throw move can start, Grab is not listed in Controls, the move list, the Lesson or the results, and the CPU
-never grabs. Grab's default buttons (Cross / A and L1 / LB on a controller, I and Numpad 5 / ; on keyboards) stay bound
-to the hidden action and do nothing in a match; remapping another action onto one takes it without a conflict prompt.
-Block reads the analog trigger. Menus use fixed controls separate from these gameplay layouts. Every gameplay action can
-be remapped; a taken button is never silently reassigned (swap, replace or cancel), except from the hidden Grab. See
+never grabs. Grab's former buttons have new jobs: Cross / A, I, Numpad 5 and ; jump (the way the stick or movement keys
+point), and L1 / LB blocks; see [Controls](Controls.md) for its former defaults if grappling returns. R2 / RT block
+reads the analog trigger. Menus use fixed controls separate from these gameplay layouts. Every gameplay action can
+be remapped, with up to three buttons each; a taken button is never silently reassigned (swap, replace or cancel), except
+from the hidden Grab. See
 [Controls](Controls.md).
 Direction modifiers are relative to the opponent: "toward" and "away" are judged when the button is pressed, so a side
 switch between the press and the move cannot reverse it.

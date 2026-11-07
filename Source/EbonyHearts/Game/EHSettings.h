@@ -14,7 +14,7 @@ enum class EEHAction : uint8
 	Light,
 	Heavy,
 	Special,
-	Throw,   // Grab / Throw
+	Throw,   // Grab / Throw: no default buttons while grappling is switched off (EHFormerGrabKey keeps its old ones)
 	Dodge,
 	Block,
 	Reset,   // training quick reset
@@ -55,7 +55,7 @@ enum class EEHPromptStyle : uint8
 constexpr int32 EHActionCount = static_cast<int32>(EEHAction::Count);
 constexpr int32 EHNavCount = static_cast<int32>(EEHNav::Count);
 constexpr int32 EHSetCount = static_cast<int32>(EEHBindingSet::Count);
-constexpr int32 EHKeysPerAction = 2;
+constexpr int32 EHKeysPerAction = 3;   // primary, secondary and third button of an action in one layout
 
 inline bool EHIsKeyboardSet(EEHBindingSet Set) { return Set == EEHBindingSet::KeyboardA || Set == EEHBindingSet::KeyboardB; }
 
@@ -138,6 +138,10 @@ struct FEHSettings
 	bool Save(const FString& PathOverride = FString()) const;
 	void Clamp();
 };
+
+// Grab's default buttons before grappling was switched off (slot 0..2, EKeys::Invalid when none): the settings loader
+// moves them to their new actions, and they are the defaults to restore if grappling returns.
+FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

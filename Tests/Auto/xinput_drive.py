@@ -70,7 +70,7 @@ def main():
     key("j")                          # difficulty/side -> fight
     time.sleep(5.5)
     shot(wid, "x03_fight")
-    # A short real-keyboard exchange: walk in, jab string, heavy, block hold, grab.
+    # A short real-keyboard exchange: walk in, jab string, heavy, block hold, jump (I, the former grab key).
     for _ in range(4):
         key("d", hold=0.25, gap=0.05)
     for sym in ("j", "j", "j"):

@@ -118,33 +118,46 @@ int32 Idx(EEHAction Action) { return static_cast<int32>(Action); }
 }
 using namespace EHBindingDetail;
 
+FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot)
+{
+	switch (Set)
+	{
+	case EEHBindingSet::KeyboardA: return Slot == 0 ? EKeys::I : EKeys::Invalid;
+	case EEHBindingSet::KeyboardB: return Slot == 0 ? EKeys::NumPadFive : (Slot == 1 ? EKeys::Semicolon : EKeys::Invalid);
+	case EEHBindingSet::GamepadP1:
+	case EEHBindingSet::GamepadP2: return Slot == 0 ? EKeys::Gamepad_FaceButton_Bottom : (Slot == 1 ? EKeys::Gamepad_LeftShoulder : EKeys::Invalid);
+	default: return EKeys::Invalid;
+	}
+}
+
 FEHBindings FEHBindings::Defaults()
 {
 	FEHBindings B;
-	auto Set = [&B](EEHBindingSet S, EEHAction A, const FKey& K0, const FKey& K1 = EKeys::Invalid) {
+	auto Set = [&B](EEHBindingSet S, EEHAction A, const FKey& K0, const FKey& K1 = EKeys::Invalid, const FKey& K2 = EKeys::Invalid) {
 		B.Keys[Idx(S)][Idx(A)][0] = K0;
 		B.Keys[Idx(S)][Idx(A)][1] = K1;
+		B.Keys[Idx(S)][Idx(A)][2] = K2;
 	};
+	// Grappling is switched off, so Grab has no buttons: its former ones (EHFormerGrabKey) jump, and L1 / LB also
+	// blocks. The jump buttons jump the way the stick or movement keys point, like up does.
 	using S = EEHBindingSet;
 	using A = EEHAction;
 	Set(S::KeyboardA, A::Left, EKeys::A);
 	Set(S::KeyboardA, A::Right, EKeys::D);
-	Set(S::KeyboardA, A::Jump, EKeys::W);
+	Set(S::KeyboardA, A::Jump, EKeys::W, EKeys::I);
 	Set(S::KeyboardA, A::Light, EKeys::J, EKeys::Enter);
 	Set(S::KeyboardA, A::Heavy, EKeys::K, EKeys::BackSpace);
 	Set(S::KeyboardA, A::Special, EKeys::L);
-	Set(S::KeyboardA, A::Throw, EKeys::I);
 	Set(S::KeyboardA, A::Dodge, EKeys::O);
 	Set(S::KeyboardA, A::Block, EKeys::SpaceBar);
 	Set(S::KeyboardA, A::Reset, EKeys::R);
 
 	Set(S::KeyboardB, A::Left, EKeys::Left);
 	Set(S::KeyboardB, A::Right, EKeys::Right);
-	Set(S::KeyboardB, A::Jump, EKeys::Up);
+	Set(S::KeyboardB, A::Jump, EKeys::Up, EKeys::NumPadFive, EKeys::Semicolon);
 	Set(S::KeyboardB, A::Light, EKeys::NumPadOne, EKeys::Comma);
 	Set(S::KeyboardB, A::Heavy, EKeys::NumPadTwo, EKeys::Period);
 	Set(S::KeyboardB, A::Special, EKeys::NumPadThree, EKeys::Slash);
-	Set(S::KeyboardB, A::Throw, EKeys::NumPadFive, EKeys::Semicolon);
 	Set(S::KeyboardB, A::Dodge, EKeys::NumPadSix, EKeys::Apostrophe);
 	Set(S::KeyboardB, A::Block, EKeys::NumPadZero, EKeys::RightShift);
 	Set(S::KeyboardB, A::Reset, EKeys::NumPadSeven, EKeys::Hyphen);
@@ -155,13 +168,12 @@ FEHBindings FEHBindings::Defaults()
 	{
 		Set(Pad, A::Left, EKeys::Gamepad_DPad_Left);
 		Set(Pad, A::Right, EKeys::Gamepad_DPad_Right);
-		Set(Pad, A::Jump, EKeys::Gamepad_DPad_Up);   // the left stick's up also jumps (EHInputRouter)
+		Set(Pad, A::Jump, EKeys::Gamepad_DPad_Up, EKeys::Gamepad_FaceButton_Bottom);   // the left stick's up also jumps (EHInputRouter)
 		Set(Pad, A::Light, EKeys::Gamepad_FaceButton_Left);
 		Set(Pad, A::Heavy, EKeys::Gamepad_FaceButton_Top);
 		Set(Pad, A::Special, EKeys::Gamepad_RightShoulder);
-		Set(Pad, A::Throw, EKeys::Gamepad_FaceButton_Bottom, EKeys::Gamepad_LeftShoulder);
 		Set(Pad, A::Dodge, EKeys::Gamepad_FaceButton_Right);
-		Set(Pad, A::Block, EKeys::Gamepad_RightTrigger);
+		Set(Pad, A::Block, EKeys::Gamepad_RightTrigger, EKeys::Gamepad_LeftShoulder);
 		Set(Pad, A::Reset, EKeys::Gamepad_Special_Left);
 	}
 	return B;
@@ -170,7 +182,18 @@ FEHBindings FEHBindings::Defaults()
 FKey FEHBindings::First(EEHBindingSet Set, EEHAction Action) const
 {
 	const FKey& K0 = Get(Set, Action, 0);
-	return K0.IsValid() ? K0 : Get(Set, Action, 1);
+	if (K0.IsValid())
+	{
+		return K0;
+	}
+	for (int32 K = 1; K < EHKeysPerAction; ++K)
+	{
+		if (Get(Set, Action, K).IsValid())
+		{
+			return Get(Set, Action, K);
+		}
+	}
+	return EKeys::Invalid;
 }
 
 EEHAction FEHBindings::Find(EEHBindingSet Set, const FKey& Key) const
@@ -559,6 +582,57 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			}
 			Notes = TEXT("Controller layout updated to the new default; keyboard layouts kept.");
 		}
+		if (Version < 3)
+		{
+			// Grappling was switched off in version 3 and Grab's default buttons got new jobs (jump; L1 / LB block).
+			// Those buttons leave Grab and take their new job wherever its slot is free and the button is not used
+			// elsewhere; a button the player gave Grab themselves stays with Grab. (Files before version 3 also had no
+			// third slot, which is how the right keyboard's ; arrives.)
+			const FEHBindings New = FEHBindings::Defaults();
+			auto IsFormer = [](EEHBindingSet InSet, const FKey& Key) {
+				for (int32 F = 0; F < EHKeysPerAction; ++F)
+				{
+					if (Key.IsValid() && Key == EHFormerGrabKey(InSet, F))
+					{
+						return true;
+					}
+				}
+				return false;
+			};
+			bool bMoved = false;
+			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			{
+				const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
+				for (int32 K = 0; K < EHKeysPerAction; ++K)
+				{
+					FKey& Key = Loaded.Keys[Set][Idx(EEHAction::Throw)][K];
+					if (IsFormer(BS, Key))
+					{
+						Key = EKeys::Invalid;
+					}
+				}
+			}
+			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			{
+				const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
+				for (int32 A = 0; A < EHActionCount; ++A)
+				{
+					for (int32 K = 0; K < EHKeysPerAction; ++K)
+					{
+						const FKey Key = New.Keys[Set][A][K];
+						if (IsFormer(BS, Key) && !Loaded.Keys[Set][A][K].IsValid() && !Loaded.FindConflict(BS, static_cast<EEHAction>(A), K, Key).IsValid())
+						{
+							Loaded.Keys[Set][A][K] = Key;
+							bMoved = true;
+						}
+					}
+				}
+			}
+			if (bMoved)
+			{
+				Notes += FString::Printf(TEXT("%sGrab is switched off: its buttons now jump (L1 / LB blocks)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+			}
+		}
 		// A layout with a duplicate or reserved key falls back to its defaults; the others are kept.
 		for (EEHBindingSet Set : {EEHBindingSet::KeyboardA, EEHBindingSet::GamepadP1, EEHBindingSet::GamepadP2})
 		{
@@ -590,7 +664,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 bool FEHSettings::Save(const FString& PathOverride) const
 {
 	TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
-	Root->SetNumberField(TEXT("version"), 2);
+	Root->SetNumberField(TEXT("version"), 3);
 	Root->SetNumberField(TEXT("windowMode"), WindowMode);
 	Root->SetNumberField(TEXT("resX"), Resolution.X);
 	Root->SetNumberField(TEXT("resY"), Resolution.Y);

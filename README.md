@@ -60,19 +60,18 @@ can take over that side.
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
 | Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
-| Jump | W | Up arrow | Left stick up / D-pad up | Left stick up / D-pad up |
+| Jump | W, or I | Up arrow, Numpad 5, or ; | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
-| Grab (switched off) | I | Numpad 5, or ; | Cross, or L1 | A, or LB |
 | Dodge | O | Numpad 6, or ' | Circle | B |
-| Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
+| Block (hold) | Space | Numpad 0, or Right Shift | R2, or L1 | RT, or LB |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
 PlayStation and Xbox share one layout by button position. Menus have their own fixed controls: Cross / A or Enter
-confirms, Circle / B or Escape goes back, and Options / Menu pauses. While grappling is switched off, Grab's buttons
-do nothing in a match. Every gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1
+confirms, Circle / B or Escape goes back, and Options / Menu pauses. With grappling switched off, Grab's former buttons
+jump (Cross / A, I, Numpad 5, ;) and block (L1 / LB). Every gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1
 and 2 and for each keyboard side. Details: [Docs/Controls.md](Docs/Controls.md).
 
 ## Running the packaged build

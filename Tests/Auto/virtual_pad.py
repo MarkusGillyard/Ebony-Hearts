@@ -154,8 +154,8 @@ def fight_inputs(pad):
         pad.press("left", gap=0.1)     # Square / X: light string
     pad.press("top", gap=0.4)          # Triangle / Y: heavy
     pad.hold_trigger("r", 0.8)         # R2 / RT: block while held
-    pad.press("bottom", gap=0.6)       # Cross / A: grab
-    pad.press("l1", gap=0.6)           # L1 / LB: grab (second binding)
+    pad.press("bottom", gap=0.6)       # Cross / A: jump (D-pad up and the stick's up jump too)
+    pad.press("l1", gap=0.6)           # L1 / LB: block (second binding beside R2 / RT)
     pad.press("right", gap=0.6)        # Circle / B: dodge
     pad.press("r1", gap=0.8)           # R1 / RB: special
 
