@@ -68,12 +68,15 @@ private:
 	int32_t afterHitFrames_ = 0;
 	int32_t lastHealth_ = -1;
 	int32_t antiAirFor_ = -1;      // frame the opponent's jump started, once decided
+	int32_t antiAirArmed_ = -1;    // that jump's start frame while an anti-air jab waits for it to come into reach
+	int32_t retreatFrames_ = 0;    // walking back out of a jump-in's reach
 	int32_t airAttackFor_ = -1;    // frame the CPU's own jump started, once its jump attack is queued
 	bool jumpNext_ = false;        // emit up on the next input (a jump from neutral)
 
 	uint32_t Next();
 	bool Roll(int32_t pct);
 	const MatchState& Observed() const;
+	const MatchState& ObservedAgo(int32_t frames) const;
 	void Queue(uint8_t button, int8_t dirToward, int32_t delay);
 	InputFrame Emit(const Match& match, uint8_t pressed, int8_t dirToward);
 	int8_t RawX(const Match& match, int8_t dirToward) const;

@@ -1712,6 +1712,60 @@ int main(int argc, char** argv)
 		}
 	});
 
+	Run("cpu_anti_airs_jump_ins", [] {
+		// A player who keeps jumping in (toward from mid range, Heavy at the top, a light string on landing) is knocked
+		// out of the air often enough by the CPU that jumping stays a read, not a free win, from Normal up.
+		const int minPct[3] = {0, 35, 55};
+		for (int level = 1; level < 3; ++level)
+		{
+			int jumps = 0;
+			int antiAired = 0;
+			for (int c0 = 0; c0 < 2; ++c0)
+			{
+				for (int c1 = 0; c1 < 2; ++c1)
+				{
+					Match m = MakeMatch(c0, c1, Mode::Versus);
+					CpuController cpu;
+					cpu.Setup(1, static_cast<CpuLevel>(level), 4242u + static_cast<uint32_t>(c0 * 7 + c1));
+					int lightUntil = -1;
+					for (int t = 0; t < 60 * 60 * 4 && m.State().phase != Phase::MatchEnd; ++t)
+					{
+						const FighterState& me = m.State().f[0];
+						const FighterState& op = m.State().f[1];
+						InputFrame a;
+						if (m.State().phase == Phase::Fight)
+						{
+							const int32_t gap = (op.x > me.x ? op.x - me.x : me.x - op.x) / kUnitsPerCm;
+							const int8_t toward = static_cast<int8_t>(op.x > me.x ? 1 : -1);
+							if (me.state == FState::Neutral || me.state == FState::Guard)
+							{
+								if (t < lightUntil && t % 6 == 0) a = In(0, BtnLight);
+								else if (gap > 200) a.x = toward;
+								else if (gap >= 110) { a.x = toward; a.y = 1; }
+								else a.x = static_cast<int8_t>(-toward);
+							}
+							else if (me.state == FState::Jump && me.jumpFrame == g_rules.jumpSquat + g_rules.jumpAir / 2)
+							{
+								a = In(0, BtnHeavy);
+								lightUntil = t + 40;
+							}
+						}
+						const InputFrame in[2] = {a, cpu.Decide(m)};
+						m.Tick(in);
+						jumps += HasEvent(m, EventType::Jump, 0) ? 1 : 0;
+						for (const Event& e : m.Events())
+						{
+							antiAired += (e.type == EventType::Hit && e.player == 1 && (e.flags & EvKnockdown) && m.State().f[0].y > 0) ? 1 : 0;
+						}
+					}
+				}
+			}
+			const int pct = jumps > 0 ? antiAired * 100 / jumps : 0;
+			EXPECT_TRUE(jumps > 40 && pct >= minPct[level], std::string(level == 1 ? "Normal" : "Hard") + " CPU knocks " + std::to_string(pct) +
+				"% of " + std::to_string(jumps) + " jump-ins out of the air (at least " + std::to_string(minPct[level]) + "%)");
+		}
+	});
+
 	Run("one_attack_per_jump", [] {
 		for (int c = 0; c < 2; ++c)
 		{

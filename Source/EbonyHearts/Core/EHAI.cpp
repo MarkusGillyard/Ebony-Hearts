@@ -46,7 +46,7 @@ CpuTuning TuningFor(CpuLevel level)
 		t = CpuTuning{26, 25, 0, 15, 10, 30, 25, 15, 3};
 		break;
 	case CpuLevel::Normal:
-		t = CpuTuning{18, 55, 5, 45, 35, 12, 40, 40, 6};
+		t = CpuTuning{18, 55, 5, 45, 35, 12, 40, 55, 6};
 		break;
 	case CpuLevel::Hard:
 		t = CpuTuning{11, 80, 20, 80, 60, 4, 50, 70, 8};
@@ -80,8 +80,13 @@ bool CpuController::Roll(int32_t pct)
 
 const MatchState& CpuController::Observed() const
 {
-	// history_[historyHead_ - 1] is the newest; walk back reactionFrames (clamped to what is stored).
-	int back = tune_.reactionFrames;
+	return ObservedAgo(tune_.reactionFrames);
+}
+
+const MatchState& CpuController::ObservedAgo(int32_t frames) const
+{
+	// history_[historyHead_ - 1] is the newest; walk back the given frames (clamped to what is stored).
+	int back = frames;
 	if (back > historyCount_ - 1)
 	{
 		back = historyCount_ - 1;
@@ -256,16 +261,31 @@ InputFrame CpuController::Decide(const Match& match)
 		--guardFrames_;
 	}
 
-	// Anti-air: a jump coming in is met with a jab (it reaches high) or blocked; decided once per seen jump.
-	if (opp.state == FState::Jump && opp.y > 0 && opp.jumpDir > 0 && actionable && press == 0 && dist < 130 * cm)
+	// Anti-air: a jump coming in is met with a jab (any hit knocks a jumper down), decided once per seen jump. The jab
+	// waits until the jumper is about to come into its reach; thrown on sight it often missed short of the jumper.
+	// Otherwise the CPU blocks, or, when a held block cannot stop a jump attack, may step back out of its reach.
+	const Rules& rules = match.GetRules();
+	// A jump is the most visible thing a fighter does: it is noticed in two thirds of the usual reaction time (at the
+	// full delay a Normal CPU saw a jump-in only once its attack was already out).
+	const MatchState& jumpObs = ObservedAgo(tune_.reactionFrames * 2 / 3);
+	const FighterState& jumper0 = jumpObs.f[opponent];
+	const bool airAttack = jumper0.state == FState::Attack && jumper0.move >= 0 && theirs.moves[static_cast<size_t>(jumper0.move)].air;
+	// While a jump it has seen is coming at it, the CPU does not start a poke from neutral (a slow strike gets stuffed).
+	const bool jumpIncoming = jumper0.jumpFrame > rules.jumpSquat && jumper0.jumpDir > 0 && (jumper0.state == FState::Jump || airAttack);
+	if (jumpIncoming && actionable && press == 0 && dist < 200 * cm)
 	{
-		const int32_t jumpStart = obs.frame - opp.jumpFrame;
+		const int32_t jumpStart = jumpObs.frame - jumper0.jumpFrame;
 		if (antiAirFor_ != jumpStart)
 		{
 			antiAirFor_ = jumpStart;
+			antiAirArmed_ = -1;
 			if (Roll(tune_.antiAirPct))
 			{
-				Queue(BtnLight, 0, 0);
+				antiAirArmed_ = jumpStart;
+			}
+			else if (!rules.heldBlockStopsJumpIns && Roll(50))
+			{
+				retreatFrames_ = 30;
 			}
 			else if (Roll(tune_.blockPct))
 			{
@@ -274,10 +294,28 @@ InputFrame CpuController::Decide(const Match& match)
 			}
 		}
 	}
+	if (antiAirArmed_ >= 0)
+	{
+		const FighterState& jumper = cur.f[opponent];
+		const bool sameJump = jumper.jumpFrame > 0 && cur.frame - jumper.jumpFrame == antiAirArmed_;
+		const int32_t l1 = FindByAnim(mine, "L1");
+		const int32_t jabRange = (l1 >= 0 ? Reach(mine.moves[static_cast<size_t>(l1)]) : 80 * cm) + theirs.halfWidth + 15 * cm;
+		if (!sameJump)
+		{
+			antiAirArmed_ = -1;
+		}
+		// Fire so the jab is out (8 frames after the press) when the jumper arrives in its reach.
+		else if (actionable && press == 0 && pendingDelay_ < 0 && jumper.jumpFrame > rules.jumpSquat && dist - 8 * rules.jumpForward <= jabRange)
+		{
+			antiAirArmed_ = -1;
+			retreatFrames_ = 0;
+			Queue(BtnLight, 0, 0);
+		}
+	}
 	// Its own jump: an attack on the way down, once per jump.
 	if (me.state == FState::Jump && me.y > 0 && press == 0 && pendingDelay_ < 0)
 	{
-		const Rules& r = match.GetRules();
+		const Rules& r = rules;
 		const int32_t jumpStart = cur.frame - me.jumpFrame;
 		if (airAttackFor_ != jumpStart && me.jumpFrame >= r.jumpSquat + r.jumpAir / 2 && dist < 150 * cm)
 		{
@@ -378,6 +416,12 @@ InputFrame CpuController::Decide(const Match& match)
 		{
 			--waitFrames_;
 		}
+		if (retreatFrames_ > 0)
+		{
+			--retreatFrames_;
+			walk_ = -1;
+			return Emit(match, press, walk_);
+		}
 		if (buffIndex >= 0 && mine.moves[static_cast<size_t>(buffIndex)].kind == MoveKind::Buff && me.meter >= mine.moves[static_cast<size_t>(buffIndex)].meterCost && me.auraFrames == 0 && dist > 260 * cm)
 		{
 			Queue(BtnSpecial, -1, 0);
@@ -386,12 +430,11 @@ InputFrame CpuController::Decide(const Match& match)
 		{
 			Queue(BtnSpecial, -1, 0);
 		}
-		else if (waitFrames_ == 0)
+		else if (waitFrames_ == 0 && !jumpIncoming)
 		{
 			waitFrames_ = 14 + static_cast<int32_t>(Next() % 40u);
 			const int32_t gap = dist - theirs.halfWidth;
 			const uint32_t roll = Next() % 100u;
-			const Rules& rules = match.GetRules();
 			// A guard it has seen held is opened with a grab (grappling on) or, when a held Block cannot stop jump-ins,
 			// with a jump-in from mid range.
 			const bool jumpOpensGuard = !rules.heldBlockStopsJumpIns && opp.state == FState::Guard;
