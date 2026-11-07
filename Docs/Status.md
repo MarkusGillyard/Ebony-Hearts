@@ -4,10 +4,11 @@ Updated 2026-11-07 (evening).
 
 ## Where things stand
 
-**READY FOR THE CREATOR'S NEXT PLAYTEST — NOT APPROVED, NOT MERGED.** The creator played candidate `060a75f` on the
-4K TV with the PS4 controller on 2026-11-07 and asked for four things, then for Grab's buttons to be repurposed. All of
-it is in the candidate below, and the objective checks in [Validation](Validation.md) pass on it. What remains needs a
-person: the creator's play of the changes (below), then a new independent review of the exact pull-request head.
+**PLAYED BY THE CREATOR, PROBLEMS REMAIN — IN INDEPENDENT REVIEW; NOT APPROVED, NOT MERGED.** The creator played
+candidate `060a75f` on the 4K TV with the PS4 controller on 2026-11-07 and asked for four things, then for Grab's buttons
+to be repurposed. All of it is in the candidate below, and the objective checks in [Validation](Validation.md) pass on
+it. The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized), and asked for the independent review of the exact pull-request head to go ahead. Merging is not
+authorized.
 
 - **Candidate:** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`; SHA-256
   `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`. Later commits change documentation only.
@@ -19,6 +20,13 @@ person: the creator's play of the changes (below), then a new independent review
 - **Audio through the TV:** clean.
 - Played on the 4K TV (75% render scale, matched to the TV's 59.94 Hz). The punches were judged good enough for now,
   and Wren's kicks and the rolls are kept as they were.
+
+## Creator playtest of `4cee9c1` (2026-11-07)
+
+- **Played:** everything in this round: the spinning elbow, the body roundhouse, the jump rules, grappling's removal
+  and the repurposed buttons.
+- **Result:** problems remain. The creator has not itemized them yet; they will be recorded here when they are.
+- **Decision:** proceed with the independent review now; merging is not authorized.
 
 ## What changed in this round
 
@@ -59,19 +67,11 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 
 ## For the creator
 
-1. **The two animations at game speed.** Wren: Light three times (the third is the spinning elbow). Ashka: Heavy.
-2. **Jumping.** In Training, Pause > Dummy > Block all, then jump toward the partner, press Heavy on the way down and
-   Light as you land. Try the Lesson's steps 6 and 7, and Versus CPU on Hard (it anti-airs often). Judge whether
-   jumping now earns its place, and whether beating a held block is too strong or too weak.
-3. **Grappling gone.** Play a few matches. Nothing should feel missing or broken, and holding Block should no longer
-   be safe against everything.
-4. **The repurposed buttons.** Cross now jumps (with the stick's direction, like up) and L1 blocks (like R2). Your saved
-   controls move over by themselves the first time this build starts, with a notice.
-5. **Decide.** Accept the changes or ask for more; then authorize a new independent review of the pull-request head,
-   and later any merge.
-6. **Optional.** Filing the two upstream bug reports drafted during the start-up crash investigation (SDL, Epic) is
+1. **List the problems you found** in `4cee9c1`, so they can be fixed and the reviewer can weigh them.
+2. **After the independent review,** decide what to fix and, later, any merge.
+3. **Optional.** Filing the two upstream bug reports drafted during the start-up crash investigation (SDL, Epic) is
    your call; they are public actions.
-7. **Optional display setting.** On the 165 Hz monitor, V-Sync paces the game at 60 Hz in every window mode, so
+4. **Optional display setting.** On the 165 Hz monitor, V-Sync paces the game at 60 Hz in every window mode, so
    motion lands unevenly. For smooth motion run the monitor at 59.97 Hz, or play on the TV (Validation, Known
    limitations).
 
@@ -95,5 +95,5 @@ development, before crash reporting was turned off; the packaged game has no cra
 - **Carried over from `060a75f`** (that code has not changed): the 58-minute soak and the 385 clean starts across
   every display mode, monitor standby, focus loss and audio output changes.
 - **Verified by the creator** on `060a75f`: the PS4 controller and audio through the TV.
-- **Not verified:** a person's play of this candidate (the jump rule, the two animations, the repurposed buttons), and
-  hardware other than the test machine (Validation lists it).
+- **Played by the creator** on `4cee9c1` (2026-11-07): everything in this round; problems remain, not yet itemized.
+- **Not verified:** hardware other than the test machine (Validation lists it).

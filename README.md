@@ -8,13 +8,15 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**First playable slice: candidate for the creator's playtest. Not approved, not merged.**
-- **Candidate.** `EbonyHearts-Slice-060a75f.tar.gz` (Shipping, Linux), built from commit `060a75f`. On the test machine
+**First playable slice: played by the creator, under independent review. Not approved, not merged.**
+- **Candidate.** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`. On the test machine
   it passes the combat core, the packaged suites (menus and modes, 12-match matrix, controls, real keyboard events and
-  simulated Xbox and DualShock 4 pads), a 58-minute soak, 1080p/60 performance and 385 clean starts across every display
-  mode. The intermittent start-up crash found in the previous review has two identified causes, both fixed (EH-07).
-- **Still open.** A physical-controller check, the creator's playtest and listening pass, then a new independent
-  review of the exact pull-request head.
+  simulated Xbox and DualShock 4 pads) and 1080p/60 performance. The previous candidate `060a75f` also passed a
+  58-minute soak and 385 clean starts across every display mode; the start-up code has not changed since. The
+  intermittent start-up crash found in the previous review has two identified causes, both fixed (EH-07).
+- **Creator playtests (2026-11-07).** `060a75f` on the 4K TV: the PS4 controller and audio through the TV verified;
+  the changes requested then are in `4cee9c1`. The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized).
+- **Still open.** The independent review of the exact pull-request head, and the problems from the creator's playtest.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   The packaged game has no crash reporter.
 

@@ -57,8 +57,8 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 
 ## 4. Open
 
-- For the creator: play the changes (see [Status](Status.md)).
-- Not verified: a person's feel for the new jump rule and animations; hardware other than the test machine.
+- The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized). The independent review proceeds at their request; merging is not authorized.
+- Not verified: hardware other than the test machine; Wayland sessions.
 - The animation sources (raw captures, `.blend` files) are outside the repository, unchanged from earlier rounds.
 
 ## 5. Commit structure
