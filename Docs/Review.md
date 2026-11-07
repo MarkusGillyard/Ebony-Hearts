@@ -8,9 +8,9 @@ day they asked for the buttons Grab left unused to be repurposed. Nothing else w
 described in the [validation report](Validation.md), "Candidate `060a75f`"; rules and move data are in the
 [combat contract](CombatContract.md).
 
-**Candidate:** package built from commit `d2f7cb7` (Shipping, Linux), released as `EbonyHearts-Slice-d2f7cb7.tar.gz`,
-SHA-256 `34555785c4db7f27016350914b177d4178ccfccaab6d522d2a03283be2b06044`. Commits after `d2f7cb7` change documentation
-and a review script only. Results: Validation, "Current candidate".
+**Candidate:** package built from commit `4cee9c1` (Shipping, Linux), released as `EbonyHearts-Slice-4cee9c1.tar.gz`,
+SHA-256 `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`. Commits after `4cee9c1` change
+documentation only. Results: Validation, "Current candidate".
 
 ## 1. What changed and where
 
@@ -21,6 +21,7 @@ and a review script only. Results: Validation, "Current candidate".
 | Jumping had no purpose | A jump attack that connects with a grounded opponent keeps them in stun until the jumper has landed and recovered, plus 12 ticks on hit or 2 on block, however high it connected; a held Block does not stop it (a timed block does, and usually gives the defender the turn); one attack per jump. Strikes still knock any jumper down. The CPU jumps in more against a guard it has seen held, and now answers jump-ins: it notices a jump in two thirds of its reaction time (at the full delay the Normal CPU saw a jump-in only once its attack was out, and a player who did nothing but jump in beat it 24 matches out of 24), times its anti-air jab to the jumper's arrival, starts no poke while a jump comes at it, and may step back instead of holding a block | `Source/EbonyHearts/Core/EHMatch.cpp` (`ResolveCollisions`, `StartMove`, jump state), `EHCombatData.*`, `Content/Data/rules.json` (`jumpInHitAdvantage`, `jumpInBlockAdvantage`, `heldBlockStopsJumpIns`), `EHAI.*` | `jump_ins_have_landing_relative_advantage`, `jump_ins_beat_a_held_block_but_not_a_deflect`, `jump_in_hit_links_into_a_light`, `one_attack_per_jump`, `cpu_anti_airs_jump_ins`, `cpu_levels_play_legal_complete_matches` |
 | Remove grappling, keep the work | `"grappling": false` in `rules.json`: no throw move can start. Grab is hidden from Controls, the move list, the results, the input log and the dummy options; Lesson steps 6 and 7 teach the jump-in and the anti-air instead; the CPU never grabs; texts no longer mention grappling. The grab move, throws, escapes, their code, data, animations and documentation stay, and the original texts and Lesson steps return when the switch is turned back on | `EHMatch.cpp` (`SelectMove`), `EHAI.cpp`, `EHDirectorFlow.cpp`, `EHDirectorUI.cpp`, `presentation.json` | `grappling_off_grab_does_nothing`, the throw tests (switched on locally), `cpu_levels...` (no grabs in 36 CPU matches), packaged controls and journey runs |
 | Repurpose Grab's buttons (asked after the first candidate of this round) | Cross / A jumps and L1 / LB blocks; I, Numpad 5 and ; jump. Grab has no default button. Each action can hold three buttons (was two), so the right keyboard keeps Up, Numpad 5 and ; on Jump. Settings format 3: loading a version 1 or 2 file moves Grab's former default buttons to their new jobs where the slot is free, with a notice; a button the player gave Grab themselves stays | `EHSettings.*` (`Defaults`, `EHFormerGrabKey`, `Load`), `EHDirectorFlow.cpp` / `EHDirectorUI.cpp` (third slot), `EHAutomation.cpp` | `bindings_selftest` (new layout, third slot, a version-2 file), `input_selftest` (Cross jumps with the stick's direction, L1 blocks), `controls_remap` / `controls_persist`, simulated pads |
+| Jump-in loop (found while preparing this review) | After a jump-in hit, jumping again at once and attacking on the way up renewed the landing-relative stun on every hit: an unescapable loop to KO (29 hits in a probe, through a held Block too). The landing-relative stun now applies only to a jump attack that opens contact; on a defender already in hit- or blockstun a jump attack takes its own stun with decay | `EHMatch.cpp` (`ResolveCollisions`) | `jump_ins_cannot_loop` (longest re-jump route 2 hits; 18 before the fix) |
 | Controller and TV audio | Recorded as verified by the creator | `Docs/Status.md` | the creator, 2026-11-07 |
 
 Supporting changes: `Tools/Unreal/build_characters.py` can import just named clips (`EH_ANIM_NAMES`);
@@ -29,9 +30,9 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 
 ## 2. Check it yourself
 
-- **Core.** `Tests/Core/run_core_tests.sh`: 43 cases, `889 checks, 0 failures`. Set `heldBlockStopsJumpIns` to `true`
-  or `jumpInHitAdvantage` to `0` in `rules.json`, remove the `airAttackUsed` check in the jump state, or let the CPU see
-  jumps only after its full reaction delay, and a new test fails.
+- **Core.** `Tests/Core/run_core_tests.sh`: 44 cases, `890 checks, 0 failures`. Set `heldBlockStopsJumpIns` to `true`
+  or `jumpInHitAdvantage` to `0` in `rules.json`, remove the `airAttackUsed` check in the jump state, apply the landing-relative stun to every jump attack
+  (drop `opensContact`), or let the CPU see jumps only after its full reaction delay, and a new test fails.
 - **Training.** Pause > Dummy > Block all. Jump toward the partner and press Heavy on the way down, then Light as you
   land: the jump-in hits through the held guard and the Light combos. Lesson steps 6 and 7 cover the same and the
   anti-air.
@@ -62,7 +63,8 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 
 ## 5. Commit structure
 
-Seven commits on top of the previous head `22fa565`: combat rules and tests (`80e57fa`), game layer (`d3548d7`),
+Eight commits on top of the previous head `22fa565`: combat rules and tests (`80e57fa`), game layer (`d3548d7`),
 animation (`bb4823b`), documentation and move notes (`d1ede0e`), a stronger jump-in test (`37d6ab4`), the CPU's
-anti-air (`b445999`) and the repurposed buttons (`d2f7cb7`), then documentation of the results. Earlier history is
+anti-air (`b445999`), the repurposed buttons (`d2f7cb7`) and the jump-in loop fix (`4cee9c1`), plus documentation of
+the results. Earlier history is
 unchanged; nothing has been merged, tagged or released.

@@ -2,10 +2,10 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-d2f7cb7/<run>`, the
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-4cee9c1/<run>`, the
 previous candidate's under `evidence/rc-060a75f/<run>` and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `d2f7cb7` (2026-11-07, creator playtest round)
+## Current candidate `4cee9c1` (2026-11-07, creator playtest round)
 
 **Result: PASS on every objective check run; ready for the creator's next playtest.** This round answers the creator's
 playtest of `060a75f` and their later request to repurpose Grab's buttons (see [Review](Review.md)). This is the
@@ -15,34 +15,36 @@ engineer's own verification, not an independent review, and nobody has played th
 
 | Item | Value |
 |---|---|
-| Source | `d2f7cb7` (a fast-forward of `release/first-slice` at `22fa565`), packaged from a working tree with no uncommitted code or data. Later commits change documentation and a review script only. |
-| Release archive | `EbonyHearts-Slice-d2f7cb7.tar.gz`, 326 475 726 bytes, SHA-256 `34555785c4db7f27016350914b177d4178ccfccaab6d522d2a03283be2b06044` |
+| Source | `4cee9c1` (a fast-forward of `release/first-slice` from `22fa565`), packaged from a working tree with no uncommitted code or data. Later commits change documentation only. |
+| Release archive | `EbonyHearts-Slice-4cee9c1.tar.gz`, 326 476 000 bytes, SHA-256 `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591` |
 | Content hash | `6344d74d93d808fde3bd5148beae6f7cf26412e1e4fb7797e284582a8062d490` (SHA-256 over the pak files, in `VERSION.txt`) |
 | Build | Unreal Engine 5.8.4, Shipping, Linux x86-64, Vulkan SM6. 830 packages cooked, 0 warnings, 0 errors. |
-| Release check | Extracted into a new folder whose path contains a space; every file matched `EbonyHearts-Slice-d2f7cb7.files.sha256`. |
+| Release check | Extracted into a new folder whose path contains a space; every file matched `EbonyHearts-Slice-4cee9c1.files.sha256`. |
 | Test machine | FLOWBOX as described for `060a75f` below (32 GB RAM), with the 3440 × 1440 monitor only; the 4K TV the creator played on was disconnected again. |
-| Superseded on the way | `EbonyHearts-Slice-d1ede0e` and `EbonyHearts-Slice-b445999` (same content; earlier CPU and controls code). The `d1ede0e` battery was stopped after its controller runs (all passing) when the CPU anti-air problem below was found; `b445999` passed the full battery below before the button request. Both stay in the release folder. |
+| Superseded on the way | `d1ede0e`, `b445999` and `d2f7cb7` (same content; earlier CPU, controls and jump-in code). The `d1ede0e` battery was stopped after its controller runs (all passing) when the CPU anti-air problem below was found; `b445999` and `d2f7cb7` each passed the full battery; `d2f7cb7` was then found to allow a jump-in loop (below). All stay in the release folder; `d2f7cb7`'s results are in `evidence/rc-d2f7cb7`. |
 
 ### Results on the candidate
 
-Evidence: `evidence/rc-d2f7cb7/battery/<run>`. A pass has exit 0, no `FAIL` or `WARN` line, and the script's own
+Evidence: `evidence/rc-4cee9c1/battery/<run>`. A pass has exit 0, no `FAIL` or `WARN` line, and the script's own
 completion marker.
 
 | Suite | Result | Notes |
 |---|---|---|
-| Combat core | **PASS** | 43 cases, 889 checks, 0 failures |
+| Combat core | **PASS** | 44 cases, 890 checks, 0 failures |
 | Packaging safety, move tables | **PASS** | 9 tests; `move_tables.py` regenerates the contract unchanged |
 | Smoke | **PASS** | No missing animations or sounds; platform check ok |
 | Controls | **PASS** | `bindings_selftest` 92 checks (new layout, three buttons per action, a version-2 settings file migrated), `input_selftest` 33 checks (Cross / A jumps in the direction held, L1 / LB blocks), remap, persistence and Controls UI runs |
 | Journey | **PASS** | 24/24 screen checks, then Quit through the menu (Training now jumps where it grabbed) |
 | Real X11 keyboard | **PASS** | Title, menu, fight (including the I key, now jump), pause, quit |
 | Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts: every button gave its action (Cross / A: jump, confirm in menus; L1 / LB: block); menu-and-fight, disconnect and reconnect, remapping with Swap |
-| Matrix | **PASS** | 12/12 complete matches (both fighters, both sides, mirrors, all CPU levels, local versus), 4 610 sounds, no missing animations or sounds; memory 1 503 MiB at the end (peak 1 521) |
-| Review scripts | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_jump`, `review_playtest`. Footage of `review_playtest` on this build and on `060a75f`, side by side and at half speed: `evidence/rc-d2f7cb7/before-after` (the jump-in hits through the held guard and the light string combos after it; on `060a75f` it is blocked) |
+| Matrix | **PASS** | 12/12 complete matches (both fighters, both sides, mirrors, all CPU levels, local versus), 4 099 sounds, no missing animations or sounds; memory 1 492 MiB at the end (peak 1 510) |
+| Review scripts | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_jump`, `review_playtest`. Footage of `review_playtest` on `d2f7cb7` (the same moves and jump-in as this candidate; the loop fix does not change a jump-in that opens contact) and on `060a75f`, side by side and at half speed: `evidence/rc-d2f7cb7/before-after` (the jump-in hits through the held guard and the light string combos after it; on `060a75f` it is blocked) |
 | Signature footage | **PASS** | aura and flame rendered |
-| Frame times, 1080p windowed, V-Sync on | **PASS** | Fight 60 s: 3 601 frames, median 16.67 ms, p99 16.75, max 17.08, none over 33 ms, GPU median 7.0 ms; menu 20 s: max 16.82 |
-| Frame times, default borderless 3440 × 1440 | **PASS** | Fight 60 s: median 16.67 ms, p99 16.76, max 17.05, none over 33 ms, GPU median 10.1 ms; menu 20 s: max 17.05 |
-| First match from its start (cold) | **PASS** | 1 502 frames, median 16.67 ms, p99 16.79, max 17.25, none over 33 ms |
+| Frame times, 1080p windowed, V-Sync on | **PASS** | Fight 60 s: 3 602 frames, median 16.66 ms, p99 16.78, max 17.09, none over 33 ms, GPU median 7.4 ms; menu 20 s: max 17.02 |
+| Frame times, default borderless 3440 × 1440 | **PASS** | Fight 60 s: median 16.67 ms, p99 16.78, max 17.04, none over 33 ms, GPU median 10.7 ms; menu 20 s: max 16.87 |
+| First match from its start (cold) | **PASS** | 1 501 frames, median 16.67 ms, p99 16.78, max 16.87, none over 33 ms |
+
+The battery's own `review_playtest` capture on this candidate is 38 s and playable (`review-playtest/review-playtest.mp4`).
 
 Not re-run this round, because the code they cover did not change: the one-hour soak, display-mode changes, the monitor
 standby probe and the start-up loops (`060a75f`, below). Every run above also started the game cleanly: 21 more starts.
@@ -63,8 +65,16 @@ Per-frame joint positions and the checks below, before and after, are kept with 
 
 ### Jumping and the CPU
 
+**A loop found while preparing the review (fixed in `4cee9c1`).** On `d2f7cb7`, after a jump-in hit, jumping again on the
+first free frame and attacking on the way up hit before the defender recovered, and each hit renewed the "until the
+jumper lands, plus 12" stun: a probe chained 29 hits to a KO, against a standing or a block-holding defender, with either
+fighter. The landing-relative stun now applies only to a jump attack that opens contact. `jump_ins_cannot_loop` searches
+re-jump routes (toward, up and away; light or heavy at jump frames 5-30; 60-200 cm; standing and blocking defenders):
+the longest is 2 hits, 18 on the old code within the test's limits.
+
 A scripted player who does nothing but jump in (toward from mid range, Heavy at the top, a light string on landing)
-against each CPU level, 24 matches per level, simulated with the game's own `CpuController` (`Tests/Core` has the
+against each CPU level, 24 matches per level (unchanged by the loop fix; mirrored with the player on the right: Normal
+51%, Hard 63%), simulated with the game's own `CpuController` (`Tests/Core` has the
 regression check, `cpu_anti_airs_jump_ins`):
 
 | CPU | Jump-in player wins, `22fa565` | now | Jump-ins knocked out of the air, `22fa565` | now |

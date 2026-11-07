@@ -9,9 +9,8 @@ Updated 2026-11-07 (evening).
 it is in the candidate below, and the objective checks in [Validation](Validation.md) pass on it. What remains needs a
 person: the creator's play of the changes (below), then a new independent review of the exact pull-request head.
 
-- **Candidate:** `EbonyHearts-Slice-d2f7cb7.tar.gz` (Shipping, Linux), built from commit `d2f7cb7`; SHA-256
-  `34555785c4db7f27016350914b177d4178ccfccaab6d522d2a03283be2b06044`. Later commits change documentation and a review
-  script only.
+- **Candidate:** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`; SHA-256
+  `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`. Later commits change documentation only.
 - **Pull request #1** (`release/first-slice` → `main`) is open. Nothing has been merged, tagged or released.
 
 ## Verified by the creator (2026-11-07, candidate `060a75f`)
@@ -31,7 +30,9 @@ person: the creator's play of the changes (below), then a new independent review
 3. **Jumping has a job.** Holding Block does not stop a jump attack, so jumping in is how you open a guard. A jump-in
    that hits leaves you 12 frames ahead when you land, enough for your Light string, however high it connected. It
    loses to any strike (anti-air knocks the jumper down) and to a well-timed block (a deflect), which gives the
-   defender the turn. One attack per jump. The CPU uses jump-ins against a held guard, and anti-airs by level.
+   defender the turn. One attack per jump. A jump-in only does this when it opens contact, so jump-ins cannot be
+   chained into a loop (a loop found while preparing the review was fixed). The CPU uses jump-ins against a held
+   guard, and anti-airs by level.
 4. **Grappling is out of the game, and kept.** No grabs, throws or escapes in play. Grab is gone from Controls, the
    move list, results, Training options, the CPU and the Lesson, whose steps 6 and 7 now teach the jump-in and the
    anti-air. All grappling code, data, animations and documentation are kept, and one setting brings them back
@@ -47,11 +48,11 @@ sha256sum -c SHA256SUMS
 ```
 
 ```bash
-tar -xzf EbonyHearts-Slice-d2f7cb7.tar.gz
+tar -xzf EbonyHearts-Slice-4cee9c1.tar.gz
 ```
 
 ```bash
-EbonyHearts-Slice-d2f7cb7/EbonyHearts.sh
+EbonyHearts-Slice-4cee9c1/EbonyHearts.sh
 ```
 
 It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHearts/Saved/EbonyHearts/Settings.json`.
@@ -86,7 +87,7 @@ development, before crash reporting was turned off; the packaged game has no cra
 ## Implemented, tested, observed and not verified
 
 - **Tested by automation on the candidate** (details in Validation, "Current candidate"):
-  - combat core (889 checks) and release-staging tests;
+  - combat core (890 checks) and release-staging tests;
   - smoke, controls (including an older settings file moving Grab's buttons to their new jobs), the menu journey,
     real keyboard events and simulated Xbox and DualShock 4 pads (disconnect, reconnect, remapping), 12 complete
     matches, the review scripts and signature footage; frame-time captures at 1080p and the native resolution;
