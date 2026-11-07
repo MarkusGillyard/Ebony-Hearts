@@ -1,121 +1,89 @@
 # Status and handoff
 
-Updated 2026-11-05.
+Updated 2026-11-07.
 
 ## Where things stand
 
-**PARTIAL — NOT COMPLETE.** The slice is implemented, and the packaged Linux build passed every automated acceptance
-run on the test machine (see [Validation](Validation.md)). It is not declared complete because:
-- **People.** Three checks need a person: physical-controller buttons, a hands-on playtest of the latest build (the
-  creator played `pkg-60` on 2026-11-04/05; the work on that feedback is not yet played), and a listening pass on the mix.
-- **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
-  It is recorded as a Preservation failure.
+**READY FOR THE CREATOR'S PLAYTEST — NOT APPROVED, NOT MERGED.** The start-up crash that blocked the last review
+(EH-07) had two causes, both outside the game's code; both are fixed in the game's start-up path and checked on the
+candidate below. The objective checks in [Validation](Validation.md) pass on that candidate. What remains needs a
+person: the creator's hands-on test (below), then a new independent review of the exact pull-request head.
 
-**Published.** On 2026-11-03, at the creator's request, `release/first-slice` was pushed to
-`MarkusGillyard/Ebony-Hearts` and opened as pull request #1 into `main`. On 2026-11-04 the creator asked for it to be
-updated with the animation work, and it was, as squashed commits on top; it is updated the same way after each round.
-Nothing has been merged, tagged or released.
+- **Candidate:** `EbonyHearts-Slice-060a75f.tar.gz` (Shipping, Linux), built from commit `060a75f`; SHA-256
+  `06b34f4a09d5c46f850f5d61c642c737d4a8bcdc98032ac5843f206805ba618f`. Later commits on the branch change documentation only.
+- **Pull request #1** (`release/first-slice` → `main`) is open. Nothing has been merged, tagged or released.
 
-**Animation after the creator's reviews (2026-11-03 and 2026-11-04).** Each step, with its measurements, is in the
-[validation report](Validation.md) (packages `pkg-21` to `pkg-67`):
-- **Captured** (Mixamo and ACCAD): the idles, walks and guards; the jabs, crosses, elbows, knee and kicks; Wren's
-  jab-to-cross string; Wren's double-leg slam and shoulder throw; both fighters' forward roll; Wren's power-up; the hit and block
-  reactions, knockdowns, KO, both get-ups; the intros, wins and defeated poses.
-- **Still keyed by script:** Ashka's two throws up to the trip (their victims then fall as captured), the grabs, the
-  back rolls, Ashka's Flame Burst, Wren's spinning back elbow and the two light jump attacks. No capture tried so far fits them; Mixamo has no back roll
-  or quick grab.
-- **Throws** are drawn as authored (the victim was drawn mirrored), switch sides cleanly, and keep a knocked-out
-  victim lying. Both fighters ease into a throw from where they stood, and an escape starts from where the throw was. Rolls stay above the floor, and a fighter knocked down lies on it. **Effects:** the golden aura and the crimson flame were rebuilt.
-**After the creator's playtest (2026-11-05)** (packages `pkg-61` to `pkg-67`): punches straighten to full extension
-and reach their boxes; each hit names its reaction (hooks turn the head away, body shots fold the body) and reactions
-show contact during hitstop; fists stay in line with the forearm, thumbs wrap and necks bend naturally; strikes from a
-walk finish the step; guards turn with the body; Ashka's body kick and teep are captured; and **jumping** is in the
-game (up on every device; jump attacks; anti-air; the CPU uses both). Jump values are first passes to tune by feel.
-On the build under review, performance and a 59-minute soak were re-run and match the original release.
-- **Display.** On the test desktop the monitor runs at 165 Hz but V-Sync paces everything at 60 Hz, so motion looks
-  like it skips. This is a system setting (see Validation, Known limitations).
+## What changed in this round
 
-## What was delivered
+- **Start-up crash (EH-07).** SDL could free a monitor's display while the game changed into fullscreen if the monitor
+  went to standby or woke at that moment; and the engine's SDL audio output could overwrite the stack of SDL's audio
+  thread when audio started. The game now applies monitor hot-plug events at the start of a frame and uses its own
+  SDL audio output. Details, crash dumps and the with/without comparisons: Validation, "Current candidate".
+- **Borderless window.** Starting in borderless sometimes left a window with a title bar, short of the desktop panel.
+  The game now checks and corrects it; and launch flags (`-fullscreen`, `-windowed`, `-safedisplay`) no longer change
+  the mode the next normal launch starts in.
+- **Tests.** A start-up loop that classifies every launch, window and platform checks in every packaged run, hot-plug
+  and audio probes, combat-state hash coverage and throw-timeout boundaries (828 core checks), and safer release
+  staging.
 
-- **Game.** A standalone Linux build of the slice: Wren Ku and Ashka Rook, The Drowned Chapel, the six actions,
-  Versus CPU, local Versus, Training, the Lesson, results with rematch, settings, the move list and credits.
-- **Release.** `EbonyHearts-Slice-f3ae5ab.tar.gz` (Shipping, commit `f3ae5ab`), SHA-256
-  `57886ee502edaf2482939b9d0282cf5d357f6577a3e14436c3264082ff064d74`. It contains `THIRD_PARTY_NOTICES.txt` and
-  `VERSION.txt`. A per-file checksum list ships beside the archive.
-- **Source and editable content.** This repository: game code, combat data, the scripts that build every asset, the
-  Unreal content they produced, and the tests.
-- **Documents.**
-  - [README](../README.md)
-  - [Combat and art contract](CombatContract.md)
-  - [Design research](Research.md)
-  - [Asset ledger](AssetLedger.md)
-  - [Production guide](Production.md)
-  - [Validation report](Validation.md)
-
-## How to launch the verified build
+## How to test the candidate
 
 ```bash
-tar -xzf EbonyHearts-Slice-f3ae5ab.tar.gz
+sha256sum -c SHA256SUMS
 ```
 
 ```bash
-EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh
+tar -xzf EbonyHearts-Slice-060a75f.tar.gz
 ```
-
-The game starts borderless at the desktop resolution. Change the display mode in Settings > Video. To start in a
-1920 × 1080 window instead, run:
 
 ```bash
-EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh -windowed -ResX=1920 -ResY=1080
+EbonyHearts-Slice-060a75f/EbonyHearts.sh
 ```
+
+It starts borderless at the desktop resolution, or in your saved mode. Settings are in
+`~/.config/Epic/EbonyHearts/Saved/EbonyHearts/Settings.json`.
+
+## For the creator
+
+1. **Physical controller (about 10 minutes).** With the PS4 controller connected, press Cross on the title screen and
+   pick Training:
+   - Square: Light. Triangle: Heavy. Circle: Dodge. Cross and L1: Grab. R1: Special. R2: Block while held.
+   - D-pad or left stick: walk; up jumps. Options: pause.
+   - In menus, Cross confirms and Circle goes back; prompts show PlayStation shapes.
+   - Settings > Controls > Controller - Player 1: move one action to another button, try Swap, then restore.
+   - Unplug or switch the controller off mid-match and back on.
+2. **Play.** Training, Versus CPU at every level, and local Versus if a second player is available. Judge
+   responsiveness, spacing, combos and throws, jumping, readability, fairness and fun.
+3. **Motion at game speed.** Punch reach, guards and stances, hit reactions, necks, wrists and thumbs, transitions,
+   Wren's and Ashka's throws, jumps and jump attacks, cloth and coat clipping, the golden aura and the crimson flame.
+4. **Listening.** Select the TV or soundbar as the output first (the monitor's speakers do not work; the game follows
+   a change of output while it runs). Music, ambience and effects: balance, clipping and fatigue.
+5. **Decide.** Accept the tuning or ask for changes; then authorize a new independent review of the pull-request head,
+   and later any merge.
+6. **Optional.** Filing the two upstream bug reports drafted during the investigation (SDL, Epic) is your call; they
+   are public actions.
+7. **Optional display setting.** On the 165 Hz monitor, V-Sync paces the game at 60 Hz in every window mode, so
+   motion lands unevenly. For smooth motion, run the monitor at 59.97 Hz, or disable compositing for full-screen
+   windows in Cinnamon and play fullscreen (Validation, Known limitations).
+
+## History
+
+The slice was published as `release/first-slice` and opened as pull request #1 on 2026-11-03, at the creator's
+request, and has been updated with squashed commits after each review round since. The creator played `pkg-60` on
+2026-11-04/05; the work on that feedback (punches, reactions, wrists and necks, flow, Ashka's kicks, jumping) is in the
+candidate but has not been played yet. The title card's origin and authorization were confirmed on 2026-11-03
+([asset ledger](AssetLedger.md#creator-supplied)). One editor crash report was sent to Epic Games early in
+development, before crash reporting was turned off; the packaged game has no crash reporter.
 
 ## Implemented, tested, observed and not verified
 
-- **Implemented and tested by automation:**
-  - the combat rules (core suite)
-  - every menu path
-  - 12 complete matches across both fighters, sides, mirrors, CPU levels and local versus
-  - a 30+ minute soak
-  - real X11 key events
-  - a virtual gamepad, including disconnect and reconnect
-- **Observed:**
-  - packaged screenshots and footage of menus, matches and the signature moves
-  - frame-time captures on the test machine
-- **Not verified:**
-  - **Physical controller.** A PS4 controller was connected and detected throughout testing, but nobody pressed its
-    buttons.
-  - **Human play.** No human playtest of balance, feel or difficulty took place.
-  - **Listening.** No listening test of the mix took place.
-  - **Startup stability.** A rare crash was observed in exclusive fullscreen launch loops (one in 26 Shipping
-    launches and one in 40 Development launches). The cause remains unverified; see Validation, Known limitations.
-
-## Remaining items for the creator
-
-1. **Physical controller check (about 5 minutes).** Launch the build with the PS4 controller connected. Press Cross
-   on the title screen and pick Training. Check that each button does what the new layout says:
-   - Square: Light. Triangle: Heavy. Circle: Dodge. Cross and L1: Grab. R1: Special.
-   - R2: Block while held, stopping on release.
-   - D-pad or left stick: walk (toward + a button gives the toward move); up jumps. Options: pause.
-   - In menus, Cross confirms and Circle goes back; on-screen prompts show PlayStation shapes.
-   - In Settings > Controls > Controller - Player 1, move one action to another button and try Swap.
-   Then unplug and replug the controller mid-match. Simulated DualShock 4 and Xbox 360 pads already pass these
-   steps, but they are not physical hardware.
-2. **Playtest and listening.** Play a few matches against each CPU level and in Training. Note anything that feels
-   unfair, slow or unclear, and anything in the mix that is too loud, too quiet or grating.
-3. **Title card.** Done on 2026-11-03. The creator confirmed it is an authorized, AI-generated project asset (OpenAI
-   ChatGPT image generation). Origin, rights and handling are in the [asset ledger](AssetLedger.md#creator-supplied).
-4. **Animation and jumping review.** Watch the latest videos (the creator has been sent each one) and play the latest
-   build: punches, reactions, moving into strikes, Ashka's kicks, and jumping (height, speed and the jump attacks).
-   For more captured motion (rolls, grabs, Ashka's throws), sign in to Mixamo again in the built-in browser.
-5. **Display setting (optional).** For smooth motion on the 165 Hz monitor, either run it at 59.97 Hz, or disable
-   compositing for full-screen windows in Cinnamon and play fullscreen.
-6. **Merge and release.** `release/first-slice` is published as squashed commits. The local working history,
-   which includes an early commit with Python bytecode caches, is not published. Merging pull request #1 into
-   `main`, tagging a version and making a GitHub release each need your explicit go-ahead.
-
-## Next safe action
-
-For an independent review of the latest round, start with [Review](Review.md).
-
-Do the controller check, the playtest and the animation review (items 1, 2 and 4 above). After the playtest, the creator plans to have pull
-request #1 merged into `main`. Nothing will be merged, tagged or released without that decision.
+- **Tested by automation on the candidate** (details in Validation, "Current candidate"):
+  - combat core (828 checks) and release-staging tests;
+  - smoke, controls, the menu journey, real keyboard events and simulated Xbox and DualShock 4 pads (including
+    disconnect, reconnect and remapping), 12 complete matches, the motion review scripts and signature footage;
+  - a 58-minute soak (36 matches, flat memory) and frame-time captures at 1080p and the native resolution;
+  - 385 starts across every display mode, first runs and launches from monitor standby, all clean; mode changes,
+    monitor standby during a mode change, focus loss and audio output changes.
+- **Observed only:** the PS4 controller was detected as a PlayStation pad; nobody pressed its buttons.
+- **Not verified:** physical controller buttons, a person's playtest of feel and balance, a listening pass, and
+  hardware other than the test machine (Validation lists it).

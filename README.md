@@ -8,11 +8,15 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**First playable slice: PARTIAL — NOT COMPLETE.**
-- **Build.** A packaged Linux build exists and passes its automated acceptance runs on the test machine: menus and
-  modes, 12-match matrix, 30+ minute soak, 1080p/60 performance, real keyboard events and a virtual gamepad.
-- **Still open.** A physical-controller check, and a human playtest and listening pass.
+**First playable slice: candidate for the creator's playtest. Not approved, not merged.**
+- **Candidate.** `EbonyHearts-Slice-060a75f.tar.gz` (Shipping, Linux), built from commit `060a75f`. On the test machine
+  it passes the combat core, the packaged suites (menus and modes, 12-match matrix, controls, real keyboard events and
+  simulated Xbox and DualShock 4 pads), a 58-minute soak, 1080p/60 performance and 385 clean starts across every display
+  mode. The intermittent start-up crash found in the previous review has two identified causes, both fixed (EH-07).
+- **Still open.** A physical-controller check, the creator's playtest and listening pass, then a new independent
+  review of the exact pull-request head.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
+  The packaged game has no crash reporter.
 
 Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Status.md).
 
@@ -37,7 +41,8 @@ The rules, move tables and canon boundaries are in [Docs/CombatContract.md](Docs
 
 ## Platform
 
-Linux x86-64 (tested on Ubuntu with an NVIDIA GPU and the proprietary Vulkan driver) with X11 or XWayland.
+Linux x86-64 with X11 (tested on Linux Mint 22.3, Ubuntu-based, with an NVIDIA GPU and the proprietary Vulkan driver;
+XWayland and Wayland sessions were not tested).
 Requires a Vulkan GPU with Shader Model 6 support. The target is 1920 × 1080 at 60 FPS.
 
 Input: keyboard (two layouts, so two players can share one keyboard) and SDL-supported gamepads. In Local Versus each
@@ -74,19 +79,19 @@ sha256sum -c SHA256SUMS
 ```
 
 ```bash
-tar -xzf EbonyHearts-Slice-f3ae5ab.tar.gz
+tar -xzf EbonyHearts-Slice-060a75f.tar.gz
 ```
 
 ```bash
-EbonyHearts-Slice-f3ae5ab/EbonyHearts.sh
+EbonyHearts-Slice-060a75f/EbonyHearts.sh
 ```
 
 The first launch opens borderless at the desktop resolution. `VERSION.txt` in the extracted folder names the source
 commit and content hash, and `THIRD_PARTY_NOTICES.txt` holds the licences.
 
-Useful command-line options:
+Useful command-line options (each lasts for that run only; the saved settings are not changed):
 - `-ResX=1920 -ResY=1080 -fullscreen`, or `-windowed`
-- `-EHVSync=0` turns V-Sync off for this run only; the setting itself is not changed.
+- `-EHVSync=0` turns V-Sync off.
 - `-safedisplay` starts in a 1280 × 720 window and ignores saved display settings.
 
 Settings are saved to `~/.config/Epic/EbonyHearts/Saved/EbonyHearts/Settings.json`. Delete that file to restore the
@@ -130,13 +135,14 @@ Tests/Core/run_core_tests.sh
 
 ## Known limitations
 
-- **Platform.** Linux only. The build was verified on one machine (Ryzen 7 5700G, RTX 2060 6 GB, Linux Mint 22.3,
-  X11). Exclusive fullscreen mode switching was not exercised; borderless and windowed were. In 1 of 5 launches on
-  Cinnamon, the borderless window stopped above the desktop panel.
+- **Platform.** Linux only, verified on one machine (Ryzen 7 5700G, 32 GB, RTX 2060 6 GB, Linux Mint 22.3, Cinnamon on
+  X11). On Linux the engine draws fullscreen and borderless as a desktop-sized window, so `-fullscreen` at a lower
+  resolution costs as much GPU time as the native one. The game carries its own fixes for two engine/SDL defects
+  (`Source/EbonyHeartsLinux`, see `Docs/Production.md`); Wayland sessions were not tested.
 - **Evaluation.** Nobody has playtested the slice by hand, and nobody has listened to the mix. Every frame, damage and
   CPU value is an untested tuning proposal (see the combat contract).
-- **Controllers.** Gamepads were verified with a virtual Xbox 360 pad, including disconnect and reconnect. A physical
-  PS4 controller was detected, but nobody pressed its buttons.
+- **Controllers.** Gamepads were verified with simulated Xbox 360 and DualShock 4 pads, including disconnect, reconnect
+  and remapping. A physical PS4 controller was detected as a PlayStation pad, but nobody pressed its buttons.
 - **Art.**
   - The fighters are built by script from a MakeHuman base. They read well at gameplay distance, but close-up detail
     (faces, hair cards) is modest.

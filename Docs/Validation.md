@@ -2,9 +2,186 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The final release's runs are under `evidence/rc-f3ae5ab/<run>`.
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-060a75f/<run>`; the
+original release's runs are under `evidence/rc-f3ae5ab/<run>`.
 
-## Build identity
+## Current candidate `060a75f` (2026-11-07)
+
+**Result: PASS on every objective check run; ready for the creator's playtest.** This is the engineer's own
+verification of the objective gates, not an independent review, and the creator has not yet played this build.
+
+### Build identity
+
+| Item | Value |
+|---|---|
+| Source | `060a75f021693e69acc784585c63a64ee6be47d6` on `release/first-slice` (built from a fresh worktree of that commit, with its LFS content verified). Later commits change documentation only. Base `main` `9a34d03`. |
+| Release archive | `EbonyHearts-Slice-060a75f.tar.gz`, 326 474 292 bytes, SHA-256 `06b34f4a09d5c46f850f5d61c642c737d4a8bcdc98032ac5843f206805ba618f` |
+| Content hash | `ab51dcadf855e96f685afbe453c4bdb3ad64726286474331e5894eb6ad786481` (SHA-256 over the pak files, in `VERSION.txt`) |
+| Build | Unreal Engine 5.8.4 (installed build, CL 58902052), Shipping, Linux x86-64, Vulkan SM6. 823 packages cooked, 0 warnings, 0 errors; code compiled without warnings. A Development package of the same commit was built for diagnosis. |
+| Release check | 21 files, no links, no symbols (`.debug`/`.sym` stay with the package); the archive and every extracted file were checked against `SHA256SUMS` and `EbonyHearts-Slice-060a75f.files.sha256` after extracting into a new folder whose path contains spaces. The package contains no crash reporter, so nothing is uploaded; crash dumps stay local. |
+| Test machine (FLOWBOX) | AMD Ryzen 7 5700G, **32 GB RAM** (upgraded from 16 GB on 2026-11-05; earlier results were measured with 16 GB), NVIDIA GeForce RTX 2060 6 GB (driver 595.99.02), Linux Mint 22.3 (kernel 7.0.0-42), Cinnamon 6.6 on X11 (Muffin), PipeWire 1.0.5 with the PulseAudio interface, one Samsung LC34G55T 3440 × 1440 165 Hz monitor on DisplayPort with HDMI audio from the GPU. The desktop turns the monitor off after 5 minutes idle. A DualShock 4 (054c:09cc) was connected over Bluetooth. |
+
+### Results on the candidate
+
+All packaged runs below used the extracted release through its own `EbonyHearts.sh`; the battery's first run started
+from an empty user profile. Evidence is under `evidence/rc-060a75f/battery/<run>`. A pass has exit 0, no `FAIL` or `WARN` line, and the
+script's own completion marker.
+
+| Suite | Result | Notes |
+|---|---|---|
+| Combat core (`run_core_tests.sh`) | **PASS** | 37 cases, 828 checks, 0 failures (at `060a75f`, clean worktree) |
+| Packaging safety (`Tests/Package`) | **PASS** | 9 tests |
+| Move tables regenerate unchanged | **PASS** | `Tools/Docs/move_tables.py` |
+| Smoke | **PASS** | No missing animations or sounds; `platform_check` ok (game audio output live, start-up prime dropped, display guard on) |
+| Controls self-tests, remap, persistence, controls UI | **PASS** | 4 runs |
+| Journey | **PASS** | 24/24 screen checks, then Quit through the menu |
+| Real X11 keyboard (`xinput_drive.py`) | **PASS** | Title, menu, fight, pause, quit |
+| Simulated pads (`virtual_pad.py`) | **PASS** | Xbox 360 and DualShock 4 layouts (every button, R2/RT hold and release), menu-and-fight, disconnect and reconnect mid-match, remapping with Swap. The physical PS4 controller was detected as `PS4 Controller`, PlayStation; its buttons were not pressed |
+| Matrix | **PASS** | 12/12 complete matches (both fighters, both sides, mirrors, all CPU levels, local versus), 3 865 sounds |
+| Review scripts | **PASS** | `review_reactions`, `review_flow`, `review_jump`; `review_match` played 150 s of a Hard-versus-Hard match without failures (a footage script: it returns to the menu at 150 s, before this match ended) |
+| Signature footage | **PASS** | 720 frames recorded; golden aura and crimson flame rendered |
+| Display modes after start-up | **PASS** | 21/21 `window_check` (fullscreen, borderless, windowed) |
+| Monitor standby during a mode change | **PASS** | 5/5 `display_hotplug_probe`, each disconnect held back inside SDL's fullscreen call; 10 events deferred and replayed |
+| Soak | **PASS** | 57.7 minutes, 36 complete matches, 12/12 settings save-and-reload round trips, Training and menu transitions; 0 failures, warnings or stuck states; clean exit. Game memory 1 503 → 1 513 MiB (first and last tenth of the run, peak 1 521); VRAM about 1.0 GB throughout |
+
+**Performance on the candidate** (1920 × 1080 unless noted, 100% render scale, the default High quality; frame
+times from every frame of each capture, GPU time from the RHI; resources sampled once a second):
+
+| Capture | Frames | Median | p95 | p99 | Max | Frames > 33 ms | GPU median / p99 | Peak VRAM (game + desktop) | Peak game memory |
+|---|---|---|---|---|---|---|---|---|---|
+| Fight 60 s, windowed, V-Sync on | 3 601 | 16.67 ms | 16.71 | 16.73 | 16.94 | 0 | 6.11 / 6.90 ms | 1 078 MiB | 1 500 MiB |
+| Menu 20 s, windowed, V-Sync on | 1 202 | 16.67 | 16.69 | 16.71 | 16.96 | 0 | 6.43 / 6.83 | | |
+| Fight 60 s, windowed, V-Sync off | 8 431 | 7.06 | 7.71 | 8.11 | 9.29 | 0 | 6.71 / 7.45 | 1 056 MiB | 1 530 MiB |
+| Menu 20 s, windowed, V-Sync off | 2 827 | 7.02 | 7.52 | 7.66 | 47.63 | 1 | 6.77 / 7.60 | | |
+| Fight 60 s, `-fullscreen` 1920 × 1080 | 3 602 | 16.67 | 16.72 | 16.75 | 17.02 | 0 | 9.52 / 9.81 | 1 313 MiB | 1 570 MiB |
+| Fight 60 s, default borderless 3440 × 1440 | 3 601 | 16.67 | 16.72 | 16.75 | 16.98 | 0 | 9.40 / 9.78 | 1 408 MiB | 1 539 MiB |
+| First match from its start (cold) | 1 502 | 16.67 | 16.73 | 16.77 | 17.02 | 0 | 6.73 / 8.49 | 1 007 MiB | 1 511 MiB |
+| Training with the golden aura, 3440 × 1440 | 422 | 16.66 | 16.71 | 16.73 | 16.77 | 0 | 9.45 / 9.66 | | |
+
+The single long frame (47.6 ms) came 17 s into an idle menu capture with V-Sync off; that frame's GPU time was 7.3 ms,
+so the stall was on the CPU side; its cause was not identified, and no other capture on the candidate had a frame over
+17.1 ms. Start-up to the title screen took 2.2-2.8 s. On Linux the engine draws both fullscreen modes as a
+desktop-sized window, so `-fullscreen` at 1920 × 1080 on this 3440 × 1440 monitor costs as much GPU time as the native
+resolution. V-Sync paces at 60 Hz on this desktop (see Known limitations).
+
+### EH-07: start-up crashes (two causes), diagnosis and fix
+
+The historical start-up crashes had two unrelated causes, both outside the game's code. Each was reproduced on demand,
+fixed in the game's chosen path, and checked by the same binary with and without the fix.
+
+**Evidence kept.** The three game crash dumps still held by `systemd-coredump` were copied out with their SHA-256 before
+rotation (it had already removed older editor dumps): `pkg-45-strings` Shipping (fullscreen, 2026-11-04 15:17),
+`dev-crashhunt` Development (fullscreen, 15:34) and `pkg-48-victim` Shipping (**windowed** 1920 × 1080, 18:24, not
+previously recorded). The packages' `.debug` files symbolize them.
+
+**Cause 1: SDL frees the display its own fullscreen call is using (X11).** The `pkg-45` dump faults on the game thread
+in `X11_SetWindowFullscreenViaWM` (SDL 3.4.4, `SDL_x11window.c:1897`), called from `SDL_UpdateFullscreenMode`
+(`SDL_video.c:2021`) and `FLinuxWindow::ReshapeWindow`. The `SDL_VideoDisplay` it reads had been freed: its first
+16 bytes hold a glibc tcache entry and its internal data pointers are cleared, as `SDL_DelVideoDisplay` leaves them, and
+SDL's display list then held only the fallback "Generic X11 Display". The function reads the display's data, then,
+while an earlier window request is still outstanding, waits for the window manager (`X11_SyncWindow`), which pumps X
+events. When an XRandR output-disconnect event is queued, SDL removes the display there and the function continues with
+freed memory. A DisplayPort monitor reports itself disconnected when it goes to standby and reconnected when it wakes;
+on the test machine that happens through the desktop's screen-off timer, and SDL's own screensaver reset wakes the
+monitor when the game starts. The same code is still in SDL's main branch.
+- **Fix** (`Source/EbonyHeartsLinux`, `EHDisplayEventGuard`): an SDL X11 event hook holds XRandR events back and
+  re-queues them for an event pump the game runs at the start of the next frame, when no window call is in progress.
+  Display changes still apply, one frame later.
+- **Reproduction** (`display_hotplug_probe`, `Tests/Auto/display_hotplug.txt`): queue an output disconnect for the
+  window's monitor, leave a window move outstanding, and enter fullscreen through `FLinuxWindow::SetWindowMode`. On one
+  Development binary, 3 of 3 runs with the guard disabled crashed in `X11_SetWindowFullscreenViaWM` with the same freed
+  display; with the guard, 15 of 15 probes passed and the real monitor came back after each simulated wake.
+  On the candidate: 5/5 probes on the Shipping release, and the candidate's Development package crashed 3/3 without
+  the guard and passed 3/3 with it (see the trials below).
+
+**Cause 2: the engine's SDL audio output writes through a stale pointer into SDL's audio thread.** The two other
+dumps (Development fullscreen, Shipping windowed) are identical: SDL's audio thread jumped to address 0 inside
+`PULSEAUDIO_PlayDevice` → `pa_stream_write` after returning through a zeroed stack slot. (The "null read in libc"
+earlier recorded was the signal-return trampoline in the crash handler's backtrace, not a libc fault.) In UE 5.8.4's
+`AudioMixerSDL`, the SDL callback allocates its output buffer on the SDL thread's stack (`SDL_stack_alloc`), stores the
+pointer, and never clears it; `SubmitBuffer` copies 12 288 bytes into that pointer. The mixer also calls `SubmitBuffer`
+from other threads: the render thread primes the stream once when it starts, and the null-device thread and device
+swaps do the same. Run under gdb with the engine's output, an off-thread `SubmitBuffer` wrote to the 12 KB directly
+below the SDL audio thread's stack pointer. That memory is unused while the thread waits, and holds live return
+addresses while it is inside `pa_stream_write`, which is where both dumps stopped. Writes in steady play survived
+(3 × 3 848 repeated submits); the fatal case is the start-up prime meeting the first writes to PulseAudio.
+- **Fix** (`Source/EbonyHeartsLinux`, `FSdlAudioOutput`, selected in `Config/Linux/LinuxEngine.ini`): the game's own
+  SDL3 output renders each SDL request into a buffer it owns and drops submissions made from any other thread. Output
+  format and mix are unchanged (5.1 float at 48 kHz, converted by SDL). Every start drops exactly one submission, the
+  render thread's prime (`platform_check ... dropped=1`).
+- **Comparison:** with the game's output the repeated off-thread submits were all dropped and audio kept playing.
+
+**Related display defect (P2): borderless window clamped to the work area.** Starting straight into borderless failed
+4 of 4 on one Development build: the window manager had no fullscreen state for the window (`_NET_WM_STATE` without
+`_NET_WM_STATE_FULLSCREEN`), so it was a decorated window clamped to the work area (3440 × 1368 at y = 32). The engine
+sets the mode while SDL's window is still hidden and SDL applies it when the window is shown; that request is lost.
+A second request after the window is up fixes it, which is why launches that changed resolution during start-up did
+not show the problem. Two changes: the engine's start-up display now always follows the saved settings (it used to keep
+whatever the last session ran in, including launch-flag test runs, because the engine saves its settings on exit), and
+half a second after each display change the game checks that a fullscreen or borderless window covers its monitor and
+repeats the request through the engine's reshape path if it does not (at most twice). `window_check` in every start-up
+loop reports the result. On the candidate every borderless start (30 default, 10 after 20 windowed runs, 10 first
+runs) needed exactly one re-request and then covered the monitor; fullscreen starts with launch flags and every mode
+change after start-up covered it without one.
+
+### Start-up and display trials on the candidate
+
+Every attempt ran `Tests/Auto/launch_quit.txt` through `Tests/Auto/launch_loop.py` (one launch at a time, 1.5 s
+apart; evidence under `evidence/rc-060a75f/loops`, `standby` and `ab`). Each start had to exit 0 after the script's
+quit, pass `platform_check` and `window_check`, and leave no game process behind.
+
+| Trial | Build | Starts | Result | Notes |
+|---|---|---|---|---|
+| Exclusive fullscreen 3440 × 1440 | Shipping | 100 | 100 clean | |
+| Exclusive fullscreen 1920 × 1080 | Shipping | 100 | 100 clean | |
+| Default (saved borderless) | Shipping | 30 | 30 clean | every start needed one fullscreen re-request |
+| Windowed 1920 × 1080 | Shipping | 20 | 20 clean | |
+| Default, after the windowed runs | Shipping | 10 | 10 clean | all started borderless: the launch flags did not change the saved mode |
+| First run, empty profile each time | Shipping | 10 | 10 clean | borderless, one re-request each |
+| `-safedisplay` | Shipping | 10 | 10 clean | 1280 × 720 window |
+| Exclusive fullscreen 3440 × 1440 | Development | 100 | 100 clean | |
+| Fullscreen launch right after forcing the monitor into standby (`xset dpms force off`) | Shipping | 5 | 5 clean | each start's wake-up delivered 2-4 real XRandR output events, held back and applied at the start of a frame; within the 30 s waited, X still listed the output as connected |
+| **Total** | | **385** | **385 clean** | 0 crashes, 0 timeouts, 0 leftover processes; every start dropped exactly one off-thread audio submission (the render thread's prime) |
+
+The loops ran with the monitor awake, so they exercise the audio race under the original conditions but not the
+display defect, which needs a monitor event during the fullscreen call; the probe and the standby launches cover that.
+With the historical rate (1 in 26 to 1 in 40 starts) unchanged, 380 loop starts would have been expected to crash
+about 10 to 15 times; no crash is strong evidence against the old rate, not proof that no rare crash remains.
+
+**With and without the fixes, on the candidate's Development package** (same binary; evidence `evidence/rc-060a75f/ab`):
+
+| Check | Without | With |
+|---|---|---|
+| Monitor standby during a fullscreen change (`display_hotplug.txt`, 5 probes a run) | `-EHNoDisplayEventGuard`: 3/3 runs crashed in `X11_SetWindowFullscreenViaWM` ← `SDL_UpdateFullscreenMode` ← `FLinuxWindow::SetWindowMode` | 3/3 clean |
+| Off-thread `SubmitBuffer`, repeated for 8 s (`audio_offthread.txt`) | engine `AudioMixerSDL` (`-ini` override): survived; steady-state writes land in unused stack, and the fatal overlap is the start-up prime meeting the first PulseAudio writes (dumps and gdb above) | game output: all 3 840-3 848 submits dropped, audio kept playing |
+
+**Other start-up and device checks on the Shipping release:**
+- **Focus loss.** With the walk key held, focus moved to another window, the key was released there, and focus came back:
+  the game released the walk when focus left (1.5 s after the press, before the real key-up), so nothing stayed held
+  (`evidence/rc-060a75f/focus`).
+- **Audio devices.** The game's stream was moved to a temporary output and back; the default output was switched to that
+  output while playing and the game's audio followed it; the temporary output was then removed and the stream returned
+  to the HDMI output. Buffers kept flowing throughout (2 621 in 28 s, about 94 a second), and the default output was
+  restored (`evidence/rc-060a75f/audio-device`). This checks delivery to the output, not audible sound: the test
+  monitor's speakers do not work.
+- **Crash reporting.** The package has no crash reporter; nothing was uploaded.
+
+#### Issue register (this round)
+
+| ID | Sev. | Location | Evidence | Root cause | Change | Regression | Status | SHA |
+|---|---|---|---|---|---|---|---|---|
+| EH-07a | P1 | SDL 3.4.4 `X11_SetWindowFullscreenViaWM` (engine third-party) | `pkg-45` Shipping dump; freed `SDL_VideoDisplay` (tcache entry), generic display left | Display removed by an XRandR disconnect processed inside SDL's own fullscreen call | XRandR events deferred to a frame-start pump | `display_hotplug.txt`; guard off 3/3 crash, on 3/3 pass (candidate); 5/5 probes on Shipping | Fixed | `7b7f42f` |
+| EH-07b | P1 | UE 5.8.4 `AudioMixerSDL` (engine) | Development and Shipping dumps, SDL audio thread at PC 0 in `pa_stream_write`; gdb: write at sp−12336..sp−48 of that thread | Stale pointer to an `alloca` buffer written from other threads | Game-owned SDL3 output | `platform_check` `dropped=1` per start; `audio_offthread.txt` | Fixed | `7b7f42f` |
+| EH-08 | P2 | Start-up display (`EHGameDirector`, engine `PreExit` save, SDL show) | Borderless starts 4/4 decorated at 3440 × 1368+0+32; `_NET_WM_STATE` lacks fullscreen | Fullscreen request for a hidden window is lost; the engine saved the live session display on exit | Engine ini kept on saved settings; coverage check and one re-request | `window_check` in every loop; `display_modes.txt` | Fixed | `f7ae2ef` |
+| EH-09 | P2 | Release staging | Link found mid-copy left a partial release; an existing archive would be overwritten; VERSION said Shipping for any build | Checks ran during copying | Whole-package checks first; exclusive creation | 9 package tests | Fixed | `f6187d8` |
+| EH-10 | P3 | Hash test coverage | One field perturbed (Sol's test) | Coverage asserted by reading code | Per-field perturbation test, size guards | `state_hash_covers_every_field` (fails with one field removed) | Fixed | `2401cc9` |
+| EH-11 | P3 | Timeout throw tests | One boundary, one thrower | — | Before/on/after, both throwers, next round | `timeout_throw_boundaries_both_sides` | Fixed | `2401cc9` |
+| EH-12 | P3 | `Docs/CombatContract.md` | Prose named a belly-to-belly suplex | Pre-`pkg-44` wording | Corrected | — | Fixed | `060a75f` |
+| EH-13 | P3 | Current-candidate docs and PR text | README/Status/Review named `f3ae5ab`/`pkg-67`/630 checks as current | Not updated after the last review | Rewritten for `060a75f`; history labelled | — | Fixed | docs commit |
+| EH-14 | P3 | `Tools/Blender`, `Tools/Audio` defaults | Fallback paths name the development machine's Blender | Asset pipeline written on one machine | Not changed: overridable (`BLENDER`, `EH_BLENDER`); asset rebuild needs private inputs anyway | — | Open, disclosed | — |
+
+
+## Original release `f3ae5ab` (2026-11-03, historical): build identity
 
 | Item | Value |
 |---|---|
@@ -22,7 +199,7 @@ The release was set up for testing in four steps:
 
 The archive contains no symbolic links. Debug symbols stay with the original package and are not shipped.
 
-## Acceptance matrix
+## Original release `f3ae5ab` (historical): acceptance matrix
 
 | Gate | Result | Evidence |
 |---|---|---|
@@ -41,7 +218,7 @@ The archive contains no symbolic links. Debug symbols stay with the original pac
 | Preservation | **FAIL** (one historical incident, disclosed) | Legacy checkouts stayed read-only and untouched. Every write went to the task drive through a sandbox. No recursive cleanup ran, and no symbolic-link fixtures were made. However, early in the work the Unreal Editor crashed once and its crash reporter sent one report to Epic Games (2026-11-03 05:17 UTC) before an opt-out was set. Such reports usually contain the engine log, machine details and a minidump, which include project file paths. No further reports were sent. |
 | Final review | **PASS** (self-review) | Requirements were checked against the final build's evidence. The material findings were all fixed and retested: lighting, mirrored-mesh culling, prompts, hitches and the settings leak. Remaining limits are listed below. This pass was carried out by the same agent that built the slice, so it is a self-review, not an independent one. |
 
-## Test results
+## Test results (original release and later rounds, historical)
 
 ### Combat core
 
@@ -1423,21 +1600,14 @@ rolls, the grab and the three scripted throws):
   request to bypass the compositor (`SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR=1`) still left it at 60 Hz (`anim-60`).
   Remedies are system settings: run the monitor at 59.97 Hz, or let full-screen windows bypass the compositor
   (Cinnamon: disable compositing for full-screen windows) and play fullscreen.
-- **Rare startup crash.** About one launch in 30 to 40 crashes during startup (signal 11): 1 of 26 shipping launches
-  and 1 of 40 Development launches, all at exclusive fullscreen, and none in 12 default borderless launches (`anim-60`,
-  `anim-61`). The Development build shows where:
-  - an unnamed engine thread read a null pointer inside the C library;
-  - this happened right as the audio mixer started its first buffers, with a buffer underrun logged on the monitor's
-    HDMI/DisplayPort audio device (SDL3 over PulseAudio);
-  - the game thread was still loading engine modules, so no game code was running.
-
-  The recorded stack contains a null read in libc, without enough symbols to establish the caller. The timing
-  coincides with audio startup, but does not prove that the audio backend caused the crash. The observed crashes
-  were in exclusive fullscreen runs; the smaller borderless sample does not rule out that mode. A PipeWire driver
-  override left this build silent, while relaunching after the observed crashes worked. The cause and a durable
-  remedy remain unverified; this is an integration blocker pending further reproduction and diagnosis.
-- **Borderless window.** In 1 of 5 default launches, the borderless window came up constrained to the desktop work
-  area (3440 × 1368, above the Cinnamon panel) instead of covering the panel. Play is unaffected.
+- **Start-up crash (EH-07), resolved in `060a75f`.** Historical loops recorded 1 crash in 26 Shipping and 1 in 40
+  Development exclusive-fullscreen starts (`anim-60`, `anim-61`), and one more in a windowed Shipping run (`anim-68`)
+  that was not recorded at the time. The earlier note placed it at audio start-up with an unverified cause. It had two
+  causes, an SDL display use-after-free on monitor standby or wake and a stale pointer in the engine's SDL audio
+  output; see "Current candidate", EH-07, for the diagnosis, fixes and trials.
+- **Borderless window (P2), resolved in `060a75f`.** Some default launches came up as a decorated window clamped to the
+  desktop work area (3440 × 1368, above the Cinnamon panel). Starting straight into borderless loses the fullscreen
+  request; see "Current candidate", EH-07.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback or online
   play.
 - **Config noise.** `Config/DefaultEngine.ini` holds an editor-generated Android File Server block. It is unused (the

@@ -39,7 +39,7 @@ of each script for another machine.
 | 8. Game code | `Build.sh EbonyHeartsEditor Linux Development -Project=...` | editor module |
 | 9. Package | `RunUAT.sh BuildCookRun -project=... -platform=Linux -clientconfig=Shipping -build -cook -stage -package -pak -archive -archivedirectory=<dir> -installed -nocompileeditor -skipbuildeditor -unrealexe=UnrealEditor-Cmd` | standalone package |
 | 10. Release | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |
-| 11. Evaluation | launch the packaged game with `-EHAuto=Tests/Auto/<script>.txt -EHEvidence=<dir>` (see below) | logs, perf JSON/CSV and screenshots |
+| 11. Evaluation | launch the packaged game with `-EHAuto=<checkout>/Tests/Auto/<script>.txt -EHEvidence=<dir>` (absolute path; see below) | logs, perf JSON/CSV and screenshots |
 | 12. Move tables | `python3 Tools/Docs/move_tables.py` | regenerates the tables in `Docs/CombatContract.md` |
 
 ### Evaluation scripts (`Tests/Auto`)
@@ -54,6 +54,10 @@ of each script for another machine.
 | `signature.txt`, `review.txt` | Training signature moves and a full match, for stills and footage |
 | `review_match.txt` | A full bot-versus-CPU match (both Hard) for footage of normal play |
 | `review_reactions.txt`, `review_flow.txt`, `review_jump.txt` | Training reviews of the playtest work: light strings from near full reach, Heavy and toward + Heavy (hit reactions); jabs from walking, taps, walk into strikes (movement into strikes); jumps in all directions and jump-ins. Record with `capture.py ... --start-on <evidence>/auto_log.txt:match_start` so two builds' recordings line up |
+| `launch_quit.txt` with `launch_loop.py` | Start-up stability: one launch at a time, each attempt classified (clean, crash, timeout, silent, audio_fail, fail) with exit status, signal, audio sink and monitors, and a check for leftover processes. `python3 Tests/Auto/launch_loop.py --launcher <release>/EbonyHearts.sh --runs N --out <empty dir> [--fresh-profile] -- [game args]` |
+| `display_modes.txt` | Fullscreen, borderless and windowed in turn after start-up, with `window_check` after each change |
+| `display_hotplug.txt` | A monitor entering standby and waking while the game changes window mode (queued XRandR disconnect and reconnect); start windowed |
+| `audio_offthread.txt` | Development builds only: repeats the audio render thread's start-up submit from another thread while SDL plays |
 | `xinput_drive.py` | Drives a running game with real X11 key events (XTest) |
 | `virtual_pad.py` | A virtual Xbox 360 pad (uinput): menus and fight, and disconnect/reconnect |
 | `capture.py` | Records footage of the game window with GStreamer and extracts frames |
@@ -73,6 +77,15 @@ workspace, not this repository.
   misbehaving.
 - **Presentation data.** Display names, mesh/animation paths, effect bones and sounds per move live in
   `Content/Data/presentation.json`.
+- **Linux platform layer.** `Source/EbonyHeartsLinux` holds the game's SDL3 audio output (selected by
+  `[Audio] AudioMixerModuleName` in `Config/Linux/LinuxEngine.ini`, replacing the engine's `AudioMixerSDL`) and the
+  X11 display-event guard that applies monitor hot-plug events at the start of a frame. Both work around engine and
+  SDL defects that crashed the game at start-up (EH-07 in `Docs/Validation.md`); keep them when updating the engine
+  until those defects are fixed upstream. Development builds accept `-EHNoDisplayEventGuard` and
+  `-ini:Engine:[Audio]:AudioMixerModuleName=AudioMixerSDL` to run without them, for comparison only.
+- **Display settings.** The game's `Settings.json` is the saved display. The engine's `GameUserSettings.ini`, which
+  sizes the window before the game starts, is kept on the same values, so launch flags such as `-fullscreen`,
+  `-windowed` and `-safedisplay` and an unconfirmed Apply in Settings > Video last for that session only.
 - **Animation timing.** Clips are authored at 60 fps, so animation frame N is combat frame N. A move's contact pose is
   keyed on its first active frame from the data, and feet that stay planted are compensated for the root travel the
   simulation applies. Change a move's timing in the data, then rerun step 4.
