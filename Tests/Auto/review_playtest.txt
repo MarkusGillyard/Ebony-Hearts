@@ -1,0 +1,109 @@
+# Playtest review (2026-11-07 changes), Training against the standing partner, then against Dummy "Block all":
+# Wren's light string into the spinning elbow (twice), Ashka's body roundhouse (twice), and for each fighter a jump-in
+# Heavy into the held guard followed by a light string on landing. Record with
+# capture.py ... --start-on <evidence>/auto_log.txt:match_start.
+wait 5
+press kbA Light
+wait 1
+training_gauge full
+match wren ashka training 0 left
+wait 2.5
+hold kbA Right
+wait 0.9
+release kbA Right
+press kbA Light
+wait 0.25
+press kbA Light
+wait 0.25
+press kbA Light
+wait 1.4
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.9
+release kbA Right
+press kbA Light
+wait 0.25
+press kbA Light
+wait 0.25
+press kbA Light
+wait 1.4
+press kbA Reset
+wait 1.0
+# Dummy: Block all (pause item 2, one step right), then back to Resume.
+press kbA Pause
+wait 0.4
+press kbA Down
+press kbA Right
+wait 0.3
+press kbA Up
+press kbA Light
+wait 0.8
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.15
+press kbA Heavy
+wait 0.25
+release kbA Right
+wait 0.2
+press kbA Light
+wait 0.2
+press kbA Light
+wait 0.25
+press kbA Light
+wait 1.4
+screenshot rp_wren_done
+# The dummy setting carries over to the next match: back to Stand.
+press kbA Pause
+wait 0.4
+press kbA Down
+press kbA Left
+wait 0.3
+press kbA Up
+press kbA Light
+wait 0.5
+match ashka wren training 0 left
+wait 2.5
+hold kbA Right
+wait 0.8
+release kbA Right
+press kbA Heavy
+wait 1.4
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.8
+release kbA Right
+press kbA Heavy
+wait 1.4
+press kbA Reset
+wait 1.0
+press kbA Pause
+wait 0.4
+press kbA Down
+press kbA Right
+wait 0.3
+press kbA Up
+press kbA Light
+wait 0.8
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.15
+press kbA Heavy
+wait 0.25
+release kbA Right
+wait 0.2
+press kbA Light
+wait 0.2
+press kbA Light
+wait 0.25
+press kbA Light
+wait 1.6
+screenshot rp_ashka_done
+quit

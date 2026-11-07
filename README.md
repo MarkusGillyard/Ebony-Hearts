@@ -25,9 +25,15 @@ Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Stat
 - **Fighters.** Wren Ku (MMA, bouncy all-rounder; signature 720 Hook Kick; Spirit Enhanced Strikes, a golden lightning
   aura) and Ashka Rook (Muay Thai, long upright guard; Lamplighter Flame, crimson).
 - **Stage.** The Drowned Chapel: a flooded chapel nave lit by moonlight through a rose window, candles and water.
-- **Six actions:** light, heavy, special, grab/throw, dodge/roll and block. Movement is left/right, and up jumps
-  (straight up, toward or away), with a light and a heavy jump attack each. Each action has a "toward" or "away"
-  variant judged when the button is pressed. There are no motion inputs and no chords.
+- **Five actions:** light, heavy, special, dodge/roll and block. Movement is left/right, and up jumps (straight up,
+  toward or away), with a light and a heavy jump attack each. Each action has a "toward" or "away" variant judged when
+  the button is pressed. There are no motion inputs and no chords.
+- **How they fit together.** Blocks stop strikes. A held block cannot stop a jump attack, so jumping in opens a guard,
+  and a jump-in that hits leads into a ground string. Strikes knock a jumper out of the air, and a well-timed block
+  (deflect) stops a jump-in and gives the defender the turn. Rolls pass through strikes but leave a punishable
+  recovery.
+- **Grappling is switched off.** Grabs, throws and escapes are kept in the code, data and animations for later, but
+  they are not in play (`"grappling": false` in `Content/Data/rules.json`).
 - **Modes.** Versus CPU (Easy, Normal, Hard), local Versus, Training (dummy modes, hitbox and frame-advantage display,
   position reset), and a ten-step guided Lesson. Also results with rematch, settings, a move list, credits and a quit
   confirmation.
@@ -58,15 +64,15 @@ can take over that side.
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
-| Grab | I | Numpad 5, or ; | Cross, or L1 | A, or LB |
+| Grab (switched off) | I | Numpad 5, or ; | Cross, or L1 | A, or LB |
 | Dodge | O | Numpad 6, or ' | Circle | B |
 | Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
 PlayStation and Xbox share one layout by button position. Menus have their own fixed controls: Cross / A or Enter
-confirms, Circle / B or Escape goes back, and Options / Menu pauses. So Cross / A grabs in a match without affecting
-menus. Every gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1
+confirms, Circle / B or Escape goes back, and Options / Menu pauses. While grappling is switched off, Grab's buttons
+do nothing in a match. Every gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1
 and 2 and for each keyboard side. Details: [Docs/Controls.md](Docs/Controls.md).
 
 ## Running the packaged build
@@ -150,14 +156,14 @@ Tests/Core/run_core_tests.sh
     from motion capture (ACCAD and Mixamo):
     - the idles, walks and held guards;
     - Wren's jab, cross (and jab-to-cross string), four kicks and Spirit Enhanced Strikes;
-    - Ashka's jab, both elbows, step-in knee, flying knee, body kick and teep;
+    - Ashka's jab, both elbows, step-in knee, flying knee, body roundhouse and teep;
     - Wren's double-leg slam and shoulder throw (both sides), and the falls of the fighters Ashka throws;
     - both fighters' forward roll, jump and landing, and heavy jump attack;
     - both fighters' intros, wins and defeated poses;
     - both fighters' hit reactions (by where each hit lands), block, knockdown, KO and get-ups.
 
     The remaining moves are keyed by script on the same stances: Wren's spinning elbow, Ashka's Flame Burst, the back
-    rolls, grabs, Ashka's clinch and the light jump attacks. Moves blend into each other with inertial transitions,
+    rolls, the grabs and Ashka's clinch (both kept for when grappling returns) and the light jump attacks. Moves blend into each other with inertial transitions,
     the legs settling over their own time so a strike from a walk finishes the step. Coat panels
     and braids are spring-simulated, and they can clip in the most extreme spins.
   - Only Wren's primary outfit is in the slice.

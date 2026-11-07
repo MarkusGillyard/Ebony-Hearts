@@ -5,6 +5,14 @@ Implementation: `Source/EbonyHearts/Game/EHSettings.*` (actions, layouts, defaul
 `EHInputRouter.*` (devices, menu and gameplay maps, triggers) and `EHDirectorFlow.cpp` / `EHDirectorUI.cpp` (the
 Controls screens and button prompts).
 
+## Grab is switched off
+
+Grappling is not part of the game for now (`"grappling": false` in `Content/Data/rules.json`; see the
+[Combat contract](CombatContract.md)). The Grab action is hidden from the Controls screen, button prompts and the
+Lesson, but it keeps its bindings so it works again as soon as grappling is switched back on. Until then its default
+buttons (Cross / A, L1 / LB, I, Numpad 5 and ;) do nothing in a match, and remapping another action onto one of them
+takes it from the hidden Grab without a conflict prompt. The tables below show the full layout, Grab included.
+
 ## Default controller layout
 
 The creator specified the face buttons, Grab, Block and Dodge. Special sits on R1 / RB because combat needs a dedicated
@@ -17,7 +25,7 @@ by position.
 | Light attack | Square | X | left face button |
 | Heavy attack | Triangle | Y | top face button |
 | Dodge / Roll | Circle | B | right face button |
-| Grab / Throw | Cross, or L1 | A, or LB | bottom face button, or left bumper |
+| Grab / Throw (switched off) | Cross, or L1 | A, or LB | bottom face button, or left bumper |
 | Block (hold) | R2 | RT | right trigger |
 | Special | R1 | RB | right bumper |
 | Move | Left stick / D-pad | Left stick / D-pad | |
@@ -48,7 +56,7 @@ These are unchanged from the first slice. Both sides can be remapped separately.
 | Light attack | J, or Enter | Numpad 1, or , |
 | Heavy attack | K, or Backspace | Numpad 2, or . |
 | Special | L | Numpad 3, or / |
-| Grab / Throw | I | Numpad 5, or ; |
+| Grab / Throw (switched off) | I | Numpad 5, or ; |
 | Dodge / Roll | O | Numpad 6, or ' |
 | Block (hold) | Space | Numpad 0, or Right Shift |
 | Pause | Escape | Numpad 9, or = |
@@ -56,8 +64,8 @@ These are unchanged from the first slice. Both sides can be remapped separately.
 
 ## Menu controls (fixed)
 
-Menus use their own fixed controls, separate from the gameplay layouts. So Cross / A confirms in menus and grabs in a
-match, and remapping gameplay can never lock anyone out of Settings.
+Menus use their own fixed controls, separate from the gameplay layouts. So Cross / A confirms in menus (and grabs in a
+match while grappling is on), and remapping gameplay can never lock anyone out of Settings.
 
 | Command | Controller | Keyboard, left side | Keyboard, right side |
 |---|---|---|---|
@@ -108,7 +116,8 @@ Each layout lists every action with its primary and secondary buttons.
   - **Cancel.**
 
   A button from the action's own other slot simply trades places. Both keyboard sides share one physical keyboard, so
-  the same check covers both.
+  the same check covers both. While grappling is switched off, a button held only by the hidden Grab is taken without
+  asking.
 - **Not bindable.** Options / Menu, Escape, Numpad 9, =, analog axes and stick directions are reserved.
 - **Missing buttons.** An action may be left without a button. The list then shows **Unbound**, and leaving the layout
   warns about it.
