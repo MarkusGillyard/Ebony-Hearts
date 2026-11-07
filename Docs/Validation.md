@@ -49,9 +49,12 @@ standby probe and the start-up loops (`060a75f`, below). Every run above also st
 
 ### The new animations, measured
 
+Per-frame joint positions and the checks below, before and after, are kept with the review handoff
+(`review-handoff-20261107/anim/measurements`), with contact sheets of both versions in `anim/sheets`.
+
 | Clip | Check | Before | After |
 |---|---|---|---|
-| Wren, Light 3 (spinning elbow), first active frame | right elbow, forward and height (hitbox x 10-88, y 120-162 cm) | elbow pointing up with the fist behind the head | elbow 86 cm out, 139 cm up, 22 cm ahead of the fist |
+| Wren, Light 3 (spinning elbow), first active frame | right elbow, forward and height (hitbox x 10-88, y 120-162 cm) | elbow 83 cm out, 130 cm up, below the fist (146 cm), which sat behind her head (renders) | elbow 85 cm out, 139 cm up, 16 cm ahead of the fist |
 | | fast or flipping joints (`speeds.py`, `flips.py`) | rear foot 42 cm in one frame (frames 4-5) | none |
 | | hand-over into and out of the idle (`transitions.py`) | 1 cm / 0 cm | 1 cm / 0 cm |
 | Ashka, Heavy (Body Roundhouse), active frames 16-18 | kicking shin (hitbox x 28-130, y 85-140 cm) | foot forward, body square: a front kick | knee 55 cm out at 100-106 cm, ankle 92-99 cm out at 98-109 cm: the shin level at body height |
