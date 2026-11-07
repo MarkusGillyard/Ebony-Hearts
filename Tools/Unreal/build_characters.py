@@ -3,7 +3,8 @@
 Inputs: $EH_WS/sourceart/characters/<char>/SK_<Char>.fbx (+_LOD1, textures/, alpha.json) and
 $EH_WS/sourceart/anims/<char>/*.fbx. Each fighter gets its own skeleton; animations are sampled at 60 fps so frame N
 of a move lands on simulation frame N. Run headless: bin/editor_py.sh Tools/Unreal/build_characters.py
-Environment: EH_CHARS=wren,ashka (subset), EH_ANIMS_ONLY=1 (reimport clips only), EH_SKIP_ANIMS=1 (meshes only).
+Environment: EH_CHARS=wren,ashka (subset), EH_ANIMS_ONLY=1 (reimport clips only), EH_SKIP_ANIMS=1 (meshes only),
+EH_ANIM_NAMES=A_Wren_L3,A_Ashka_H (import only these clips).
 """
 import glob
 import json
@@ -199,6 +200,9 @@ def import_lod1(mesh, char_id, cap):
 def import_anims(char_id, cap, skel):
     files = sorted(glob.glob(os.path.join(SRC, "anims", char_id, "*.fbx")))
     files += sorted(glob.glob(os.path.join(SRC, "anims", "*", f"victim_{char_id}", "*.fbx")))
+    names = [n for n in os.environ.get("EH_ANIM_NAMES", "").split(",") if n]
+    if names:
+        files = [f for f in files if os.path.splitext(os.path.basename(f))[0] in names]
     count = 0
     for f in files:
         name = os.path.splitext(os.path.basename(f))[0]
@@ -253,8 +257,10 @@ def main():
             skel = mesh.get_editor_property("skeleton")
         if os.environ.get("EH_SKIP_ANIMS") != "1":
             import_anims(char_id, cap, skel)
-        eal.save_directory(f"/Game/Characters/{cap}", only_if_is_dirty=False, recursive=True)
-    eal.save_directory("/Game/Characters/Shared", only_if_is_dirty=False, recursive=True)
+        if not os.environ.get("EH_ANIM_NAMES"):   # a named subset saves only its clips (import_anims saves each)
+            eal.save_directory(f"/Game/Characters/{cap}", only_if_is_dirty=False, recursive=True)
+    if not os.environ.get("EH_ANIM_NAMES"):
+        eal.save_directory("/Game/Characters/Shared", only_if_is_dirty=False, recursive=True)
     log("DONE")
 
 

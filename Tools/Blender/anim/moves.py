@@ -294,27 +294,39 @@ def wren_moves(data):
                   (12, cross(hand_r=(0.35, -0.10, 1.40), pelvis_rot=(-20, 6, 0), clav_r=(8, 0, 0)), "smooth"),
                   (19, w(foot_l_world=(0.40, 0.11, 0.0), foot_r_world=(-0.13, -0.18, 0.0)), "smooth")], 19, m["L2"]["travel"], False)
     # Light 3: spinning back elbow, turning the back through (clockwise); the right elbow lands at ~200 deg. The lead
-    # foot steps across onto the pivot with the travel and turns on its ball; the rear foot tucks in and swings round
-    # in the air, lands back in stance, and the lead foot steps back out. No foot slides round the floor.
+    # foot steps across onto the pivot with the travel and turns on its ball; the rear foot lifts a little and swings
+    # round at hip width, lands back in stance, and the lead foot steps back out. No foot slides round the floor.
+    # At contact her right side is to the opponent: the upper arm points at them at head height and the forearm folds
+    # in front of the right shoulder (with the fist behind the head the arm wrapped round it, and folded across the
+    # chest the elbow pointed up); the left hand guards the face, the head turns ahead of the body
+    # to look over the right shoulder at contact, and the knees track over the feet (they caved in with the default
+    # aim).
     t3 = sum((seg["frames"][1] - seg["frames"][0] + 1) * seg["vx"] for seg in m["L3"]["travel"]) / 100.0
     piv = (0.28 + t3, 0.02)                                  # world; 20 cm ahead of her centre once the travel is done
     across = (piv[0] - 0.11, piv[1], 0.0)                    # lead ankle, its ball on the pivot
     home_l = (s["foot_l"][0] + t3, s["foot_l"][1], 0.0)      # the lead foot's stance spot after the travel
     # spin=0 is keyed here: the stance has none, and a channel missing from a key takes the next key's value, which
     # turned her 60 deg in one frame as the spin began.
-    sb = w(spin=0.0, pivot=piv, pivot_world=True, foot_l_world=across, foot_r_world=None, foot_r=(s["foot_r"][0] - 0.035, s["foot_r"][1], 0.0))
-    elbow = sb(spin=-200, hand_r=(-0.10, -0.02, 1.44), elbow_r=(-0.7, -0.25, 0.05), hand_l=(0.10, 0.18, 1.35), chest=(-15, 8, 0), head=(-25, 0, 0), gaze=0.0,
-               foot_r=(0.0, -0.08, 0.10))
+    sb = w(spin=0.0, pivot=piv, pivot_world=True, foot_l_world=across, foot_r_world=None, foot_r=(s["foot_r"][0] - 0.035, s["foot_r"][1], 0.0),
+           knee_l=(0.6, 0.3, 0.0), knee_r=(0.5, -0.5, 0.0))
+    elbow = sb(spin=-200, hand_r=(-0.07, -0.17, 1.50), elbow_r=(-0.8, -0.30, 0.50), hand_l=(0.20, -0.08, 1.52),
+               chest=(-15, 8, 0), head=(-60, 6, 0), gaze=0.0, foot_r=(-0.08, -0.20, 0.07))
     out["L3"] = ([(1, w, "smooth"),
-                  (2, w(foot_l_world=((s["foot_l"][0] + across[0]) / 2, (s["foot_l"][1] + across[1]) / 2, 0.04), chest=(8, 6, 0)), "smooth"),
+                  (2, w(foot_l_world=((s["foot_l"][0] + across[0]) / 2, (s["foot_l"][1] + across[1]) / 2, 0.04), chest=(8, 6, 0), knee_l=(0.6, 0.2, 0.0)), "smooth"),
                   (3, sb(chest=(12, 8, 0)), "smooth"),
-                  (5, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.42), gaze=0.4, foot_r=(-0.10, -0.10, 0.08)), "smooth"),
+                  (5, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.42), gaze=0.4, foot_r=(-0.14, -0.20, 0.06)), "smooth"),
                   # The turn flows through the strike: a snap into it turned her 106 deg in one frame, and an "out"
                   # back to the guard moved the arms 47 cm in one.
-                  (7, sb(spin=-130, chest=(5, 9, 0), hand_r=(0.02, 0.02, 1.43), elbow_r=(-0.4, -0.45, 0.05), gaze=0.2,
-                         foot_r=(-0.05, -0.09, 0.09)), "smooth"),
-                  (9, elbow, "smooth"), (11, elbow(spin=-225), "smooth"),
-                  (16, sb(spin=-330, gaze=0.6, foot_r=(-0.15, -0.15, 0.06)), "smooth"),
+                  (7, sb(spin=-130, chest=(5, 9, 0), hand_r=(0.06, 0.02, 1.43), elbow_r=(-0.5, -0.45, 0.05), hand_l=(0.30, 0.02, 1.48),
+                         head=(-35, 4, 0), gaze=0.0, foot_r=(-0.10, -0.20, 0.07)), "smooth"),
+                  (9, elbow, "smooth"), (11, elbow(spin=-225, head=(-55, 6, 0)), "smooth"),
+                  # The elbow drops back under the arm on the way to the guard (aimed straight from the strike's
+                  # aim to the guard's, it flipped over the arm, 31 cm in a frame).
+                  (13, sb(spin=-265, hand_r=(0.02, -0.16, 1.48), elbow_r=(-0.6, -0.55, -0.1), hand_l=(0.30, 0.0, 1.46),
+                          head=(-35, 5, 0), gaze=0.15, foot_r=(-0.14, -0.20, 0.06)), "smooth"),
+                  (15, sb(spin=-305, hand_r=(0.18, -0.10, 1.40), elbow_r=(-0.1, -0.4, -0.8), hand_l=(0.42, 0.03, 1.38),
+                          head=(-20, 4, 0), gaze=0.4, foot_r=(-0.18, -0.20, 0.06)), "smooth"),
+                  (16, sb(spin=-330, gaze=0.6, foot_r=(-0.20, -0.20, 0.05)), "smooth"),
                   (19, sb(spin=-360, foot_r=s["foot_r"]), "smooth"),
                   (22, sb(spin=-360, foot_l_world=((across[0] + home_l[0]) / 2, (across[1] + home_l[1]) / 2, 0.05)), "smooth"),
                   (25, sb(spin=-360, foot_l_world=home_l), "smooth"),

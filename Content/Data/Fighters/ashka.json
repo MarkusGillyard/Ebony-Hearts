@@ -42,7 +42,7 @@
       "hurt": [{"frames": [8, 16], "box": [0, 80, 60, 140]}]
     },
     {
-      "id": "H", "name": "Body Kick", "anim": "H", "kind": "strike", "button": "heavy", "dir": "any", "total": 45,
+      "id": "H", "name": "Body Roundhouse", "anim": "H", "kind": "strike", "button": "heavy", "dir": "any", "total": 45,
       "hits": [{"frames": [16, 18], "box": [28, 85, 130, 140], "damage": 84, "hitstun": 32, "blockstun": 23, "hitstop": 12, "hitPush": 65, "blockPush": 55, "heavy": true, "knockdownOnCounter": true, "react": "HitBodyR"}],
       "travel": [{"frames": [4, 13], "vx": 0.84}],
       "hurt": [{"frames": [13, 34], "box": [20, 80, 122, 135]}],
