@@ -391,11 +391,15 @@ InputFrame CpuController::Decide(const Match& match)
 			waitFrames_ = 14 + static_cast<int32_t>(Next() % 40u);
 			const int32_t gap = dist - theirs.halfWidth;
 			const uint32_t roll = Next() % 100u;
-			if (dist < 80 * cm && opp.state != FState::Attack && Roll(35))
+			const Rules& rules = match.GetRules();
+			// A guard it has seen held is opened with a grab (grappling on) or, when a held Block cannot stop jump-ins,
+			// with a jump-in from mid range.
+			const bool jumpOpensGuard = !rules.heldBlockStopsJumpIns && opp.state == FState::Guard;
+			if (rules.grappling && dist < 80 * cm && opp.state != FState::Attack && Roll(35))
 			{
 				Queue(BtnThrow, roll < 50 ? 0 : -1, 0);
 			}
-			else if (gap <= pref + 60 * cm && gap >= pref - 40 * cm && Roll(tune_.jumpPct))
+			else if (gap <= pref + 60 * cm && gap >= pref - 40 * cm && Roll(jumpOpensGuard ? tune_.jumpPct * 4 : tune_.jumpPct))
 			{
 				jumpNext_ = true;   // a jump in from mid range
 				walk_ = 1;

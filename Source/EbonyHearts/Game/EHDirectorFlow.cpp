@@ -73,7 +73,7 @@ void AEHGameDirector::BuildMenu()
 		Menu.Add(Button(TEXT("Versus CPU"), [this] { BeginSelect(EEHMode::VersusCpu); }, TEXT("Fight a computer opponent.")));
 		Menu.Add(Button(TEXT("Local Versus"), [this] { BeginSelect(EEHMode::Versus); }, TEXT("Two players on one machine.")));
 		Menu.Add(Button(TEXT("Training"), [this] { BeginSelect(EEHMode::Training); }, TEXT("Practice with frame data, hitboxes and input history.")));
-		Menu.Add(Button(TEXT("Lesson"), [this] { BeginSelect(EEHMode::Tutorial); }, TEXT("Learn the six actions and how they counter each other.")));
+		Menu.Add(Button(TEXT("Lesson"), [this] { BeginSelect(EEHMode::Tutorial); }, TEXT("Learn the actions and how they counter each other.")));
 		Menu.Add(Button(TEXT("Move List"), [this] { SettingsReturn = EEHScreen::Main; GoTo(EEHScreen::MoveList); }, TEXT("Both fighters' techniques.")));
 		Menu.Add(Button(TEXT("Settings"), [this] { SettingsReturn = EEHScreen::Main; SettingsPage = 0; GoTo(EEHScreen::Settings); }, TEXT("Controls, video, audio and accessibility.")));
 		Menu.Add(Button(TEXT("Credits"), [this] { GoTo(EEHScreen::Credits); }));
@@ -127,7 +127,12 @@ void AEHGameDirector::BuildPauseMenu()
 	if (Mode == EEHMode::Training)
 	{
 		Menu.Add(Choice(TEXT("Dummy"), [this] { return FString(DummyName(Dummy)); }, [this](int32 D) {
-			Dummy = static_cast<eh::DummyMode>((static_cast<int32>(Dummy) + D + 6) % 6);
+			int32 Next = (static_cast<int32>(Dummy) + D + 6) % 6;
+			if (!Rules.grappling && Next == static_cast<int32>(eh::DummyMode::TechThrows))
+			{
+				Next = (Next + (D < 0 ? -1 : 1) + 6) % 6;   // nothing to escape without grappling
+			}
+			Dummy = static_cast<eh::DummyMode>(Next);
 			const int32 DummySlot = SlotCpu[0] ? 0 : 1;
 			Cpu[DummySlot].SetDummy(Dummy);
 		}, TEXT("What the training partner does.")));
@@ -266,8 +271,17 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 {
 	// Order follows the controller: attacks and defence first, then movement and the training shortcut.
-	static const EEHAction Order[] = {EEHAction::Light, EEHAction::Heavy, EEHAction::Dodge, EEHAction::Throw, EEHAction::Block,
+	// Grab is listed only while grappling is on; its bindings are kept either way.
+	static const EEHAction AllActions[] = {EEHAction::Light, EEHAction::Heavy, EEHAction::Dodge, EEHAction::Throw, EEHAction::Block,
 		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Jump, EEHAction::Reset};
+	TArray<EEHAction> Order;
+	for (EEHAction A : AllActions)
+	{
+		if (A != EEHAction::Throw || Rules.grappling)
+		{
+			Order.Add(A);
+		}
+	}
 	Menu.Reset();
 	BindingSet = Set;
 	const bool bPad = !EHIsKeyboardSet(Set);
@@ -303,7 +317,7 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 			FString Missing;
 			for (EEHAction A : {EEHAction::Light, EEHAction::Heavy, EEHAction::Special, EEHAction::Throw, EEHAction::Dodge, EEHAction::Block, EEHAction::Left, EEHAction::Right})
 			{
-				if (Settings.Bindings.IsUnbound(BindingSet, A))
+				if (Settings.Bindings.IsUnbound(BindingSet, A) && (A != EEHAction::Throw || Rules.grappling))
 				{
 					Missing += (Missing.IsEmpty() ? TEXT("") : TEXT(", ")) + FString(EHActionLabel(A));
 				}
@@ -441,9 +455,9 @@ void AEHGameDirector::ApplyCapturedKey(const FKey& Key)
 		return;
 	}
 	const FEHBindingRef C = Settings.Bindings.FindConflict(BindingSet, A, CaptureSlot, Key);
-	if (!C.IsValid() || (C.Set == BindingSet && C.Action == A))
+	if (!C.IsValid() || (C.Set == BindingSet && C.Action == A) || (C.Action == EEHAction::Throw && !Rules.grappling))
 	{
-		// Free, or the action's own other slot (the two slots trade).
+		// Free, the action's own other slot (the two slots trade), or held only by the hidden Grab, which gives it up.
 		Settings.Bindings.Assign(BindingSet, A, CaptureSlot, Key, EEHConflictResolve::Replace);
 		BindingsChanged(FString::Printf(TEXT("%s: %s."), EHActionLabel(A), *KeyName(BindingSet, Key)));
 		return;
@@ -899,16 +913,29 @@ void AEHGameDirector::HandleNav()
 void AEHGameDirector::SetupLesson()
 {
 	Lesson.Reset();
-	Lesson.Add({TEXT("Movement"), TEXT("Walk toward your opponent, then away. Movement is separate from the six actions."), 2});
+	// Without grappling (rules.json "grappling"), steps 5 and 6 teach the jump-in and its answers instead of the grab
+	// and its escape; the step numbers stay the same either way.
+	const bool bGrab = Rules.grappling;
+	Lesson.Add({TEXT("Movement"), bGrab ? TEXT("Walk toward your opponent, then away. Movement is separate from the six actions.")
+		: TEXT("Walk toward your opponent, then away. Movement is separate from the five actions."), 2});
 	Lesson.Add({TEXT("Light"), TEXT("Light is fast and safe. Press it three times to run your short string."), 1});
 	Lesson.Add({TEXT("Heavy"), TEXT("Heavy reaches further and hits harder, but a miss leaves you open. Land one."), 1});
 	Lesson.Add({TEXT("Block"), TEXT("Hold Block to stop strikes. You cannot move while blocking. Block three strikes."), 3});
 	Lesson.Add({TEXT("Timed block"), TEXT("Press Block just before a strike lands to deflect it and recover sooner. Mashing does not work."), 1});
-	Lesson.Add({TEXT("Grab"), TEXT("Blocking stops strikes but not grabs. Grab your guarding opponent up close."), 1});
-	Lesson.Add({TEXT("Escape"), TEXT("When you are grabbed, press Grab straight away to break free."), 1});
+	if (bGrab)
+	{
+		Lesson.Add({TEXT("Grab"), TEXT("Blocking stops strikes but not grabs. Grab your guarding opponent up close."), 1});
+		Lesson.Add({TEXT("Escape"), TEXT("When you are grabbed, press Grab straight away to break free."), 1});
+	}
+	else
+	{
+		Lesson.Add({TEXT("Jump in"), TEXT("Holding Block stops strikes on the ground, not from the air. Jump toward your guarding\nopponent and attack as you come down, then keep attacking when you land."), 1});
+		Lesson.Add({TEXT("Anti-air"), TEXT("In the air you cannot block. When your opponent jumps in, hit them before their attack\nlands to knock them down, or press Block just before it lands to deflect it."), 1});
+	}
 	Lesson.Add({TEXT("Punish"), TEXT("Block or dodge the heavy kick, then hit back while it recovers."), 1});
 	Lesson.Add({TEXT("Special"), TEXT("Special changes with direction: neutral, toward, and away (which spends gauge). Use all three."), 3});
-	Lesson.Add({TEXT("Lesson complete"), TEXT("Strikes beat grabs, grabs beat blocks, blocks beat strikes, and dodges beat everything you read correctly."), 1});
+	Lesson.Add({TEXT("Lesson complete"), bGrab ? TEXT("Strikes beat grabs, grabs beat blocks, blocks beat strikes, and dodges beat everything you read correctly.")
+		: TEXT("Strikes beat jumps, jumps beat a held block, blocks beat strikes, and dodges beat everything you read correctly."), 1});
 	LessonStep = 0;
 	LessonCount = 0;
 	LessonDoneAge = -1.0f;
@@ -929,8 +956,16 @@ void AEHGameDirector::UpdateLesson(const eh::Event& E)
 	case 2: bProgress = E.type == eh::EventType::Hit && E.player == 0 && (Move == TEXT("H") || Move == TEXT("FH")); break;
 	case 3: bProgress = (E.type == eh::EventType::Block || E.type == eh::EventType::Deflect) && E.player == 1; break;
 	case 4: bProgress = E.type == eh::EventType::Deflect && E.player == 1; break;
-	case 5: bProgress = E.type == eh::EventType::ThrowConnect && E.player == 0; break;
-	case 6: bProgress = E.type == eh::EventType::ThrowTech; break;
+	case 5:
+		bProgress = Rules.grappling ? (E.type == eh::EventType::ThrowConnect && E.player == 0)
+			: (E.type == eh::EventType::Hit && E.player == 0 && E.move >= 0 && Match->Character(0).moves[static_cast<size_t>(E.move)].air);
+		break;
+	case 6:
+		// The partner's jump-ins are answered: hit out of the air (any hit on a jumper knocks it down) or deflected.
+		bProgress = Rules.grappling ? E.type == eh::EventType::ThrowTech
+			: ((E.type == eh::EventType::Hit && E.player == 0 && (E.flags & eh::EvKnockdown) && Match->State().f[1].y > 0) ||
+			   (E.type == eh::EventType::Deflect && E.player == 1 && E.move >= 0 && Match->Character(1).moves[static_cast<size_t>(E.move)].air));
+		break;
 	case 7: bProgress = E.type == eh::EventType::Hit && E.player == 0 && (E.flags & eh::EvPunish); break;
 	case 8:
 		if (E.type == eh::EventType::MoveStart && E.player == 0 && (Move == TEXT("S") || Move == TEXT("FS") || Move == TEXT("BS")))
@@ -1000,8 +1035,25 @@ eh::InputFrame AEHGameDirector::LessonScriptInput()
 		In.held = eh::BtnBlock;
 		break;
 	case 6:
-		Approach(60 * Cm);
-		if (Gap <= 75 * Cm && ScriptTimer % 90 == 0) In.pressed = eh::BtnThrow;
+		if (Rules.grappling)
+		{
+			Approach(60 * Cm);
+			if (Gap <= 75 * Cm && ScriptTimer % 90 == 0) In.pressed = eh::BtnThrow;
+		}
+		else
+		{
+			// Jump in from mid range every couple of seconds with a heavy at the top of the jump.
+			Approach(150 * Cm);
+			if (Gap <= 165 * Cm && Me.state == eh::FState::Neutral && ScriptTimer % 110 == 0)
+			{
+				In.x = Toward;
+				In.y = 1;
+			}
+			if (Me.state == eh::FState::Jump && Me.jumpFrame == Rules.jumpSquat + Rules.jumpAir / 2 - 4)
+			{
+				In.pressed = eh::BtnHeavy;
+			}
+		}
 		break;
 	case 7:
 		Approach(150 * Cm);

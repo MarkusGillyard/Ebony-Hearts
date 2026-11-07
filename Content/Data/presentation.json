@@ -27,7 +27,7 @@
         "FS": {"whoosh": "WhooshSpin", "fxBone": "foot_l", "shake": 0.4, "note": "Travelling jump kick. Ends light strings; knocks down."},
         "BS": {"whoosh": "AuraCharge", "fxBone": "spine_03", "note": "Full gauge: more strike damage, half damage from flame for 8 s."},
         "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats blocking. Toward: double-leg slam. Away: shoulder throw, swaps sides."},
-        "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent. Can be grabbed."},
+        "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent."},
         "DB": {"whoosh": "Roll", "note": "Retreating roll. Recovery is punishable."}
       }
     },
@@ -58,7 +58,7 @@
         "FS": {"whoosh": "WhooshKick", "fxBone": "calf_r", "flame": true, "shake": 0.45, "note": "Flying knee with flame. Ends light strings; knocks down."},
         "BS": {"whoosh": "FlameRoar", "fxBone": "spine_03", "flame": true, "shake": 0.6, "note": "Half gauge: invulnerable flame burst. Heavily punishable if blocked."},
         "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats blocking. Toward: clinch knees. Away: clinch turn, swaps sides."},
-        "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent. Can be grabbed."},
+        "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent."},
         "DB": {"whoosh": "Roll", "note": "Quick retreating roll. Recovery is punishable."}
       }
     }
