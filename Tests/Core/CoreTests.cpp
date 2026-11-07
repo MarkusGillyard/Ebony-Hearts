@@ -1655,27 +1655,60 @@ int main(int argc, char** argv)
 	});
 
 	Run("jump_in_hit_links_into_a_light", [] {
-		// The point of a jump-in: one that hits leads into a ground string when the jumper lands.
+		// The point of a jump-in: one that hits, high or low, leads into a ground string when the jumper lands. High
+		// contacts only link because of the landing-relative stun (the move's own hitstun runs out in the air).
 		for (int c = 0; c < 2; ++c)
 		{
-			Match m = MakeMatch(c, 1 - c);
-			m.TrainingPlace(Cm(-70), Cm(70));
-			bool landed = false;
-			bool pressed = false;
-			int maxCombo = 0;
-			for (int t = 0; t < 120; ++t)
+			for (uint8_t button : {BtnLight, BtnHeavy})
 			{
-				InputFrame a = t == 0 ? Up(1) : (t == 24 ? In(0, BtnHeavy) : InputFrame());
-				if (landed && !pressed && m.IsActionable(0))
+				const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy");
+				int connected = 0;
+				int linked = 0;
+				int highConnected = 0;
+				int highLinked = 0;
+				for (int dist = 100; dist <= 180; dist += 40)
 				{
-					a = In(0, BtnLight);
-					pressed = true;
+					for (int press = 6; press <= 30; press += 4)
+					{
+						Match m = MakeMatch(c, 1 - c);
+						m.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
+						bool hit = false;
+						bool high = false;
+						bool landed = false;
+						bool pressed = false;
+						int maxCombo = 0;
+						for (int t = 0; t < 120; ++t)
+						{
+							InputFrame a = t == 0 ? Up(1) : (t == press ? In(0, button) : InputFrame());
+							if (landed && !pressed && m.IsActionable(0))
+							{
+								a = In(0, BtnLight);
+								pressed = true;
+							}
+							const int airLeft = g_rules.jumpSquat + g_rules.jumpAir - m.State().f[0].jumpFrame;
+							const bool airborne = m.State().f[0].jumpFrame > g_rules.jumpSquat;
+							Step(m, a);
+							if (!hit && airborne && HasEvent(m, EventType::Hit, 0))
+							{
+								hit = true;
+								high = airLeft > 14;   // well before landing: the move's own hitstun would run out
+							}
+							landed = landed || HasEvent(m, EventType::Land, 0);
+							maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+						}
+						if (!hit)
+						{
+							continue;
+						}
+						++connected;
+						linked += (pressed && maxCombo >= 2) ? 1 : 0;
+						highConnected += high ? 1 : 0;
+						highLinked += (high && pressed && maxCombo >= 2) ? 1 : 0;
+					}
 				}
-				Step(m, a);
-				landed = landed || HasEvent(m, EventType::Land, 0);
-				maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+				EXPECT_TRUE(connected > 4 && linked == connected, what + ": every jump-in hit, then a light on landing, combos (" + std::to_string(linked) + "/" + std::to_string(connected) + ")");
+				EXPECT_TRUE(highConnected > 0 && highLinked == highConnected, what + ": including ones that hit high in the jump (" + std::to_string(highLinked) + "/" + std::to_string(highConnected) + ")");
 			}
-			EXPECT_TRUE(pressed && maxCombo >= 2, std::string(c == 0 ? "wren" : "ashka") + ": jump-in heavy, then a light on landing, combos (max combo " + std::to_string(maxCombo) + ")");
 		}
 	});
 
