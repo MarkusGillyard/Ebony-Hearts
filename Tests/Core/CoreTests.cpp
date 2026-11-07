@@ -114,6 +114,26 @@ int8_t Toward(const Match& m, int p)
 
 int32_t Move(int c, const char* id) { return Fighter(c).FindMove(id); }
 
+// Grappling is switched off in rules.json but its code stays; the throw tests switch it on for their own matches.
+struct GrapplingOn
+{
+	bool previous = g_rules.grappling;
+	GrapplingOn() { g_rules.grappling = true; }
+	~GrapplingOn() { g_rules.grappling = previous; }
+	GrapplingOn(const GrapplingOn&) = delete;
+	GrapplingOn& operator=(const GrapplingOn&) = delete;
+};
+
+// The shipped rules let a jump attack beat a held Block; tests of the held-block path switch that back on.
+struct HeldBlockStopsJumpIns
+{
+	bool previous = g_rules.heldBlockStopsJumpIns;
+	HeldBlockStopsJumpIns() { g_rules.heldBlockStopsJumpIns = true; }
+	~HeldBlockStopsJumpIns() { g_rules.heldBlockStopsJumpIns = previous; }
+	HeldBlockStopsJumpIns(const HeldBlockStopsJumpIns&) = delete;
+	HeldBlockStopsJumpIns& operator=(const HeldBlockStopsJumpIns&) = delete;
+};
+
 void Run(const char* name, const std::function<void()>& fn)
 {
 	g_current = name;
@@ -418,6 +438,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("jumps_cannot_block_or_be_thrown_and_anti_air_knocks_down", [] {
+		GrapplingOn grappling;
 		for (int c = 0; c < 2; ++c)
 		{
 			const std::string tag = FighterName(c);
@@ -447,6 +468,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("jump_attacks_hit_block_and_land_into_recovery", [] {
+		HeldBlockStopsJumpIns heldBlocks;   // the blocked half checks the held-block path (see jump_ins_beat_a_held_block_but_not_a_deflect)
 		const Rules& r = g_rules;
 		for (int c = 0; c < 2; ++c)
 		{
@@ -521,6 +543,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("throw_beats_block_and_side_switch_on_back_throw", [] {
+		GrapplingOn grappling;
 		for (int c = 0; c < 2; ++c)
 		{
 			for (int dir : {0, -1})
@@ -548,6 +571,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("shoulder_throw_lands_head_toward", [] {
+		GrapplingOn grappling;
 		// Wren's back throw lands the victim head toward her (reaction 4: the reversed lie and get-up), through the
 		// knockdown and the get-up; her forward throw lands it head away (reaction 3).
 		for (int dir : {-1, 0})
@@ -573,6 +597,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("throw_ko_stays_down", [] {
+		GrapplingOn grappling;
 		// A throw that knocks out leaves the victim lying where it landed: the presentation reads reaction 3 and keeps
 		// it on the floor instead of replaying the knockout fall from standing.
 		Match m = MakeMatch(0, 1, Mode::Versus);
@@ -595,6 +620,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("throw_tech_window", [] {
+		GrapplingOn grappling;
 		for (int late : {0, 1})
 		{
 			Match m = MakeMatch(1, 0);
@@ -626,6 +652,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("simultaneous_throws_tech_and_strike_beats_throw", [] {
+		GrapplingOn grappling;
 		Match m = MakeMatch(0, 1);
 		m.TrainingPlace(Cm(-35), Cm(35));
 		Step(m, In(0, BtnThrow), In(0, BtnThrow));
@@ -747,6 +774,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("corner_throw_release_and_pushback_transfer", [] {
+		GrapplingOn grappling;
 		Match m = MakeMatch(0, 1);
 		m.TrainingResetPositions(1);   // Ashka at the right wall
 		const int32_t wall = g_rules.stageHalfWidth - g_ashka.halfWidth;
@@ -1056,6 +1084,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("timeout_freezes_throw_damage_after_result", [] {
+		GrapplingOn grappling;
 		Rules shortRound = g_rules;
 		shortRound.introFrames = 1;
 		shortRound.roundFrames = 6;
@@ -1116,8 +1145,8 @@ int main(int argc, char** argv)
 	Run("state_hash_covers_every_field", [] {
 		// Every field of the combat state can change what happens next, so changing any one must change the hash.
 		// The size checks fail when a field is added; add it to HashState() and to the lists below.
-		static_assert(sizeof(FighterState) == 156, "FighterState changed: hash the new field and add it here");
-		static_assert(sizeof(MatchState) == 360, "MatchState changed: hash the new field and add it here");
+		static_assert(sizeof(FighterState) == 160, "FighterState changed: hash the new field and add it here");
+		static_assert(sizeof(MatchState) == 368, "MatchState changed: hash the new field and add it here");
 		Match m = MakeMatch(0, 1, Mode::Versus);
 		Idle(m, g_rules.introFrames + 3);
 		MatchState base = m.State();
@@ -1185,6 +1214,7 @@ int main(int argc, char** argv)
 			{"vy", [](FighterState& f) { ++f.vy; }},
 			{"jumpFrame", [](FighterState& f) { f.jumpFrame = static_cast<int16_t>(f.jumpFrame + 1); }},
 			{"jumpDir", [](FighterState& f) { f.jumpDir = static_cast<int8_t>(f.jumpDir + 1); }},
+			{"airAttackUsed", [](FighterState& f) { f.airAttackUsed = !f.airAttackUsed; }},
 			{"reaction", [](FighterState& f) { f.reaction = static_cast<uint8_t>(f.reaction + 1); }},
 			{"reactMove", [](FighterState& f) { f.reactMove = static_cast<int16_t>(f.reactMove + 1); }},
 			{"reactHit", [](FighterState& f) { f.reactHit = static_cast<int8_t>(f.reactHit + 1); }},
@@ -1221,6 +1251,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("timeout_throw_boundaries_both_sides", [] {
+		GrapplingOn grappling;
 		// Each fighter throws the other; the round then times out one tick before, on, and one tick after the tick
 		// the throw's damage lands. Damage on the last fought tick counts; damage after the result does not.
 		for (int thrower = 0; thrower < 2; ++thrower)
@@ -1358,7 +1389,7 @@ int main(int argc, char** argv)
 		int outOfBounds = 0;
 		int hardWins = 0;
 		int hardGames = 0;
-		int jumps = 0, jumpAttacks = 0, airDowns = 0;
+		int jumps = 0, jumpAttacks = 0, airDowns = 0, jumpInHits = 0, grabs = 0;
 		for (int c0 = 0; c0 < 2; ++c0)
 		{
 			for (int c1 = 0; c1 < 2; ++c1)
@@ -1381,9 +1412,12 @@ int main(int argc, char** argv)
 							const FighterState before[2] = {m.State().f[0], m.State().f[1]};
 							m.Tick(in);
 							jumps += HasEvent(m, EventType::Jump) ? 1 : 0;
+							grabs += HasEvent(m, EventType::ThrowConnect) ? 1 : 0;
 							for (int i = 0; i < 2; ++i)
 							{
 								const FighterState& f = m.State().f[i];
+								if (HasEvent(m, EventType::Hit, i) && before[i].state == FState::Attack && before[i].move >= 0 &&
+									m.Character(i).moves[static_cast<size_t>(before[i].move)].air && m.State().f[1 - i].y == 0) ++jumpInHits;
 								if (f.state == FState::Attack && before[i].state != FState::Attack && m.Character(i).moves[static_cast<size_t>(f.move)].air) ++jumpAttacks;
 								if (f.state == FState::Knockdown && before[i].state != FState::Knockdown && f.y > 0) ++airDowns;
 								const int32_t lim = g_rules.stageHalfWidth;
@@ -1407,8 +1441,9 @@ int main(int argc, char** argv)
 		}
 		EXPECT_EQ(stuck, 0, "no fighter stuck in a non-neutral state");
 		EXPECT_EQ(outOfBounds, 0, "positions stay on stage");
-		std::printf("  info: %d CPU matches; Hard beat Easy %d/%d; %d jumps, %d jump attacks, %d knocked out of the air\n", matches, hardWins, hardGames, jumps, jumpAttacks, airDowns);
-		EXPECT_TRUE(jumps > 0 && jumpAttacks > 0 && airDowns > 0, "the CPU jumps in, attacks from the air and is anti-aired");
+		std::printf("  info: %d CPU matches; Hard beat Easy %d/%d; %d jumps, %d jump attacks, %d jump-in hits, %d knocked out of the air\n", matches, hardWins, hardGames, jumps, jumpAttacks, jumpInHits, airDowns);
+		EXPECT_TRUE(jumps > 0 && jumpAttacks > 0 && jumpInHits > 0 && airDowns > 0, "the CPU jumps in, lands jump-ins, attacks from the air and is anti-aired");
+		EXPECT_EQ(grabs, 0, "with grappling off the CPU never grabs");
 		EXPECT_TRUE(hardWins * 2 > hardGames, "Hard CPU usually beats Easy CPU");
 	});
 
@@ -1426,6 +1461,7 @@ int main(int argc, char** argv)
 			blocked = blocked || HasEvent(m, EventType::Block);
 		}
 		EXPECT_TRUE(blocked, "block dummy blocks");
+		GrapplingOn grappling;
 		Match n = MakeMatch(0, 1);
 		n.TrainingPlace(Cm(-35), Cm(35));
 		CpuController tech;
@@ -1439,6 +1475,231 @@ int main(int argc, char** argv)
 			teched = teched || HasEvent(n, EventType::ThrowTech);
 		}
 		EXPECT_TRUE(teched, "tech dummy escapes throws");
+	});
+
+	Run("grappling_off_grab_does_nothing", [] {
+		// rules.json switches grappling off; the grab press starts nothing and the throw data stays loaded.
+		EXPECT_TRUE(!g_rules.grappling, "grappling is off in the shipped rules");
+		for (int c = 0; c < 2; ++c)
+		{
+			const std::string who = c == 0 ? "wren: " : "ashka: ";
+			bool hasThrowMove = false;
+			for (const MoveDef& mv : Fighter(c).moves)
+			{
+				hasThrowMove = hasThrowMove || mv.kind == MoveKind::Throw;
+			}
+			EXPECT_TRUE(hasThrowMove && !Fighter(c).throws.empty(), who + "throw move and throws kept in the data");
+			Match m = MakeMatch(c, 1 - c);
+			m.TrainingPlace(Cm(-35), Cm(35));
+			bool started = false;
+			bool connected = false;
+			for (int t = 0; t < 60; ++t)
+			{
+				Step(m, t == 1 ? In(0, BtnThrow) : InputFrame(), In(0, 0, BtnBlock));
+				started = started || HasEvent(m, EventType::MoveStart, 0);
+				connected = connected || HasEvent(m, EventType::ThrowConnect);
+			}
+			EXPECT_TRUE(!started && !connected, who + "a grab press starts no move and grabs nothing");
+			EXPECT_TRUE(m.State().f[0].state == FState::Neutral && m.State().f[1].state == FState::Guard, who + "both fighters stay in neutral and guard");
+		}
+	});
+
+	// Jump toward the opponent and press an attack T ticks later; returns the frame advantage once both can act
+	// (positive: the jumper acts first), or a sentinel when the attack did not connect while the jumper was in the air.
+	struct JumpIn
+	{
+		bool connected = false;
+		bool blocked = false;
+		int contactTick = -1;
+		int advantage = 0;
+	};
+	auto RunJumpIn = [](int attacker, uint8_t button, int tick, int distCm, int defence, int deflectTick) {
+		JumpIn r;
+		Match m = MakeMatch(attacker, 1 - attacker);
+		m.TrainingPlace(Cm(-distCm / 2.0), Cm(distCm / 2.0));
+		int atkFree = -1;
+		int defFree = -1;
+		for (int t = 0; t < 220; ++t)
+		{
+			const InputFrame a = t == 0 ? Up(1) : (t == tick ? In(0, button) : InputFrame());
+			InputFrame d;
+			if (defence == 1)
+			{
+				d = In(0, 0, BtnBlock);
+			}
+			if (defence == 1 && t == deflectTick)
+			{
+				d = In(0, BtnBlock, BtnBlock);
+			}
+			const bool airborne = m.State().f[0].jumpFrame > g_rules.jumpSquat;
+			Step(m, a, d);
+			if (r.contactTick < 0 && (HasEvent(m, EventType::Hit, 0) || HasEvent(m, EventType::Block, 0) || HasEvent(m, EventType::Deflect, 0)))
+			{
+				if (!airborne)
+				{
+					return r;
+				}
+				r.connected = true;
+				r.blocked = !HasEvent(m, EventType::Hit, 0);
+				r.contactTick = t;
+			}
+			if (r.contactTick >= 0)
+			{
+				if (atkFree < 0 && m.IsActionable(0)) atkFree = t;
+				if (defFree < 0 && m.IsActionable(1)) defFree = t;
+				if (atkFree >= 0 && defFree >= 0) break;
+			}
+		}
+		r.advantage = defFree - atkFree;
+		return r;
+	};
+
+	Run("jump_ins_have_landing_relative_advantage", [&RunJumpIn] {
+		// However high a jump attack connects, its attacker lands with at least jumpInHitAdvantage on hit and
+		// jumpInBlockAdvantage on block; a timed block (deflect) takes timedBlockStunReduction off that.
+		// Measured with a held Block stopping jump-ins, so the block path is covered too.
+		HeldBlockStopsJumpIns heldBlocks;
+		for (int c = 0; c < 2; ++c)
+		{
+			for (uint8_t button : {BtnLight, BtnHeavy})
+			{
+				const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy");
+				int hits = 0;
+				int blocks = 0;
+				int minHit = 999;
+				int minBlock = 999;
+				int deflectChecks = 0;
+				bool deflectExact = true;
+				bool deflectFlips = false;
+				for (int dist = 100; dist <= 220; dist += 40)
+				{
+					for (int t = 6; t <= 34; t += 2)
+					{
+						const JumpIn hit = RunJumpIn(c, button, t, dist, 0, -1);
+						if (hit.connected)
+						{
+							++hits;
+							minHit = hit.advantage < minHit ? hit.advantage : minHit;
+						}
+						const JumpIn block = RunJumpIn(c, button, t, dist, 1, -1);
+						if (block.connected)
+						{
+							++blocks;
+							minBlock = block.advantage < minBlock ? block.advantage : minBlock;
+							const JumpIn deflect = RunJumpIn(c, button, t, dist, 1, block.contactTick - 2);
+							if (deflect.connected && deflect.blocked)
+							{
+								++deflectChecks;
+								deflectExact = deflectExact && deflect.advantage == block.advantage - g_rules.timedBlockStunReduction;
+								deflectFlips = deflectFlips || (block.advantage > 0 && deflect.advantage < 0);
+							}
+						}
+					}
+				}
+				EXPECT_TRUE(hits > 10 && blocks > 10, what + ": jump-ins connect from several heights and distances");
+				EXPECT_TRUE(minHit >= g_rules.jumpInHitAdvantage, what + ": every jump-in hit leaves the jumper at least " + std::to_string(g_rules.jumpInHitAdvantage) + " ahead (min " + std::to_string(minHit) + ")");
+				EXPECT_TRUE(minBlock >= g_rules.jumpInBlockAdvantage, what + ": every blocked jump-in leaves the jumper at least " + std::to_string(g_rules.jumpInBlockAdvantage) + " ahead (min " + std::to_string(minBlock) + ")");
+				EXPECT_TRUE(deflectChecks > 5 && deflectExact, what + ": a deflect takes the timed-block reduction off the jumper's advantage");
+				EXPECT_TRUE(deflectFlips, what + ": a deflect turns a typical blocked jump-in into the defender's turn");
+			}
+		}
+	});
+
+	Run("jump_ins_beat_a_held_block_but_not_a_deflect", [&RunJumpIn] {
+		// Shipped rules: holding Block does not stop a jump attack (it hits, with the jump-in hit advantage); a timed
+		// Block press deflects it and the jumper is never left better off than a blocked jump-in would be.
+		EXPECT_TRUE(!g_rules.heldBlockStopsJumpIns, "a held Block does not stop jump-ins in the shipped rules");
+		for (int c = 0; c < 2; ++c)
+		{
+			for (uint8_t button : {BtnLight, BtnHeavy})
+			{
+				const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy");
+				int held = 0;
+				int heldHits = 0;
+				int minHit = 999;
+				int deflects = 0;
+				int deflected = 0;
+				int defenderFirst = 0;
+				int maxDeflectAdvantage = -999;
+				for (int dist = 100; dist <= 220; dist += 40)
+				{
+					for (int t = 6; t <= 34; t += 2)
+					{
+						const JumpIn h = RunJumpIn(c, button, t, dist, 1, -1);
+						if (!h.connected)
+						{
+							continue;
+						}
+						++held;
+						if (!h.blocked)
+						{
+							++heldHits;
+							minHit = h.advantage < minHit ? h.advantage : minHit;
+						}
+						const JumpIn d = RunJumpIn(c, button, t, dist, 1, h.contactTick - 2);
+						if (d.connected)
+						{
+							++deflects;
+							deflected += d.blocked ? 1 : 0;
+							defenderFirst += d.advantage < 0 ? 1 : 0;
+							maxDeflectAdvantage = d.advantage > maxDeflectAdvantage ? d.advantage : maxDeflectAdvantage;
+						}
+					}
+				}
+				EXPECT_TRUE(held > 10 && heldHits == held, what + ": every jump-in into a held Block hits (" + std::to_string(heldHits) + "/" + std::to_string(held) + ")");
+				EXPECT_TRUE(minHit >= g_rules.jumpInHitAdvantage, what + ": and leaves the jumper at least " + std::to_string(g_rules.jumpInHitAdvantage) + " ahead (min " + std::to_string(minHit) + ")");
+				EXPECT_TRUE(deflects > 10 && deflected == deflects, what + ": a timed Block press deflects every one (" + std::to_string(deflected) + "/" + std::to_string(deflects) + ")");
+				EXPECT_TRUE(defenderFirst * 2 > deflects, what + ": a deflect usually gives the defender the next turn (" + std::to_string(defenderFirst) + "/" + std::to_string(deflects) + ", jumper best " + std::to_string(maxDeflectAdvantage) + ")");
+			}
+		}
+	});
+
+	Run("jump_in_hit_links_into_a_light", [] {
+		// The point of a jump-in: one that hits leads into a ground string when the jumper lands.
+		for (int c = 0; c < 2; ++c)
+		{
+			Match m = MakeMatch(c, 1 - c);
+			m.TrainingPlace(Cm(-70), Cm(70));
+			bool landed = false;
+			bool pressed = false;
+			int maxCombo = 0;
+			for (int t = 0; t < 120; ++t)
+			{
+				InputFrame a = t == 0 ? Up(1) : (t == 24 ? In(0, BtnHeavy) : InputFrame());
+				if (landed && !pressed && m.IsActionable(0))
+				{
+					a = In(0, BtnLight);
+					pressed = true;
+				}
+				Step(m, a);
+				landed = landed || HasEvent(m, EventType::Land, 0);
+				maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+			}
+			EXPECT_TRUE(pressed && maxCombo >= 2, std::string(c == 0 ? "wren" : "ashka") + ": jump-in heavy, then a light on landing, combos (max combo " + std::to_string(maxCombo) + ")");
+		}
+	});
+
+	Run("one_attack_per_jump", [] {
+		for (int c = 0; c < 2; ++c)
+		{
+			Match m = MakeMatch(c, 1 - c);
+			m.TrainingPlace(Cm(-150), Cm(150));
+			int airStarts = 0;
+			for (int t = 0; t < 60; ++t)
+			{
+				const InputFrame a = t == 0 ? Up(0) : ((t == 6 || t == 26 || t == 30) ? In(0, BtnLight) : InputFrame());
+				Step(m, a);
+				for (const Event& e : m.Events())
+				{
+					if (e.type == EventType::MoveStart && e.player == 0 && Fighter(c).moves[static_cast<size_t>(e.move)].air)
+					{
+						++airStarts;
+					}
+				}
+			}
+			EXPECT_EQ(airStarts, 1, std::string(c == 0 ? "wren" : "ashka") + ": a second jump attack in the same jump does not start");
+			EXPECT_TRUE(m.State().f[0].jumpFrame == 0 && m.State().f[0].y == 0, "the jumper has landed");
+		}
 	});
 
 	std::printf("\n%d checks, %d failures\n", g_checks, g_failures);

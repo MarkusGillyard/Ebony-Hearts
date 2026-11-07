@@ -42,5 +42,9 @@
   "jumpHeight": 90,
   "jumpForward": 3.6,
   "jumpBack": 3.0,
-  "fallSpeed": 0.6
+  "fallSpeed": 0.6,
+  "jumpInHitAdvantage": 12,
+  "jumpInBlockAdvantage": 2,
+  "heldBlockStopsJumpIns": false,
+  "grappling": false
 }

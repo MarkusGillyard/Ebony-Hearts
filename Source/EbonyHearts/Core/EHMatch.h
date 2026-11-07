@@ -132,6 +132,7 @@ struct FighterState
 	int32_t vy = 0;           // falling speed (units a frame) of a body hit out of the air
 	int16_t jumpFrame = 0;    // frames since the jump started (squat, then air); 0 on the ground
 	int8_t jumpDir = 0;       // -1 back, 0 straight up, +1 toward the opponent (at the jump start)
+	bool airAttackUsed = false;   // a jump allows one jump attack
 	uint8_t reaction = 0;     // presentation: 1 light hit, 2 heavy hit, 3 landed from a throw, 4 landed head toward the thrower
 	int16_t reactMove = -1;   // presentation: the opponent's move and hit that put this fighter in hitstun
 	int8_t reactHit = -1;

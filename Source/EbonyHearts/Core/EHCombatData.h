@@ -203,6 +203,17 @@ struct Rules
 	int32_t jumpForward = 0;
 	int32_t jumpBack = 0;
 	int32_t fallSpeed = 0;      // units a frame added to a falling body's speed (hit out of the air)
+	// A jump attack that connects with a grounded opponent keeps them in hit- or blockstun until its attacker has
+	// landed and recovered, plus this many frames, however high it connected (a timed block still subtracts its
+	// reduction from the blockstun).
+	int32_t jumpInHitAdvantage = 0;
+	int32_t jumpInBlockAdvantage = 0;
+	// With false, holding Block does not stop a jump attack: only a timed block (deflect), or a fighter already in
+	// blockstun, blocks it. Jumping then answers a held guard, as strikes (anti-air) and deflects answer jumping.
+	bool heldBlockStopsJumpIns = true;
+	// Grappling (the grab action, throws and their escapes) stays in the data and code but can be switched off:
+	// with false, no throw move can start.
+	bool grappling = true;
 };
 
 // Loaders validate everything the simulation relies on and report the first problem with a JSON path.

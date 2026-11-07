@@ -592,6 +592,10 @@ bool LoadRules(const JsonValue& root, Rules& r, std::string& error)
 	if (!ReadCm(ctx, root, "jumpForward", p, r.jumpForward, 0.0, 15.0, true)) return false;
 	if (!ReadCm(ctx, root, "jumpBack", p, r.jumpBack, 0.0, 15.0, true)) return false;
 	if (!ReadCm(ctx, root, "fallSpeed", p, r.fallSpeed, 0.05, 5.0, true)) return false;
+	if (!ReadInt(ctx, root, "jumpInHitAdvantage", p, r.jumpInHitAdvantage, -30, 40, true)) return false;
+	if (!ReadInt(ctx, root, "jumpInBlockAdvantage", p, r.jumpInBlockAdvantage, -30, 40, true)) return false;
+	if (!ReadBool(ctx, root, "heldBlockStopsJumpIns", p, r.heldBlockStopsJumpIns)) return false;
+	if (!ReadBool(ctx, root, "grappling", p, r.grappling)) return false;
 	const JsonValue* scaling = root.Find("comboScaling");
 	if (scaling == nullptr || !scaling->IsArray() || scaling->items.empty() || scaling->items.size() > 32)
 	{

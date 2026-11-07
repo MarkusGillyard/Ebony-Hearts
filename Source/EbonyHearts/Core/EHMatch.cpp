@@ -341,6 +341,7 @@ void Match::EndToNeutral(int i)
 	f.reactHit = -1;
 	f.jumpFrame = 0;
 	f.jumpDir = 0;
+	f.airAttackUsed = false;
 }
 
 bool Match::InAir(int i) const
@@ -356,6 +357,7 @@ void Match::StartJump(int i, int8_t dir)
 	f.stateFrame = 1;
 	f.jumpFrame = 1;
 	f.jumpDir = dir;
+	f.airAttackUsed = false;
 	f.walk = 0;
 	f.vy = 0;
 	Emit(EventType::Jump, i, -1, f.x, 0, dir, 0);
@@ -369,6 +371,7 @@ void Match::Land(int i)
 	f.y = 0;
 	f.vy = 0;
 	f.jumpFrame = 0;
+	f.airAttackUsed = false;
 	if (!jumping)
 	{
 		return;
@@ -681,7 +684,7 @@ int32_t Match::SelectMove(int i, uint8_t button, int8_t dir, bool cancel) const
 	{
 		const int32_t idx = cancel ? c.moves[static_cast<size_t>(f.move)].cancelIndices[n] : static_cast<int32_t>(n);
 		const MoveDef& m = c.moves[static_cast<size_t>(idx)];
-		if (m.button != button || (!cancel && m.chainOnly) || m.air != InAir(i))
+		if (m.button != button || (!cancel && m.chainOnly) || m.air != InAir(i) || (m.kind == MoveKind::Throw && !rules_.grappling))
 		{
 			continue;
 		}
@@ -763,6 +766,10 @@ void Match::StartMove(int i, int32_t moveIndex, int8_t dir, bool cancel)
 	f.connectedHit = false;
 	f.walk = 0;
 	f.meter -= m.meterCost;
+	if (m.air)
+	{
+		f.airAttackUsed = true;
+	}
 	Emit(EventType::MoveStart, i, moveIndex, f.x, 0, 0, cancel ? EvCancel : 0);
 	if (m.kind == MoveKind::Buff && m.aura.applyFrame == 1)
 	{
@@ -797,7 +804,7 @@ void Match::TryActions(int i, const InputFrame& in)
 	}
 	if (f.state == FState::Jump)
 	{
-		if (InAir(i))
+		if (InAir(i) && !f.airAttackUsed)
 		{
 			StartFromBuffer(i, false);
 		}
@@ -1041,6 +1048,16 @@ void Match::ResolveCollisions()
 		const FighterState& def = before[d];
 		const MoveDef& m = chars_[a].moves[static_cast<size_t>(atk.move)];
 		const HitDef& h = m.hits[static_cast<size_t>(strikeHit[a])];
+		// A jump attack keeps a grounded defender in stun until its attacker has landed and recovered, so a jump-in is
+		// worth the same at any height: the attacker lands, recovers (airAttackLanding if the attack is still running at
+		// touchdown, jumpLanding otherwise) and then has jumpInHit/BlockAdvantage frames on the defender.
+		int32_t jumpInRecovery = -1;
+		if (m.air && atk.jumpFrame > rules_.jumpSquat)
+		{
+			const int32_t airLeft = rules_.jumpSquat + rules_.jumpAir - atk.jumpFrame;
+			const int32_t attackLeft = m.total - atk.moveFrame + 1;
+			jumpInRecovery = (airLeft > 0 ? airLeft : 0) + (airLeft <= attackLeft ? rules_.airAttackLanding : rules_.jumpLanding) - 1;
+		}
 		FighterState& fa = s_.f[a];
 		FighterState& fd = s_.f[d];
 		if (!trade)
@@ -1051,13 +1068,20 @@ void Match::ResolveCollisions()
 		const Box hb = WorldBox(a, h.box);
 		const int32_t cx = atk.facing > 0 ? (hb.x1 < def.x ? hb.x1 : def.x) : (hb.x0 > def.x ? hb.x0 : def.x);
 		const int32_t cy = (hb.y0 + hb.y1) / 2;
-		const bool guarding = def.state == FState::Guard || def.state == FState::Blockstun;
+		const bool timed = def.lastBlockPressTimed && (s_.frame - def.lastBlockPress) < rules_.timedBlockWindow;
+		// A held guard stops ground strikes; against a jump attack it takes a timed press (or blockstun already running)
+		// unless the rules let a held Block stop jump-ins too.
+		const bool guarding = def.state == FState::Blockstun ||
+			(def.state == FState::Guard && (jumpInRecovery < 0 || timed || rules_.heldBlockStopsJumpIns));
 		const int dirAway = atk.facing;   // defender slides in the attacker's facing direction
 
 		if (guarding)
 		{
-			const bool timed = def.lastBlockPressTimed && (s_.frame - def.lastBlockPress) < rules_.timedBlockWindow;
 			int32_t stun = h.blockstun;
+			if (jumpInRecovery >= 0 && jumpInRecovery + rules_.jumpInBlockAdvantage > stun)
+			{
+				stun = jumpInRecovery + rules_.jumpInBlockAdvantage;
+			}
 			if (timed)
 			{
 				stun = stun > rules_.timedBlockStunReduction ? stun - rules_.timedBlockStunReduction : 0;
@@ -1180,6 +1204,10 @@ void Match::ResolveCollisions()
 					{
 						stun = rules_.minComboHitstun;
 					}
+				}
+				if (jumpInRecovery >= 0 && jumpInRecovery + rules_.jumpInHitAdvantage > stun)
+				{
+					stun = jumpInRecovery + rules_.jumpInHitAdvantage;
 				}
 				fd.state = FState::Hitstun;
 				fd.stun = stun;
@@ -1532,6 +1560,7 @@ uint64_t HashState(const MatchState& state)
 		Mix(h, f.vy);
 		Mix(h, f.jumpFrame);
 		Mix(h, f.jumpDir);
+		Mix(h, f.airAttackUsed);
 		Mix(h, f.reaction);
 		Mix(h, f.reactMove);
 		Mix(h, f.reactHit);
