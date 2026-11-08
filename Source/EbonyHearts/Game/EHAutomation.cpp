@@ -355,6 +355,20 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			StepTimer = 0.0f;
 			return;
 		}
+		if (Cmd == TEXT("wait_lesson"))
+		{
+			// wait_lesson <step (1-based)> [timeout s]: waits until the Lesson has reached that step.
+			const int32 Want = FCString::Atoi(*Arg(1, TEXT("1")));
+			const float Timeout = FCString::Atof(*Arg(2, TEXT("60")));
+			if (LessonStep + 1 >= Want || StepTimer > Timeout)
+			{
+				AutoLogLine(FString::Printf(TEXT("%s %s after %.1fs (step %d)"), LessonStep + 1 >= Want ? TEXT("ok") : TEXT("FAIL timeout"), *Line, StepTimer, LessonStep + 1));
+				StepTimer = 0.0f;
+				++AutoLine;
+				continue;
+			}
+			return;
+		}
 		if (Cmd == TEXT("wait_screen") || Cmd == TEXT("wait_results"))
 		{
 			const int32 Want = Cmd == TEXT("wait_results") ? static_cast<int32>(EEHScreen::Results) : FCString::Atoi(*Arg(1, TEXT("0")));
@@ -544,6 +558,14 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			const FKey Got = (Set == EEHBindingSet::Count || A == EEHAction::Count) ? FKey(EKeys::Invalid) : Settings.Bindings.Get(Set, A, Slot);
 			const bool bOk = Want == TEXT("none") ? !Got.IsValid() : Got == FKey(FName(*Want));
 			AutoLogLine(FString::Printf(TEXT("%s expect_binding %s %s %d %s (is %s)"), bOk ? TEXT("ok") : TEXT("FAIL"), *Arg(1, TEXT("")), *Arg(2, TEXT("")), Slot, *Want, Got.IsValid() ? *Got.ToString() : TEXT("none")));
+		}
+		else if (Cmd == TEXT("lesson_status"))
+		{
+			// lesson_status [expected step (1-based)]: logs the Lesson's current step, and checks it when one is given.
+			const int32 Want = FCString::Atoi(*Arg(1, TEXT("0")));
+			const FString Title = Lesson.IsValidIndex(LessonStep) ? Lesson[LessonStep].Title : FString(TEXT("-"));
+			AutoLogLine(FString::Printf(TEXT("%slesson_status step=%d/%d \"%s\" count=%d"), Want > 0 ? (LessonStep + 1 >= Want ? TEXT("ok ") : TEXT("FAIL ")) : TEXT(""),
+				LessonStep + 1, Lesson.Num(), *Title, LessonCount));
 		}
 		else if (Cmd == TEXT("training_gauge"))
 		{

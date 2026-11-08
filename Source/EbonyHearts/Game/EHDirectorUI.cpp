@@ -850,7 +850,7 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 		case EEHLessonStep::Throw: Hints = {FEHHint::Act(EEHAction::Throw, TEXT("Throw (up close)"))}; break;
 		case EEHLessonStep::ThrowEscape: Hints = {FEHHint::Act(EEHAction::Throw, TEXT("Throw to escape"))}; break;
 		case EEHLessonStep::ComboThrow: Hints = {FEHHint::Act(EEHAction::Light, TEXT("Light")), FEHHint::Act(EEHAction::Light, TEXT("Light")), FEHHint::Act(EEHAction::Throw, TEXT("Throw"))}; break;
-		case EEHLessonStep::Punish: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block")), FEHHint::Act(EEHAction::Dodge, TEXT("Dodge")), FEHHint::Act(EEHAction::Light, TEXT("Punish"))}; break;
+		case EEHLessonStep::Punish: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block")), FEHHint::Act(EEHAction::Heavy, TEXT("Punish"))}; break;
 		case EEHLessonStep::Special: Hints = {FEHHint::Act(EEHAction::Special, TEXT("Special (+ toward / + away)"))}; break;
 		default: break;
 		}

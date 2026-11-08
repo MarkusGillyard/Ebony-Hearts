@@ -944,7 +944,7 @@ void AEHGameDirector::SetupLesson()
 			? TEXT("Throw while a light is hitting: Light, Throw (or Light, Light, Throw) takes them\ndown with the double-leg. A throw that follows a hit cannot be escaped.")
 			: TEXT("Throw while a light is hitting: Light, Light, Throw takes the jab and elbow into the\nclinch trip. Stay close: a throw that follows a hit cannot be escaped."), 1, K::ComboThrow});
 	}
-	Lesson.Add({TEXT("Punish"), TEXT("Block or dodge the heavy kick, then hit back while it recovers."), 1, K::Punish});
+	Lesson.Add({TEXT("Punish"), TEXT("Your opponent will try an uppercut. Block it, then hit back while it recovers:\na blocked or missed uppercut leaves a long opening."), 1, K::Punish});
 	Lesson.Add({TEXT("Special"), TEXT("Special changes with direction: neutral, toward, and away (which spends gauge). Use all three."), 3, K::Special});
 	Lesson.Add({TEXT("Lesson complete"), bThrows
 		? TEXT("Strikes beat throws, throws beat guards, guards beat strikes. Crouch under highs and\nagainst lows, stand against overheads and jump-ins, and uppercut the jumps.")
@@ -1086,8 +1086,13 @@ eh::InputFrame AEHGameDirector::LessonScriptInput()
 		Approach(70 * Cm);   // stands in reach and lets the player start the combo
 		break;
 	case EEHLessonStep::Punish:
-		Approach(150 * Cm);
-		if (Gap <= 160 * Cm && ScriptTimer % 95 == 0) In.pressed = eh::BtnHeavy;
+		// Uppercuts from close range (down + Heavy): blocked, each one leaves a punishable recovery.
+		Approach(75 * Cm);
+		if (Gap <= 85 * Cm && Me.state == eh::FState::Neutral && ScriptTimer % 110 == 0)
+		{
+			In.pressed = eh::BtnHeavy;
+			In.y = -1;
+		}
 		break;
 	default:
 		break;
