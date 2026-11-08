@@ -41,6 +41,8 @@ of each script for another machine.
 | 10. Release | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |
 | 11. Evaluation | launch the packaged game with `-EHAuto=<checkout>/Tests/Auto/<script>.txt -EHEvidence=<dir>` (absolute path; see below) | logs, perf JSON/CSV and screenshots |
 | 12. Move tables | `python3 Tools/Docs/move_tables.py` | regenerates the tables in `Docs/CombatContract.md` |
+| 13. Move matrix | `Tools/Docs/move_matrix.sh` | regenerates `Docs/MoveMatrix.md` by running every source/follow-up pair through the combat core |
+| 14. Clip audit | `<blender> -b --factory-startup -P Tools/Blender/anim/audit_clips.py -- <out.csv> <sourceart/anims/wren> <.../ashka> <.../wren/victim_wren> ...` | per-clip CSV: fastest joint step, pops, held frames, elbow/knee flips, floor contact, loop seams, head height |
 
 ### Evaluation scripts (`Tests/Auto`)
 
@@ -54,6 +56,8 @@ of each script for another machine.
 | `signature.txt`, `review.txt` | Training signature moves and a full match, for stills and footage |
 | `review_match.txt` | A full bot-versus-CPU match (both Hard) for footage of normal play |
 | `review_reactions.txt`, `review_flow.txt`, `review_jump.txt` | Training reviews of the playtest work: light strings from near full reach, Heavy and toward + Heavy (hit reactions); jabs from walking, taps, walk into strikes (movement into strikes); jumps in all directions and jump-ins. Record with `capture.py ... --start-on <evidence>/auto_log.txt:match_start` so two builds' recordings line up |
+| `review_combat.txt` | The 2026-11-08 combat pass, each fighter in Training: crouch, the low attack and the uppercut from the crouch, a neutral throw, the combo throw (Light, Light, Throw), the three jumps and a deep jump-in into a light string. Record at most 64 s from `match_start` |
+| `lesson_full.txt` | Plays all 14 Lesson steps through the device router and checks each is reached (`wait_lesson`, `lesson_status`); the reaction-timed uppercut step is played by the Hard CPU |
 | `review_playtest.txt` | The 2026-11-07 playtest changes: Wren's light string into the spinning elbow, Ashka's body roundhouse, and each fighter's jump-in through a held guard into a light string (Dummy: Block all). Record at most 38 s from `match_start` |
 | `launch_quit.txt` with `launch_loop.py` | Start-up stability: one launch at a time, each attempt classified (clean, crash, timeout, silent, audio_fail, fail) with exit status, signal, audio sink and monitors, and a check for leftover processes. `python3 Tests/Auto/launch_loop.py --launcher <release>/EbonyHearts.sh --runs N --out <empty dir> [--fresh-profile] -- [game args]` |
 | `display_modes.txt` | Fullscreen, borderless and windowed in turn after start-up, with `window_check` after each change |
@@ -90,6 +94,14 @@ workspace, not this repository.
 - **Animation timing.** Clips are authored at 60 fps, so animation frame N is combat frame N. A move's contact pose is
   keyed on its first active frame from the data, and feet that stay planted are compensated for the root travel the
   simulation applies. Change a move's timing in the data, then rerun step 4.
+- **Posture and boxes.** A crouching move (`"crouching": true`) and the crouch clips must keep the head top inside the
+  fighter's `crouchHurt` box (Wren 110 cm, Ashka 105 cm), and a strike's drawn contact must reach its hitbox on its
+  active frames; check with the clip audit's head heights and the pose probe used for the 2026-11-08 pass (the head,
+  pelvis, hands, elbows and feet per keyed frame). Jump clips run on the jump's clock (`jumpSquat + jumpAir` frames).
+- **Throws.** `Tools/Blender/anim/throws.py` keys each throw pair in the thrower's space; `mocap_clips.json` `throws`
+  replaces a pair with a capture (optional `anchors` retime it), and `victim_falls` gives a keyed throw a captured fall.
+  The grab move's pose on its first active frame is where the throw starts, so a throw's entry (the double-leg's
+  level change, the clinch's reach) belongs on the grab's active frames.
 - **Character skeletons.** These use MPFB's game_engine skeleton (`root`, `pelvis`, `spine_01-03`, ... ) plus twist
   bones and secondary chains (braids, face strands, coat tails). The chains are spring-simulated and baked into every
   clip.
