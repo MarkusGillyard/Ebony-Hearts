@@ -33,18 +33,22 @@ Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Stat
 - **Fighters.** Wren Ku (MMA, bouncy all-rounder; signature 720 Hook Kick; Spirit Enhanced Strikes, a golden lightning
   aura) and Ashka Rook (Muay Thai, long upright guard; Lamplighter Flame, crimson).
 - **Stage.** The Drowned Chapel: a flooded chapel nave lit by moonlight through a rose window, candles and water.
-- **Five actions:** light, heavy, special, dodge/roll and block. Movement is left/right, and up jumps (straight up,
-  toward or away), with a light and a heavy jump attack each. Each action has a "toward" or "away" variant judged when
-  the button is pressed. There are no motion inputs and no chords.
-- **How they fit together.** Blocks stop strikes. A held block cannot stop a jump attack, so jumping in opens a guard,
-  and a jump-in that hits leads into a ground string. Strikes knock a jumper out of the air, and a well-timed block
-  (deflect) stops a jump-in and gives the defender the turn. Rolls pass through strikes but leave a punishable
-  recovery.
-- **Grappling is switched off.** Grabs, throws and escapes are kept in the code, data and animations for later, but
-  they are not in play (`"grappling": false` in `Content/Data/rules.json`).
-- **Modes.** Versus CPU (Easy, Normal, Hard), local Versus, Training (dummy modes, hitbox and frame-advantage display,
-  position reset), and a ten-step guided Lesson. Also results with rematch, settings, a move list, credits and a quit
-  confirmation.
+- **Six actions:** light, heavy, special, throw, dodge/roll and block. Movement is left/right; up jumps (straight up,
+  toward or away) and down crouches. Directions modify buttons, judged when the button is pressed: toward / away pick
+  a toward/away move, and down + Heavy is the uppercut, down + Light the low attack. There are no motion inputs and no
+  chords.
+- **How they fit together.** A standing guard stops high, mid and overhead hits; a crouching guard (down + Block)
+  stops lows and mids, and crouching ducks highs. Jump attacks coming down are overheads, so jumping in opens a
+  crouching guard, and a deep jump-in leads into a ground string. The uppercut (down + Heavy) knocks jumpers out of
+  the air and launches, but is badly punished if blocked. Throws beat any guard up close; a throw right after a light
+  that hits is a combo throw that cannot be escaped, and a neutral throw can be escaped with Throw. A well-timed block
+  (deflect) shortens blockstun. Rolls pass through strikes but leave a punishable recovery.
+- **Throws are standalone.** Each fighter has one throw: Wren's double-leg takedown and Ashka's Muay Thai clinch trip.
+  There is no clinch state, ground position or grappling minigame; the old directional throw set stays in the code
+  and data, switched off (`"grappling": false` in `Content/Data/rules.json`).
+- **Modes.** Versus CPU (Easy, Normal, Hard), local Versus, Training (dummy modes including crouch, hitbox and
+  frame-advantage display, position reset), and a 14-step guided Lesson. Also results with rematch, settings, a move
+  list, credits and a quit confirmation.
 - **Settings.**
   - Display: window mode and resolution (with a confirm-or-revert timer), quality, render scale, V-Sync and frame cap.
   - Audio: master, music, effects and ambience volume.
@@ -67,20 +71,24 @@ can take over that side.
 
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
-| Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
+| Move | A / D | Left / Right arrows | Left stick / D-pad | Left stick / D-pad |
 | Jump | W, or I | Up arrow, Numpad 5, or ; | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up |
+| Crouch (hold) | S | Down arrow | Left stick down / D-pad down | Left stick down / D-pad down |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
+| Throw | U | Numpad 4, or M | L2 | LT |
 | Dodge | O | Numpad 6, or ' | Circle | B |
 | Block (hold) | Space | Numpad 0, or Right Shift | R2, or L1 | RT, or LB |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
 PlayStation and Xbox share one layout by button position. Menus have their own fixed controls: Cross / A or Enter
-confirms, Circle / B or Escape goes back, and Options / Menu pauses. With grappling switched off, Grab's former buttons
-jump (Cross / A, I, Numpad 5, ;) and block (L1 / LB). Every gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1
-and 2 and for each keyboard side. Details: [Docs/Controls.md](Docs/Controls.md).
+confirms, Circle / B or Escape goes back, and Options / Menu pauses. Down + Heavy is the uppercut and down + Light the
+low attack; up wins over down when both are held. Every gameplay action can be remapped under Settings > Controls,
+with separate controller layouts for players 1 and 2 and for each keyboard side. Saved controls from earlier builds
+keep the player's own keys; Crouch and Throw take their new defaults only where those keys are free. Details:
+[Docs/Controls.md](Docs/Controls.md).
 
 ## Running the packaged build
 
