@@ -192,7 +192,7 @@ def ashka_clinch_trip(victim, td):
     set_down = release(foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.0), foot_l_rot=(-50, 0, 0))
     square = set_down(spin=0.0, foot_l_abs=(fl[0], fl[1], 0.0), foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0), chest=ASHKA["chest"], ball_r=ASHKA["ball_r"],
                       ball_l=ASHKA["ball_l"], hand_l=ASHKA["hand_l"], hand_r=ASHKA["hand_r"], elbow_l=ASHKA["elbow_l"], elbow_r=ASHKA["elbow_r"])
-    attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, down, "smooth"), (18, steer, "smooth"), (24, sweep, "smooth"), (28, through, "out"),
+    attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, down, "smooth"), (18, steer, "smooth"), (24, sweep, "smooth"), (28, through, "smooth"),
                 (36, release, "smooth"), (42, set_down, "smooth"), (52, square, "smooth"),
                 (62, unrel(t(spin=0.0, foot_l_world=None, foot_r_world=None, foot_l_abs=None, foot_r_abs=None, foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0))), "smooth")]
     # The victim turns with the steering about the clinch's centre, its head held down at her chest.
@@ -209,13 +209,14 @@ def ashka_clinch_trip(victim, td):
     # break the fall; it lands flat where the knockdown's lying pose starts.
     swept = loaded(spin=-34.0, foot_l=(vl[0] + 0.12, vl[1] + 0.28, 0.24), foot_r=lifted(vr, 0.06), knee_l=(0.6, 0.6, 0.3),
                    pelvis=(-0.04, 0.10, -0.18), pelvis_rot=(0, 10, 28), chest=(0, 14, 10), head=(0, 18, 4),
-                   hand_l=(0.10, 0.45, 1.05), hand_r=(0.20, -0.30, 1.10), fist=0.2)
+                   hand_l=(0.10, 0.45, 1.05), hand_r=(0.20, -0.30, 1.10), elbow_l=(0.0, 0.7, -0.4), elbow_r=(0.0, -0.7, -0.4), fist=0.2)
     air = swept(spin=-30.0, foot_l=(vl[0] + 0.25, vl[1] + 0.30, 0.42), foot_r=(vr[0] + 0.35, vr[1] + 0.05, 0.26),
                 knee_l=(0.6, 0.4, 0.6), knee_r=(0.6, -0.2, 0.6), pelvis=(-0.18, 0.12, -0.50), pelvis_rot=(0, -30, 30),
-                chest=(0, -6, 6), head=(0, 26, 0), hand_l=(-0.20, 0.60, 0.55), hand_r=(-0.10, -0.40, 0.75), elbow_l=(-0.2, 0.6, 0.0))
+                chest=(0, -6, 6), head=(0, 26, 0), hand_l=None, hand_r=None, hand_l_rel=(0.05, 0.50, 0.35), hand_r_rel=(0.15, -0.45, 0.40),
+                elbow_l=(-0.2, 0.7, -0.2), elbow_r=(-0.2, -0.7, -0.2))
     end = landed(v, hold, land)
     victim_keys = [(1, v, "smooth"), (6, held, "snap"), (12, bowed, "smooth"), (18, stumble, "smooth"), (24, loaded, "smooth"),
-                   (28, swept, "smooth"), (36, unrel(air), "fall"), (46, end(head=(0, 22, -6)), "fall"), (52, end, "out"), (62, end, "smooth")]
+                   (28, swept, "smooth"), (36, air, "fall"), (46, end(head=(0, 22, -6)), "fall"), (52, end, "out"), (62, end, "smooth")]
     return attacker, victim_keys
 
 

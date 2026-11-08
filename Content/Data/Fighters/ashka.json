@@ -70,7 +70,7 @@
       "id": "U", "name": "Rising Elbow", "anim": "U", "kind": "strike", "button": "heavy", "dir": "any", "down": true, "total": 48,
       "hits": [{"frames": [9, 12], "box": [5, 80, 52, 215], "level": "mid", "damage": 110, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 60, "blockPush": 45, "heavy": true, "knockdown": true, "launch": true}],
       "travel": [{"frames": [2, 8], "vx": 1.4}],
-      "hurt": [{"frames": [1, 2], "box": [-26, 0, 28, 142], "replaceBase": true}, {"frames": [3, 6], "box": [-28, 0, 32, 105], "replaceBase": true}, {"frames": [9, 18], "box": [0, 120, 56, 205]}]
+      "hurt": [{"frames": [1, 2], "box": [-26, 0, 28, 142], "replaceBase": true}, {"frames": [3, 5], "box": [-28, 0, 32, 105], "replaceBase": true}, {"frames": [9, 18], "box": [0, 120, 56, 205]}]
     },
     {
       "id": "S", "name": "Flame Elbow", "anim": "S", "kind": "strike", "button": "special", "dir": "neutral", "total": 39,
