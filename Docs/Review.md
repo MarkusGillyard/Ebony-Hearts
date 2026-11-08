@@ -85,16 +85,22 @@ The original source candidate was `4cee9c1`; the later commits up to the startin
 |---|---|---|
 | PR and repository | Full Git file inventory (514 tracked files, including 344 LFS objects), PR file and commit pagination, branch diff, review/issue comments, GitHub checks, merge status and ruleset query; no repository `AGENTS.md` | No unseen review thread or active worktree change at start; GitHub's `main` branch-protection API returned 404 and the repository ruleset list was empty, so repository protection is not a substitute for owner authorization |
 | Combat and AI | Core timing, collision, jump, block, throw switch, CPU, data tables and tests; historical run output re-parsed | No confirmed active core defect. The dormant CPU throw-tech queue remains a future issue if grappling is re-enabled |
-| Input and UI | Router, settings, menus, pause and disconnect ownership, automation scripts | **Fixed:** leaving a non-video settings page by its Back button did not save edits; a later Video Back could reload old values. **Fixed:** replacement controller ownership could leave pause unusable, or assign one controller to two local-versus slots |
+| Input and UI | Router, settings, menus, pause and disconnect ownership, automation scripts | **P2 fixed:** leaving a non-video settings page by its Back button did not save edits; a later Video Back could reload old values. **P2 fixed:** replacement controller ownership could leave pause unusable, or assign one controller to two local-versus slots |
 | Presentation and content | Visual, animation, audio, VFX and UI paths; all named clips and sounds resolved; 339 Unreal packages have valid package magic, LFS fsck passed | No missing referenced asset found. A sound-name-only cache could collide if future assets reuse a name across categories; no current collision exists |
-| Platform and package | Linux startup, display/audio code, package tooling, manifest and raw evidence; independent package extraction and hash checks | **Fixed:** Ashka's active body-roundhouse Mixamo input was absent from the source manifest, and ACCAD was credited for the wrong kick. The raw Mixamo source matched the recorded download hash. SDL's variable audio callback request is a conditional underfill risk; no dropout was demonstrated on this PulseAudio path |
-| Documentation | README, contracts, status, research, production, validation, provenance and review versus source and raw evidence | **Fixed:** stale package commands and claims that jump was deferred, held Block stopped every attack, and the latest candidate had not been played. Current owner feedback is recorded separately from automated results |
+| Platform and package | Linux startup, display/audio code, package tooling, manifest and raw evidence; independent package extraction and hash checks | **P2 fixed:** Ashka's active body-roundhouse Mixamo input was absent from the source manifest, and ACCAD was credited for the wrong kick. The raw Mixamo source matched the recorded download hash. **P2 conditional risk:** SDL's variable audio callback request can exceed the fixed queued buffer; no dropout was demonstrated on this PulseAudio path |
+| Documentation | README, contracts, status, research, production, validation, provenance and review versus source and raw evidence | **P2 fixed:** stale package commands and claims that jump was deferred, held Block stopped every attack, and the latest candidate had not been played. Current owner feedback is recorded separately from automated results |
 
 The settings and controller changes are in `6eebee0`; the provenance repair and a missing-source regression guard are
 in `263a3a7`; documentation corrections are in `309c87c` and this audit follow-up. Existing raw assets, engine files,
 history, creative rules and the private `private/plans` area were not changed or published. The private third-party
 source ledger was corrected in place after a byte-for-byte backup under the review evidence directory; the repo
 manifest is generated from that ledger.
+
+Lower-priority follow-ups: the digital-only trigger fallback suppresses its first two presses on a controller without
+an analog trigger (P3, no failure on the tested DualShock/Xbox analog paths); CPU throw-tech can retain a pending
+input if grappling is turned back on (P3, inactive with `grappling: false`); the sound cache keys only by sound name
+although categories also select assets (P3, no current cross-category collision). These are recorded for later work,
+not counted as demonstrated defects in the playable configuration.
 
 ### Evidence and limits
 
@@ -120,6 +126,13 @@ Editor and Shipping code compiled with UE 5.8.4, and `BuildCookRun` completed wi
 `4ac5b6961abc40b7a8af4fca5161fd0ae18a9b2a99d56d527c9d8aed6425c607`. All 21 files in the archive
 matched their recorded hashes after fresh extraction into a path with spaces. This is a local review artifact; it has
 not been published as a release.
+From its containing directory, run `sha256sum -c SHA256SUMS`, extract with
+`tar -xzf EbonyHearts-Slice-309c87c.tar.gz -C '<new empty review directory>'`, then from that directory run
+`sha256sum -c <containing directory>/EbonyHearts-Slice-309c87c.files.sha256` and launch the extracted
+`EbonyHearts.sh` with an isolated `-UserDir=<writable directory>`. Do not use this review archive as a public release.
+The Git tree contains the playable game, code and cooked inputs, but the editable `.blend` and original capture files
+remain on the private HDD; the repo manifest records their source hashes. A clone alone cannot regenerate every
+animation from raw editable sources.
 
 The extracted package passed `smoke.txt` (no missing animation or sound; audio output delivered 2,792 buffers with
 one initial drop; display guard active; 724 sampled frames, median 16.67 ms and p99 16.75 ms), `journey.txt` (all
@@ -145,6 +158,13 @@ A separate read-only AI verifier checked the changed settings and controller pat
 package tests and `git diff --check`, and checked all 32 active mocap FBX references against the manifest and both
 raw copies of Ashka's kick. It found no confirmed regression. It is procedural non-authoring verification, not a
 human approval, a GitHub review approval or a physical playtest.
+
+The Shipping package was built from `309c87c072851526650d8c1b0daec87b0bcccc8b`. Subsequent review commits
+change README and `Docs/Review.md`, `Docs/Status.md`, and `Docs/Validation.md` only; no source, content, config,
+package tool or test file differs from that built revision. The PR branch is `release/first-slice` against `main`;
+the reviewed base is `9a34d030281f3321d41ac64e8a065f8a0336b6dc`. The exact final PR head and current GitHub
+conflict/check state are recorded in the PR review comment because a commit cannot contain its own hash. The
+authenticated account owns this PR and cannot supply an independent GitHub approval.
 
 **Technical verdict:** no confirmed merge-blocking defect remains on the tested Linux/X11 path after these repairs;
 the conditional SDL callback size concern, the untested two-human replacement path, Wayland and other hardware remain
