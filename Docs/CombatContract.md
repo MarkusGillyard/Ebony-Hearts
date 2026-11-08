@@ -3,7 +3,8 @@
 This is the shipped rule set for the first playable slice: Wren Ku and Ashka Rook in The Drowned Chapel. Every number lives
 in `Content/Data` (`rules.json`, `Fighters/*.json`). The move tables below are generated from those files by
 `Tools/Docs/move_tables.py`, and `Tests/Core` checks the behaviour. Values are tuning proposals that pass the automated
-checks; they have not yet been validated by human playtesting.
+checks. The creator played candidate `4cee9c1` on 2026-11-07 and reported that combat smoothness and jumping need
+refinement; the current tuning is not accepted as final.
 
 ## Controls
 

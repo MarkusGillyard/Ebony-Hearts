@@ -73,8 +73,8 @@ These are the first slice's layouts, with the former Grab keys now jumping. Both
 
 ## Menu controls (fixed)
 
-Menus use their own fixed controls, separate from the gameplay layouts. So Cross / A confirms in menus (and grabs in a
-match while grappling is on), and remapping gameplay can never lock anyone out of Settings.
+Menus use their own fixed controls, separate from the gameplay layouts. Cross / A confirms in menus and jumps in a
+match under the shipped layout. If grappling is enabled later, Grab must be rebound before it can be used.
 
 | Command | Controller | Keyboard, left side | Keyboard, right side |
 |---|---|---|---|
@@ -133,7 +133,7 @@ Each layout lists every action with its buttons: up to three (primary, secondary
 
 Changes save immediately to `Settings.json` in the game's Saved folder, under format version 3. Each layout is stored by
 its id (`controller1`, `controller2`, `keyboard1`, `keyboard2`), and each action by a stable id:
-- `MoveLeft`, `MoveRight`
+- `MoveLeft`, `MoveRight`, `Jump`
 - `LightAttack`, `HeavyAttack`
 - `Special`, `Grab`, `Dodge`, `Block`
 - `TrainingReset`
@@ -158,5 +158,6 @@ Loading rules:
 | `virtual_pad.py layout xbox / ds4` with `controls_pad_layout.txt` | Every default button on a simulated Xbox 360 pad and a simulated DualShock 4, through Linux uinput, SDL and Unreal. The game logs each action, the R2 / RT hold and release, and the detected device kind. | Simulated controller |
 | `virtual_pad.py menu-and-fight`, `disconnect`, `remap` | Menus, a full fight with every action, pause and quit. Disconnect and reconnect mid-match. Rebinding entirely with the pad through Settings > Controls. | Simulated controller |
 
-A physical controller check is still needed (see `Docs/Status.md`). Simulated devices go through the same system path
-as real ones, but they are not physical hardware.
+The creator checked a physical PS4 controller on the earlier `060a75f` candidate. A physical button-by-button check
+of the revised `4cee9c1` bindings remains unrecorded (see `Docs/Status.md`). Simulated devices go through the same
+system path as real ones, but they are not physical hardware.

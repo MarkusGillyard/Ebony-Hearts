@@ -86,11 +86,11 @@ sha256sum -c SHA256SUMS
 ```
 
 ```bash
-tar -xzf EbonyHearts-Slice-060a75f.tar.gz
+tar -xzf EbonyHearts-Slice-4cee9c1.tar.gz
 ```
 
 ```bash
-EbonyHearts-Slice-060a75f/EbonyHearts.sh
+EbonyHearts-Slice-4cee9c1/EbonyHearts.sh
 ```
 
 The first launch opens borderless at the desktop resolution. `VERSION.txt` in the extracted folder names the source
@@ -146,10 +146,13 @@ Tests/Core/run_core_tests.sh
   X11). On Linux the engine draws fullscreen and borderless as a desktop-sized window, so `-fullscreen` at a lower
   resolution costs as much GPU time as the native one. The game carries its own fixes for two engine/SDL defects
   (`Source/EbonyHeartsLinux`, see `Docs/Production.md`); Wayland sessions were not tested.
-- **Evaluation.** Nobody has playtested the slice by hand, and nobody has listened to the mix. Every frame, damage and
-  CPU value is an untested tuning proposal (see the combat contract).
+- **Evaluation.** The creator played the `4cee9c1` candidate on 2026-11-07 and reported that combat smoothness and
+  jumping need refinement. The character models are placeholders that also need work. Automated checks do not settle
+  gameplay feel, balance, or acceptance of the tuning values (see the combat contract). The creator verified TV audio
+  on the earlier `060a75f` candidate; an independent listening check of this candidate has not been recorded.
 - **Controllers.** Gamepads were verified with simulated Xbox 360 and DualShock 4 pads, including disconnect, reconnect
-  and remapping. A physical PS4 controller was detected as a PlayStation pad, but nobody pressed its buttons.
+  and remapping. The creator physically checked a PS4 controller on `060a75f`; the later candidate's revised bindings
+  have packaged and simulated-controller checks, but no recorded physical button-by-button check.
 - **Art.**
   - The fighters are built by script from a MakeHuman base. They read well at gameplay distance, but close-up detail
     (faces, hair cards) is modest.

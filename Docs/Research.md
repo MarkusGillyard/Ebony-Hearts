@@ -11,13 +11,14 @@ Confidence tags:
 - **[X]** A specialist wiki that blocked direct reading; the value comes from a search excerpt and should be re-checked.
 - **[C]** A community or press claim.
 
-The numbers in the "Ebony Hearts" column are this game's own tuning. None of them has been validated by human play yet.
+The numbers in the "Ebony Hearts" column are this game's own tuning. The creator played candidate `4cee9c1` on
+2026-11-07 and reported that combat smoothness and jumping need refinement; the tuning remains provisional.
 
 ## Adopted
 
 | Rule | Source and principle | Ebony Hearts | Alternative considered | Validation |
 |---|---|---|---|---|
-| Timed block | MK11 Flawless Block, with a lockout after an empty block [X]; Guilty Gear Strive Instant Block lockout [X]; Sekiro deflect, about 12 f and shrinking with spam [C]. A timed press on the existing block input rewards reading the opponent. Spam penalties keep it from being free. | A fresh Block press 0-3 ticks before contact deflects: 4 fewer blockstun ticks, no chip and extra gauge. Any press that does not deflect locks deflects out for 12 ticks. Holding Block still blocks everything. | SF6 Perfect Parry on its own input; no timed block | `timed_block_and_mash_lockout` |
+| Timed block | MK11 Flawless Block, with a lockout after an empty block [X]; Guilty Gear Strive Instant Block lockout [X]; Sekiro deflect, about 12 f and shrinking with spam [C]. A timed press on the existing block input rewards reading the opponent. Spam penalties keep it from being free. | A fresh Block press 0-3 ticks before contact deflects: 4 fewer blockstun ticks, no chip and extra gauge. Any press that does not deflect locks deflects out for 12 ticks. Holding Block stops ground strikes; a jump attack requires a timed deflect under the shipped rules. | SF6 Perfect Parry on its own input; no timed block | `timed_block_and_mash_lockout` |
 | Capped deflect payoff | SF6 Perfect Parry pairs a 2-frame window with punishes scaled to 50% [P]/[X]. A timed defence should not decide rounds by itself. | The deflect pays out in frames and gauge only, with no counterattack, freeze or automatic punish. | MK11's meter-cost Flawless Block attack | `timed_block_and_mash_lockout`, `block_advantage_matches_frame_formula` |
 | Strike beats throw; throw escape | SF6: a strike beats a throw on the same frame, and the escape window lasts 9 frames including the connect frame [X], confirmed by a measured community test [S]. | The strike wins on the same tick. The Grab escape window is 9 ticks. A press made before the grab connected does not count. Simultaneous grabs break apart. | MK's direction-guess tech (only one Grab button here) | `throw_tech_window`, `simultaneous_throws_tech_and_strike_beats_throw` |
 | Tech while holding Block | MK11 and MK1 forbid a throw tech while blocking [X]. With six buttons that skill test costs more than it adds. | Grab can be pressed while holding Block. Inside the window it escapes; outside it is a real grab attempt that can whiff and be punished. | The MK rule (release Block first) | `throw_tech_window` |
@@ -44,7 +45,7 @@ but no crouch or low attack; an unblockable designed to defeat jump would leave 
   limit damage.
 - **The SF6 Drive system.** Rejected for this slice, as the brief requires.
 - **Sekiro posture and Deathblow.** Rejected: a guard-break meter rewards turtling in symmetrical play.
-- **High/low mixups, crouching and jumping.** Not planned. Strike, grab and dodge carry the offence and defence.
+- **High/low mixups and crouching.** Deferred. Jumping and jump attacks are in the current slice; a held guard does not stop a jump-in, while a timed deflect or anti-air strike answers it. Grappling is retained in code and data but switched off in the shipped rules.
 - **Kameos, finishers and extra fighters (MK1).** Rejected: they would widen the requested cast and scope.
 - **An adaptive score.** Deferred: the slice uses event stingers only.
 
