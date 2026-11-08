@@ -857,8 +857,7 @@ void AEHGameDirector::HandleConnections()
 			Kinds[static_cast<int32>(RouterPtr->KindOf(Device))]));
 		if (!bConnected && Screen == EEHScreen::Match && (SlotDevice[0] == Device || SlotDevice[1] == Device))
 		{
-			const int32 Player = SlotDevice[0] == Device ? 0 : 1;
-			DisconnectNotice = FString::Printf(TEXT("Player %d's controller disconnected. Reconnect it, or press a button on another device to take over."), Player + 1);
+			RefreshDisconnectNotice();
 			if (!bPaused)
 			{
 				SetPaused(true, EHDeviceNone);
@@ -869,17 +868,48 @@ void AEHGameDirector::HandleConnections()
 			ShowToast(FString::Printf(TEXT("%s connected"), *Name));
 			if (!DisconnectNotice.IsEmpty())
 			{
+				bool bAssigned = false;
+				for (int32 i = 0; i < 2; ++i)
+				{
+					bAssigned |= !SlotCpu[i] && SlotDevice[i] == Device;
+				}
+				if (bAssigned && bPaused && PauseOwner == EHDeviceNone)
+				{
+					PauseOwner = Device;
+					BuildPauseMenu();
+				}
 				for (int32 i = 0; i < 2; ++i)
 				{
 					const FEHDevice* Slot = RouterPtr->FindDevice(SlotDevice[i]);
-					if (!SlotCpu[i] && (Slot == nullptr || !Slot->bConnected))
+					if (!bAssigned && !SlotCpu[i] && (Slot == nullptr || !Slot->bConnected))
 					{
+						const int32 Previous = SlotDevice[i];
 						SlotDevice[i] = Device;
+						bAssigned = true;
+						if (bPaused && (PauseOwner == Previous || PauseOwner == EHDeviceNone))
+						{
+							PauseOwner = Device;
+							BuildPauseMenu();
+						}
 					}
 				}
 				AssignGamepadPlayers();
-				DisconnectNotice.Reset();
+				RefreshDisconnectNotice();
 			}
+		}
+	}
+}
+
+void AEHGameDirector::RefreshDisconnectNotice()
+{
+	DisconnectNotice.Reset();
+	for (int32 i = 0; i < 2; ++i)
+	{
+		const FEHDevice* Slot = RouterPtr->FindDevice(SlotDevice[i]);
+		if (!SlotCpu[i] && (Slot == nullptr || !Slot->bConnected))
+		{
+			DisconnectNotice = FString::Printf(TEXT("Player %d's controller disconnected. Reconnect it, or press a button on another device to take over."), i + 1);
+			break;
 		}
 	}
 }

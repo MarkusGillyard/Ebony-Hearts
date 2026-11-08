@@ -231,6 +231,8 @@ def main():
         elif scenario == "disconnect":
             to_fight(pad)
             fight_inputs(pad)
+            pad.press("start")        # disconnect while this pad owns the pause menu
+            time.sleep(0.5)
             pad.close()
             log("pad destroyed (disconnect)")
             time.sleep(4.0)

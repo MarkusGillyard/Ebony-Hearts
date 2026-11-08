@@ -292,6 +292,7 @@ private:
 	void HandleSelectNav(const FEHNavEvent& E);
 	void HandleMatchNav(const FEHNavEvent& E);
 	void HandleConnections();
+	void RefreshDisconnectNotice();
 	void BeginSelect(EEHMode InMode);
 	void StartMatch();
 	void Rematch();

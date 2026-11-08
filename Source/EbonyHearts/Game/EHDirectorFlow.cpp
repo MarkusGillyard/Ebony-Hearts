@@ -169,7 +169,9 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 	Menu.Reset();
 	MenuIndex = 0;
 	SettingsPage = Page;
-	auto Back = [this] { BuildSettingsMenu(0); };
+	// Non-video pages apply their changes immediately. Persist them before a later Video Back reloads the
+	// saved settings to discard only unapplied display changes.
+	auto Back = [this] { SaveSettings(); BuildSettingsMenu(0); };
 	switch (Page)
 	{
 	case 0:
@@ -761,13 +763,18 @@ void AEHGameDirector::HandleMatchNav(const FEHNavEvent& E)
 				const FEHDevice* D = RouterPtr->FindDevice(SlotDevice[i]);
 				if (!SlotCpu[i] && (D == nullptr || !D->bConnected))
 				{
+					const int32 Previous = SlotDevice[i];
 					SlotDevice[i] = E.Device;
 					ShowToast(FString::Printf(TEXT("Player %d is now using %s"), i + 1, *RouterPtr->FindDevice(E.Device)->Name));
+					if (PauseOwner == Previous || PauseOwner == EHDeviceNone)
+					{
+						PauseOwner = E.Device;
+					}
+					break;
 				}
 			}
 			AssignGamepadPlayers();
-			DisconnectNotice.Reset();
-			PauseOwner = E.Device;
+			RefreshDisconnectNotice();
 			BuildPauseMenu();
 			return;
 		}

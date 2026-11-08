@@ -554,6 +554,11 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			const int32 Want = FCString::Atoi(*Arg(1, TEXT("0")));
 			AutoLogLine(FString::Printf(TEXT("%s expect_screen %d (is %d)"), static_cast<int32>(Screen) == Want ? TEXT("ok") : TEXT("FAIL"), Want, static_cast<int32>(Screen)));
 		}
+		else if (Cmd == TEXT("expect_master_volume"))
+		{
+			const int32 Want = FCString::Atoi(*Arg(1, TEXT("80")));
+			AutoLogLine(FString::Printf(TEXT("%s expect_master_volume %d (is %d)"), Settings.MasterVolume == Want ? TEXT("ok") : TEXT("FAIL"), Want, Settings.MasterVolume));
+		}
 		else if (Cmd == TEXT("match"))
 		{
 			// match <wren|ashka> <wren|ashka> <cpu|versus|training> <level 0-2> [left|right]; bots must be set again.

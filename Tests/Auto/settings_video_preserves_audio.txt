@@ -1,0 +1,27 @@
+# A subpage Back button must save Audio before Video discards its unapplied values.
+wait 2
+goto_main
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Confirm
+expect_screen 6
+press kbA Down
+press kbA Down
+press kbA Confirm
+expect_master_volume 80
+press kbA Right
+expect_master_volume 85
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Confirm
+press kbA Down
+press kbA Confirm
+press kbA Back
+expect_master_volume 85
+goto_main
+quit
