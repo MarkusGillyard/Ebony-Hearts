@@ -57,7 +57,9 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 
 ## 4. Open
 
-- The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized). The independent review proceeds at their request; merging is not authorized.
+- The creator played this candidate on 2026-11-07. They later identified combat smoothness and jumping feel as needing
+  refinement; the character models are acceptable placeholders that need more work. The independent review proceeds
+  at their request; merging is not authorized.
 - Not verified: hardware other than the test machine; Wayland sessions.
 - The animation sources (raw captures, `.blend` files) are outside the repository, unchanged from earlier rounds.
 
@@ -68,3 +70,84 @@ animation (`bb4823b`), documentation and move notes (`d1ede0e`), a stronger jump
 anti-air (`b445999`), the repurposed buttons (`d2f7cb7`) and the jump-in loop fix (`4cee9c1`), plus documentation of
 the results. Earlier history is
 unchanged; nothing has been merged, tagged or released.
+
+## 6. Independent PR audit (2026-11-08)
+
+This section records a new review of PR #1, not the engineer's acceptance report above. The live starting head was
+`0965ff285d391948c192bd447a586b77d3bc23bd`; the base and merge base were both
+`9a34d030281f3321d41ac64e8a065f8a0336b6dc`. At that point GitHub reported the PR open, cleanly mergeable,
+with 51 commits, 514 changed files and two passing core checks. There were no open review threads or approvals.
+The original source candidate was `4cee9c1`; the later commits up to the starting head changed documentation only.
+
+### Coverage and issue ledger
+
+| Area | Independent coverage | Result |
+|---|---|---|
+| PR and repository | Full Git file inventory (514 tracked files, including 344 LFS objects), PR file and commit pagination, branch diff, review/issue comments, GitHub checks, merge status and ruleset query; no repository `AGENTS.md` | No unseen review thread or active worktree change at start; GitHub's `main` branch-protection API returned 404 and the repository ruleset list was empty, so repository protection is not a substitute for owner authorization |
+| Combat and AI | Core timing, collision, jump, block, throw switch, CPU, data tables and tests; historical run output re-parsed | No confirmed active core defect. The dormant CPU throw-tech queue remains a future issue if grappling is re-enabled |
+| Input and UI | Router, settings, menus, pause and disconnect ownership, automation scripts | **Fixed:** leaving a non-video settings page by its Back button did not save edits; a later Video Back could reload old values. **Fixed:** replacement controller ownership could leave pause unusable, or assign one controller to two local-versus slots |
+| Presentation and content | Visual, animation, audio, VFX and UI paths; all named clips and sounds resolved; 339 Unreal packages have valid package magic, LFS fsck passed | No missing referenced asset found. A sound-name-only cache could collide if future assets reuse a name across categories; no current collision exists |
+| Platform and package | Linux startup, display/audio code, package tooling, manifest and raw evidence; independent package extraction and hash checks | **Fixed:** Ashka's active body-roundhouse Mixamo input was absent from the source manifest, and ACCAD was credited for the wrong kick. The raw Mixamo source matched the recorded download hash. SDL's variable audio callback request is a conditional underfill risk; no dropout was demonstrated on this PulseAudio path |
+| Documentation | README, contracts, status, research, production, validation, provenance and review versus source and raw evidence | **Fixed:** stale package commands and claims that jump was deferred, held Block stopped every attack, and the latest candidate had not been played. Current owner feedback is recorded separately from automated results |
+
+The settings and controller changes are in `6eebee0`; the provenance repair and a missing-source regression guard are
+in `263a3a7`; documentation corrections are in `309c87c` and this audit follow-up. Existing raw assets, engine files,
+history, creative rules and the private `private/plans` area were not changed or published. The private third-party
+source ledger was corrected in place after a byte-for-byte backup under the review evidence directory; the repo
+manifest is generated from that ledger.
+
+### Evidence and limits
+
+- The original core suite was rerun: 44 cases, 890 checks, zero failures. Python compilation and the original nine
+  package tests passed; the added provenance guard made ten passing package tests. LFS fsck passed.
+- The `4cee9c1` archive was freshly extracted into a path with spaces. Its SHA-256 was
+  `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`; all 21 per-file hashes matched.
+  A fresh packaged smoke exited zero and reported no missing animation or sound. This proves that archive still runs
+  on the review machine, not that the new repairs have passed packaged runtime checks.
+- The historical `060a75f` startup data was parsed attempt by attempt: 385 clean exits with no timeout, orphaned
+  process or failed audio/display marker. Historical performance CSVs also matched the reported frame-time statistics.
+  These are historical observations of unchanged startup code, not fresh 385-start results for the repaired head.
+- The host currently enumerates a Sony DualShock 4 over Bluetooth (vendor `054c`, product `09cc`, `js0`). Detection
+  alone does not establish that buttons, trigger, pause recovery or feel work in the new package. The creator's earlier
+  physical PS4 and TV-audio checks apply to `060a75f`; the current owner feedback remains an acceptance gate.
+
+### Repaired-package qualification and verdict
+
+Editor and Shipping code compiled with UE 5.8.4, and `BuildCookRun` completed with `BUILD SUCCESSFUL` from
+`309c87c072851526650d8c1b0daec87b0bcccc8b`. The staged review archive is
+`EbonyHearts-Slice-309c87c.tar.gz`, SHA-256
+`ed7943fbe0ca854f7a6f17abf6cb8064835e1b8ba5a0f7d01447025352c97cd6`, with content hash
+`4ac5b6961abc40b7a8af4fca5161fd0ae18a9b2a99d56d527c9d8aed6425c607`. All 21 files in the archive
+matched their recorded hashes after fresh extraction into a path with spaces. This is a local review artifact; it has
+not been published as a release.
+
+The extracted package passed `smoke.txt` (no missing animation or sound; audio output delivered 2,792 buffers with
+one initial drop; display guard active; 724 sampled frames, median 16.67 ms and p99 16.75 ms), `journey.txt` (all
+scripted screens and settings transitions), and the new `settings_video_preserves_audio.txt` (80 to 85, then 85
+after Video Back). Each exited zero and had no automation FAIL/WARN. The full match matrix was deliberately stopped
+after two complete matches while prioritizing the changed controller path; its third match was interrupted, so this
+is **not** a complete fresh matrix pass. The unchanged combat core had a complete historical matrix and its 44-test
+suite was rerun at the repaired source (890 checks, zero failures).
+
+Simulated DualShock 4 and Xbox 360 pads each navigated into a match, disconnected, reconnected and quit through the
+UI. SDL reused the same device key on these reconnects. A separate test kept a second virtual pad connected while
+the first pad owned pause, disconnected the first, and used the second pad to take over and navigate to Quit; the log
+showed distinct keys 101 and 102 and a clean exit. The two-human-slot guard was source reviewed independently but
+was not exercised dynamically. During this review, the creator pressed a physical Bluetooth DualShock 4: Linux
+reported Cross, L1 and R2 events, and the package advanced from title to a match without scripted navigation.
+Options was requested but no corresponding event was captured in the bounded input window. These observations prove
+real input reached the host and some menu navigation reached the game; they do not settle combat feel or every binding.
+The owner's settings file was restored to its exact pre-test SHA-256
+`2ab7d6ee683f7fc1ed74fdb1f4e31203fb1dcd1479b17a4b704c7d999aabdbdc`; later runs used Unreal's
+isolated `-UserDir` option.
+
+A separate read-only AI verifier checked the changed settings and controller paths for counterexamples, reran all ten
+package tests and `git diff --check`, and checked all 32 active mocap FBX references against the manifest and both
+raw copies of Ashka's kick. It found no confirmed regression. It is procedural non-authoring verification, not a
+human approval, a GitHub review approval or a physical playtest.
+
+**Technical verdict:** no confirmed merge-blocking defect remains on the tested Linux/X11 path after these repairs;
+the conditional SDL callback size concern, the untested two-human replacement path, Wayland and other hardware remain
+explicit limits. **Overall readiness: changes required.** The creator reports that combat smoothness and jumping
+still need refinement and the models remain placeholders; no owner gameplay acceptance or merge authorization has
+been given. PR #1 must remain open until those gates are resolved and the creator separately authorizes a merge.

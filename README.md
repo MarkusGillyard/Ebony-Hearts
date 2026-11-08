@@ -15,8 +15,10 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
   58-minute soak and 385 clean starts across every display mode; the start-up code has not changed since. The
   intermittent start-up crash found in the previous review has two identified causes, both fixed (EH-07).
 - **Creator playtests (2026-11-07).** `060a75f` on the 4K TV: the PS4 controller and audio through the TV verified;
-  the changes requested then are in `4cee9c1`. The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized).
-- **Still open.** The independent review of the exact pull-request head, and the problems from the creator's playtest.
+  the changes requested then are in `4cee9c1`. The creator played this candidate on 2026-11-07 and later identified
+  combat smoothness, jumping feel, and placeholder character models as areas that still need work.
+- **Still open.** The creator's combat smoothness, jumping and model feedback; gameplay acceptance and merge
+  authorization. The independent technical audit and repaired-package results are in `Docs/Review.md`, section 6.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   The packaged game has no crash reporter.
 

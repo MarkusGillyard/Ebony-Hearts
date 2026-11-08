@@ -1,13 +1,15 @@
 # Status and handoff
 
-Updated 2026-11-07 (evening).
+Updated 2026-11-08 (independent technical review completed; gameplay acceptance open).
 
 ## Where things stand
 
-**PLAYED BY THE CREATOR, PROBLEMS REMAIN — IN INDEPENDENT REVIEW; NOT APPROVED, NOT MERGED.** The creator played
+**PLAYED BY THE CREATOR, PROBLEMS REMAIN — TECHNICAL REVIEW COMPLETED; NOT APPROVED, NOT MERGED.** The creator played
 candidate `060a75f` on the 4K TV with the PS4 controller on 2026-11-07 and asked for four things, then for Grab's buttons
 to be repurposed. All of it is in the candidate below, and the objective checks in [Validation](Validation.md) pass on
-it. The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized), and asked for the independent review of the exact pull-request head to go ahead. Merging is not
+it. The creator played this candidate on 2026-11-07 and reported that combat smoothness and jumping need refinement;
+the character models are acceptable placeholders but need further work. The independent review and its repaired-package
+qualification are recorded in [Review](Review.md), section 6. Merging is not
 authorized.
 
 - **Candidate:** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`; SHA-256
@@ -25,7 +27,8 @@ authorized.
 
 - **Played:** everything in this round: the spinning elbow, the body roundhouse, the jump rules, grappling's removal
   and the repurposed buttons.
-- **Result:** problems remain. The creator has not itemized them yet; they will be recorded here when they are.
+- **Result:** combat smoothness and jumping still need refinement. The character models are acceptable placeholders
+  and need more work. Specific reproductions and acceptance criteria remain to be settled with the creator.
 - **Decision:** proceed with the independent review now; merging is not authorized.
 
 ## What changed in this round
@@ -67,7 +70,8 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 
 ## For the creator
 
-1. **List the problems you found** in `4cee9c1`, so they can be fixed and the reviewer can weigh them.
+1. **Refine combat smoothness and jumping**, and continue character-model work after the technical review. Provide
+   specific examples and acceptance criteria when available.
 2. **After the independent review,** decide what to fix and, later, any merge.
 3. **Optional.** Filing the two upstream bug reports drafted during the start-up crash investigation (SDL, Epic) is
    your call; they are public actions.
@@ -95,5 +99,6 @@ development, before crash reporting was turned off; the packaged game has no cra
 - **Carried over from `060a75f`** (that code has not changed): the 58-minute soak and the 385 clean starts across
   every display mode, monitor standby, focus loss and audio output changes.
 - **Verified by the creator** on `060a75f`: the PS4 controller and audio through the TV.
-- **Played by the creator** on `4cee9c1` (2026-11-07): everything in this round; problems remain, not yet itemized.
+- **Played by the creator** on `4cee9c1` (2026-11-07): combat smoothness and jumping need refinement, and the
+  character models remain placeholders.
 - **Not verified:** hardware other than the test machine (Validation lists it).

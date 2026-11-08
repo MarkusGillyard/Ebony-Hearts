@@ -9,7 +9,8 @@ previous candidate's under `evidence/rc-060a75f/<run>` and the original release'
 
 **Result: PASS on every objective check run.** This round answers the creator's playtest of `060a75f` and their later
 request to repurpose Grab's buttons (see [Review](Review.md)). This is the engineer's own verification, not an
-independent review. The creator played this candidate on 2026-11-07, covering everything in this round, and reports that problems remain (not yet itemized); passing checks do not settle those.
+independent review. The creator played this candidate on 2026-11-07 and later identified combat smoothness, jumping
+feel, and placeholder character models as areas needing more work; passing checks do not settle those.
 
 ### Build identity
 
@@ -1649,7 +1650,8 @@ rolls, the grab and the three scripted throws):
 ## Known limitations
 
 - **Checked by the creator (2026-11-07):** the PS4 controller and audio through the TV (on `060a75f`), and a playtest
-  of everything in `4cee9c1`, which found problems that remain (not yet itemized).
+  of everything in `4cee9c1`; they later identified combat smoothness, jumping feel, and placeholder models as areas
+  needing more work.
 - **Not verified by a person:** exclusive fullscreen mode switching (borderless and windowed were tested).
 - **Jumping (first pass).** Jumps cannot cross over the opponent (pushboxes apply in the air), there is no crouch or
   low attack to beat them, and the height, timing and jump-attack frame data are first values to tune by feel.
