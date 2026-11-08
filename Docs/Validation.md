@@ -10,7 +10,8 @@ previous candidate's under `evidence/rc-060a75f/<run>` and the original release'
 **Result: PASS on every objective check run.** This round answers the creator's playtest of `060a75f` and their later
 request to repurpose Grab's buttons (see [Review](Review.md)). This is the engineer's own verification, not an
 independent review. The creator played this candidate on 2026-11-07 and later identified combat smoothness, jumping
-feel, and placeholder character models as areas needing more work; passing checks do not settle those.
+feel, and placeholder character models as areas needing more work. On 2026-11-08 they clarified that those ongoing
+improvements are nonblocking for this PR's merge-readiness verdict; passing checks do not claim the work is finished.
 
 ### Build identity
 

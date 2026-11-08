@@ -10,7 +10,8 @@ described in the [validation report](Validation.md), "Candidate `060a75f`"; rule
 
 **Candidate:** package built from commit `4cee9c1` (Shipping, Linux), released as `EbonyHearts-Slice-4cee9c1.tar.gz`,
 SHA-256 `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`. Commits after `4cee9c1` change
-documentation only. Results: Validation, "Current candidate".
+documentation only up to the initial independent-review head `0965ff2`. Subsequent repairs and their package are in
+section 6. Results for the creator-played candidate: Validation, "Current candidate".
 
 ## 1. What changed and where
 
@@ -58,8 +59,9 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 ## 4. Open
 
 - The creator played this candidate on 2026-11-07. They later identified combat smoothness and jumping feel as needing
-  refinement; the character models are acceptable placeholders that need more work. The independent review proceeds
-  at their request; merging is not authorized.
+  refinement; the character models are acceptable placeholders that need more work. On 2026-11-08 the creator clarified
+  that these are ongoing, nonblocking improvements and should not determine this review's merge-readiness verdict.
+  Merging itself is not authorized.
 - Not verified: hardware other than the test machine; Wayland sessions.
 - The animation sources (raw captures, `.blend` files) are outside the repository, unchanged from earlier rounds.
 
@@ -124,7 +126,7 @@ not counted as demonstrated defects in the playable configuration.
   These are historical observations of unchanged startup code, not fresh 385-start results for the repaired head.
 - The host currently enumerates a Sony DualShock 4 over Bluetooth (vendor `054c`, product `09cc`, `js0`). Detection
   alone does not establish that buttons, trigger, pause recovery or feel work in the new package. The creator's earlier
-  physical PS4 and TV-audio checks apply to `060a75f`; the current owner feedback remains an acceptance gate.
+  physical PS4 and TV-audio checks apply to `060a75f`. The later physical input observations are recorded below.
 
 ### Repaired-package qualification and verdict
 
@@ -179,8 +181,10 @@ the reviewed base is `9a34d030281f3321d41ac64e8a065f8a0336b6dc`. The exact final
 conflict/check state are recorded in the PR review comment because a commit cannot contain its own hash. The
 authenticated account owns this PR and cannot supply an independent GitHub approval.
 
-**Technical verdict:** no confirmed merge-blocking defect remains on the tested Linux/X11 path after these repairs;
-the conditional SDL callback size concern, the untested two-human replacement path, Wayland and other hardware remain
-explicit limits. **Overall readiness: changes required.** The creator reports that combat smoothness and jumping
-still need refinement and the models remain placeholders; no owner gameplay acceptance or merge authorization has
-been given. PR #1 must remain open until those gates are resolved and the creator separately authorizes a merge.
+**Technical verdict: ready for owner merge decision.** No confirmed merge-blocking defect remains on the tested
+Linux/X11 path after these repairs. The conditional SDL callback size concern, the untested two-human replacement
+path, Wayland and other hardware remain explicit, nonblocking limits. The creator clarified on 2026-11-08 that combat
+smoothness, jumping and placeholder-model work are ongoing improvements and do not block this merge-readiness verdict.
+This does not claim those improvements are finished or that the game has been accepted as final. The authenticated
+owner account cannot furnish a formal independent GitHub approval. **Merge authorization is still absent:** PR #1
+must remain open until the creator explicitly authorizes integration.

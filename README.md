@@ -8,17 +8,21 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**First playable slice: played by the creator, under independent review. Not approved, not merged.**
-- **Candidate.** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`. On the test machine
+**First playable slice: independent technical review complete; ready for the creator's merge decision. Not merged.**
+- **Creator-played candidate.** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`. On the test machine
   it passes the combat core, the packaged suites (menus and modes, 12-match matrix, controls, real keyboard events and
   simulated Xbox and DualShock 4 pads) and 1080p/60 performance. The previous candidate `060a75f` also passed a
   58-minute soak and 385 clean starts across every display mode; the start-up code has not changed since. The
   intermittent start-up crash found in the previous review has two identified causes, both fixed (EH-07).
+- **Repaired review candidate.** `EbonyHearts-Slice-309c87c.tar.gz` was built from `309c87c`, with a fresh Shipping
+  package, extraction and targeted runtime checks. It is local review evidence, not a published release; details and
+  exact hashes are in `Docs/Review.md`, section 6.
 - **Creator playtests (2026-11-07).** `060a75f` on the 4K TV: the PS4 controller and audio through the TV verified;
   the changes requested then are in `4cee9c1`. The creator played this candidate on 2026-11-07 and later identified
-  combat smoothness, jumping feel, and placeholder character models as areas that still need work.
-- **Still open.** The creator's combat smoothness, jumping and model feedback; gameplay acceptance and merge
-  authorization. The independent technical audit and repaired-package results are in `Docs/Review.md`, section 6.
+  combat smoothness, jumping feel, and placeholder character models as areas that still need work. On 2026-11-08 the
+  creator classified these as ongoing improvements that do not block this merge-readiness verdict.
+- **Still open.** Explicit merge authorization. The independent technical audit, repaired-package results and
+  nonblocking limitations are in `Docs/Review.md`, section 6.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   The packaged game has no crash reporter.
 

@@ -1,19 +1,22 @@
 # Status and handoff
 
-Updated 2026-11-08 (independent technical review completed; gameplay acceptance open).
+Updated 2026-11-08 (independent technical review completed; ready for owner merge decision).
 
 ## Where things stand
 
-**PLAYED BY THE CREATOR, PROBLEMS REMAIN — TECHNICAL REVIEW COMPLETED; NOT APPROVED, NOT MERGED.** The creator played
+**TECHNICALLY READY FOR OWNER MERGE DECISION; NOT MERGED.** The creator played
 candidate `060a75f` on the 4K TV with the PS4 controller on 2026-11-07 and asked for four things, then for Grab's buttons
 to be repurposed. All of it is in the candidate below, and the objective checks in [Validation](Validation.md) pass on
 it. The creator played this candidate on 2026-11-07 and reported that combat smoothness and jumping need refinement;
-the character models are acceptable placeholders but need further work. The independent review and its repaired-package
-qualification are recorded in [Review](Review.md), section 6. Merging is not
-authorized.
+the character models are acceptable placeholders but need further work. The creator clarified on 2026-11-08 that these
+are ongoing, nonblocking improvements and should not hold up the technical merge-readiness verdict. The independent
+review and its repaired-package qualification are recorded in [Review](Review.md), section 6. Merging is not authorized.
 
-- **Candidate:** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`; SHA-256
-  `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`. Later commits change documentation only.
+- **Creator-played candidate:** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`;
+  SHA-256 `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`.
+- **Repaired review candidate:** `EbonyHearts-Slice-309c87c.tar.gz`, built from `309c87c`; SHA-256
+  `ed7943fbe0ca854f7a6f17abf6cb8064835e1b8ba5a0f7d01447025352c97cd6`. Commits after `309c87c`
+  change documentation only; this archive is local review evidence, not a published release.
 - **Pull request #1** (`release/first-slice` → `main`) is open. Nothing has been merged, tagged or released.
 
 ## Verified by the creator (2026-11-07, candidate `060a75f`)
@@ -28,8 +31,8 @@ authorized.
 - **Played:** everything in this round: the spinning elbow, the body roundhouse, the jump rules, grappling's removal
   and the repurposed buttons.
 - **Result:** combat smoothness and jumping still need refinement. The character models are acceptable placeholders
-  and need more work. Specific reproductions and acceptance criteria remain to be settled with the creator.
-- **Decision:** proceed with the independent review now; merging is not authorized.
+  and need more work. These are ongoing, nonblocking improvements by the creator's 2026-11-08 clarification.
+- **Decision:** technical review is ready for the creator's merge decision; merging is not authorized yet.
 
 ## What changed in this round
 
@@ -70,9 +73,9 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 
 ## For the creator
 
-1. **Refine combat smoothness and jumping**, and continue character-model work after the technical review. Provide
-   specific examples and acceptance criteria when available.
-2. **After the independent review,** decide what to fix and, later, any merge.
+1. **Decide whether to authorize merging PR #1.** Technical readiness does not itself authorize integration.
+2. **Continue combat smoothness, jumping and model refinements** on your schedule; specific examples can guide later
+   work without holding this PR's technical verdict open.
 3. **Optional.** Filing the two upstream bug reports drafted during the start-up crash investigation (SDL, Epic) is
    your call; they are public actions.
 4. **Optional display setting.** On the 165 Hz monitor, V-Sync paces the game at 60 Hz in every window mode, so
