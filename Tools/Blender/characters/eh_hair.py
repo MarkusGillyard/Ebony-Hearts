@@ -23,8 +23,22 @@ STRAND = (0.75, 0.0, 0.9375, 0.75)
 TIE = (0.9375, 0.0, 1.0, 0.75)
 BROW = (0.75, 0.75, 1.0, 0.875)
 LASH = (0.75, 0.875, 1.0, 1.0)
+CARD = None
 
-P_CAP, P_BRAID, P_STRAND, P_TIE, P_BROW, P_LASH, P_BANG = 1, 2, 3, 4, 5, 6, 7
+P_CAP, P_BRAID, P_STRAND, P_TIE, P_BROW, P_LASH, P_BANG, P_CARD = 1, 2, 3, 4, 5, 6, 7, 8
+
+# Atlas layouts. "cards" (Ashka): CAP u 0-0.4, BRAID 0.4-0.6, CARD 0.6-0.9375 (v 0-0.75): alpha strand
+# cards for bangs, face-framing strands, braid flyaways and the nape gather (also used by tubes).
+LAYOUTS = {
+    "default": {"CAP": (0.0, 0.0, 0.5, 1.0), "BRAID": (0.5, 0.0, 0.75, 1.0), "STRAND": (0.75, 0.0, 0.9375, 0.75),
+                "CARD": None},
+    "cards": {"CAP": (0.0, 0.0, 0.4, 1.0), "BRAID": (0.4, 0.0, 0.6, 1.0), "STRAND": (0.6, 0.0, 0.9375, 0.75),
+              "CARD": (0.6, 0.0, 0.9375, 0.75)},
+}
+
+
+def set_layout(name):
+    globals().update(LAYOUTS[name])
 
 
 def rect_map(uv, rect):
@@ -256,6 +270,39 @@ def clump(ctrl, width, thick, collider, clear, sides=6, segs=12, normal_hint=Non
     uvs = [[tuple(rect_map(np.array([uv]), STRAND)[0]) for uv in f] for f in uvs]
     arc = np.r_[np.repeat(s * L, sides), L]
     return (verts, faces, uvs), arc, path, L
+
+
+# ----------------------------------------------------------------------------- cards
+
+def card(path, width, normal_hint, n_across=3, cup=0.0015, window=(0.0, 1.0), tip=0.35, flip=1.0):
+    """Hair card: a ribbon along `path` (root first) facing `normal_hint`, slightly cupped, tapering to
+    `tip` of its width; UVs map across the card to `window` of the CARD texture (strand clumps with
+    alpha) and from root (v 0) to tip (v 1)."""
+    n = len(path)
+    T = np.gradient(path, axis=0)
+    T /= np.linalg.norm(T, axis=1, keepdims=True)
+    hint = np.broadcast_to(np.asarray(normal_hint, float), path.shape)
+    D = hint - T * (hint * T).sum(1, keepdims=True)
+    D /= np.linalg.norm(D, axis=1, keepdims=True)
+    Ac = np.cross(T, D) * flip
+    sv = np.linspace(0, 1, n)
+    wv = width * (1 - (1 - tip) * M.smoothstep(0.35, 1.0, sv)) * (0.8 + 0.2 * M.smoothstep(0.0, 0.15, sv))
+    verts, faces, uvs = [], [], []
+    for i in range(n):
+        for k in range(n_across):
+            c = -1 + 2 * k / (n_across - 1)
+            verts.append(path[i] + Ac[i] * c * wv[i] * 0.5 + D[i] * cup * (1 - c * c))
+    for i in range(n - 1):
+        for k in range(n_across - 1):
+            a, b = i * n_across + k, i * n_across + k + 1
+            faces.append((a, b, b + n_across, a + n_across))
+            u0 = window[0] + (window[1] - window[0]) * k / (n_across - 1)
+            u1 = window[0] + (window[1] - window[0]) * (k + 1) / (n_across - 1)
+            uvs.append([tuple(rect_map(np.array([[u0, sv[i]]]), CARD)[0]),
+                        tuple(rect_map(np.array([[u1, sv[i]]]), CARD)[0]),
+                        tuple(rect_map(np.array([[u1, sv[i + 1]]]), CARD)[0]),
+                        tuple(rect_map(np.array([[u0, sv[i + 1]]]), CARD)[0])])
+    return np.array(verts), faces, uvs
 
 
 # ----------------------------------------------------------------------------- brows / lashes

@@ -1,5 +1,5 @@
 {
- "about": "Build parameters for the Ebony Hearts fighters (read by build_characters.py). MPFB macros are 0..1; region targets -1..1 by 'category/modifier'; expression units are MPFB face units baked into the neutral head. Heights are barefoot stature in metres; sole_m raises the body so shoe soles rest on Z=0.",
+ "about": "Build parameters for the Ebony Hearts fighters (read by build_characters.py). MPFB macros are 0..1; region targets -1..1 by 'category/modifier'; expression units are MPFB face units baked into the neutral head. Heights are barefoot stature in metres; sole_m raises the body so shoe soles rest on Z=0. rest_chains: rest head/tail (cm) and x-axis of the secondary chain bones (braids, strands, coat tails) and coat helpers, copied from the shipped rigs so the spring-simulated chains keep their exact rest pose when garments or hair change.",
  "common": {
   "eyes": "high-poly",
   "rig": "game_engine",
@@ -84,7 +84,11 @@
     "black": "#16171b",
     "black_light": "#2a2c33",
     "blue": "#0f6fae",
-    "blue_light": "#2a9bd6"
+    "blue_light": "#2a9bd6",
+    "fab_black": "#16171a",
+    "fab_black2": "#1d1e22",
+    "blue_dark": "#0a4b7a",
+    "stitch_grey": "#5a5c63"
    },
    "uv": {
     "head_scale": 1.6
@@ -111,7 +115,156 @@
     "hairline_up": 0.04
    },
    "outfit": {
-    "shorts_hem": 0.5
+    "shorts_hem": 0.5,
+    "neck_front_drop": 0.06,
+    "neck_front_curve": 9.0,
+    "neck_back_drop": 0.075,
+    "neck_back_curve": 6.0,
+    "armhole_dx": 0.012,
+    "armhole_dz": -0.035,
+    "armhole_r": [
+     0.075,
+     0.095,
+     0.115
+    ]
+   },
+   "rest_chains": {
+    "braid_l_01": {
+     "head_cm": [
+      5.47,
+      3.17,
+      162.234
+     ],
+     "tail_cm": [
+      6.546,
+      6.923,
+      150.202
+     ],
+     "x_axis": [
+      0.0,
+      -0.9546,
+      -0.2977
+     ]
+    },
+    "braid_l_02": {
+     "head_cm": [
+      6.546,
+      6.923,
+      150.202
+     ],
+     "tail_cm": [
+      7.592,
+      8.918,
+      138.552
+     ],
+     "x_axis": [
+      0.0,
+      -0.9856,
+      -0.1688
+     ]
+    },
+    "braid_l_03": {
+     "head_cm": [
+      7.592,
+      8.918,
+      138.552
+     ],
+     "tail_cm": [
+      8.322,
+      5.946,
+      126.293
+     ],
+     "x_axis": [
+      0.0,
+      -0.9718,
+      0.2356
+     ]
+    },
+    "braid_l_04": {
+     "head_cm": [
+      8.322,
+      5.946,
+      126.293
+     ],
+     "tail_cm": [
+      8.815,
+      2.401,
+      114.167
+     ],
+     "x_axis": [
+      0.0,
+      -0.9598,
+      0.2806
+     ]
+    },
+    "braid_r_01": {
+     "head_cm": [
+      -5.421,
+      3.171,
+      162.011
+     ],
+     "tail_cm": [
+      -6.527,
+      6.909,
+      150.187
+     ],
+     "x_axis": [
+      -0.0,
+      0.9535,
+      0.3014
+     ]
+    },
+    "braid_r_02": {
+     "head_cm": [
+      -6.527,
+      6.909,
+      150.187
+     ],
+     "tail_cm": [
+      -7.614,
+      8.896,
+      138.11
+     ],
+     "x_axis": [
+      -0.0,
+      0.9867,
+      0.1624
+     ]
+    },
+    "braid_r_03": {
+     "head_cm": [
+      -7.614,
+      8.896,
+      138.11
+     ],
+     "tail_cm": [
+      -8.339,
+      5.873,
+      126.095
+     ],
+     "x_axis": [
+      -0.0,
+      0.9698,
+      -0.244
+     ]
+    },
+    "braid_r_04": {
+     "head_cm": [
+      -8.339,
+      5.873,
+      126.095
+     ],
+     "tail_cm": [
+      -8.811,
+      2.402,
+      114.177
+     ],
+     "x_axis": [
+      -0.0,
+      0.9601,
+      -0.2796
+     ]
+    }
    }
   },
   "ashka": {
@@ -141,38 +294,61 @@
     "chin/chin-width-decr-incr": -0.2,
     "cheek/cheek-volume-decr-incr": -0.15,
     "eyes/eye-scale-decr-incr": 0.22,
-    "nose/nose-scale-horiz-decr-incr": -0.1
+    "nose/nose-scale-horiz-decr-incr": -0.1,
+    "mouth/mouth-cupidsbow-decr-incr": 0.3
    },
    "expression": {
     "race": "caucasian",
-    "mouth-corner-puller": 0.14,
+    "mouth-corner-puller": 0.18,
     "eye-left-slit": 0.22,
     "eye-right-slit": 0.22
    },
    "eyelashes": "eyelashes02",
-   "eyebrows": "eyebrow006",
+   "eyebrows": "eyebrow008",
    "palette": {
-    "skin": "#e2b8a2",
-    "skin_shadow": "#b98676",
-    "lips": "#a35a5a",
-    "hair": "#7a0e1b",
-    "hair_light": "#9e1a28",
-    "hair_dark": "#38050b",
-    "iris": "#b0121f",
-    "iris_dark": "#4a050c",
-    "coat": "#141417",
+    "skin": "#d8a68c",
+    "skin_shadow": "#a87060",
+    "lips": "#a6545a",
+    "hair": "#651219",
+    "hair_light": "#94272c",
+    "hair_dark": "#280609",
+    "iris": "#6a1420",
+    "iris_dark": "#2a0306",
+    "coat": "#101114",
     "coat_light": "#26272c",
-    "shirt": "#ecebe6",
-    "tie": "#0e0e10",
-    "pants": "#18181b",
-    "loafer": "#4a2c19",
-    "loafer_dark": "#24140a",
+    "shirt": "#e6e4de",
+    "tie": "#0b0b0d",
+    "pants": "#0c0c0e",
+    "loafer": "#4e2c18",
+    "loafer_dark": "#24130a",
     "metal": "#8a8378",
-    "tattoo": "#8e0f22"
+    "tattoo": "#8e0f22",
+    "coat_dark": "#0d0e10",
+    "coat_stitch": "#27282d",
+    "shirt_stitch": "#cfccc4",
+    "pants_stitch": "#1c1c20",
+    "sole": "#211510",
+    "welt": "#2e1b10",
+    "button": "#141110"
    },
    "uv": {
-    "head_scale": 1.0,
-    "tattoo_scale": 2.5
+    "head_scale": 1.6,
+    "tattoo_scale": 2.5,
+    "part_density": {
+     "11": 1.5,
+     "12": 1.6,
+     "13": 1.6,
+     "14": 1.5,
+     "20": 1.5,
+     "15": 0.62,
+     "16": 1.5,
+     "17": 1.0,
+     "18": 1.2,
+     "19": 1.5,
+     "2": 1.2,
+     "3": 1.2,
+     "8": 1.5
+    }
    },
    "tattoo": {
     "size_cm": 6.5
@@ -202,7 +378,7 @@
    },
    "outfit": {
     "button_above_pelvis": 0.075,
-    "v_halfwidth_top": 0.08,
+    "v_halfwidth_top": 0.088,
     "tattoo_dz": -0.075,
     "pants_hem_z": 0.035,
     "pants_min_radius": 0.062,
@@ -210,19 +386,485 @@
     "sleeve_end_t": 0.93,
     "coat_offset": 0.014,
     "hem_z": 0.3,
-    "skirt_rows": 14,
-    "skirt_flare": 0.055,
-    "skirt_clear": 0.03,
-    "side_slit_rows": 9,
-    "back_vent_rows": 8,
+    "skirt_rows": 20,
+    "skirt_flare": 0.038,
+    "skirt_clear": 0.036,
+    "side_slit_rows": 13,
+    "back_vent_rows": 11,
     "skirt_thickness": 0.004,
-    "lapel_width": 0.07,
-    "collar_height": 0.05,
+    "lapel_width": 0.085,
+    "collar_height": 0.035,
     "belt_above_pelvis": 0.075,
     "belt_height": 0.035,
     "tie_width": 0.075,
     "front_gap": 0.09,
-    "belt_knot_x": 0.05
+    "belt_knot_x": 0.05,
+    "v_bottom_above_pelvis": 0.18,
+    "drape_slope": 0.25,
+    "drape_slope_side": 0.9,
+    "drape_reach": 0.35,
+    "drape_ease": 0.012,
+    "belt_ease": 0.008,
+    "belt_blouse": 0.6,
+    "sleeve_round": 0.5,
+    "fold_amp": 0.015,
+    "fold_count": 9,
+    "lapel_roll": 0.008,
+    "collar_end_deg": 125,
+    "collar_fall": 0.05,
+    "button_x": 0.062,
+    "hem_front_z": 0.07,
+    "hem_back_z": 0.04,
+    "crease_depth": 0.0015,
+    "loafer_heel_room": 0.006,
+    "loafer_toe_room": 0.016,
+    "loafer_sections": 30,
+    "loafer_ring": 24,
+    "loafer_vamp_f": 0.045,
+    "loafer_topline_heel": 0.036,
+    "loafer_topline_dip": 0.008,
+    "loafer_welt": 0.0035,
+    "loafer_heel_len": 0.07,
+    "loafer_toe_taper": 0.04
+   },
+   "face": {
+    "contour": 0.05,
+    "highlight": 0.04,
+    "tzone": 0.1,
+    "relief": 4e-05
+   },
+   "eye": {
+    "iris_angle": 0.68,
+    "pupil_angle": 0.22,
+    "lid_shadow": 0.38,
+    "iris_center": 1.05
+   },
+   "rest_chains": {
+    "strand_l_01": {
+     "head_cm": [
+      6.638,
+      -8.548,
+      166.209
+     ],
+     "tail_cm": [
+      6.546,
+      -8.512,
+      155.577
+     ],
+     "x_axis": [
+      -1.0,
+      -0.0,
+      0.0086
+     ]
+    },
+    "strand_l_02": {
+     "head_cm": [
+      6.546,
+      -8.512,
+      155.577
+     ],
+     "tail_cm": [
+      7.247,
+      -7.797,
+      142.408
+     ],
+     "x_axis": [
+      -0.9986,
+      -0.0,
+      -0.0532
+     ]
+    },
+    "strand_r_01": {
+     "head_cm": [
+      -6.638,
+      -8.548,
+      166.209
+     ],
+     "tail_cm": [
+      -6.546,
+      -8.512,
+      155.577
+     ],
+     "x_axis": [
+      -1.0,
+      0.0,
+      -0.0086
+     ]
+    },
+    "strand_r_02": {
+     "head_cm": [
+      -6.546,
+      -8.512,
+      155.577
+     ],
+     "tail_cm": [
+      -7.247,
+      -7.797,
+      142.408
+     ],
+     "x_axis": [
+      -0.9986,
+      0.0,
+      0.0532
+     ]
+    },
+    "braid_01": {
+     "head_cm": [
+      0.537,
+      5.284,
+      154.596
+     ],
+     "tail_cm": [
+      0.157,
+      5.888,
+      148.267
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9955,
+      -0.0951
+     ]
+    },
+    "braid_02": {
+     "head_cm": [
+      0.157,
+      5.888,
+      148.267
+     ],
+     "tail_cm": [
+      0.554,
+      9.991,
+      137.508
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9344,
+      -0.3563
+     ]
+    },
+    "braid_03": {
+     "head_cm": [
+      0.554,
+      9.991,
+      137.508
+     ],
+     "tail_cm": [
+      1.026,
+      8.583,
+      125.042
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9937,
+      0.1123
+     ]
+    },
+    "braid_04": {
+     "head_cm": [
+      1.026,
+      8.583,
+      125.042
+     ],
+     "tail_cm": [
+      1.619,
+      6.532,
+      112.648
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9866,
+      0.1632
+     ]
+    },
+    "braid_05": {
+     "head_cm": [
+      1.619,
+      6.532,
+      112.648
+     ],
+     "tail_cm": [
+      -2.885,
+      9.085,
+      103.2
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9654,
+      -0.2608
+     ]
+    },
+    "helper_coat_fl": {
+     "head_cm": [
+      14.22,
+      -16.519,
+      70.825
+     ],
+     "tail_cm": [
+      14.22,
+      -16.519,
+      65.825
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_bl": {
+     "head_cm": [
+      12.99,
+      10.194,
+      70.403
+     ],
+     "tail_cm": [
+      12.99,
+      10.194,
+      65.403
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_br": {
+     "head_cm": [
+      -12.987,
+      10.193,
+      70.403
+     ],
+     "tail_cm": [
+      -12.987,
+      10.193,
+      65.403
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "helper_coat_fr": {
+     "head_cm": [
+      -14.204,
+      -16.503,
+      70.825
+     ],
+     "tail_cm": [
+      -14.204,
+      -16.503,
+      65.825
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "coat_fl_01": {
+     "head_cm": [
+      10.136,
+      -12.408,
+      92.283
+     ],
+     "tail_cm": [
+      14.22,
+      -16.519,
+      70.825
+     ],
+     "x_axis": [
+      -0.7094,
+      -0.7048,
+      -0.0
+     ]
+    },
+    "coat_fl_02": {
+     "head_cm": [
+      14.22,
+      -16.519,
+      70.825
+     ],
+     "tail_cm": [
+      12.736,
+      -15.025,
+      53.658
+     ],
+     "x_axis": [
+      -0.7094,
+      -0.7048,
+      0.0
+     ]
+    },
+    "coat_fl_03": {
+     "head_cm": [
+      12.736,
+      -15.025,
+      53.658
+     ],
+     "tail_cm": [
+      14.296,
+      -16.595,
+      32.2
+     ],
+     "x_axis": [
+      -0.7094,
+      -0.7048,
+      0.0
+     ]
+    },
+    "coat_bl_01": {
+     "head_cm": [
+      11.447,
+      8.722,
+      91.627
+     ],
+     "tail_cm": [
+      12.99,
+      10.194,
+      70.403
+     ],
+     "x_axis": [
+      0.6905,
+      -0.7233,
+      -0.0
+     ]
+    },
+    "coat_bl_02": {
+     "head_cm": [
+      12.99,
+      10.194,
+      70.403
+     ],
+     "tail_cm": [
+      14.171,
+      11.322,
+      53.424
+     ],
+     "x_axis": [
+      0.6905,
+      -0.7233,
+      -0.0
+     ]
+    },
+    "coat_bl_03": {
+     "head_cm": [
+      14.171,
+      11.322,
+      53.424
+     ],
+     "tail_cm": [
+      15.925,
+      12.997,
+      32.2
+     ],
+     "x_axis": [
+      0.6905,
+      -0.7233,
+      -0.0
+     ]
+    },
+    "coat_br_01": {
+     "head_cm": [
+      -11.445,
+      8.722,
+      91.627
+     ],
+     "tail_cm": [
+      -12.987,
+      10.193,
+      70.403
+     ],
+     "x_axis": [
+      0.6906,
+      0.7233,
+      0.0
+     ]
+    },
+    "coat_br_02": {
+     "head_cm": [
+      -12.987,
+      10.193,
+      70.403
+     ],
+     "tail_cm": [
+      -14.17,
+      11.323,
+      53.424
+     ],
+     "x_axis": [
+      0.6906,
+      0.7233,
+      0.0
+     ]
+    },
+    "coat_br_03": {
+     "head_cm": [
+      -14.17,
+      11.323,
+      53.424
+     ],
+     "tail_cm": [
+      -15.905,
+      12.98,
+      32.2
+     ],
+     "x_axis": [
+      0.6906,
+      0.7233,
+      0.0
+     ]
+    },
+    "coat_fr_01": {
+     "head_cm": [
+      -10.136,
+      -12.408,
+      92.283
+     ],
+     "tail_cm": [
+      -14.204,
+      -16.503,
+      70.825
+     ],
+     "x_axis": [
+      -0.7094,
+      0.7048,
+      0.0
+     ]
+    },
+    "coat_fr_02": {
+     "head_cm": [
+      -14.204,
+      -16.503,
+      70.825
+     ],
+     "tail_cm": [
+      -12.927,
+      -15.218,
+      53.658
+     ],
+     "x_axis": [
+      -0.7094,
+      0.7048,
+      -0.0
+     ]
+    },
+    "coat_fr_03": {
+     "head_cm": [
+      -12.927,
+      -15.218,
+      53.658
+     ],
+     "tail_cm": [
+      -14.296,
+      -16.595,
+      32.2
+     ],
+     "x_axis": [
+      -0.7094,
+      0.7048,
+      -0.0
+     ]
+    }
    }
   }
  }

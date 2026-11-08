@@ -194,15 +194,25 @@ def split_twist_weights(ob, rig, W=None):
 
 # ----------------------------------------------------------------------------- secondary chains
 
-def add_chain(rig, names, points, parent, roll_up=(0, 1, 0), connect=True, deform=True):
-    """Bones along points (len(names)+1 points, armature space). Returns the bone names."""
+def add_chain(rig, names, points, parent, roll_up=(0, 1, 0), connect=True, deform=True, rest=None):
+    """Bones along points (len(names)+1 points, armature space). With `rest` (characters.json
+    rest_chains) holding every name, the stored head/tail/x-axis are used instead, so a chain keeps its
+    shipped rest pose when the garments or hair around it change. Returns the bone names."""
     eb = edit(rig)
     prev = eb[parent] if parent else None
+    use_rest = bool(rest) and all(nm in rest for nm in names)
     for i, nm in enumerate(names):
         b = eb.new(nm)
-        b.head = Vector(points[i])
-        b.tail = Vector(points[i + 1])
-        b.align_roll(Vector(roll_up))
+        if use_rest:
+            r = rest[nm]
+            b.head = Vector(r["head_cm"]) * 0.01
+            b.tail = Vector(r["tail_cm"]) * 0.01
+            y = (b.tail - b.head).normalized()
+            b.align_roll(Vector(r["x_axis"]).cross(y))
+        else:
+            b.head = Vector(points[i])
+            b.tail = Vector(points[i + 1])
+            b.align_roll(Vector(roll_up))
         b.parent = prev
         b.use_connect = bool(connect and i > 0)
         b.use_deform = deform
@@ -213,9 +223,11 @@ def add_chain(rig, names, points, parent, roll_up=(0, 1, 0), connect=True, defor
     return names
 
 
-def add_helper(rig, name, parent, head, tail):
+def add_helper(rig, name, parent, head, tail, rest=None):
     eb = edit(rig)
     b = eb.new(name)
+    if rest and name in rest:
+        head, tail = np.array(rest[name]["head_cm"]) * 0.01, np.array(rest[name]["tail_cm"]) * 0.01
     b.head = Vector(head)
     b.tail = Vector(tail)
     b.parent = eb[parent]
@@ -336,3 +348,10 @@ def write_bones_json(rig, path, char, extra=None):
     with open(path, "w") as f:
         json.dump(doc, f, indent=1)
     return doc
+
+
+def rest_points(rest, names):
+    """Joint positions (m) of a stored rest chain: head of the first bone, then every tail."""
+    if not rest or not all(n in rest for n in names):
+        return None
+    return [np.array(rest[names[0]]["head_cm"]) * 0.01] + [np.array(rest[n]["tail_cm"]) * 0.01 for n in names]

@@ -102,12 +102,20 @@ def skin(rs, body, rig, cfg, ctx):
         d = np.full(K, 1.0, np.float32)
         d[sel] = _dist_to(ctx["cap_collider"], P[sel])
         col = T.mix(col, pal["hair"] * 0.9, np.exp(-d / 0.003) * 0.55)
+    # cavities (toe and finger gaps, knuckles, ear folds, lid creases): darker and warmer
+    cav = rs.vattr([cavity(body)])
+    feet = rs.vattr([sum(M.weights(body, ["ball_l", "ball_r"]).values())])
+    k_cav = np.clip(cav / 0.0012, 0, 1) * (0.22 + 0.35 * np.clip(feet * 2, 0, 1))
+    col = T.mix(col, col * np.array([0.62, 0.48, 0.45]), k_cav)
+    ao = ao * (1 - 0.35 * k_cav)
     # ambient occlusion, warm in the shadow
     sh = np.clip(ao, 0, 1) ** 1.3
     col = col * (0.85 + 0.15 * sh[:, None]) * T.mix(np.ones((K, 3), np.float32), pal["skin_shadow"] / pal["skin"],
                                                     (1 - sh) * 0.15)
     nrm = Nw.copy()
     rough = 0.6 + 0.06 * midf - 0.12 * lw - 0.2 * nails
+    if cfg.get("face"):
+        col, nrm, rough = _face_detail(rs, cfg, ctx, col, nrm, rough, lw, pal)
     # canon features
     if cfg.get("abs"):
         col, nrm = _abs(rs, cfg, ctx, col, nrm)
@@ -117,6 +125,64 @@ def skin(rs, body, rig, cfg, ctx):
     N = rs.tangent_space(nrm)
     ORM = np.stack([np.clip(ao * 0.85 + 0.15, 0, 1), np.clip(rough, 0.25, 0.9), np.zeros(K)], 1)
     return D, N, ORM
+
+
+def _face_detail(rs, cfg, ctx, col, nrm, rough, lw, pal):
+    """Facial structure in paint and normal: soft contour under the cheekbones, at the temples and
+    under the jaw, light on the nose bridge, forehead and cheekbone tops; upper-lid crease, lip line
+    and vermilion border; T-zone sheen; fine skin relief."""
+    fc = cfg["face"]
+    P = rs.P
+    hi = ctx["head"]
+    el, er = hi["eye_l"], hi["eye_r"]
+    nose = hi["nose_tip"]
+    K = rs.K
+    shade = np.zeros(K, np.float32)
+    light = np.zeros(K, np.float32)
+    for e, sg in ((el, 1.0), (er, -1.0)):
+        shade += 0.35 * gauss(P, e + np.array([sg * 0.04, 0.03, -0.05]), 0.018)         # under the cheekbone
+        shade += 0.5 * gauss(P, e + np.array([sg * 0.045, 0.03, 0.01]), 0.018)          # temple
+        shade += 0.35 * gauss(P, e + np.array([-sg * 0.012, 0.004, 0.0]), 0.008)        # inner socket
+        light += 0.6 * gauss(P, e + np.array([sg * 0.018, -0.006, -0.026]), 0.016)     # cheekbone top
+    light += 0.7 * gauss(P, np.array([0.0, nose[1] + 0.012, el[2] - 0.012]), 0.009)    # nose bridge
+    light += 0.5 * gauss(P, np.array([0.0, el[1] + 0.005, el[2] + 0.05]), 0.025)        # forehead
+    head_z = hi["head"][2]
+    face = M.smoothstep(head_z - 0.14, head_z - 0.06, P[:, 2]) * M.smoothstep(hi["head"][1] + 0.05, hi["head"][1] - 0.01, P[:, 1])
+    shade *= face
+    light *= face
+    col = col * (1 - fc["contour"] * np.clip(shade, 0, 1))[:, None] * np.array([1.0, 0.97, 0.97])
+    col = col * (1 + fc["highlight"] * np.clip(light, 0, 1))[:, None]
+    # upper-lid crease
+    for e in (ctx["eyes"]["l"], ctx["eyes"]["r"]):
+        c = e["center"]
+        d = np.linalg.norm(P - (c + np.array([0, -0.004, 0.012])), axis=1) - e["radius"]
+        crease = np.exp(-(d / 0.0016) ** 2) * (P[:, 2] > c[2] + 0.006) * (P[:, 1] < c[1])
+        col = col * (1 - 0.18 * crease)[:, None]
+    # lips: vermilion border and the line between the lips
+    lip_b = np.clip(lw, 0, 1)
+    border = lip_b * (1 - lip_b) * 4
+    col = col * (1 - 0.1 * border)[:, None]
+    mz = float(np.mean(P[lw > 0.6, 2])) if (lw > 0.6).any() else nose[2] - 0.03
+    line = np.exp(-((P[:, 2] - mz) / 0.0012) ** 2) * (lw > 0.25)
+    col = col * (1 - 0.35 * line)[:, None]
+    rough = rough - 0.06 * lip_b * (P[:, 2] < mz)
+    # T-zone sheen, fine relief
+    tz = (gauss(P, np.array([0.0, el[1], el[2] + 0.04]), 0.03) + gauss(P, nose, 0.018)) * face
+    rough = rough - fc["tzone"] * np.clip(tz, 0, 1)
+    idx = face > 0.01
+    gr = T.grad3(lambda Q: T.fbm(Q, 900.0, 2, seed=77), P[idx], 0.0004)
+    nrm = nrm.copy()
+    nrm[idx] = T.perturb(nrm[idx], gr, fc["relief"])
+    return col, nrm, rough
+
+
+def cavity(ob, smooth_iters=2):
+    """Per-vertex concavity (m): how far the one-ring average lies above the vertex along its normal."""
+    adj = M.adjacency(ob)
+    V = M.co(ob)
+    lap = M.neighbour_mean(V, adj) - V
+    c = (lap * M.vnormals(ob)).sum(1)
+    return M.smooth(np.maximum(c, 0), adj, smooth_iters, 0.5).astype(np.float32)
 
 
 def _nearest_dist(P, Q, sel=None):
@@ -233,7 +299,7 @@ def eyes(rs, cfg, ctx):
         r = th / ti
         fib = 0.5 + 0.5 * np.sin(phi * 37 + 3 * np.sin(phi * 7)) * np.sin(phi * 61 + 1.3)
         ring = M.smoothstep(0.78, 1.0, r)
-        iris = T.mix(pal["iris"] * 1.25, pal["iris"], M.smoothstep(0.25, 0.7, r))
+        iris = T.mix(pal["iris"] * cfg["eye"].get("iris_center", 1.25), pal["iris"], M.smoothstep(0.25, 0.7, r))
         iris = T.mix(iris, pal["iris_dark"], ring * 0.85)
         iris = iris * (0.72 + 0.28 * fib[:, None] * (1 - ring[:, None]))
         iris = np.clip(iris, 0, 1)
@@ -243,6 +309,11 @@ def eyes(rs, cfg, ctx):
         scl = T.mix(scl, np.array([0.9, 0.72, 0.7]), M.smoothstep(1.1, 1.6, th) * np.abs(np.cos(phi)) * 0.4)
         inside = M.smoothstep(1.03, 0.98, r)
         c = T.mix(scl, iris, inside)
+        if cfg["eye"].get("lid_shadow"):
+            el = d @ np.array([0, 0, 1.0])
+            c = c * (1 - cfg["eye"]["lid_shadow"] * M.smoothstep(0.05, 0.42, el))[:, None]
+            c = c * (1 - 0.15 * M.smoothstep(-0.2, -0.5, el))[:, None]
+            c = T.mix(c, np.array([0.8, 0.55, 0.52]), M.smoothstep(1.25, 1.65, th) * 0.35)
         col[sel] = c
         rough[sel] = 0.12 + 0.1 * (1 - inside)
     D = col
@@ -276,7 +347,7 @@ def hair(rs, cfg, ctx, hair_ob):
 
     # cap: strands along v
     m = in_rect(H.CAP)
-    s = streaks(u[m] / 0.5, v[m], 260.0, 11)
+    s = streaks(u[m] / (H.CAP[2] - H.CAP[0]), v[m], 260.0, 11)
     base = T.mix(pal["hair_dark"], pal["hair"], 0.5 + 0.5 * s)
     hl = M.smoothstep(0.45, 0.95, s) * 0.3
     col[m] = T.mix(base, pal["hair_light"], hl)
@@ -308,6 +379,18 @@ def hair(rs, cfg, ctx, hair_ob):
     col[m] = T.mix(base, pal["hair_light"], M.smoothstep(0.25, 0.9, s) * side * 0.35)
     ao[m] = 0.7 + 0.3 * side
     h[m] = s
+    if H.CARD is not None:
+        m = in_rect(H.CARD)
+        uu = (u[m] - H.CARD[0]) / (H.CARD[2] - H.CARD[0])
+        vv = (v[m] - H.CARD[1]) / (H.CARD[3] - H.CARD[1])
+        a_c, tone, hc = _card_strands(uu, vv, (H.CARD[2] - H.CARD[0]) * rs.res)
+        base = T.mix(pal["hair_dark"], pal["hair"], np.clip(0.35 + 0.65 * tone, 0, 1))
+        base = T.mix(base, pal["hair_dark"], (1 - M.smoothstep(0.0, 0.25, vv)) * 0.45)
+        col[m] = T.mix(base, pal["hair_light"], M.smoothstep(0.55, 1.0, tone) * 0.45 * M.smoothstep(0.1, 0.5, vv))
+        alpha[m] = a_c
+        ao[m] = 0.62 + 0.38 * a_c
+        h[m] = hc
+        rough[m] = 0.62
     # ties
     m = in_rect(H.TIE)
     tie = np.tile(T.hexrgb(cfg["hair"]["tie_color"]), (m.sum(), 1))
@@ -335,6 +418,45 @@ def hair(rs, cfg, ctx, hair_ob):
     return D, N, ORM
 
 
+def _card_strands(uu, vv, width_px, n_clumps=11, per=9, seed=13):
+    """Alpha texture for hair cards (uu across 0..1, vv root 0 .. tip 1): clumps of strands that
+    converge towards each clump's tip (varied lengths, slight waves), solid at the root and separating
+    into points towards the tips. Returns (alpha, tone 0..1, height)."""
+    rng = np.random.default_rng(seed)
+    alpha = np.zeros(len(uu), np.float32)
+    tone = np.zeros(len(uu), np.float32)
+    hgt = np.zeros(len(uu), np.float32)
+    for c in range(n_clumps):
+        cu = (c + 0.5 + (rng.random() - 0.5) * 0.4) / n_clumps
+        L = 0.7 + 0.3 * rng.random()
+        halfw = (0.55 + 0.35 * rng.random()) / n_clumps
+        wave = rng.random() * 6.28
+        cline = cu + 0.012 * np.sin(vv * 7.0 + wave)
+        prof = np.clip(1 - (vv / L) ** 1.6, 0, 1) ** 0.6           # clump narrows to its tip
+        dclump = np.abs(((uu - cline) + 0.5) % 1.0 - 0.5)
+        inside = M.smoothstep(halfw * prof + 1.2 / width_px, halfw * prof - 0.6 / width_px, dclump)
+        inside *= (vv < L)
+        # individual strands inside the clump (fine lines with gaps)
+        lines = np.zeros(len(uu), np.float32)
+        for k in range(per):
+            off = (k / (per - 1) - 0.5) * 2 * halfw * prof * 0.9
+            w = (0.7 + 0.8 * rng.random()) / width_px
+            dl = np.abs(((uu - cline - off) + 0.5) % 1.0 - 0.5)
+            lines = np.maximum(lines, np.exp(-(dl / w) ** 2))
+        a = inside * np.clip(0.55 + 0.6 * lines, 0, 1)
+        t_c = rng.random()
+        better = a > alpha
+        tone = np.where(better, t_c * 0.6 + 0.4 * lines, tone)
+        hgt = np.maximum(hgt, inside * (0.5 + 0.5 * lines) * prof)
+        alpha = np.maximum(alpha, a)
+    root = 1 - M.smoothstep(0.05, 0.3, vv)
+    alpha = np.clip(np.maximum(alpha, root), 0, 1)
+    # cards use the halves [0, .5] or [.5, 1]: fade towards those borders so no card shows a straight edge
+    de = np.minimum.reduce([uu, np.abs(uu - 0.5), 1 - uu])
+    alpha = alpha * M.smoothstep(0.0, 0.07, de) ** 0.7
+    return alpha.astype(np.float32), tone.astype(np.float32), hgt.astype(np.float32)
+
+
 def _uv_height_normals(rs, h, strength):
     img, cov = rs.to_image(h, 1)
     img = T.dilate(img, cov, 4)[..., 0]
@@ -347,6 +469,64 @@ def _uv_height_normals(rs, h, strength):
 
 
 # ============================================================================ garments
+
+_DETAIL = {}
+
+
+def detail_tex(name):
+    """CC0 surface as one (h, w, 4) array: normalised luminance + OpenGL normal (-1..1)."""
+    if name not in _DETAIL:
+        col = acg(name, "Color")[..., :3]
+        lum = col @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+        lum = (lum - lum.mean()) / max(lum.std(), 1e-4)
+        nrm = acg(name, "NormalGL")[..., :3] * 2 - 1
+        _DETAIL[name] = np.concatenate([lum[..., None], nrm], -1).astype(np.float32)
+    return _DETAIL[name]
+
+
+def sample_detail(name, grain, tile_m, texel_m, sel=None):
+    """Prefiltered CC0 detail in grain space: (luminance (K,), tangent-space normal (K,3) in -1..1)."""
+    gu, gv, c, s_ = (g if sel is None else g[sel] for g in grain)
+    img = detail_tex(name)
+    foot = texel_m / (tile_m / img.shape[1])
+    smp = T.sample_filtered(name, img, np.stack([gu / tile_m, gv / tile_m], 1), foot)
+    n = smp[:, 1:4]
+    nx = n[:, 0] * c + n[:, 1] * s_
+    ny = -n[:, 0] * s_ + n[:, 1] * c
+    return smp[:, 0], np.stack([nx, ny, np.maximum(n[:, 2], 0.05)], 1)
+
+
+def weave(kind, gu, gv, pitch, texel_m, ed=None, es=None):
+    """Procedural cloth relief (unit amplitude) in grain coordinates (edge_* kinds run parallel /
+    across the nearest edge: bandage threads); fades out where a period would span fewer than ~4
+    texels (no aliasing)."""
+    k = 2 * math.pi / pitch
+    fade = M.smoothstep(3.0, 5.5, pitch / texel_m)
+    if kind == "twill":
+        h = np.sin(k * (gu + gv) / math.sqrt(2))
+    elif kind == "rib":
+        h = np.sin(k * gu)
+    elif kind == "rib_h":
+        h = np.sin(k * gv)
+    elif kind == "plain":
+        h = np.sin(k * gu) * np.sin(k * gv)
+    elif kind == "jersey":
+        h = np.abs(np.sin(k * 0.5 * gu)) * 2 - 1 + 0.35 * np.sin(k * gv * 0.8 + 1.5 * np.sin(k * 0.5 * gu))
+    elif kind == "edge_rib":
+        h = np.sin(k * ed) * 0.8 + 0.2 * np.sin(k * 0.45 * es)
+    elif kind == "crepe":
+        h = 0.6 * np.sin(k * gu) * np.sin(k * gv) + 0.4 * T.vnoise2(np.stack([gu, gv], 1), 2.5 / pitch, 5)
+    else:
+        h = np.zeros_like(gu)
+    return (h * fade).astype(np.float32)
+
+
+def stitch_line(d, along, at, width=0.0005, dash=0.0035, duty=0.62):
+    """Running stitch: a dashed line `at` metres from an edge (d = distance to the edge)."""
+    line = np.exp(-((d - at) / width) ** 2)
+    ph = np.mod(along / dash, 1.0)
+    return line * M.smoothstep(0.0, 0.12, ph) * (1 - M.smoothstep(duty, duty + 0.12, ph))
+
 
 def boundary_band(ob, rings=1.5):
     """Per-vertex 0..1: 1 on open edges (and the turned-under lip), fading over `rings` edge rings."""
@@ -362,58 +542,157 @@ def fabric(rs, ob_list, name, tile_m, uvs, strength=0.6):
     return lum, nrm, mpu
 
 
+def garment_edges(ob):
+    """edge_d / edge_s attributes (see eh_mesh.edge_fields) with the turned-under lip as edge."""
+    lip = G.get_attr(ob, "lip") > 0.5
+    d, s_ = M.edge_fields(ob, extra_seed=lip)
+    G.set_float_attr(ob, "edge_d", d)
+    G.set_float_attr(ob, "edge_s", s_)
+
+
 def garments(rs, cfg, ctx, objs, spec):
-    """Generic garment painter. spec[part] = dict(color, rough, metal, fabric, tile, trim, trim_color,
-    detail, stitch). Returns D, N, ORM."""
+    """Garment painter. spec[part] = dict(
+        color, rough, metal               base values (sRGB hex, 0..1)
+        rough_var                         roughness variation with the detail luminance
+        detail=(name, tile_m, lum, n)     CC0 surface in grain space, prefiltered
+        weave=(kind, pitch_m, height_m)   procedural relief (see weave)
+        mottle                            low-frequency tonal variation (dye/wear), 0..1
+        hem=dict(w, color, rough, stitch=[(at, color)], roll)   edge binding / turned hem (metres)
+        stitch=[(at_m, color)]            stitch lines parallel to every edge
+        edge_wear                         lightening of the outermost mm of edges
+        sheen                             lowers roughness on grazing (in this painter: a flat bias)
+    ); spec["_zones"] = fn(part, rs, ctx, attrs) for 3D zone splits, spec["_seams"] = [fn(rs, ctx) ->
+    (mask_part_ids, signed distance m, along m)], spec["_height"] = [fn(rs, part, ctx) -> metres],
+    spec["_extra"] = [fn(rs, part, col, nts, rough, metal, ctx)]. Returns D, N, ORM."""
     K = rs.K
-    uv = rs.uv()
-    part = np.zeros(K, int)
-    band = np.zeros(K, np.float32)
+    texel_m = ctx["texel_m"]
     ao = rs.vattr([ctx["ao"].get(o.name) for o in objs])
-    parts = rs.vattr([G.get_attr(o, "part").astype(np.float32) for o in objs])
-    part = np.rint(parts).astype(int)
+    part = np.rint(rs.vattr([G.get_attr(o, "part").astype(np.float32) for o in objs])).astype(int)
+    attrs = {}
+    for nm in ("edge_d", "edge_s", "lip") + tuple(spec.get("_attrs", ())):
+        attrs[nm] = rs.vattr([G.get_attr(o, nm) for o in objs])
     if "_zones" in spec:
-        fn, names = spec["_zones"]
-        attrs = {nm: rs.vattr([G.get_attr(o, nm) for o in objs]) for nm in names}
-        part = fn(part, attrs, rs)
-    band = rs.vattr([boundary_band(o) for o in objs])
+        fn = spec["_zones"]
+        if isinstance(fn, tuple):        # legacy (fn, names): fn(part, attrs, rs)
+            f, names = fn
+            part = f(part, {nm: rs.vattr([G.get_attr(o, nm) for o in objs]) for nm in names}, rs)
+        else:
+            part = fn(part, rs, ctx, attrs)
+    mpu = ctx["mpu"]
+    grain = rs.grain(mpu)
+    gu, gv = grain[0], grain[1]
     col = np.zeros((K, 3), np.float32)
     rough = np.zeros(K, np.float32)
     metal = np.zeros(K, np.float32)
-    nts = flat_n(K)
-    lf = T.fbm(rs.P, 12.0, 2, seed=41)
-    mpu = np.mean([G.uv_scale_m(o) for o in objs])
+    height = np.zeros(K, np.float32)
+    dn = np.zeros((K, 3), np.float32)
+    dn[:, 2] = 1.0
+    ed = attrs["edge_d"]
+    es = attrs["edge_s"]
+    lf = T.fbm(rs.P, 9.0, 3, seed=41)
     for pid, sp in spec.items():
-        if not isinstance(pid, int):
+        if not isinstance(pid, (int, np.integer)):
             continue
         m = part == pid
         if not m.any():
             continue
         c = np.tile(T.hexrgb(sp["color"]), (m.sum(), 1))
         r = np.full(m.sum(), sp.get("rough", 0.7), np.float32)
-        if sp.get("fabric"):
-            lum, n = acg_detail(sp["fabric"], uv[m], mpu, sp.get("tile", 0.12))
-            c = c * (1 + sp.get("fabric_lum", 0.06) * lum[:, None])
-            n = n * 2 - 1
-            n[:, :2] *= sp.get("fabric_n", 1.0)
-            n /= np.linalg.norm(n, axis=1, keepdims=True)
-            nts[m] = n * 0.5 + 0.5
-            r = r + 0.05 * lum
-        if sp.get("trim"):
-            t = M.smoothstep(sp.get("trim_lo", 0.55), sp.get("trim_hi", 0.8), band[m])
-            c = T.mix(c, T.hexrgb(sp["trim"]), t)
-        if sp.get("stitch"):
-            st = np.exp(-((band[m] - sp.get("stitch_at", 0.32)) / 0.03) ** 2)
-            dash = (np.sin((rs.P[m] @ np.array([1.0, 0.7, 1.3])) * 900) > -0.2)
-            c = T.mix(c, T.hexrgb(sp["stitch"]), st * dash * 0.75)
-        c = c * (1 + 0.04 * lf[m][:, None])
+        if sp.get("detail"):
+            name, tile, la, na = sp["detail"]
+            lum, n = sample_detail(name, grain, tile, texel_m, m)
+            c = c * (1 + la * np.clip(lum, -2.5, 2.5)[:, None])
+            r = r + sp.get("rough_var", 0.04) * np.clip(lum, -2.5, 2.5)
+            n[:, :2] *= na
+            dn[m] = n
+        if sp.get("weave"):
+            kind, pitch, hgt = sp["weave"]
+            wv = weave(kind, gu[m], gv[m], pitch, texel_m, ed[m], es[m])
+            height[m] += wv * hgt
+            c = c * (1 + 0.05 * wv[:, None] * sp.get("weave_tone", 1.0))
+        if sp.get("mottle"):
+            c = c * (1 + sp["mottle"] * lf[m][:, None])
+        if sp.get("hem"):
+            hm = sp["hem"]
+            band = 1 - M.smoothstep(hm["w"] - 0.0007, hm["w"] + 0.0004, ed[m])
+            if hm.get("color"):
+                c = T.mix(c, T.hexrgb(hm["color"]), band * hm.get("amount", 1.0))
+            if hm.get("rough") is not None:
+                r = r * (1 - band) + hm["rough"] * band
+            if hm.get("weave"):
+                kind, pitch, hgt = hm["weave"]
+                height[m] += band * weave(kind, gu[m], gv[m], pitch, texel_m) * hgt
+            # the hem's inner edge (turned seam allowance) shows as a soft ridge
+            height[m] += 0.00025 * np.exp(-((ed[m] - hm["w"]) / 0.0012) ** 2) * hm.get("ridge", 1.0)
+            for at, scol in hm.get("stitch", ()):
+                st = stitch_line(ed[m], es[m], at)
+                c = T.mix(c, T.hexrgb(scol), st * 0.85)
+                height[m] -= st * 0.00012
+        for at, scol in sp.get("stitch", ()):
+            st = stitch_line(ed[m], es[m], at)
+            c = T.mix(c, T.hexrgb(scol), st * 0.8)
+            height[m] -= st * 0.00012
+        roll = sp.get("roll", 0.0012)
+        if roll:
+            # rounded fold at the edge: falls away over the last `roll` metres
+            height[m] -= 0.0006 * (1 - M.smoothstep(0.0, roll, ed[m])) ** 2
+        if sp.get("edge_wear"):
+            wear = (1 - M.smoothstep(0.0, 0.0025, ed[m])) * (0.6 + 0.4 * lf[m])
+            c = c * (1 + sp["edge_wear"] * wear[:, None])
+            r = r + 0.06 * wear
         col[m] = c
         rough[m] = r
         metal[m] = sp.get("metal", 0.0)
+    for fn in spec.get("_seams", []):
+        pids, dist, along, sp2 = fn(rs, ctx)
+        m = np.isin(part, pids)
+        groove = np.exp(-(dist / 0.0011) ** 2) * m
+        height -= groove * 0.0005
+        col *= (1 - 0.18 * groove)[:, None]
+        for at, scol in sp2.get("stitch", ()):
+            st = (stitch_line(np.abs(dist), along, at)) * m
+            col = T.mix(col, T.hexrgb(scol), st * 0.8)
+            height -= st * 0.0001
+    for fn in spec.get("_height", []):
+        height += fn(rs, part, ctx)
     for fn in spec.get("_extra", []):
-        col, nts, rough, metal = fn(rs, part, col, nts, rough, metal, ctx)
+        col, dn, rough, metal = fn(rs, part, col, dn, rough, metal, ctx)
+    nh = rs.height_normals(height, texel_m)
+    N = T.blend_ts(nh, dn * 0.5 + 0.5, 1.0)
     sh = np.clip(ao, 0, 1)
-    col = col * (0.6 + 0.4 * sh[:, None])
+    col = col * (0.72 + 0.28 * sh[:, None])
+    col, rough = zone_aa(rs, part, col, rough)
     D = np.clip(col, 0, 1)
     ORM = np.stack([np.clip(sh * 0.85 + 0.15, 0, 1), np.clip(rough, 0.05, 1), np.clip(metal, 0, 1)], 1)
-    return D, nts, ORM
+    return D, N, ORM
+
+
+def zone_aa(rs, part, col, rough):
+    """One-texel anti-aliasing of colour/roughness where the zone id changes between neighbours
+    (zone borders are hard per-texel decisions)."""
+    res = rs.res
+    pid = np.full(res * res, -1, np.int64)
+    pid[rs.pix] = part
+    pid = pid.reshape(res, res)
+    edge = np.zeros((res, res), bool)
+    for dy, dx in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+        nb = np.roll(np.roll(pid, dy, 0), dx, 1)
+        edge |= (nb != pid) & (nb >= 0) & (pid >= 0)
+    e = edge.reshape(-1)[rs.pix]
+    if not e.any():
+        return col, rough
+    for arr in (col, rough):
+        ch = arr.shape[1] if arr.ndim == 2 else 1
+        img, cov = rs.to_image(arr, ch)
+        acc = np.zeros_like(img)
+        cnt = np.zeros(cov.shape, np.float32)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                acc += np.roll(np.roll(img * cov[..., None], dy, 0), dx, 1)
+                cnt += np.roll(np.roll(cov, dy, 0), dx, 1)
+        blur = (acc / np.maximum(cnt, 1)[..., None]).reshape(-1, ch)[rs.pix]
+        if arr.ndim == 2:
+            arr[e] = blur[e]
+        else:
+            arr[e] = blur[e, 0]
+    return col, rough

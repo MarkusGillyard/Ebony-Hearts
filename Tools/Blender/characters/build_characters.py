@@ -2,12 +2,12 @@
 
     Tools/Blender/characters/run_blender.sh Tools/Blender/characters/build_characters.py [wren] [ashka]
 
-Per character, into <slice>/sourceart/characters/<id>/:
+Per character, into <EH_CHAR_OUT or slice/sourceart/characters>/<id>/:
   <Name>.blend            editable source (armature object "Armature", meshes per material)
   SK_<Name>.fbx           LOD0 mesh + armature, no animation (UE: cm, Z-up, faces +Y like SK_Mannequin)
   SK_<Name>_LOD1.fbx      ~50% triangles (decimated copy, same skeleton)
   textures/T_<Name>_<Mat>_{D,N,ORM}.png   (N is OpenGL; ORM = AO, roughness, metallic)
-  bones.json, build_report.json
+  bones.json, build_report.json, alpha.json (which D textures carry an alpha mask)
 Deterministic: no randomness without fixed seeds; all geometry, hair and garments are generated here.
 """
 import json
@@ -35,7 +35,7 @@ import eh_tex as T            # noqa: E402
 import eh_wren as Wr          # noqa: E402
 
 SLICE = E.SLICE
-OUT_ROOT = os.path.join(SLICE, "sourceart", "characters")
+OUT_ROOT = os.environ.get("EH_CHAR_OUT") or os.path.join(SLICE, "sourceart", "characters")
 
 FBX_SETTINGS = dict(
     use_selection=True, object_types={"ARMATURE", "MESH"},
@@ -97,6 +97,8 @@ def build(cid):
     # ---------------------------------------------------------------- garments + hair
     if cid == "wren":
         garments, hide = Wr.build(body, rig, cfg, col_body)
+        ctx["wren"] = garments.pop("_info")
+        ctx["wren_pal"] = cfg["palette"]
         hair, hair_info = HS.wren(body, rig, parts, [garments["top"]], cfg)
         apex = Wr.bust_apex(body, rig, M.weights(body))
         ctx["underbust_z"] = float(apex[2] - 0.075)
@@ -116,6 +118,9 @@ def build(cid):
         skirt_info = None
     else:
         garments, hide, skirt_info = A.build(body, rig, cfg, col_body)
+        ctx["ashka"] = garments.pop("_info")
+        ctx["ashka_pal"] = cfg["palette"]
+        ctx["ashka_cfg"] = cfg
         hair, hair_info = HS.ashka(body, rig, parts, [garments["coat"], garments["shirt"]], cfg)
         zc = rig.data.bones["clavicle_l"].head_local[2]
         Vb = M.co(body)
@@ -126,7 +131,7 @@ def build(cid):
         ctx["ankles"] = {s: np.array(rig.data.bones["foot_" + s].head_local) for s in "lr"}
         ctx["sole"] = cfg["sole_m"]
         ctx["loafer_dark"] = cfg["palette"]["loafer_dark"]
-        A.coat_rig(rig, skirt_info)
+        A.coat_rig(rig, skirt_info, cfg.get("rest_chains"))
         coat = garments["coat"]
         coat.name = coat.data.name = name + "_Coat"
         clothes = M.join([garments["shirt"], garments["tie"], garments["pants"], garments["loafers"]], name + "_Clothes")
@@ -165,10 +170,19 @@ def build(cid):
         return 1.0
 
     G.pack_uvs(mats["Skin"], margin=0.006, island_scale=skin_scale)
+    dens = cfg.get("uv", {}).get("part_density", {})
+
+    def part_scale(ob, faces, k):
+        if not dens:
+            return 1.0
+        part = G.get_attr(ob, "part").astype(int)
+        ls, lt, lv = M.polys(ob)
+        p = np.bincount(part[lv[ls[faces[:50]]]]).argmax()
+        return dens.get(str(int(p)), 1.0)
     for key in mats:
         if key in ("Skin", "Hair", "Eyes"):
             continue
-        G.pack_uvs(mats[key], margin=0.008)
+        G.pack_uvs(mats[key], margin=0.008, island_scale=part_scale)
 
     # ---------------------------------------------------------------- AO
     E.log("ambient occlusion")
@@ -176,8 +190,9 @@ def build(cid):
     tmp = M.duplicate(hair, "tmp_occ")
     M.delete_verts(tmp, ~keep)
     static = [o for o in objs if o is not hair]
-    aos = T.vertex_ao(static, static, rays=cfg["ao_rays"], dist=0.08)
-    aos_h = T.vertex_ao([hair], static + [tmp], rays=cfg["ao_rays"], dist=0.08)
+    rays = 6 if os.environ.get("EH_FAST") else cfg["ao_rays"]
+    aos = T.vertex_ao(static, static, rays=rays, dist=0.08)
+    aos_h = T.vertex_ao([hair], static + [tmp], rays=rays, dist=0.08)
     bpy.data.objects.remove(tmp)
     ctx["ao"] = {}
     for ob, a in list(zip(static, aos)) + [(hair, aos_h[0])]:
@@ -195,6 +210,8 @@ def build(cid):
 
     # ---------------------------------------------------------------- textures + materials
     sizes = cfg["texture_sizes"]
+    if os.environ.get("EH_FAST"):            # quick geometry iterations only: half-size maps
+        sizes = {k: v // 2 for k, v in sizes.items()}
     if cid == "wren":
         outfit_spec, acc_spec = SP.wren(cfg)
         jobs = {"Skin": ("skin", None), "Hair": ("hair", None), "Eyes": ("eyes", None),
@@ -216,6 +233,11 @@ def build(cid):
         elif mat_key == "Hair":
             D, N, ORM = PT.hair(rs, cfg, ctx, hair)
         else:
+            for ob in mats[mat_key]:
+                PT.garment_edges(ob)
+            ctx["mpu"] = float(np.mean([G.uv_scale_m(o) for o in mats[mat_key]]))
+            ctx["texel_m"] = ctx["mpu"] / res
+            E.log("  %s: %.3f m per UV, %.2f mm per texel" % (mat_key, ctx["mpu"], ctx["texel_m"] * 1000))
             D, N, ORM = PT.garments(rs, cfg, ctx, mats[mat_key], spec)
         maps = {}
         for suffix, arr, ch in (("D", D, D.shape[1]), ("N", N, 3), ("ORM", ORM, 3)):
@@ -261,6 +283,8 @@ def build(cid):
         "half_joints": {h[0]: {"limb": h[1], "parent": h[2], "factor": 0.5} for h in R.HALF},
         "blender_only_helpers": [b.name for b in rig.data.bones if not b.use_deform],
     })
+    with open(os.path.join(out, "alpha.json"), "w") as f:
+        json.dump({"T_%s_%s_D" % (name, k): k == "Hair" for k in sorted(mats)}, f, indent=1)
     report["fbx_settings"] = {k: (sorted(v) if isinstance(v, set) else v) for k, v in FBX_SETTINGS.items()}
     report["build_seconds"] = round(time.time() - t0, 1)
     with open(os.path.join(out, "build_report.json"), "w") as f:

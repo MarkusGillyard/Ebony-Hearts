@@ -1,11 +1,18 @@
-"""Ashka Rook's canon outfit: white long-sleeved shirt (built only where it can show: the coat's
-V opening, collar and cuffs), black tie, black trousers, brown loafers and a long black trench coat.
+"""Ashka Rook's canon outfit: white long-sleeved shirt (built where it can show: the coat's V opening,
+collar and cuffs), black tie, black trousers, brown penny loafers and a long black trench coat.
 
-The coat: torso and sleeves are a shell grown from the body (inheriting skin weights); a V opening
-with lapels shows shirt and tie; a stand collar and a belt; below the hip a lofted A-line skirt split
-into four panels (front-left, front-right, back-left, back-right) by the front opening, two side
-vents and a back vent, each panel skinned to its own 3-bone tail chain. At rest the split edges meet,
-so the silhouette reads as one long coat; in motion the panels part instead of stretching."""
+Coat: torso and sleeves are a shell grown from the body (inheriting skin weights) and then draped:
+every horizontal slice is pushed out to a hanging envelope of the body (cloth falls from the bust
+and shoulder blades instead of shrink-wrapping the waist) and the sleeves are rounded towards a
+tube. A double-breasted front closes from the belt to the V, where real lapels (roll, notch,
+thickness) and a two-part collar (stand + fall) open onto shirt and tie. Below the hip a lofted
+skirt hangs almost straight with drape folds, split into four panels (front opening, two side vents
+and a back vent), each skinned to its own 3-bone chain. Belt with knot and tails, buttons, cuff
+straps, hems with thickness.
+Shirt collar with stand and points, cuffs showing past the coat sleeves, a four-in-hand knot and a
+tapered blade that hangs from the knot. Trousers fall straight with a front crease and a break over
+the shoe. Loafers are built on a last fitted to the foot: upper with a vamp, saddle strap and heel
+counter, a welt and a sole with a stacked heel."""
 import math
 
 import bpy
@@ -16,33 +23,42 @@ import eh_mesh as M
 import eh_rig as R
 
 # part tags
-COAT_MAIN, COAT_LAPEL, COAT_COLLAR, COAT_BELT, COAT_BUCKLE, COAT_SKIRT, COAT_CUFF = 1, 2, 3, 4, 5, 6, 7
+COAT_MAIN, COAT_LAPEL, COAT_COLLAR, COAT_BELT, COAT_BUCKLE, COAT_SKIRT, COAT_CUFF, COAT_BUTTON = 1, 2, 3, 4, 5, 6, 7, 8
 SHIRT, SHIRT_COLLAR, SHIRT_CUFF, TIE, PANTS, LOAFER, LOAFER_SOLE = 11, 12, 13, 14, 15, 16, 17
+LOAFER_WELT, LOAFER_STRAP, TIE_KNOT = 18, 19, 20
 
 PANELS = (("fl", math.pi * 0.25, "l"), ("bl", math.pi * 0.75, "l"),
           ("br", math.pi * 1.25, "r"), ("fr", math.pi * 1.75, "r"))
 
 
-def v_halfwidth(z, z_button, z_top, w_top):
-    return np.clip((z - z_button) / (z_top - z_button), 0, None) ** 1.1 * w_top
+def landmarks(rig, cfg):
+    o = cfg["outfit"]
+    f = {}
+    f["zc"] = rig.data.bones["clavicle_l"].head_local[2]
+    f["zp"] = rig.data.bones["pelvis"].head_local[2]
+    f["zn"] = rig.data.bones["neck_01"].head_local[2]
+    f["zb"] = f["zp"] + o["belt_above_pelvis"]
+    f["zvb"] = f["zp"] + o["v_bottom_above_pelvis"]
+    f["z_vtop"] = f["zc"] + 0.07
+    f["z_cut"] = f["zp"] + o["skirt_top_rel_pelvis"]
+    return f
+
+
+def vline(z, f, o):
+    """Half-width of the coat's V opening at height z (0 at the top button)."""
+    return np.clip((np.asarray(z) - f["zvb"]) / (f["z_vtop"] - f["zvb"]), 0, None) ** 1.1 * o["v_halfwidth_top"]
 
 
 def build(body, rig, cfg, collider_body):
     o = cfg["outfit"]
     V = M.co(body)
-    Nb = M.vnormals(body)
     W = M.weights(body)
     X, Y, Z = V[:, 0], V[:, 1], V[:, 2]
     ax = np.abs(X)
-    zc = rig.data.bones["clavicle_l"].head_local[2]
-    zp = rig.data.bones["pelvis"].head_local[2]
-    zn = rig.data.bones["neck_01"].head_local[2]
+    f = landmarks(rig, cfg)
+    zc, zp, zn = f["zc"], f["zp"], f["zn"]
     sy = G.spine_y(rig, Z)
     front = Y < sy
-    z_button = zp + o["button_above_pelvis"]
-    z_vtop = zc + 0.01
-    w_vtop = o["v_halfwidth_top"]
-    vhalf = v_halfwidth(Z, z_button, z_vtop, w_vtop)
     out = {}
     hide = np.zeros(len(body.data.polygons), bool)
     keep = np.zeros(len(body.data.polygons), bool)
@@ -54,54 +70,54 @@ def build(body, rig, cfg, collider_body):
     arm_t = np.where(X > 0, tfa["l"], tfa["r"])
     hand = (handw["l"] > 0.4) | (handw["r"] > 0.4)
     neck_cut = np.where(front, zn - 0.035 + 18 * ax ** 2, zn - 0.005 + 10 * ax ** 2)
+    headw = W.get("head", np.zeros(len(V)))
+    info = {"landmarks": f}
 
     # ------------------------------------------------------------------ shirt (visible parts)
-    headw0 = W.get("head", np.zeros(len(V)))
-    shirt_front = front & (ax < vhalf + 0.09) & (Z > z_button - 0.07) & (Z < np.minimum(neck_cut + 0.04, zn + 0.01)) \
-        & ~is_arm & (headw0 < 0.3)
-    headw = W.get("head", np.zeros(len(V)))
-    collar = (Z > neck_cut - 0.01) & (Z < neck_cut + 0.042) & ~is_arm & (Z > zc - 0.05) & (headw < 0.3) & (ax < 0.085)
-    vm = shirt_front & ~hand
-    shirt, src, fm = G.shell(body, vm, "shirt", 0.004, collider_body, relax_iters=10, lip=0.0025)
-    _tags(shirt, np.full(len(src), SHIRT))
+    vh = vline(Z, f, o)
+    vm = front & (ax < vh + 0.075) & (Z > f["zvb"] - 0.07) & (Z < np.minimum(neck_cut + 0.04, zn + 0.01)) \
+        & ~is_arm & (headw < 0.3) & ~hand
+    shirt, src, fm = G.shell(body, vm, "shirt", 0.0035, collider_body, relax_iters=10, lip=0.0, soft=3,
+                             edge_smooth=0)
+    _tags(shirt, SHIRT)
     hide |= G.hidden_face_mask(body, fm, garment=shirt)
     cuffs = []
     for s in "lr":
         side = (X > 0) if s == "l" else (X < 0)
-        vm = side & (armw[s] > 0.4) & (tfa[s] > 0.84) & (tfa[s] < 1.02) & (handw[s] < 0.5)
-        c, src, fm = G.shell(body, vm, "cuff_" + s, 0.0045, collider_body, relax_iters=3, lip=0.0025)
-        _tags(c, np.full(len(src), SHIRT_CUFF))
+        vm = side & (armw[s] + handw[s] > 0.4) & (tfa[s] > 0.8) & (tfa[s] < 1.08)
+        c, src, fm = G.shell(body, vm, "cuff_" + s, 0.0048, collider_body, relax_iters=3, lip=0.003,
+                             implicit=(_limb_cut(rig, "lowerarm_" + s, 0.86, keep_after=True),
+                                       _limb_cut(rig, "lowerarm_" + s, 1.0)), edge_smooth=0)
+        _round_limb(c, rig, "lowerarm_" + s, 0.7, 0.002)
+        _tags(c, SHIRT_CUFF)
         cuffs.append(c)
-        hide |= G.hidden_face_mask(body, fm, garment=c, margin_m=0.008)
+        hide |= G.hidden_face_mask(body, fm, garment=c, margin_m=0.025)
     scollar = _shirt_collar(body, rig, cfg)
     _weights_from(scollar, shirt)
     shirt = M.join([shirt] + cuffs + [scollar], "shirt")
     out["shirt"] = shirt
-    tie_ob = tie(rig, cfg, shirt, z_button)
+    tie_ob = tie(rig, cfg, shirt, f)
     _weights_from(tie_ob, shirt)
     out["tie"] = tie_ob
     # keep a sternum patch of skin under the shirt (the chest tattoo lives there)
-    tat = np.array([0.0, 0.0, zc + o["tattoo_dz"]])
-    ls, lt, lv = M.polys(body)
     fc = M.poly_centers(body)
-    patch = (np.abs(fc[:, 0]) < 0.075) & (np.abs(fc[:, 2] - tat[2]) < 0.06) & (fc[:, 1] < G.spine_y(rig, fc[:, 2]))
+    patch = (np.abs(fc[:, 0]) < 0.075) & (np.abs(fc[:, 2] - (zc + o["tattoo_dz"])) < 0.06) \
+        & (fc[:, 1] < G.spine_y(rig, fc[:, 2]))
     keep |= patch
 
     # ------------------------------------------------------------------ trousers
     zw = np.where(front, zp + 0.045, zp + 0.06)
     legs = np.zeros(len(V), bool)
-    rad = np.zeros(len(V))
     for s in "lr":
-        lw = G.wsum(W, G.side_names(["thigh", "thigh_twist_01", "calf"], s))
-        legs |= lw > 0.5
-    z_hem = o["pants_hem_z"] + cfg["sole_m"]
+        legs |= G.wsum(W, G.side_names(["thigh", "thigh_twist_01", "calf"], s)) > 0.5
     footw = G.wsum(W, G.side_names(["foot", "ball"], "l") + G.side_names(["foot", "ball"], "r"))
     z_ank = rig.data.bones["foot_l"].head_local[2]
-    vm = (Z <= zw) & (Z >= z_hem) & ~((footw >= 0.5) & (Z < z_ank - 0.005)) & ~is_arm & ~hand
+    sole = cfg["sole_m"]
+    vm = (Z <= zw) & (Z >= sole + 0.015) & ~((footw >= 0.5) & (Z < z_ank - 0.02)) & ~is_arm & ~hand
     tcalf = np.where(X > 0, G.limb_param(rig, "calf_l", V)[0], G.limb_param(rig, "calf_r", V)[0])
     off = 0.0055 + 0.006 * M.smoothstep(0.15, 0.6, tcalf) * legs
 
-    def straighten(P, src):
+    def straighten(P, src_):
         # trousers hang straight below the knee: push out to a minimum radius about the shin line
         out_ = np.zeros_like(P)
         for s in "lr":
@@ -119,109 +135,151 @@ def build(body, rig, cfg, collider_body):
             out_ += r / np.maximum(rn, 1e-6)[:, None] * push[:, None]
         return out_
 
+    hem_cuts = tuple(_hem_cut(rig, s, cfg) for s in "lr")
     pants, src, fm = G.shell(body, vm, "pants", off, collider_body, relax_iters=14, relax_factor=0.5,
-                             smooth_offset=5, lip=0.003, extra_push=straighten)
-    _tags(pants, np.full(len(src), PANTS))
+                             smooth_offset=5, lip=0.0045, extra_push=straighten, implicit=hem_cuts, edge_smooth=0)
+    _crease_and_break(pants, rig, cfg)
+    _tags(pants, PANTS)
     hide |= G.hidden_face_mask(body, fm, garment=pants)
     out["pants"] = pants
 
     # ------------------------------------------------------------------ loafers
     loafers = []
     for s in "lr":
-        side = (X > 0) if s == "l" else (X < 0)
-        fw = G.wsum(W, G.side_names(["foot", "ball", "calf"], s))
-        ank = np.array(rig.data.bones["foot_" + s].head_local)
-        instep = M.smoothstep(ank[1] + 0.01, ank[1] - 0.05, Y)
-        cut = ank[2] - 0.012 + 0.03 * instep
-        vm = side & (fw > 0.4) & (Z < cut)
-        toe = M.smoothstep(ank[1] - 0.08, ank[1] - 0.15, Y)
-        lo, src, fm = G.shell(body, vm, "loafer_" + s, 0.0042 + 0.011 * toe, collider_body, relax_iters=40,
-                              relax_factor=0.5, smooth_offset=10, lip=0.003, presmooth=25)
-        P = M.co(lo)
-        sole = cfg["sole_m"]
-        flat = P[:, 2] < sole + 0.009
-        P[flat, 2] = 0.0
-        low = (~flat) & (P[:, 2] < sole + 0.02)
-        P[low, 2] = np.maximum(P[low, 2] - 0.01, 0.0)
-        M.set_co(lo, P)
-        part = np.where(P[:, 2] < sole + 0.002, LOAFER_SOLE, LOAFER)
-        G.set_part_attr(lo, "part", part.astype(np.int32))
+        lo = loafer(body, rig, cfg, s, W, V)
         loafers.append(lo)
-        hide |= G.hidden_face_mask(body, fm, garment=lo, margin_m=0.006)
+        side = (X > 0) if s == "l" else (X < 0)
+        fm = M.face_mask_from_verts(body, side & (footw > 0.3) & (Z < z_ank + 0.01), "all")
+        hide |= G.hidden_face_mask(body, fm, garment=lo, margin_m=0.004)
     out["loafers"] = M.join(loafers, "loafers")
+    info["loafer"] = {"sole": sole, "frames": {}}
+    for s in "lr":
+        ank = np.array(rig.data.bones["foot_" + s].head_local)
+        bp = np.array(rig.data.bones["ball_" + s].head_local)
+        fwd = bp - ank
+        fwd[2] = 0
+        fwd /= np.linalg.norm(fwd)
+        info["loafer"]["frames"][s] = (ank, fwd)
 
     # ------------------------------------------------------------------ coat: torso + sleeves
-    z_cut = zp + o["skirt_top_rel_pelvis"]
+    z_cut = f["z_cut"]
     sleeve_end = o["sleeve_end_t"]
-    region = (Z >= z_cut) & (Z < neck_cut + 0.005) & ~hand & ~(is_arm & (arm_t > sleeve_end))
+    region = (Z >= z_cut - 0.04) & (Z < neck_cut + 0.012) & ~hand & ~(is_arm & (arm_t > sleeve_end + 0.08))
     t_arm = np.where(is_arm, arm_t, 0.0)
-    zb = zp + o["belt_above_pelvis"]
-    off = np.where(is_arm, 0.012 + 0.008 * M.smoothstep(0.3, 1.0, t_arm),
-                   o["coat_offset"] * (1 - 0.4 * np.exp(-((Z - zb) / 0.06) ** 2)))
+    zb = f["zb"]
+    off = np.where(is_arm, 0.011 + 0.006 * M.smoothstep(0.3, 1.0, t_arm),
+                   o["coat_offset"] * (1 - 0.35 * np.exp(-((Z - zb) / 0.06) ** 2)))
     off = off + 0.004 * M.smoothstep(zc - 0.06, zc + 0.03, Z) * (~is_arm)       # light shoulder structure
-    coat, src, fm = G.shell(body, region, "coat", off, collider_body, relax_iters=28,
-                            relax_factor=0.5, smooth_offset=6, lip=0.0)
-    coat_cover = fm.copy()
+
+    def hip(P):
+        return P[:, 2] - z_cut
+
+    def v_open(P):
+        return np.maximum.reduce([np.abs(P[:, 0]) - vline(P[:, 2], f, o), f["zvb"] + 0.012 - P[:, 2],
+                                  P[:, 1] - G.spine_y(rig, P[:, 2]) + 0.03])
+
+    cuts = (hip, v_open, _limb_cut(rig, "lowerarm_l", sleeve_end), _limb_cut(rig, "lowerarm_r", sleeve_end))
+    coat, src, fm = G.shell(body, region, "coat", off, collider_body, relax_iters=12, relax_factor=0.5,
+                            smooth_offset=6, lip=0.0, soft=3, implicit=cuts, edge_smooth=0)
+    coat_cover = fm & M.face_mask_from_verts(body, ~(is_arm & (arm_t > sleeve_end - 0.02)), "all")
+    _drape_torso(coat, body, rig, f, cfg, collider_body)
+    for s in "lr":
+        _round_sleeve(coat, rig, s, o)
     Wcs = M.weights(coat)                 # torso shell: no thigh influence either
     for s_ in "lr":
-        for nm in ("thigh_" + s_, "thigh_twist_01_" + s_):
+        for nm in ("thigh_" + s_, "thigh_twist_01_" + s_, "thigh_half_" + s_):
             if nm in Wcs:
                 Wcs["pelvis"] = Wcs.get("pelvis", 0) + Wcs.pop(nm)
+    Wcs = M.smooth_weights(Wcs, M.adjacency(coat), 3, 0.5)
     M.set_weights(coat, M.normalize_limit(Wcs, 8))
     Pc = M.co(coat)
-    # V opening (shirt and tie show through it)
-    Vc = V[src]
-    vhalf_c = v_halfwidth(Vc[:, 2], z_button, z_vtop + 0.06, w_vtop * 1.1)
-    in_v = (Vc[:, 1] < G.spine_y(rig, Vc[:, 2])) & (np.abs(Vc[:, 0]) < vhalf_c) & (Vc[:, 2] > z_button)
-    fmask_v = M.face_mask_from_verts(coat, in_v, "any")
-    M.delete_faces(coat, fmask_v)
-    Pc = M.co(coat)
-    bnd = M.boundary_vmask(coat)
-    sy_c = G.spine_y(rig, Pc[:, 2])
-    vline = v_halfwidth(Pc[:, 2], z_button, z_vtop + 0.06, w_vtop * 1.1)
-    snap = bnd & (Pc[:, 1] < sy_c - 0.02) & (Pc[:, 2] > z_button - 0.005) & (np.abs(np.abs(Pc[:, 0]) - vline) < 0.035) \
-        & (Pc[:, 2] < z_vtop + 0.05)
-    Pc[snap, 0] = np.sign(Pc[snap, 0] + 1e-9) * vline[snap]
-    M.set_co(coat, Pc)
-    src_attr = G.get_attr(coat, "src_vi", np.int64)
-    G.set_part_attr(coat, "part", np.where(is_arm[src_attr] & (arm_t[src_attr] > sleeve_end - 0.06),
-                                           COAT_CUFF, COAT_MAIN).astype(np.int32))
+    src_c = G.nearest_src(body, Pc)
+    part = np.where(is_arm[src_c] & (arm_t[src_c] > sleeve_end - 0.07), COAT_CUFF, COAT_MAIN)
+    G.set_part_attr(coat, "part", part.astype(np.int32))
     # the shell's bottom loop around the hips becomes the skirt's top row
     loops = M.boundary_loops(coat)
-    Pc = M.co(coat)
     best = None
     for lp in loops:
         q = Pc[lp]
-        if np.abs(q[:, 0]).max() < 0.35 and np.abs(q[:, 0].mean()) < 0.05 and len(lp) > 20:
+        if np.abs(q[:, 0]).max() < 0.35 and np.abs(q[:, 0].mean()) < 0.05 and len(lp) > 20 \
+                and np.ptp(q[:, 2]) < 0.02:
             if best is None or q[:, 2].mean() < Pc[best][:, 2].mean():
                 best = lp
     if best is None:
-        for lp in loops:
-            q = Pc[lp]
-            print("[coat loop]", len(lp), np.round(q.mean(0), 3), np.round(np.abs(q[:, 0]).max(), 3), np.round(q[:, 2].min(), 3))
-        print("[coat] z_cut", z_cut)
         raise RuntimeError("no hip loop on the coat shell")
     skirt, skirt_info = _skirt(coat, best, rig, cfg, [pants, out["loafers"]])
-    lapels = _lapels(coat, rig, z_button, cfg)
-    collar_ob = _collar(body, rig, cfg, coat)
+    lapels = _lapels(coat, rig, f, cfg)
+    collar_ob = _collar(body, rig, cfg, coat, f)
     belt = _belt(coat, rig, cfg, skirt)
-    for ob in (lapels, collar_ob):
+    buttons = _buttons(coat, rig, f, cfg)
+    straps = [_cuff_strap(coat, rig, s, o) for s in "lr"]
+    for ob in [lapels, collar_ob, buttons] + straps:
         _weights_from(ob, coat)
-    _weights_from(belt, M.join([M.duplicate(coat, "tmp_c"), M.duplicate(skirt, "tmp_s")], "tmp_cs"))
-    tmp = bpy.data.objects.get("tmp_cs")
-    if tmp is not None:
-        bpy.data.objects.remove(tmp)
+    tmp = M.join([M.duplicate(coat, "tmp_c"), M.duplicate(skirt, "tmp_s")], "tmp_cs")
+    _weights_from(belt, tmp)
+    bpy.data.objects.remove(tmp)
     loop_pos = M.co(coat)[best]
-    hip = np.zeros(len(M.co(coat)), bool)
-    hip[best] = True
-    M.add_boundary_lip(coat, 0.004, vmask=~hip)
-    coat = M.join([coat, skirt, lapels, collar_ob, belt], "coat")
+    hipm = np.zeros(len(M.co(coat)), bool)
+    hipm[best] = True
+    n0 = len(coat.data.vertices)
+    M.add_boundary_lip(coat, 0.0045, vmask=~hipm)
+    lipf = np.zeros(len(coat.data.vertices), np.float32)
+    lipf[n0:] = 1
+    G.set_float_attr(coat, "lip", lipf)
+    coat = M.join([coat, skirt, lapels, collar_ob, belt, buttons] + straps, "coat")
     _weld_points(coat, loop_pos)
     out["coat"] = coat
-    # body faces hidden by the coat (exclude the V region, which the shirt covers)
     hide |= G.hidden_face_mask(body, coat_cover, garment=coat, margin_m=0.015)
     hide &= ~keep
+    out["_info"] = info
     return out, hide, skirt_info
+
+
+# ----------------------------------------------------------------------------- helpers
+
+def _limb_cut(rig, bone, t_end, radius=0.12, keep_after=False):
+    """Implicit cut across a limb: removes the part beyond fraction t_end of `bone` (or before it with
+    keep_after) within `radius` of the bone axis."""
+    b = rig.data.bones[bone]
+    h, t = np.array(b.head_local), np.array(b.tail_local)
+    d = (t - h) / np.linalg.norm(t - h)
+    p0 = h + (t - h) * t_end
+
+    def fn(P):
+        along = (P - p0) @ d
+        foot = p0 + np.outer(along, d)
+        dist = np.linalg.norm(P - foot, axis=1)
+        return np.maximum(along if keep_after else -along, dist - radius)
+    return fn
+
+
+def _round_limb(ob, rig, bone, k, ease):
+    """Pulls a tube-like garment towards a round cross-section about the bone axis (k: 0..1)."""
+    b = rig.data.bones[bone]
+    h, t = np.array(b.head_local), np.array(b.tail_local)
+    d = (t - h) / np.linalg.norm(t - h)
+    P = M.co(ob)
+    along = (P - h) @ d
+    foot = h + np.outer(along, d)
+    rad = P - foot
+    r = np.linalg.norm(rad, axis=1)
+    bins = np.round(along / 0.01).astype(int)
+    rmax = np.zeros_like(r)
+    for bi in np.unique(bins):
+        m = bins == bi
+        rmax[m] = r[m].max()
+    rt = r + (rmax - r) * k + ease
+    P = foot + rad / np.maximum(r, 1e-6)[:, None] * rt[:, None]
+    M.set_co(ob, P)
+
+
+def _tags(ob, value):
+    G.set_part_attr(ob, "part", np.full(len(ob.data.vertices), value, np.int32))
+
+
+def _weights_from(dst, src):
+    Wd = M.transfer_weights_nearest(dst, M.co(src), M.weights(src), k=4)
+    M.set_weights(dst, M.normalize_limit(Wd, 8))
 
 
 def _weld_points(ob, pts, dist=2e-4):
@@ -241,21 +299,140 @@ def _weld_points(ob, pts, dist=2e-4):
     ob.data.update()
 
 
-def _tags(ob, part_src):
-    n = len(ob.data.vertices)
-    tags = np.zeros(n, np.int32)
-    k = len(part_src)
-    tags[:k] = part_src
-    if n > k:
-        V = M.co(ob)
-        for i in range(k, n):
-            tags[i] = part_src[np.argmin(((V[:k] - V[i]) ** 2).sum(1))]
-    G.set_part_attr(ob, "part", tags)
+def _grid(name, P, closed_u=False):
+    """Quad grid object from points P (rows, cols, 3); UVs in metres along the grid lines."""
+    nr, nc = P.shape[:2]
+    verts = P.reshape(-1, 3)
+    du = np.linalg.norm(np.diff(P, axis=1), axis=2).mean(0)
+    dv = np.linalg.norm(np.diff(P, axis=0), axis=2).mean(1)
+    us = np.r_[0, np.cumsum(du)]
+    vs = np.r_[0, np.cumsum(dv)]
+    faces, uvs = [], []
+    cols = nc if closed_u else nc - 1
+    for i in range(nr - 1):
+        for j in range(cols):
+            j2 = (j + 1) % nc
+            faces.append((i * nc + j, i * nc + j2, (i + 1) * nc + j2, (i + 1) * nc + j))
+            u0, u1 = us[j], (us[j + 1] if j + 1 < len(us) else us[-1] + du[-1])
+            uvs.append([(u0, vs[i]), (u1, vs[i]), (u1, vs[i + 1]), (u0, vs[i + 1])])
+    return M.make_object(name, verts, faces, uvs)
 
 
-def _weights_from(dst, src):
-    Wd = M.transfer_weights_nearest(dst, M.co(src), M.weights(src), k=4)
-    M.set_weights(dst, M.normalize_limit(Wd, 8))
+# ----------------------------------------------------------------------------- coat drape
+
+def _drape_torso(coat, body, rig, f, cfg, collider):
+    """Pushes the coat torso out to a hanging envelope of the body: per horizontal slice and angle
+    the body's outer radius, then cloth falling from every higher point with a limited inward slope
+    (steeper at the sides), drawn in by the belt."""
+    o = cfg["outfit"]
+    Vb = M.co(body)
+    Wb = M.weights(body)
+    armw = G.wsum(Wb, G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], "l")
+                  + G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], "r")
+                  + ["upperarm_half_l", "upperarm_half_r"])
+    z0, z1 = f["z_cut"] - 0.05, f["zc"] + 0.02
+    torso = (armw < 0.25) & (Vb[:, 2] > z0 - 0.1) & (Vb[:, 2] < z1 + 0.05) & (np.abs(Vb[:, 0]) < 0.25)
+    dz, na = 0.015, 72
+    zs = np.arange(z0 - 0.06, z1 + 0.08, dz)
+    nz = len(zs)
+    # cross-section centre: midway between the body's front and back at the centre line
+    cy = np.zeros(nz)
+    for i, z in enumerate(zs):
+        m = torso & (np.abs(Vb[:, 2] - z) < dz) & (np.abs(Vb[:, 0]) < 0.04)
+        cy[i] = 0.5 * (Vb[m, 1].min() + Vb[m, 1].max()) if m.sum() > 2 else G.spine_y(rig, np.array([z]))[0] - 0.08
+
+    def polar(P):
+        yc = np.interp(P[:, 2], zs, cy)
+        a = np.arctan2(P[:, 0], -(P[:, 1] - yc))
+        return a, np.hypot(P[:, 0], P[:, 1] - yc), yc
+
+    Bv = Vb[torso]
+    a, r, _ = polar(Bv)
+    zi = np.clip(np.round((Bv[:, 2] - zs[0]) / dz).astype(int), 0, nz - 1)
+    ai = np.round((a + math.pi) / (2 * math.pi) * na).astype(int) % na
+    H = np.zeros((nz, na))
+    np.maximum.at(H, (zi, ai), r)
+    for i in range(nz):                       # fill empty angle bins (circular interpolation)
+        row = H[i]
+        ok = row > 0
+        if ok.sum() < 3:
+            H[i] = H[i - 1] if i else 0.1
+            continue
+        idx = np.nonzero(ok)[0]
+        H[i] = np.interp(np.arange(na), np.r_[idx - na, idx, idx + na], np.r_[row[idx], row[idx], row[idx]])
+    for _ in range(3):
+        H = 0.5 * H + 0.25 * (np.roll(H, 1, 1) + np.roll(H, -1, 1))
+    ang = (np.arange(na) / na) * 2 * math.pi - math.pi
+    slope = o["drape_slope"] + o["drape_slope_side"] * np.sin(ang) ** 2
+    D = H.copy()
+    for k in range(1, int(o["drape_reach"] / dz)):
+        D[:-k] = np.maximum(D[:-k], H[k:] - slope[None, :] * k * dz)
+    ib = int(np.clip(round((f["zb"] - zs[0]) / dz), 0, nz - 1))
+    Bc = H[ib][None, :] + o["belt_ease"] + o["belt_blouse"] * np.abs(zs - f["zb"])[:, None]
+    D = np.minimum(D, np.maximum(Bc, H))
+    for _ in range(2):
+        D[1:-1] = 0.5 * D[1:-1] + 0.25 * (D[2:] + D[:-2])
+    # apply to the coat shell (torso vertices only, fading out towards the arms and the neck)
+    P = M.co(coat)
+    Wc = M.weights(coat)
+    armc = G.wsum(Wc, G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], "l")
+                  + G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], "r")
+                  + ["upperarm_half_l", "upperarm_half_r"])
+    a, r, yc = polar(P)
+    zi = np.clip((P[:, 2] - zs[0]) / dz, 0, nz - 1.001)
+    i0 = zi.astype(int)
+    tz = zi - i0
+    af = (a + math.pi) / (2 * math.pi) * na
+    a0 = np.floor(af).astype(int)
+    ta = af - a0
+    a0 %= na
+    a1 = (a0 + 1) % na
+    Dv = (D[i0, a0] * (1 - ta) + D[i0, a1] * ta) * (1 - tz) + (D[i0 + 1, a0] * (1 - ta) + D[i0 + 1, a1] * ta) * tz
+    k = (1 - M.smoothstep(0.15, 0.6, armc)) * (1 - M.smoothstep(f["zc"] - 0.02, f["zc"] + 0.04, P[:, 2]))
+    rt = np.maximum(r, Dv + o["drape_ease"])
+    rn = r + (rt - r) * k
+    dirv = np.stack([P[:, 0], P[:, 1] - yc, np.zeros(len(P))], 1) / np.maximum(r, 1e-6)[:, None]
+    P = np.stack([np.zeros(len(P)), yc, P[:, 2]], 1) + dirv * rn[:, None]
+    adj = M.adjacency(coat)
+    P = M.relax_shell(P, adj, collider, 0.008, iters=6, factor=0.35, pinned=M.boundary_vmask(coat))
+    M.set_co(coat, P)
+
+
+def _round_sleeve(coat, rig, s, o):
+    """Coat sleeve: rounder and looser than the arm (a tube, widening a little to the cuff)."""
+    P = M.co(coat)
+    Wc = M.weights(coat)
+    arm = G.wsum(Wc, G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], s))
+    side = (P[:, 0] > 0) if s == "l" else (P[:, 0] < 0)
+    sel = side & (arm > 0.1)
+    if not sel.any():
+        return
+    Pn = P.copy()
+    best = np.full(len(P), np.inf)
+    for bone, k_ease in (("upperarm_" + s, 0.004), ("lowerarm_" + s, 0.01)):
+        b = rig.data.bones[bone]
+        h, t = np.array(b.head_local), np.array(b.tail_local)
+        L = np.linalg.norm(t - h)
+        d = (t - h) / L
+        along = (P - h) @ d
+        tt = along / L
+        foot = h + np.outer(along, d)
+        rad = P - foot
+        r = np.linalg.norm(rad, axis=1)
+        inside = sel & (tt > -0.1) & (tt < 1.15)
+        bins = np.round(along / 0.012).astype(int)
+        rmax = np.zeros_like(r)
+        for bi in np.unique(bins[inside]):
+            m = inside & (bins == bi)
+            rmax[m] = r[m].max()
+        rt = r + (rmax - r) * o["sleeve_round"] + k_ease * np.clip(tt, 0, 1)
+        cand = foot + rad / np.maximum(r, 1e-6)[:, None] * rt[:, None]
+        use = inside & (r < best)
+        best = np.where(use, r, best)
+        Pn[use] = cand[use]
+    w = M.smoothstep(0.2, 0.75, arm)[:, None]
+    P = P + (Pn - P) * w
+    M.set_co(coat, M.smooth(P, M.adjacency(coat), 2, 0.3, fixed=M.boundary_vmask(coat) | ~sel))
 
 
 # ----------------------------------------------------------------------------- skirt
@@ -278,13 +455,14 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
     radial = np.stack([q[:, 0], q[:, 1] - yc], 1)
     r_top = np.linalg.norm(radial, axis=1)
     dirs = radial / r_top[:, None]
-    # leg/trouser extents per column direction and height
     LP = np.concatenate([M.co(ob) for ob in leg_objs])
     rows = []
+    r_prev = r_top.copy()
+    frontness = np.cos(ang) ** 2 * (np.cos(ang) > 0)
     for i in range(Rn + 1):
         t = i / Rn
         z = z_top + (z_hem - z_top) * t
-        flare = o["skirt_flare"] * t ** 1.1 * (1 + 0.2 * np.abs(np.sin(ang)))
+        flare = o["skirt_flare"] * t ** 1.4 * (1 + 0.3 * np.abs(np.sin(ang)))
         r = r_top + flare
         band = LP[np.abs(LP[:, 2] - z.mean()) < 0.035]
         if len(band):
@@ -298,20 +476,24 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
                     r[j] = max(r[j], rb[sel].max() + o["skirt_clear"])
         for _ in range(6):
             r = 0.5 * r + 0.25 * (np.roll(r, 1) + np.roll(r, -1))
-        r = np.maximum(r, r_top + flare * 0.7)
+        r = np.maximum(r, r_prev - 0.004)          # cloth hangs: never tucks in under the buttocks
+        r_prev = r.copy()
+        # drape folds, deeper at the back and sides and towards the hem
+        amp = o["fold_amp"] * M.smoothstep(0.05, 1.0, t) * (1 - 0.65 * frontness)
+        folds = amp * (np.sin(ang * o["fold_count"] + 0.7 * np.sin(ang * 3.0)) * 0.7
+                       + 0.3 * np.sin(ang * o["fold_count"] * 1.9 + 1.3))
+        r = r + folds
         P = np.stack([dirs[:, 0] * r, yc + dirs[:, 1] * r, z], 1)
         if i == 0:
             P = q.copy()
         rows.append(P)
     rows = np.array(rows)                                    # (Rn+1, N, 3)
-    # split columns: front, sides, back
     splits = {"front": (0.0, Rn + 1), "left": (math.pi / 2, o["side_slit_rows"]),
               "back": (math.pi, o["back_vent_rows"]), "right": (1.5 * math.pi, o["side_slit_rows"])}
     split_col = {}
     for k, (a, nrows) in splits.items():
         d = np.abs((ang - a + math.pi) % (2 * math.pi) - math.pi)
         split_col[k] = (int(np.argmin(d)), nrows)
-    # vertices: grid ids, plus duplicates for split columns on rows >= Rn+1-nrows (row 0 never split)
     verts = [rows[i, j] for i in range(Rn + 1) for j in range(N)]
     vid = lambda i, j: i * N + j
     dup = {}
@@ -321,28 +503,27 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
             dup[(i, c)] = len(verts)
             verts.append(rows[i, c].copy())
     verts = np.array(verts)
-    faces, uvs, fpanel = [], [], []
+    faces, uvs = [], []
     col_panel = np.zeros(N, int)
     for j in range(N):
-        a = ang[j]
-        col_panel[j] = int(a // (math.pi / 2)) % 4
+        col_panel[j] = int(ang[j] // (math.pi / 2)) % 4
     split_cols = {c for c, _ in split_col.values()}
+    seglen_u = np.linalg.norm(np.diff(np.vstack([rows[Rn // 2], rows[Rn // 2][:1]]), axis=0), axis=1)
+    ucum = np.r_[0, np.cumsum(seglen_u)]
+    vlen = np.linalg.norm(np.diff(rows[:, 0], axis=0), axis=1)
+    vcum = np.r_[0, np.cumsum(vlen)]
     for i in range(Rn):
         for j in range(N):
             j2 = (j + 1) % N
             a, b, c_, d = vid(i, j), vid(i, j2), vid(i + 1, j2), vid(i + 1, j)
-            # faces to the right of a split column (j2 == split) use the original vertex; faces to the
-            # left of it (j == split) use the duplicate
             if j in split_cols:
                 if (i, j) in dup:
                     a = dup[(i, j)]
                 if (i + 1, j) in dup:
                     d = dup[(i + 1, j)]
             faces.append((a, d, c_, b))
-            uvs.append([(j / N, 1 - i / Rn), (j / N, 1 - (i + 1) / Rn), ((j + 1) / N, 1 - (i + 1) / Rn), ((j + 1) / N, 1 - i / Rn)])
-            fpanel.append(col_panel[j])
-    # split edges: the higher-angle panel's edge sits a little outside the other one; at the front the
-    # left panel (+X) also laps across the centre over the right panel
+            u0, u1 = ucum[j], ucum[j + 1]
+            uvs.append([(u0, -vcum[i]), (u0, -vcum[i + 1]), (u1, -vcum[i + 1]), (u1, -vcum[i])])
     for key, (c, nrows) in split_col.items():
         n_out = np.array([dirs[c, 0], dirs[c, 1], 0.0])
         for i in range(max(1, Rn + 1 - nrows), Rn + 1):
@@ -353,11 +534,9 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
                 verts[oid] += n_out * 0.003 + np.array([gap * 0.5, 0, 0])
                 verts[vid(i, c)] += np.array([-gap * 0.5, 0, 0])
             else:
-                verts[oid] += n_out * 0.0015
+                verts[oid] += n_out * 0.0018
     ob = M.make_object("skirt", verts, faces, uvs)
-    # weights: top row keeps the shell weights, then hands over to the panel chains
     n = len(verts)
-    s_m = np.zeros(n)
     colj = np.zeros(n, int)
     rowi = np.zeros(n, int)
     for i in range(Rn + 1):
@@ -371,12 +550,10 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
     cum = np.vstack([np.zeros((1, N)), np.cumsum(seglen, axis=0)])
     s_m = cum[rowi, colj]
     L = float(cum[-1].mean())
-    # panel membership: duplicates belong to the panel on the left of the split (higher angle side)
     panel_of = np.array([col_panel[c] for c in colj])
     for (i, j), k in dup.items():
         panel_of[k] = col_panel[(j + 1) % N]
         panel_of[vid(i, j)] = col_panel[(j - 1) % N]
-    # above the slit tops blend panels by angle
     A = ang[colj]
     centers = np.array([p[1] for p in PANELS])
     Wp = np.maximum(np.cos(A[:, None] - centers[None, :]), 0) ** 2
@@ -394,13 +571,18 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
     chains = {}
     for pi_, (key, center, side) in enumerate(PANELS):
         jc = int(np.argmin(np.abs((ang - center + math.pi) % (2 * math.pi) - math.pi)))
-        pts = [rows[int(round(Rn * f)), jc] for f in (0.0, 1 / 3, 2 / 3, 1.0)]
+        # chain line: the panel's centre column without the drape folds
+        pts = []
+        for fr in (0.0, 1 / 3, 2 / 3, 1.0):
+            i = int(round(Rn * fr))
+            js = [(jc + dj) % N for dj in range(-3, 4)]
+            pts.append(rows[i, js].mean(0))
         chains[key] = {"points": pts, "side": side, "col": jc,
                        "names": ["coat_%s_%02d" % (key, k + 1) for k in range(3)]}
     bounds = [0.0, L / 3, 2 * L / 3, L]
     Wtop = {k: v[loop] for k, v in Wc.items()}
     for s_ in "lr":                       # the coat hangs from the pelvis; the tails follow the legs
-        for nm in ("thigh_" + s_, "thigh_twist_01_" + s_):
+        for nm in ("thigh_" + s_, "thigh_twist_01_" + s_, "thigh_half_" + s_):
             if nm in Wtop:
                 Wtop["pelvis"] = Wtop.get("pelvis", 0) + Wtop.pop(nm)
     Wall = {}
@@ -422,129 +604,132 @@ def _skirt(coat, loop, rig, cfg, leg_objs):
 
 # ----------------------------------------------------------------------------- lapels / collar / belt
 
-def _lapels(coat, rig, z_button, cfg):
-    """Lapels laid along the analytic V line (clean edges), folded over the coat chest."""
+def _lapels(coat, rig, f, cfg):
+    """Notched lapels: each folds out from the V edge (roll line) and lies on the chest, widest below
+    the collar, with a notch under the collar's end; a little roll lift near the roll line; real
+    thickness from a solidify with rim."""
     o = cfg["outfit"]
-    zc = rig.data.bones["clavicle_l"].head_local[2]
-    z_top = zc + 0.01
     col = M.Collider([coat])
     parts = []
-    n = 16
-    zs = np.linspace(z_button + 0.004, z_top + 0.045, n)
+    n, nw = 22, 5
+    z0, z1 = f["zvb"] - 0.004, f["z_vtop"] - 0.012
+    zs = np.linspace(z0, z1, n)
+    t = (zs - z0) / (z1 - z0)
     for sg in (1.0, -1.0):
         e, nn = [], []
         for z in zs:
-            x = sg * (float(v_halfwidth(np.array([z]), z_button, z_top + 0.06, o["v_halfwidth_top"] * 1.1)[0]) + 0.003)
+            x = sg * (float(vline(np.array([z]), f, o)[0]) + 0.002)
             r = col.ray(np.array([x, -0.6, z]), np.array([0, 1.0, 0]), 1.2)
             if r[0] is None:
                 loc, nrm, _ = col.nearest(np.array([[x, -0.1, z]]))
-                e.append(loc[0]); nn.append(nrm[0])
+                e.append(loc[0])
+                nn.append(nrm[0])
             else:
-                e.append(np.array(r[0])); nn.append(np.array(r[1]))
+                e.append(np.array(r[0]))
+                nn.append(np.array(r[1]))
         e, nn = np.array(e), np.array(nn)
         nn /= np.linalg.norm(nn, axis=1, keepdims=True)
-        t = np.linspace(0, 1, n)
-        width = o["lapel_width"] * (np.sin(np.clip(t * 1.15, 0, 1) * np.pi * 0.5) ** 0.9) * (1 - 0.55 * M.smoothstep(0.86, 1.0, t))
+        for _ in range(2):
+            nn[1:-1] = 0.5 * nn[1:-1] + 0.25 * (nn[2:] + nn[:-2])
+            nn /= np.linalg.norm(nn, axis=1, keepdims=True)
+        # outline: grows to the widest point, runs straight up, then the notch steps in
+        wmax = o["lapel_width"]
+        width = wmax * np.clip(t / 0.62, 0, 1) ** 0.85
+        notch = M.smoothstep(0.84, 0.9, t)
+        width = width * (1 - 0.45 * notch) * (1 - 0.35 * M.smoothstep(0.93, 1.0, t))
         lat = np.array([sg, 0.0, 0.0])
         out_dir = lat - nn * (nn @ lat)[:, None]
         out_dir /= np.linalg.norm(out_dir, axis=1, keepdims=True)
-        inner = e + nn * 0.003
-        outer = e + out_dir * width[:, None] + nn * 0.0045
-        mid = inner * 0.5 + outer * 0.5 + nn * 0.0015
-        verts = np.vstack([inner, mid, outer])
-        faces, uvs = [], []
-        for i in range(n - 1):
-            for r_ in range(2):
-                a, b = r_ * n + i, r_ * n + i + 1
-                c, d = (r_ + 1) * n + i + 1, (r_ + 1) * n + i
-                uv = [(r_ / 2, i / (n - 1)), (r_ / 2, (i + 1) / (n - 1)), ((r_ + 1) / 2, (i + 1) / (n - 1)), ((r_ + 1) / 2, i / (n - 1))]
-                if sg > 0:
-                    faces.append((a, b, c, d)); uvs.append(uv)
-                else:
-                    faces.append((a, d, c, b)); uvs.append([uv[0], uv[3], uv[2], uv[1]])
-        parts.append((verts, faces, uvs))
-    V, F, U, _ = M.merge_parts(parts)
-    ob = M.make_object("lapels", V, F, U)
-    M.solidify(ob, 0.0025, offset=-1.0)
+        rows = []
+        for k in range(nw):
+            fw = k / (nw - 1)
+            lift = 0.0035 + o["lapel_roll"] * (1 - fw) ** 2 * (0.3 + 0.7 * t)
+            p = e + out_dir * (width * fw)[:, None] + nn * lift[:, None]
+            # settle onto the coat surface away from the roll line
+            if k:
+                hit = col.nearest(p)[0]
+                p = p * (1 - fw * 0.6) + (hit + nn * 0.0038) * (fw * 0.6)
+            rows.append(p)
+        P = np.stack(rows, 1)                       # (n, nw, 3)
+        if sg < 0:
+            P = P[:, ::-1]
+        g = _grid("lapel", P)
+        parts.append(g)
+    ob = M.join(parts, "lapels")
+    M.solidify(ob, 0.0034, offset=-1.0)
     G.set_part_attr(ob, "part", COAT_LAPEL)
     return ob
 
 
-def _shirt_collar(body, rig, cfg):
-    """Shirt collar: a clean band round the neck, open at the front, with two collar points."""
-    zn = rig.data.bones["neck_01"].head_local[2]
-    yn = rig.data.bones["neck_01"].head_local[1]
-    col = M.Collider([body])
-    angs = np.radians(np.linspace(-160, 160, 33))          # 0 = back (+Y)
-    rows = []
-    for k, hgt in enumerate((0.0, 0.016, 0.032)):
-        ring = []
-        for a in angs:
-            d = np.array([np.sin(a), np.cos(a), 0.0])
-            z = zn - 0.032 + 0.016 * (1 - np.cos(a)) * 0.5 + hgt
-            o_ = np.array([0, yn, z])
-            r = col.ray(o_ + d * 0.25, -d, 0.3)
-            p = np.array(r[0]) if r[0] is not None else o_ + d * 0.055
-            ring.append(p + d * (0.006 + 0.004 * k))
-        rows.append(ring)
-    rows = np.array(rows)
-    nR, nA = rows.shape[:2]
-    verts = list(rows.reshape(-1, 3))
-    faces, uvs = [], []
-    for i in range(nR - 1):
-        for j in range(nA - 1):
-            a, b, c, d = i * nA + j, i * nA + j + 1, (i + 1) * nA + j + 1, (i + 1) * nA + j
-            faces.append((a, d, c, b))
-            uvs.append([(j / (nA - 1), i / (nR - 1)), (j / (nA - 1), (i + 1) / (nR - 1)),
-                        ((j + 1) / (nA - 1), (i + 1) / (nR - 1)), ((j + 1) / (nA - 1), i / (nR - 1))])
-    # collar points: from each front end of the band down over the shirt front
-    for j0, sg in ((0, -1.0), (nA - 1, 1.0)):
-        top = rows[2, j0]
-        bot = rows[0, j0]
-        tip = bot + np.array([sg * 0.012, -0.012, -0.048])
-        base = len(verts)
-        verts += [top, bot, tip]
-        faces.append((base, base + 1, base + 2) if sg > 0 else (base, base + 2, base + 1))
-        uvs.append([(0.0, 1.0), (0.0, 0.0), (0.5, 0.0)] if sg > 0 else [(0.0, 1.0), (0.5, 0.0), (0.0, 0.0)])
-    ob = M.make_object("shirt_collar", np.array(verts), faces, uvs)
-    M.solidify(ob, 0.0022, offset=-1.0)
-    G.set_part_attr(ob, "part", SHIRT_COLLAR)
-    return ob
-
-
-def _collar(body, rig, cfg, coat):
+def _collar(body, rig, cfg, coat, f):
+    """Coat collar: a stand round the back of the neck and a fall folded down over it (two layers,
+    so the edge shows its thickness), ending at the lapels' notches."""
     o = cfg["outfit"]
-    zn = rig.data.bones["neck_01"].head_local[2]
+    zn = f["zn"]
     nb = rig.data.bones["neck_01"]
     axis_y = nb.head_local[1]
     col = M.Collider([body])
-    rings = []
-    angs = np.linspace(math.radians(-118), math.radians(118), 25)     # around the back of the neck
-    heights = [0.0, 0.018, 0.036, o["collar_height"]]
-    Pc = M.co(coat)
-    for hgt in heights:
+    colc = M.Collider([coat])
+    a_end = math.radians(o["collar_end_deg"])
+    angs = np.linspace(-a_end, a_end, 31)                     # 0 = back of the neck (+Y)
+    hs, hf = o["collar_height"], o["collar_fall"]
+    prof = [(0.0, 0.0), (0.004, 0.45 * hs), (0.006, hs), (0.012, hs + 0.006), (0.02, hs - 0.25 * hf),
+            (0.03, hs - hf)]
+    rows = []
+    for (dr, dz) in prof:
         ring = []
         for a in angs:
-            d = np.array([math.sin(a), math.cos(a), 0.0])           # a=0 points to the back (+Y)
-            z = zn - 0.02 + 0.012 * (1 - math.cos(a)) + hgt
+            d = np.array([math.sin(a), math.cos(a), 0.0])
+            front = 1 - 0.5 * (1 + math.cos(a))               # 0 back .. 1 front
+            z = zn - 0.025 + 0.03 * front + dz * (1 - 0.25 * front)
             o_ = np.array([0, axis_y, z])
-            r = col.ray(o_ + d * 0.25, -d, 0.3)
+            r = col.ray(o_ + d * 0.3, -d, 0.35)
             p = np.array(r[0]) if r[0] is not None else o_ + d * 0.06
-            ring.append(p + d * (0.017 + hgt * 0.35))
-        rings.append(ring)
-    rings = np.array(rings)
-    nR, nA = rings.shape[:2]
-    verts = rings.reshape(-1, 3)
-    faces, uvs = [], []
-    for i in range(nR - 1):
-        for j in range(nA - 1):
-            a, b, c, d = i * nA + j, i * nA + j + 1, (i + 1) * nA + j + 1, (i + 1) * nA + j
-            faces.append((a, d, c, b))
-            uvs.append([(j / (nA - 1), i / (nR - 1)), (j / (nA - 1), (i + 1) / (nR - 1)),
-                        ((j + 1) / (nA - 1), (i + 1) / (nR - 1)), ((j + 1) / (nA - 1), i / (nR - 1))])
-    ob = M.make_object("collar", verts, faces, uvs)
+            ring.append(p + d * (0.016 + dr + 0.01 * front))
+        rows.append(ring)
+    P = np.array(rows)
+    # the fall's lower edge spreads onto the coat's shoulders and lapels
+    for j in range(P.shape[1]):
+        low = P[-1, j]
+        hit = colc.nearest(low[None])[0][0]
+        if np.linalg.norm(low - hit) < 0.02:
+            P[-1, j] = hit + (low - hit) / max(np.linalg.norm(low - hit), 1e-6) * 0.004
+    ob = _grid("collar", P[:, ::-1])
     M.solidify(ob, 0.003, offset=-1.0)
     G.set_part_attr(ob, "part", COAT_COLLAR)
+    return ob
+
+
+def _shirt_collar(body, rig, cfg):
+    """Shirt collar: a band round the neck (open at the front for the knot) and a fall with two
+    pointed tips that spread onto the shirt front beside the tie knot."""
+    zn = rig.data.bones["neck_01"].head_local[2]
+    yn = rig.data.bones["neck_01"].head_local[1]
+    col = M.Collider([body])
+    angs = np.radians(np.linspace(-162, 162, 37))          # 0 = back (+Y)
+    prof = [(0.0, 0.0), (0.002, 0.018), (0.003, 0.033), (0.008, 0.036), (0.012, 0.02), (0.016, 0.006)]
+    rows = []
+    for dr, dz in prof:
+        ring = []
+        for a in angs:
+            d = np.array([np.sin(a), np.cos(a), 0.0])
+            front = 0.5 * (1 - np.cos(a))
+            z = zn - 0.034 + 0.018 * front + dz * (1 - 0.15 * front)
+            o_ = np.array([0, yn, z])
+            r = col.ray(o_ + d * 0.25, -d, 0.3)
+            p = np.array(r[0]) if r[0] is not None else o_ + d * 0.055
+            ring.append(p + d * (0.0045 + dr))
+        rows.append(ring)
+    P = np.array(rows)
+    # collar points: the fall's front ends extend down and out over the shirt front
+    for j0, sg in ((0, -1.0), (len(angs) - 1, 1.0)):
+        for k, j in enumerate((j0, j0 + int(sg) * -1, j0 + int(sg) * -2)):
+            w = (1.0, 0.55, 0.2)[k]
+            P[-1, j] += np.array([sg * 0.012, -0.01, -0.036]) * w
+            P[-2, j] += np.array([sg * 0.006, -0.006, -0.018]) * w
+    ob = _grid("shirt_collar", P[:, ::-1])
+    M.solidify(ob, 0.0022, offset=-1.0)
+    G.set_part_attr(ob, "part", SHIRT_COLLAR)
     return ob
 
 
@@ -554,7 +739,7 @@ def _belt(coat, rig, cfg, skirt=None):
     zb = zp + o["belt_above_pelvis"]
     col = M.Collider([coat])
     yc = G.spine_y(rig, np.array([zb]))[0] - 0.01
-    n = 56
+    n = 64
     angs = np.linspace(0, 2 * math.pi, n, endpoint=False)
     rows = []
     for dz in (-o["belt_height"] / 2, 0.0, o["belt_height"] / 2):
@@ -564,119 +749,440 @@ def _belt(coat, rig, cfg, skirt=None):
             org = np.array([0, yc, zb + dz])
             r = col.ray(org + d * 0.5, -d, 0.6)
             p = np.array(r[0]) if r[0] is not None else org + d * 0.15
-            ring.append(p + d * 0.0032)
+            ring.append(p + d * 0.0035)
         rows.append(ring)
     rows = np.array(rows)
-    verts = rows.reshape(-1, 3)
-    faces, uvs = [], []
-    for i in range(2):
-        for j in range(n):
-            j2 = (j + 1) % n
-            a, b, c, d = i * n + j, i * n + j2, (i + 1) * n + j2, (i + 1) * n + j
-            faces.append((a, b, c, d))
-            uvs.append([(j / n, i / 2), ((j + 1) / n, i / 2), ((j + 1) / n, (i + 1) / 2), (j / n, (i + 1) / 2)])
-    ob = M.make_object("belt", verts, faces, uvs)
-    M.solidify(ob, 0.0025, offset=-1.0)
+    rows[1] += (rows[1] - np.array([0, yc, zb])) * np.array([1, 1, 0]) * 0.012   # slightly domed
+    ob = _grid("belt", rows, closed_u=True)
+    M.solidify(ob, 0.003, offset=-1.0)
     G.set_part_attr(ob, "part", COAT_BELT)
     # tied knot and two hanging tails, front-left of centre
     col = M.Collider([coat] + ([skirt] if skirt is not None else []))
     kx = o["belt_knot_x"]
     r = col.ray(np.array([kx, -0.6, zb]), np.array([0, 1.0, 0]), 1.2)
     ky = (r[0][1] if r[0] is not None else yc - 0.12) - 0.012
-    knot_v, knot_f, knot_u = M.tube(np.array([[kx - 0.018, ky, zb], [kx + 0.018, ky, zb]]),
-                                   np.full(2, 0.016), np.full(2, 0.011), 8,
-                                   np.array([[0, 0, 1.0]] * 2), np.array([[0, -1.0, 0]] * 2), cap_start=True, cap_end=True)
+    knot_v, knot_f, knot_u = M.tube(np.array([[kx - 0.02, ky, zb], [kx, ky - 0.004, zb], [kx + 0.02, ky, zb]]),
+                                   np.full(3, 0.018), np.array([0.011, 0.013, 0.011]), 10,
+                                   np.array([[0, 0, 1.0]] * 3), np.array([[0, -1.0, 0]] * 3), cap_start=True,
+                                   cap_end=True)
     parts = [(knot_v, knot_f, knot_u)]
-    for dx, length, ang in ((-0.008, 0.2, 0.08), (0.012, 0.16, -0.18)):
+    for dx, length, ang in ((-0.008, 0.21, 0.08), (0.014, 0.17, -0.2)):
         pts = []
-        for t in np.linspace(0, 1, 7):
-            z = zb - 0.01 - length * t
+        for t in np.linspace(0, 1, 9):
+            z = zb - 0.012 - length * t
             x = kx + dx + np.sin(ang) * length * t
             rr = col.ray(np.array([x, -0.6, z]), np.array([0, 1.0, 0]), 1.2)
-            y = (rr[0][1] if rr[0] is not None else ky) - 0.006 - 0.004 * (1 - t)
+            y = (rr[0][1] if rr[0] is not None else ky) - 0.007 - 0.004 * (1 - t)
             pts.append((x, y, z))
         pts = np.array(pts)
-        hw = o["belt_height"] * 0.42
+        hw = o["belt_height"] * 0.45
         tv, tf, tu = [], [], []
         for k, p in enumerate(pts):
-            tv += [p + np.array([-hw, 0, 0]), p + np.array([hw, 0, 0])]
+            tv += [p + np.array([-hw, 0, 0]), p + np.array([0, -0.0015, 0]), p + np.array([hw, 0, 0])]
         for k in range(len(pts) - 1):
-            a = 2 * k
-            tf.append((a, a + 1, a + 3, a + 2))
-            tu.append([(0, k / 6), (1, k / 6), (1, (k + 1) / 6), (0, (k + 1) / 6)])
+            a = 3 * k
+            tf += [(a, a + 1, a + 4, a + 3), (a + 1, a + 2, a + 5, a + 4)]
+            tu += [[(0, k / 8), (0.5, k / 8), (0.5, (k + 1) / 8), (0, (k + 1) / 8)],
+                   [(0.5, k / 8), (1, k / 8), (1, (k + 1) / 8), (0.5, (k + 1) / 8)]]
         tip = len(tv)
-        tv.append(pts[-1] + np.array([0, 0, -0.025]))
-        tf.append((2 * (len(pts) - 1), 2 * (len(pts) - 1) + 1, tip))
-        tu.append([(0, 1), (1, 1), (0.5, 1)])
+        last = 3 * (len(pts) - 1)
+        tv.append(pts[-1] + np.array([0, 0, -0.028]))
+        tf += [(last, last + 1, tip), (last + 1, last + 2, tip)]
+        tu += [[(0, 1), (0.5, 1), (0.5, 1.1)], [(0.5, 1), (1, 1), (0.5, 1.1)]]
         parts.append((np.array(tv), tf, tu))
     V, F, U, _ = M.merge_parts(parts)
     tails = M.make_object("belt_tie", V, F, U)
-    M.solidify(tails, 0.0025, offset=-1.0)
+    M.solidify(tails, 0.003, offset=-1.0)
     G.set_part_attr(tails, "part", COAT_BELT)
     return M.join([ob, tails], "belt")
 
 
-# ----------------------------------------------------------------------------- tie
-
-def tie(rig, cfg, shirt, z_button):
+def _buttons(coat, rig, f, cfg):
+    """Double-breasted front: a pair of horn buttons under the V, one pair above the belt."""
     o = cfg["outfit"]
-    zn = rig.data.bones["neck_01"].head_local[2]
-    col = M.Collider([shirt])
-    z_knot = zn - 0.03
-    rows = np.linspace(z_knot - 0.035, z_button - 0.015, 16)
-    cols = np.linspace(-1, 1, 5)
-    verts = []
-    for k, z in enumerate(rows):
-        t = k / (len(rows) - 1)
-        hw = 0.018 + (o["tie_width"] / 2 - 0.018) * t ** 0.8
-        for c in cols:
-            x = c * hw
-            org = np.array([x, -0.5, z])
-            r = col.ray(org, np.array([0, 1.0, 0]), 1.0)
-            y = r[0][1] - 0.0045 if r[0] is not None else -0.1
-            verts.append((x, y, z - (0.012 * (1 - abs(c)) if k == len(rows) - 1 else 0)))
-    verts = np.array(verts)
-    nc = len(cols)
-    faces, uvs = [], []
-    for i in range(len(rows) - 1):
-        for j in range(nc - 1):
-            a, b, c, d = i * nc + j, i * nc + j + 1, (i + 1) * nc + j + 1, (i + 1) * nc + j
-            faces.append((a, d, c, b))
-            uvs.append([(j / (nc - 1), 1 - i / len(rows)), (j / (nc - 1), 1 - (i + 1) / len(rows)),
-                        ((j + 1) / (nc - 1), 1 - (i + 1) / len(rows)), ((j + 1) / (nc - 1), 1 - i / len(rows))])
-    # knot: a small tapered block at the collar
-    kc = np.array([0.0, 0, z_knot - 0.012])
-    r = col.ray(np.array([0, -0.5, kc[2]]), np.array([0, 1.0, 0]), 1.0)
-    ky = r[0][1] - 0.006 if r[0] is not None else -0.1
-    kv = []
-    for z, hw, dy in ((z_knot + 0.006, 0.017, 0.0), (z_knot - 0.012, 0.015, -0.012), (z_knot - 0.03, 0.01, -0.004)):
-        for x, yy in ((-hw, 0.0), (-hw * 0.6, -0.006), (hw * 0.6, -0.006), (hw, 0.0)):
-            kv.append((x, ky + yy + dy * 0.4, z))
-    base = len(verts)
-    verts = np.vstack([verts, np.array(kv)])
-    for i in range(2):
-        for j in range(3):
-            a, b = base + i * 4 + j, base + i * 4 + j + 1
-            c, d = base + (i + 1) * 4 + j + 1, base + (i + 1) * 4 + j
-            faces.append((a, d, c, b))
-            uvs.append([(0.8 + j * 0.05, 0.9 - i * 0.05), (0.8 + j * 0.05, 0.85 - i * 0.05),
-                        (0.85 + j * 0.05, 0.85 - i * 0.05), (0.85 + j * 0.05, 0.9 - i * 0.05)])
-    ob = M.make_object("tie", verts, faces, uvs)
-    M.solidify(ob, 0.0025, offset=-1.0)
-    G.set_part_attr(ob, "part", TIE)
+    col = M.Collider([coat])
+    parts = []
+    zs = [f["zvb"] - 0.03]
+    for z in zs:
+        for x in (o["button_x"], -o["button_x"]):
+            r = col.ray(np.array([x, -0.6, z]), np.array([0, 1.0, 0]), 1.2)
+            if r[0] is None:
+                continue
+            p, nrm = np.array(r[0]), -np.array(r[1]) if np.array(r[1])[1] > 0 else np.array(r[1])
+            nrm = nrm / np.linalg.norm(nrm)
+            a = np.cross(nrm, [0, 0, 1.0])
+            a /= np.linalg.norm(a)
+            b = np.cross(nrm, a)
+            path = np.array([p + nrm * 0.0005, p + nrm * 0.0035, p + nrm * 0.0048])
+            rad = np.array([0.0105, 0.0105, 0.008])
+            v, fc, uv = M.tube(path, rad, rad, 12, np.repeat(a[None], 3, 0), np.repeat(b[None], 3, 0),
+                               cap_start=True, cap_end=True)
+            parts.append((v, fc, uv))
+    V, F, U, _ = M.merge_parts(parts)
+    ob = M.make_object("buttons", V, F, U)
+    G.set_part_attr(ob, "part", COAT_BUTTON)
     return ob
 
 
-def coat_rig(rig, skirt_info):
-    """Coat tail chains (pelvis children) and thigh-follow helpers (Blender-only, not exported)."""
+def _cuff_strap(coat, rig, s, o):
+    """Trench cuff strap round the sleeve a little above its end (a raised band with an edge)."""
+    b = rig.data.bones["lowerarm_" + s]
+    h, t = np.array(b.head_local), np.array(b.tail_local)
+    d = (t - h) / np.linalg.norm(t - h)
+    c = h + (t - h) * (o["sleeve_end_t"] - 0.2)
+    g = M.duplicate(coat, "strap_" + s)
+    P = M.co(g)
+    side = (P[:, 0] > 0) if s == "l" else (P[:, 0] < 0)
+    M.delete_verts(g, ~side | (np.abs((P - c) @ d) > 0.04))
+    wdt = 0.026
+
+    def slab(Q):
+        along = (Q - c) @ d
+        foot = c + np.outer(along, d)
+        return np.minimum(wdt / 2 - np.abs(along), 0.14 - np.linalg.norm(Q - foot, axis=1))
+    M.cut_implicit(g, slab)
+    G.drop_small_islands(g, 8)
+    P = M.co(g)
+    along = (P - c) @ d
+    foot = c + np.outer(along, d)
+    rad = P - foot
+    P = P + rad / np.maximum(np.linalg.norm(rad, axis=1), 1e-6)[:, None] * 0.003
+    M.set_co(g, P)
+    M.add_boundary_lip(g, 0.0025)
+    for a in list(g.data.attributes):
+        if a.name in ("lip", "skirt_t"):
+            g.data.attributes.remove(a)
+    G.set_part_attr(g, "part", COAT_CUFF)
+    return g
+
+
+# ----------------------------------------------------------------------------- tie
+
+def tie(rig, cfg, shirt, f):
+    """Four-in-hand knot under the collar and a blade that hangs from it (over the bust it bridges
+    instead of following the body), tapering to the wide end with a pointed tip."""
+    o = cfg["outfit"]
+    zn = f["zn"]
+    col = M.Collider([shirt])
+
+    def front_y(z, x=0.0):
+        r = col.ray(np.array([x, -0.5, z]), np.array([0, 1.0, 0]), 1.0)
+        return r[0][1] if r[0] is not None else -0.1
+
+    z_knot = zn - 0.036
+    kh = 0.048
+    zs_k = np.linspace(z_knot + kh * 0.45, z_knot - kh * 0.55, 6)
+    rings = []
+    for i, z in enumerate(zs_k):
+        t = i / (len(zs_k) - 1)
+        hw = 0.02 - 0.012 * t ** 1.3
+        dep = 0.011 + 0.006 * math.sin(math.pi * t)
+        yb = front_y(z) - 0.002
+        ring = []
+        for a in np.linspace(0, 2 * math.pi, 16, endpoint=False):
+            c, s_ = math.cos(a), math.sin(a)
+            x = hw * np.sign(c) * abs(c) ** 0.8
+            y = yb - dep * 0.5 - dep * 0.5 * np.sign(s_) * abs(s_) ** 0.8
+            if s_ < 0 and abs(x) < hw * 0.35:
+                y -= 0.0012 * (1 - abs(x) / (hw * 0.35)) * math.sin(math.pi * t)    # the dimple
+            ring.append((x, y, z))
+        rings.append(ring)
+    K = np.array(rings)
+    knot = _grid("tie_knot", K, closed_u=True)
+    G.set_part_attr(knot, "part", TIE_KNOT)
+    # blade
+    z_top = zs_k[-1] + 0.006
+    z_tip = f["zvb"] + 0.03
+    n = 30
+    zs = np.linspace(z_top, z_tip, n)
+    yb = np.array([front_y(z) for z in zs]) - 0.0035
+    hang = yb.copy()
+    for i in range(1, n):                     # hangs from the highest forward point (limited slope)
+        hang[i] = min(yb[i], hang[i - 1] + 0.12 * (zs[i - 1] - zs[i]))
+    tuck = M.smoothstep(f["zvb"] + 0.05, f["zvb"] + 0.005, zs)     # tucked under the closed coat front
+    hang = hang + (yb - hang) * tuck
+    cols = np.linspace(-1, 1, 7)
+    P = np.zeros((n, len(cols), 3))
+    for i, z in enumerate(zs):
+        t = i / (n - 1)
+        hw = 0.016 + (o["tie_width"] / 2 - 0.016) * t ** 0.85 - 0.007 * (1 - M.smoothstep(0.0, 0.08, t))
+        tip = M.smoothstep(0.9, 1.0, t)
+        for j, c in enumerate(cols):
+            zz = z - 0.03 * tip * (1 - abs(c))
+            y = hang[i] - 0.0016 * (1 - c * c) + 0.0006 * abs(c)
+            P[i, j] = (c * hw, y, zz)
+    P[-1, :, 2] = z_tip - 0.034 * (1 - np.abs(cols))          # pointed tip, laid back onto the shirt
+    P[-2:, :, 1] += 0.003
+    blade = _grid("tie_blade", P)
+    M.solidify(blade, 0.0032, offset=-1.0)
+    G.set_part_attr(blade, "part", TIE)
+    return M.join([blade, knot], "tie")
+
+
+# ----------------------------------------------------------------------------- trousers
+
+def _hem_cut(rig, s, cfg):
+    """Slanted trouser hem: rests on the loafer's vamp at the front, longer at the heel."""
+    ank = np.array(rig.data.bones["foot_" + s].head_local)
+    sole = cfg["sole_m"]
+    zf, zb = sole + cfg["outfit"]["hem_front_z"], sole + cfg["outfit"]["hem_back_z"]
+
+    def fn(P):
+        mine = (P[:, 0] > 0) if s == "l" else (P[:, 0] < 0)
+        k = np.clip((P[:, 1] - (ank[1] - 0.06)) / 0.12, 0, 1)     # 0 front .. 1 back
+        zh = zf + (zb - zf) * k
+        return np.where(mine, P[:, 2] - zh, 1.0)
+    return fn
+
+
+def _crease_and_break(pants, rig, cfg):
+    """Pressed front crease (a ridge on the front centre line of each leg) and a break (fold) where
+    the hem rests on the shoe."""
+    o = cfg["outfit"]
+    P = M.co(pants)
+    sole = cfg["sole_m"]
+    for s, sg in (("l", 1.0), ("r", -1.0)):
+        mine = P[:, 0] * sg > 0.02
+        for bone in ("thigh_" + s, "calf_" + s):
+            b = rig.data.bones[bone]
+            h, t = np.array(b.head_local), np.array(b.tail_local)
+            d = (t - h) / np.linalg.norm(t - h)
+            tt = ((P - h) @ d) / np.linalg.norm(t - h)
+            foot = h + np.outer(tt * np.linalg.norm(t - h), d)
+            rad = P - foot
+            rn = np.maximum(np.linalg.norm(rad, axis=1), 1e-6)
+            fwd = -rad[:, 1] / rn                          # 1 on the front centre line
+            on = mine & (tt > (0.25 if bone.startswith("thigh") else -0.02)) & (tt < 1.02)
+            ridge = np.exp(-((1 - np.clip(fwd, -1, 1)) / 0.035)) * on
+            back = np.exp(-((1 + np.clip(fwd, -1, 1)) / 0.05)) * on * 0.5
+            push = o["crease_depth"] * (ridge + back)
+            P = P + rad / rn[:, None] * push[:, None]
+        ank = np.array(rig.data.bones["foot_" + s].head_local)
+        zbk = sole + o["hem_front_z"] + 0.035
+        fold = np.exp(-((P[:, 2] - zbk) / 0.012) ** 2) * M.smoothstep(ank[1] + 0.02, ank[1] - 0.04, P[:, 1]) * mine
+        c = np.array([ank[0], ank[1], 0])
+        rad = P - c
+        rad[:, 2] = 0
+        rn = np.maximum(np.linalg.norm(rad, axis=1), 1e-6)
+        P = P + rad / rn[:, None] * (0.004 * fold)[:, None]
+    M.set_co(pants, P)
+
+
+# ----------------------------------------------------------------------------- loafers
+
+def loafer(body, rig, cfg, s, W, V):
+    """Penny loafer on a last fitted to the foot: the upper is lofted over the foot's sections (with
+    clearance, toe room, rounded toe and heel), opened at the topline round the ankle; a saddle strap
+    lies across the vamp; a welted sole with a stacked heel. Weights: foot behind the ball joint,
+    ball in front, blended over the flex line."""
+    o = cfg["outfit"]
+    sole = cfg["sole_m"]
+    ank = np.array(rig.data.bones["foot_" + s].head_local)
+    ballp = np.array(rig.data.bones["ball_" + s].head_local)
+    fwd = ballp - ank
+    fwd[2] = 0
+    fwd /= np.linalg.norm(fwd)
+    outw = np.array([1.0, 0, 0]) if s == "l" else np.array([-1.0, 0, 0])
+    outw = outw - fwd * (outw @ fwd)
+    outw /= np.linalg.norm(outw)
+    side = (V[:, 0] > 0) if s == "l" else (V[:, 0] < 0)
+    fw = G.wsum(W, G.side_names(["foot", "ball"], s))
+    sel = side & (fw > 0.3) & (V[:, 2] < ank[2] + 0.025)
+    Q = V[sel] - np.array([ank[0], ank[1], 0.0])
+    qf, qo, qz = Q @ fwd, Q @ outw, V[sel, 2]
+    f_heel, f_toe = qf.min(), qf.max()
+    f_ball = float((ballp - ank) @ fwd)
+    fs = np.linspace(f_heel - o["loafer_heel_room"], f_toe + o["loafer_toe_room"], o["loafer_sections"])
+    # section extents of the foot
+    lo_o, hi_o, top = np.zeros(len(fs)), np.zeros(len(fs)), np.zeros(len(fs))
+    for i, fv in enumerate(fs):
+        m = np.abs(qf - np.clip(fv, f_heel + 0.006, f_toe - 0.006)) < 0.009
+        lo_o[i], hi_o[i] = qo[m].min(), qo[m].max()
+        top[i] = qz[m].max()
+    for arr in (lo_o, hi_o, top):
+        for _ in range(3):
+            arr[1:-1] = 0.5 * arr[1:-1] + 0.25 * (arr[2:] + arr[:-2])
+    clear = 0.0042
+    cen = 0.5 * (lo_o + hi_o)
+    a_foot = 0.5 * (hi_o - lo_o) + clear
+    a_foot = np.where(fs > f_toe, 0.0, a_foot)
+    # plan: the last tapers over the toes to an almond toe (never inside the foot), rounded heel
+    f_t0 = f_toe - o["loafer_toe_taper"]
+    i_t0 = int(np.argmin(np.abs(fs - f_t0)))
+    a_t0 = a_foot[i_t0]
+    tt = np.clip((fs - f_t0) / (fs[-1] - f_t0), 0, 1)
+    a_taper = a_t0 * np.maximum(np.clip(1 - tt ** 2, 0, 1) ** 0.55, 0.42)
+    a = np.where(fs > f_t0, np.maximum(a_taper, a_foot), a_foot)
+    heel_t = np.clip(((f_heel + 0.03) - fs) / ((f_heel + 0.03) - fs[0]), 0, 1)
+    a = a * np.sqrt(np.clip(1 - heel_t ** 2.6, 0.0, 1))
+    a = np.maximum(a, 0.003)
+    i_toe = int(np.argmin(np.abs(fs - f_toe)))
+    cen = np.where(fs > f_toe, cen[i_toe], cen)
+    z_bot = sole * 0.55 + sole * 0.45 * M.smoothstep(f_ball - 0.01, f_heel + 0.07, fs)
+    z_foot = np.where(fs <= f_toe, top + clear + 0.001, 0.0)
+    fwd_part = fs > f_ball - 0.02             # forefoot: smooth envelope falling towards the toe
+    env = np.maximum.accumulate(z_foot[::-1])[::-1]
+    z_foot = np.where(fwd_part, env, z_foot)
+    for _ in range(4):
+        z_foot[1:-1] = np.maximum(z_foot[1:-1], 0.5 * z_foot[1:-1] + 0.25 * (z_foot[2:] + z_foot[:-2]))
+    z_top = np.maximum(z_foot, z_bot + 0.02)
+    # toe box profile: slopes down smoothly from the toes' root to a rounded nose ~1.6 cm high
+    i_t1 = int(np.argmin(np.abs(fs - (f_toe - 0.045))))
+    h0 = z_top[i_t1]
+    tz = np.clip((fs - fs[i_t1]) / (fs[-1] - fs[i_t1]), 0, 1)
+    nose = z_bot + 0.016
+    prof = nose + (h0 - nose) * np.cos(0.5 * math.pi * tz) ** 0.7
+    prof = np.where(tz > 0.9, z_bot + (prof - z_bot) * np.sqrt(np.clip(1 - ((tz - 0.9) / 0.1) ** 2, 0.35, 1)), prof)
+    z_top = np.where(tz > 0, np.maximum(prof, np.where(fs <= f_toe, z_foot, 0.0)), z_top)
+    z_top = np.maximum(z_top, z_bot + 0.004)
+    nr = o["loafer_ring"]
+    rings = []
+    for i in range(len(fs)):
+        ring = []
+        b = z_top[i] - z_bot[i]
+        for k in range(nr):
+            ph = 2 * math.pi * k / nr                      # 0 = outer side, pi/2 = top
+            c, sn = math.cos(ph), math.sin(ph)
+            ex = 2.0 / 2.7
+            x = a[i] * np.sign(c) * abs(c) ** ex
+            if sn >= 0:
+                z = z_bot[i] + 0.006 + (b - 0.006) * abs(sn) ** ex
+            else:
+                z = z_bot[i] + 0.006 * (1 - abs(sn) ** 0.5)
+            p = np.array([ank[0], ank[1], 0.0]) + fwd * fs[i] + outw * (cen[i] + x)
+            p[2] = z
+            ring.append(p)
+        rings.append(ring)
+    Pr = np.array(rings)                                      # (sections, ring, 3)
+    # close heel and toe with rings shrunk towards their centre (rounded ends, no crease)
+    def cap(ring, push, k):
+        c = ring.mean(0)
+        c[2] = ring[:, 2].min() + 0.5 * np.ptp(ring[:, 2])
+        return c + (ring - c) * k + push
+
+    def dome(ring, direction, r):
+        return [cap(ring, direction * r * math.sin(t), math.cos(t)) for t in np.radians((35, 62, 84))]
+    Pr = np.concatenate([np.array(dome(Pr[0], -fwd, 0.006)[::-1]), Pr, np.array(dome(Pr[-1], fwd, 0.009))], 0)
+    upper = _grid("loafer_upper_" + s, Pr, closed_u=True)
+    M.subdivide(upper, 1)
+    # topline: opening round the ankle in front of the heel counter, behind the vamp
+
+    def topline(P):
+        d = P - np.array([ank[0], ank[1], 0.0])
+        fp, op = d @ fwd, d @ outw
+        f_v = o["loafer_vamp_f"] - 0.03 * np.clip(op / 0.04, -1.2, 1.2) ** 2      # throat: U open to the heel
+        z_line = sole + o["loafer_topline_heel"] - o["loafer_topline_dip"] * np.exp(-((fp - 0.0) / 0.035) ** 2) \
+            + 0.006 * M.smoothstep(f_v - 0.02, f_v, fp)
+        return np.maximum(z_line - P[:, 2], fp - f_v)
+    M.cut_implicit(upper, topline)
+    G.drop_small_islands(upper, 20)
+    G.keep_largest(upper)
+    G.set_part_attr(upper, "part", LOAFER)
+    n_upper = len(upper.data.vertices)
+    M.add_boundary_lip(upper, 0.003)
+    lipf = np.zeros(len(upper.data.vertices), np.float32)
+    lipf[n_upper:] = 1
+    G.set_float_attr(upper, "lip", lipf)
+    # saddle strap across the vamp
+    strap = M.duplicate(upper, "loafer_strap_" + s)
+
+    def sband(P):
+        d = P - np.array([ank[0], ank[1], 0.0])
+        fp, op = d @ fwd, d @ outw
+        f_v = o["loafer_vamp_f"] - 0.03 * np.clip(op / 0.04, -1.2, 1.2) ** 2
+        return np.minimum(0.0135 - np.abs(fp - (f_v + 0.006 + 0.0135)), P[:, 2] - (sole + 0.026))
+    Ps = M.co(strap)
+    M.delete_verts(strap, np.arange(len(Ps)) >= n_upper)          # drop the turned-under topline lip
+    M.cut_implicit(strap, sband)
+    G.drop_small_islands(strap, 6)
+    if len(strap.data.vertices):
+        Ps = M.co(strap)
+        Ns = M.vnormals(strap)
+        M.set_co(strap, Ps + Ns * 0.0018)
+        M.add_boundary_lip(strap, 0.0018)
+        G.set_part_attr(strap, "part", LOAFER_STRAP)
+    # welted sole with a stacked heel
+    sole_ob = _loafer_sole(Pr[1:-1], fs, a, cen, ank, fwd, outw, z_bot, f_heel, s, o)
+    shoe = M.join([upper, strap, sole_ob] if len(strap.data.vertices) else [upper, sole_ob], "loafer_" + s)
+    # weights
+    P = M.co(shoe)
+    fp = (P - np.array([ank[0], ank[1], 0.0])) @ fwd
+    wb = M.smoothstep(f_ball - 0.012, f_ball + 0.018, fp)
+    M.set_weights(shoe, {"foot_" + s: 1 - wb, "ball_" + s: wb})
+    shoe.data.materials.clear()
+    return shoe
+
+
+def _loafer_sole(Pr, fs, a, cen, ank, fwd, outw, z_bot, f_heel, s, o):
+    """Sole: welt ledge round the upper, a straight edge with crisp corners, flat bottom with a slight
+    shank arch and toe spring; the heel part is the full stack height."""
+    nseg = len(fs)
+    base = np.array([ank[0], ank[1], 0.0])
+    welt = o["loafer_welt"]
+    heel_front = f_heel + o["loafer_heel_len"]
+    rings = [[], [], [], []]                 # top, top edge, bottom edge, bottom (each right..left)
+    for side_sgn, idx in ((1, range(nseg)), (-1, range(nseg - 1, -1, -1))):
+        for i in idx:
+            w = a[i] + welt
+            p = base + fwd * fs[i] + outw * (cen[i] + side_sgn * w)
+            spring = 0.005 * M.smoothstep(0.82, 1.0, i / (nseg - 1)) ** 2
+            arch = 0.0035 * M.smoothstep(heel_front - 0.005, heel_front + 0.03, fs[i]) \
+                * (1 - M.smoothstep(heel_front + 0.05, heel_front + 0.1, fs[i]))
+            zt = z_bot[i] + 0.0015
+            zb_ = spring + arch
+            inset = -outw * side_sgn * 0.0009
+            for k, (z, ins) in enumerate(((zt, 0.0), (zt - 0.0012, 0.25), (zb_ + 0.0012, 0.9), (zb_, 1.4))):
+                q = p + inset * ins
+                q = q.copy()
+                q[2] = z
+                rings[k].append(q)
+    rings = [np.array(r) for r in rings]
+    nring = len(rings[0])
+    verts = np.concatenate(rings)
+    faces, uvs = [], []
+    per = np.r_[0, np.cumsum(np.linalg.norm(np.diff(np.vstack([rings[0], rings[0][:1]]), axis=0), axis=1))]
+    vz = [0.0, -0.0012, -0.01, -0.012]
+    for k in range(3):
+        for j in range(nring):
+            j2 = (j + 1) % nring
+            faces.append((k * nring + j, k * nring + j2, (k + 1) * nring + j2, (k + 1) * nring + j))
+            uvs.append([(per[j], vz[k]), (per[j + 1], vz[k]), (per[j + 1], vz[k + 1]), (per[j], vz[k + 1])])
+    ob = M.make_object("loafer_sole_" + s, verts, faces, uvs)
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    bm.verts.ensure_lookup_table()
+    top = [bm.verts[i] for i in range(nring)]
+    bot = [bm.verts[3 * nring + i] for i in range(nring)]
+    ft = bm.faces.new(top[::-1])
+    fb = bm.faces.new(bot)
+    res = bmesh.ops.triangulate(bm, faces=[ft, fb])
+    uvl = bm.loops.layers.uv.active
+    for fc in res["faces"]:
+        for lp in fc.loops:
+            lp[uvl].uv = (lp.vert.co.x * 3.0 + 2.0, lp.vert.co.y * 3.0)
+    bm.to_mesh(ob.data)
+    bm.free()
+    ob.data.update()
+    M.shade_smooth(ob)
+    part = np.zeros(len(ob.data.vertices), np.int32)
+    part[:] = LOAFER_SOLE
+    part[:2 * nring] = LOAFER_WELT
+    G.set_part_attr(ob, "part", part)
+    return ob
+
+
+def coat_rig(rig, skirt_info, rest=None):
+    """Coat tail chains (pelvis children) and thigh-follow helpers (Blender-only, not exported); with
+    `rest` the shipped rest pose of the chains and helpers is kept."""
     for key, ch in skirt_info["chains"].items():
-        pts = ch["points"]
+        pts = R.rest_points(rest, ch["names"]) or ch["points"]
         out = pts[0] - np.array([0, skirt_info["yc"], pts[0][2]])
         out[2] = 0
         out /= max(np.linalg.norm(out), 1e-6)
-        R.add_chain(rig, ch["names"], pts, "pelvis", roll_up=tuple(out), connect=True)
+        R.add_chain(rig, ch["names"], pts, "pelvis", roll_up=tuple(out), connect=True, rest=rest)
         helper = "helper_coat_" + key
         tail = np.array(pts[1])
-        R.add_helper(rig, helper, "thigh_" + ch["side"], tail, tail + np.array([0, 0, -0.05]))
+        R.add_helper(rig, helper, "thigh_" + ch["side"], tail, tail + np.array([0, 0, -0.05]), rest=rest)
         infl = 1.0 if key.startswith("f") else 0.55
         R.damped_follow(rig, ch["names"][0], helper, infl)

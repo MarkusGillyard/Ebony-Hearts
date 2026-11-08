@@ -345,6 +345,109 @@ def bisect_keep(ob, point, normal):
     me.update()
 
 
+def cut_implicit(ob, fn):
+    """Cuts the mesh along the zero set of fn(P) (P: (n,3) vertex positions) and deletes the side where
+    fn < 0. New vertices sit on the zero set (linear interpolation along each cut edge) and interpolate
+    UVs, weights and attributes, so a garment edge follows a smooth analytic curve instead of the body's
+    face boundaries. Returns the number of cut edges."""
+    me = ob.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bm.verts.ensure_lookup_table()
+    P = np.array([v.co[:] for v in bm.verts])
+    if not len(P):
+        bm.free()
+        return 0
+    f = np.asarray(fn(P), float)
+    if len(f) != len(P):
+        raise ValueError("cut_implicit: field size mismatch")
+    f = np.where(np.abs(f) < 1e-7, 1e-7, f)
+    fval = {v: float(f[i]) for i, v in enumerate(bm.verts)}
+    cut = [e for e in bm.edges if fval[e.verts[0]] * fval[e.verts[1]] < 0]
+    new = []
+    for e in cut:
+        a, b = e.verts
+        t = fval[a] / (fval[a] - fval[b])
+        _, nv = bmesh.utils.edge_split(e, a, t)
+        fval[nv] = 0.0
+        new.append(nv)
+    if new:
+        bmesh.ops.connect_verts(bm, verts=new, check_degenerate=False)
+    kill = [fc for fc in bm.faces if any(fval.get(v, 0.0) < 0 for v in fc.verts)]
+    bmesh.ops.delete(bm, geom=kill, context="FACES")
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context="VERTS")
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
+    return len(cut)
+
+
+def subdivide(ob, cuts=1):
+    """Linear subdivision (no smoothing); UVs, weights and attributes are interpolated."""
+    me = ob.data
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=cuts, use_grid_fill=True, smooth=0.0)
+    bm.to_mesh(me)
+    bm.free()
+    me.update()
+
+
+def edge_fields(ob, extra_seed=None):
+    """Per-vertex surface distance (m) to the nearest open edge or extra seed vertices (Dijkstra over
+    edges) and an along-edge coordinate: the arc length (m) of the closest point on the nearest open
+    boundary loop, so stitch dashes run evenly along hems."""
+    import heapq
+    V = co(ob)
+    E = edges(ob)
+    seed = boundary_vmask(ob)
+    if extra_seed is not None:
+        seed = seed | extra_seed
+    nb = [[] for _ in range(len(V))]
+    for a, b in E:
+        L = float(np.linalg.norm(V[a] - V[b]))
+        nb[a].append((b, L))
+        nb[b].append((a, L))
+    d = np.full(len(V), np.inf)
+    h = [(0.0, int(i)) for i in np.nonzero(seed)[0]]
+    for _, i in h:
+        d[i] = 0.0
+    heapq.heapify(h)
+    while h:
+        di, i = heapq.heappop(h)
+        if di > d[i]:
+            continue
+        for j, L in nb[i]:
+            nd = di + L
+            if nd < d[j]:
+                d[j] = nd
+                heapq.heappush(h, (nd, j))
+    d[~np.isfinite(d)] = 1.0
+    A, B, S = [], [], []
+    for lp in boundary_loops(ob):
+        if len(lp) < 2:
+            continue
+        P = V[lp]
+        seg = np.linalg.norm(np.diff(P, axis=0), axis=1)
+        A.append(P[:-1])
+        B.append(P[1:])
+        S.append(np.r_[0, np.cumsum(seg)][:-1])
+    s = np.zeros(len(V))
+    if A:
+        A, B, S = np.concatenate(A), np.concatenate(B), np.concatenate(S)
+        AB = B - A
+        L2 = np.maximum((AB * AB).sum(1), 1e-12)
+        for k in range(0, len(V), 256):
+            p = V[k:k + 256]
+            t = np.clip(((p[:, None, :] - A[None]) * AB[None]).sum(-1) / L2[None], 0, 1)
+            q = A[None] + t[..., None] * AB[None]
+            dd = ((p[:, None, :] - q) ** 2).sum(-1)
+            j = np.argmin(dd, 1)
+            s[k:k + 256] = S[j] + t[np.arange(len(p)), j] * np.sqrt(L2[j])
+    return d.astype(np.float32), s.astype(np.float32)
+
+
 def join(objs, name):
     objs = [o for o in objs if o is not None]
     base = objs[0]
@@ -405,17 +508,25 @@ class Collider:
         return loc, nrm, ok
 
     def signed_distance(self, P):
+        """Distance to the nearest surface point, negative inside, and the outward direction. Both come
+        from the vector to the nearest point (the face normal only gives its sign), so a point nearest
+        to an edge or vertex shared by several faces gets the same answer whichever face the BVH
+        reports (keeps the build deterministic)."""
         loc, nrm, ok = self.nearest(P)
-        d = np.einsum("ij,ij->i", P - loc, nrm)
+        v = P - loc
+        dist = np.linalg.norm(v, axis=1)
+        sgn = np.where(np.einsum("ij,ij->i", v, nrm) < 0, -1.0, 1.0)
+        dirv = np.where(dist[:, None] > 1e-7, v / np.maximum(dist, 1e-12)[:, None] * sgn[:, None], nrm)
+        d = dist * sgn
         d[~ok] = 1.0
-        return d, loc, nrm
+        return d, loc, dirv
 
     def push_out(self, P, min_d):
-        d, loc, nrm = self.signed_distance(P)
+        d, loc, dirv = self.signed_distance(P)
         min_d = np.broadcast_to(min_d, (len(P),))
         bad = d < min_d
         P = P.copy()
-        P[bad] = loc[bad] + nrm[bad] * min_d[bad, None]
+        P[bad] = loc[bad] + dirv[bad] * min_d[bad, None]
         return P, int(bad.sum())
 
     def ray(self, origin, direction, dist=10.0):

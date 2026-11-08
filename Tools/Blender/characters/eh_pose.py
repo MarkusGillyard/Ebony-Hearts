@@ -1,5 +1,7 @@
 """Deformation test poses (temporary keyframes): head-height roundhouse, deep stance, high guard,
-extended punch, 60 degree torso twist, knee strike and back bend. Poses are built with world-space
+extended punch, 60 degree torso twist, knee strike, back bend, deep crouch (heels down, ankles
+dorsiflexed), teep (push kick, ankle and toes dorsiflexed), pointed-foot instep kick (plantarflexed)
+and tiptoe (heels up, toes bent). Poses are built with world-space
 rotations and an analytic two-bone IK; secondary chains (braids, strands, coat tails) are settled
 by a small gravity-and-collision solver that stands in for in-engine physics.
 The character faces -Y; its left is +X."""
@@ -10,7 +12,8 @@ import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 
-POSES = ("rest", "roundhouse", "stance", "guard", "punch", "twist", "knee", "backbend")
+POSES = ("rest", "roundhouse", "stance", "guard", "punch", "twist", "knee", "backbend", "crouch", "teep",
+         "kick_point", "tiptoe")
 
 
 def upd():
@@ -148,6 +151,37 @@ def rest_ankle(arm, s):
     return np.array(arm.data.bones["foot_" + s].head_local)
 
 
+def rest_dir(arm, b):
+    bb = arm.data.bones[b]
+    d = np.array(bb.tail_local) - np.array(bb.head_local)
+    return d / np.linalg.norm(d)
+
+
+def ankle_axis(arm, s):
+    """World axis about which a positive rotation of foot_<s> points the toes (plantarflexion)."""
+    upd()
+    shin_up = head(arm, "calf_" + s) - tail(arm, "calf_" + s)
+    fd = tail(arm, "foot_" + s) - head(arm, "foot_" + s)
+    a = np.cross(shin_up, fd)
+    return a / np.linalg.norm(a)
+
+
+def flex_foot(arm, s, ankle_deg, toe_deg=0.0):
+    """ankle_deg > 0 plantarflexes (points), < 0 dorsiflexes; toe_deg > 0 curls the toes down."""
+    ax = ankle_axis(arm, s)
+    rot(arm, "foot_" + s, ax, ankle_deg)
+    if toe_deg:
+        rot(arm, "ball_" + s, ankle_axis(arm, s), toe_deg)
+
+
+def flat_foot(arm, s, toe_flat=True):
+    """Sole back to its rest orientation in the world (after IK moved the shin)."""
+    h = head(arm, "foot_" + s)
+    aim(arm, "foot_" + s, h + rest_dir(arm, "foot_" + s))
+    if toe_flat:
+        aim(arm, "ball_" + s, head(arm, "ball_" + s) + rest_dir(arm, "ball_" + s))
+
+
 # ----------------------------------------------------------------------------- poses
 
 def pose(arm, name, L):
@@ -220,9 +254,9 @@ def pose(arm, name, L):
         rot(arm, "pelvis", (1, 0, 0), -12)
         al = rest_ankle(arm, "l")
         plant_feet(arm, {"l": (al + np.array([0, 0.03, 0.0]), np.array([0, -1, 0]))})
-        rot(arm, "thigh_r", (1, 0, 0), 110)
-        rot(arm, "calf_r", (1, 0, 0), -125)
-        rot(arm, "foot_r", (1, 0, 0), -30)
+        rot(arm, "thigh_r", (1, 0, 0), -110)                   # -X turns the thigh forward (faces -Y)
+        rot(arm, "calf_r", (1, 0, 0), 125)
+        flex_foot(arm, "r", 30.0, 10.0)
         for b in ("spine_02", "spine_03"):
             rot(arm, b, (1, 0, 0), 9)
         for s, sg in (("l", 1), ("r", -1)):
@@ -244,6 +278,71 @@ def pose(arm, name, L):
             rot(arm, "upperarm_" + s, (0, 1, 0), -sg * 70)
             rot(arm, "upperarm_" + s, (1, 0, 0), -25)
             rot(arm, "lowerarm_" + s, (0, 1, 0), -sg * 15)
+        return
+    if name == "crouch":
+        drop = 0.42
+        arm.pose.bones["pelvis"].matrix = Matrix.Translation((0, 0.1, -drop)) @ arm.pose.bones["pelvis"].matrix
+        upd()
+        rot(arm, "pelvis", (1, 0, 0), 22)
+        for b in ("spine_02", "spine_03"):
+            rot(arm, b, (1, 0, 0), -6)
+        for s, sg in (("l", 1), ("r", -1)):
+            a = rest_ankle(arm, s)
+            plant_feet(arm, {s: (a + np.array([sg * 0.05, 0.0, 0.0]), np.array([sg * 0.45, -1, 0.0]))})
+            flat_foot(arm, s)
+        guard_in_chest(arm, eye_z - 0.02, fwd=0.2)
+        rot(arm, "neck_01", (1, 0, 0), -14)
+        return
+    if name == "teep":
+        rot(arm, "pelvis", (1, 0, 0), -8)
+        for b in ("spine_01", "spine_02", "spine_03"):
+            rot(arm, b, (1, 0, 0), -6)
+        al = rest_ankle(arm, "l")
+        plant_feet(arm, {"l": (al + np.array([0, 0.05, 0.0]), np.array([0, -1, 0]))})
+        flat_foot(arm, "l")
+        hip = head(arm, "thigh_r")
+        ll = np.linalg.norm(tail(arm, "thigh_r") - hip) + np.linalg.norm(tail(arm, "calf_r") - head(arm, "calf_r"))
+        tgt = hip + np.array([-0.02, -0.92, 0.12]) / np.linalg.norm([-0.02, -0.92, 0.12]) * ll * 0.97
+        ik2(arm, "thigh_r", "calf_r", tgt, np.array([0, -0.3, 1.0]))
+        h = head(arm, "foot_r")
+        aim(arm, "foot_r", h + np.array([0, -0.25, 1.0]))          # sole faces the target
+        flex_foot(arm, "r", 0.0, -35.0)                              # toes pulled back
+        guard_in_chest(arm, eye_z - 0.03, fwd=0.2)
+        return
+    if name == "kick_point":
+        al = rest_ankle(arm, "l")
+        rot(arm, "pelvis", (0, 0, 1), 15)
+        plant_feet(arm, {"l": (al + np.array([0.02, 0.02, 0.0]), np.array([0.2, -1, 0]))})
+        flat_foot(arm, "l")
+        rot(arm, "thigh_r", (1, 0, 0), -80)
+        rot(arm, "calf_r", (1, 0, 0), 25)
+        flex_foot(arm, "r", 55.0, 20.0)
+        for b in ("spine_02", "spine_03"):
+            rot(arm, b, (1, 0, 0), -7)
+        guard_in_chest(arm, eye_z - 0.03, fwd=0.2)
+        return
+    if name == "tiptoe":
+        lift = math.radians(42.0)
+        for s in "lr":
+            a = rest_ankle(arm, s)
+            b = np.array(arm.data.bones["ball_" + s].head_local)
+            v = a - b
+            ax = np.cross(rest_dir(arm, "foot_" + s), [0, 0, 1.0])
+            ax /= np.linalg.norm(ax)
+            Rm = np.array(Matrix.Rotation(lift, 3, Vector(ax)))
+            a2 = b + Rm @ v
+            if a2[2] < a[2]:
+                Rm = np.array(Matrix.Rotation(-lift, 3, Vector(ax)))
+                a2 = b + Rm @ v
+            if s == "l":
+                dz = a2[2] - a[2]
+                arm.pose.bones["pelvis"].matrix = Matrix.Translation((0, 0.01, dz - 0.01)) @ arm.pose.bones["pelvis"].matrix
+                upd()
+            plant_feet(arm, {s: (a2, np.array([0, -1, 0]))})
+            aim(arm, "foot_" + s, b)
+            aim(arm, "ball_" + s, head(arm, "ball_" + s) + rest_dir(arm, "ball_" + s))
+        for s, sg in (("l", 1), ("r", -1)):
+            rot(arm, "upperarm_" + s, (0, 1, 0), -sg * 30)
         return
     raise KeyError(name)
 

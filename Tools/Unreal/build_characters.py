@@ -56,10 +56,10 @@ def scalar(mat, name, value, x, y):
     return s
 
 
-def build_master(name, masked):
+def build_master(name, masked, two_sided=False):
     """Lit character surface with a soft stylised rim so fighters separate from the dark nave."""
     mat = fresh("/Game/Characters/Shared", name, unreal.Material, unreal.MaterialFactoryNew())
-    setp(mat, "two_sided", masked)
+    setp(mat, "two_sided", masked or two_sided)
     # Without the usage flag a cooked or -game build silently swaps in the default material on skinned meshes.
     setp(mat, "used_with_skeletal_mesh", True)
     if masked:
@@ -156,6 +156,10 @@ def import_mesh(char_id, cap):
     return mesh, skel
 
 
+# Cloth whose openings, turned hems and wrap-band edges are single surfaces (shoe openings, coat and shorts hems).
+TWO_SIDED = {"Coat", "Outfit", "Clothes"}
+
+
 def assign_materials(mesh, char_id, cap, textures, masters, alpha):
     mats = list(mesh.materials)
     for i, sm in enumerate(mats):
@@ -167,7 +171,7 @@ def assign_materials(mesh, char_id, cap, textures, masters, alpha):
         tex_base = f"T_{cap}_{key}"
         masked = alpha.get(tex_base + "_D", False)
         mi = fresh(f"/Game/Characters/{cap}/Materials", f"MI_{cap}_{key}", unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-        mi.set_editor_property("parent", masters["masked" if masked else "opaque"])
+        mi.set_editor_property("parent", masters["masked" if masked else ("two_sided" if key in TWO_SIDED else "opaque")])
         for suffix, param in (("_D", "BaseColor"), ("_N", "Normal"), ("_ORM", "ORM")):
             t = textures.get(tex_base + suffix)
             if t is not None:
@@ -241,7 +245,8 @@ def import_anims(char_id, cap, skel):
 
 def main():
     anims_only = os.environ.get("EH_ANIMS_ONLY") == "1"
-    masters = None if anims_only else {"opaque": build_master("M_Character", False), "masked": build_master("M_CharacterMasked", True)}
+    masters = None if anims_only else {"opaque": build_master("M_Character", False), "masked": build_master("M_CharacterMasked", True),
+                                       "two_sided": build_master("M_CharacterTwoSided", False, True)}
     only = os.environ.get("EH_CHARS", "wren,ashka").split(",")
     for char_id in only:
         cap = char_id.capitalize()

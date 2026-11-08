@@ -13,7 +13,7 @@ the original download record before use.
 
 | Input | Licence | Used for | Shipped as | Raw files in this repository |
 |---|---|---|---|---|
-| MakeHuman system assets (hm08 base mesh, eyes, eyebrows 001/006, eyelashes 01/02) | CC0 1.0 | Base bodies, eyes, brows and lashes of both fighters, reshaped and retextured | Cooked meshes and textures | No (fetched by the build) |
+| MakeHuman system assets (hm08 base mesh, eyes, eyebrows 001/006/008, eyelashes 01/02) | CC0 1.0 | Base bodies, eyes, brows and lashes of both fighters, reshaped and retextured | Cooked meshes and textures | No (fetched by the build) |
 | MPFB 2.0.18 (Blender extension) | GPL-3.0-or-later code; CC0 bundled assets | Build tool for body shaping and the game_engine rig and weights | Not shipped (tool only) | No |
 | Poly Haven: monastery_stone_floor, medieval_blocks_03, rusty_metal_04, weathered_planks | CC0 1.0 | Chapel floor, walls, iron and pews; graded, simplified and repacked | Cooked textures | No |
 | ambientCG: Rock035, Ivory001B, Fabric066 | CC0 1.0 | Chapel stone dressing, candle wax, altar cloth | Cooked textures | No |

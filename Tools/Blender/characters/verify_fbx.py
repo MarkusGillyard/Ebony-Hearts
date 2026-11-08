@@ -9,7 +9,7 @@ import bpy
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", "..", "sourceart", "characters"))
+SRC = os.environ.get("EH_CHAR_OUT") or os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", "..", "sourceart", "characters"))
 out = {}
 for cid, name in (("wren", "Wren"), ("ashka", "Ashka")):
     for fbx in ("SK_%s.fbx" % name, "SK_%s_LOD1.fbx" % name):

@@ -53,6 +53,7 @@ class Raster:
                 tan[:, 0] = 1
                 sgn = np.ones(len(me.loops))
             self._tri_data.append((tv, tl, V, Nv, tan, sgn))
+            self._tri_poly = getattr(self, "_tri_poly", []) + [tp]
             tuv = uv[tl] * res - 0.5          # pixel centres at integer coordinates
             for t in range(len(tv)):
                 a, b, c = tuv[t]
@@ -130,6 +131,60 @@ class Raster:
             else:
                 out[sel] = (arr[tv[t]] * L[:, :, None]).sum(1)
         return out
+
+    def poly(self):
+        """Polygon index (within its object) of every texel."""
+        out = np.zeros(self.K, np.int64)
+        for oi, tp in enumerate(self._tri_poly):
+            sel = self.oid == oi
+            out[sel] = tp[self.tri[sel]]
+        return out
+
+    def islands(self):
+        """Global UV-island id of every texel (islands of all objects numbered consecutively)."""
+        import eh_garment as G
+        out = np.zeros(self.K, np.int64)
+        poly = self.poly()
+        base = 0
+        for oi, ob in enumerate(self.objs):
+            ids = G.uv_islands(ob)
+            sel = self.oid == oi
+            out[sel] = ids[poly[sel]] + base
+            base += int(ids.max()) + 1 if len(ids) else 0
+        return out
+
+    def grain(self, mpu, up=(0.0, 0.0, 1.0)):
+        """Grain-aligned surface coordinates in metres: per UV island the texel frame is turned so +v
+        follows world up (projected), so woven/knit detail runs straight down every panel and matches
+        across island borders. Returns (gu, gv, cos, sin) with cos/sin of the island's turn (to turn
+        sampled tangent-space normals back into the island's UV frame)."""
+        isl = self.islands()
+        upv = np.asarray(up, np.float32)
+        a = np.arctan2(self.T @ upv, self.B @ upv)
+        w = np.linalg.norm(np.stack([self.T @ upv, self.B @ upv], 1), axis=1)
+        n = isl.max() + 1
+        cs = np.bincount(isl, np.cos(a) * w, n)
+        sn = np.bincount(isl, np.sin(a) * w, n)
+        ang = np.arctan2(sn, cs)[isl]
+        uv = self.uv() * mpu
+        cen_u = np.bincount(isl, uv[:, 0], n) / np.maximum(np.bincount(isl, None, n), 1)
+        cen_v = np.bincount(isl, uv[:, 1], n) / np.maximum(np.bincount(isl, None, n), 1)
+        du = uv[:, 0] - cen_u[isl]
+        dv = uv[:, 1] - cen_v[isl]
+        c, s_ = np.cos(ang), np.sin(ang)
+        gu = c * du - s_ * dv
+        gv = s_ * du + c * dv
+        return gu.astype(np.float32), gv.astype(np.float32), c.astype(np.float32), s_.astype(np.float32)
+
+    def height_normals(self, h, texel_m, strength=1.0):
+        """Tangent-space (OpenGL) normal colours from a height field in metres given per texel."""
+        img, cov = self.to_image(np.asarray(h, np.float32), 1)
+        img = dilate(img, cov, 3)[..., 0]
+        gx = (np.roll(img, -1, 1) - np.roll(img, 1, 1)) * 0.5 / texel_m
+        gy = (np.roll(img, -1, 0) - np.roll(img, 1, 0)) * 0.5 / texel_m
+        n = np.stack([-gx * strength, -gy * strength, np.ones_like(gx)], -1)
+        n /= np.linalg.norm(n, axis=-1, keepdims=True)
+        return n.reshape(-1, 3)[self.pix] * 0.5 + 0.5
 
     def obj_mask(self, oi):
         return self.oid == oi
@@ -231,6 +286,36 @@ def sample(img, uv, wrap=True):
         ya, yb = np.clip(y0, 0, h - 1), np.clip(y0 + 1, 0, h - 1)
     return ((img[ya, xa] * (1 - fx) + img[ya, xb] * fx) * (1 - fy)
             + (img[yb, xa] * (1 - fx) + img[yb, xb] * fx) * fy)
+
+
+_MIPS = {}
+
+
+def mips(key, img):
+    """Box-filtered mip chain of an (h, w, c) image (cached by key)."""
+    if key not in _MIPS:
+        ch = [img]
+        while min(ch[-1].shape[:2]) > 4:
+            a = ch[-1]
+            h, w = a.shape[0] // 2 * 2, a.shape[1] // 2 * 2
+            a = a[:h, :w]
+            ch.append(0.25 * (a[0::2, 0::2] + a[1::2, 0::2] + a[0::2, 1::2] + a[1::2, 1::2]))
+        _MIPS[key] = ch
+    return _MIPS[key]
+
+
+def sample_filtered(key, img, uv, footprint_px):
+    """Trilinear sample (tiling) of img at uv with a footprint of `footprint_px` source pixels per
+    destination texel: picks/blends the box-filtered mip levels so minified detail never aliases."""
+    ch = mips(key, img)
+    lod = float(np.clip(np.log2(max(footprint_px, 1e-6)), 0, len(ch) - 1))
+    l0 = int(np.floor(lod))
+    l1 = min(l0 + 1, len(ch) - 1)
+    t = lod - l0
+    a = sample(ch[l0], uv)
+    if t < 1e-3 or l1 == l0:
+        return a
+    return a * (1 - t) + sample(ch[l1], uv) * t
 
 
 def srgb_to_lin(c):
