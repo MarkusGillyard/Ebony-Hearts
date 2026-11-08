@@ -56,6 +56,17 @@
       "hurt": [{"frames": [18, 36], "box": [20, 95, 135, 150]}]
     },
     {
+      "id": "CL", "name": "Low Kick", "anim": "CL", "kind": "strike", "button": "light", "dir": "any", "down": true, "crouching": true, "total": 22,
+      "hits": [{"frames": [7, 8], "box": [20, 0, 102, 40], "level": "low", "damage": 26, "hitstun": 18, "blockstun": 11, "hitstop": 6, "hitPush": 18, "blockPush": 22}],
+      "hurt": [{"frames": [6, 14], "box": [20, 0, 92, 36]}]
+    },
+    {
+      "id": "U", "name": "Rising Uppercut", "anim": "U", "kind": "strike", "button": "heavy", "dir": "any", "down": true, "total": 52,
+      "hits": [{"frames": [10, 13], "box": [10, 80, 64, 225], "level": "mid", "damage": 120, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 70, "blockPush": 50, "heavy": true, "knockdown": true, "launch": true}],
+      "travel": [{"frames": [2, 9], "vx": 1.2}],
+      "hurt": [{"frames": [1, 2], "box": [-28, 0, 30, 150], "replaceBase": true}, {"frames": [3, 7], "box": [-30, 0, 34, 110], "replaceBase": true}, {"frames": [10, 20], "box": [0, 120, 60, 215]}]
+    },
+    {
       "id": "S", "name": "720 Hook Kick", "anim": "S", "kind": "strike", "button": "special", "dir": "neutral", "total": 78,
       "hits": [{"frames": [35, 37], "box": [25, 120, 170, 186], "level": "high", "damage": 165, "chip": 16, "hitstun": 0, "blockstun": 29, "hitstop": 16, "hitPush": 160, "blockPush": 70, "heavy": true, "knockdown": true}],
       "travel": [{"frames": [8, 32], "vx": 2.43}],
@@ -86,17 +97,6 @@
       "hits": [{"frames": [5, 6], "box": [20, 80, 60, 160], "level": "mid", "damage": 0, "hitstun": 1, "blockstun": 0, "hitstop": 0, "hitPush": 0, "blockPush": 0}],
       "throwRange": 26, "comboRange": 70, "throw": "wren_takedown", "throwForward": "wren_takedown", "throwBack": "wren_suplex",
       "hurt": [{"frames": [5, 20], "box": [0, 40, 62, 120]}]
-    },
-    {
-      "id": "U", "name": "Rising Uppercut", "anim": "U", "kind": "strike", "button": "heavy", "dir": "any", "down": true, "total": 52,
-      "hits": [{"frames": [10, 13], "box": [10, 80, 64, 225], "level": "mid", "damage": 120, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 70, "blockPush": 50, "heavy": true, "knockdown": true, "launch": true}],
-      "travel": [{"frames": [2, 9], "vx": 1.2}],
-      "hurt": [{"frames": [1, 2], "box": [-28, 0, 30, 150], "replaceBase": true}, {"frames": [3, 7], "box": [-30, 0, 34, 110], "replaceBase": true}, {"frames": [10, 20], "box": [0, 120, 60, 215]}]
-    },
-    {
-      "id": "CL", "name": "Low Kick", "anim": "CL", "kind": "strike", "button": "light", "dir": "any", "down": true, "crouching": true, "total": 22,
-      "hits": [{"frames": [7, 8], "box": [20, 0, 102, 40], "level": "low", "damage": 26, "hitstun": 18, "blockstun": 11, "hitstop": 6, "hitPush": 18, "blockPush": 22}],
-      "hurt": [{"frames": [6, 14], "box": [20, 0, 92, 36]}]
     },
     {
       "id": "DF", "name": "Forward Roll", "anim": "DF", "kind": "dodge", "button": "dodge", "dir": "forward", "total": 30,

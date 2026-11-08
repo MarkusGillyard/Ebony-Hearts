@@ -23,12 +23,12 @@
         "JH": {"whoosh": "WhooshKick", "fxBone": "foot_l", "shake": 0.2, "note": "Flying kick. Overhead coming down; deep, it leads into a combo."},
         "H": {"whoosh": "WhooshKick", "fxBone": "foot_r", "shake": 0.2, "note": "Long high kick (ducked by a crouch). Special-cancel on hit."},
         "FH": {"whoosh": "WhooshSpin", "fxBone": "foot_r", "shake": 0.3, "note": "Advancing spin with big pushback; safe at tip range."},
-        "S": {"whoosh": "WhooshSpin", "fxBone": "foot_r", "shake": 0.6, "note": "Signature. Slow, airborne, devastating; very punishable if blocked."},
+        "S": {"whoosh": "WhooshSpin", "fxBone": "foot_r", "shake": 0.6, "note": "Signature. Slow, airborne, devastating; punishable if blocked."},
         "FS": {"whoosh": "WhooshSpin", "fxBone": "foot_l", "shake": 0.4, "note": "Travelling jump kick: an overhead. Ends strings; knocks down."},
         "BS": {"whoosh": "AuraCharge", "fxBone": "spine_03", "note": "Full gauge: more strike damage, half damage from flame for 8 s."},
-        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Double-leg takedown. Beats any guard up close; after a hit it can't be escaped."},
-        "U": {"whoosh": "WhooshHeavy", "fxBone": "hand_r", "shake": 0.35, "note": "Down + Heavy. Rises under jump-ins and launches; badly punished if blocked."},
-        "CL": {"whoosh": "WhooshKick", "fxBone": "foot_l", "note": "Down + Light. Low: block it crouching. Quick poke from the crouch."},
+        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats any guard up close. After a hit it can't be escaped."},
+        "U": {"whoosh": "WhooshHeavy", "fxBone": "hand_r", "shake": 0.35, "note": "Anti-air: rises under jump-ins and launches. Risky if blocked."},
+        "CL": {"whoosh": "WhooshKick", "fxBone": "foot_l", "note": "Low: block it crouching. A quick poke from the crouch."},
         "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent."},
         "DB": {"whoosh": "Roll", "note": "Retreating roll. Recovery is punishable."}
       }
@@ -59,9 +59,9 @@
         "S": {"whoosh": "WhooshSpin", "fxBone": "lowerarm_r", "flame": true, "shake": 0.4, "note": "Leaping flame elbow: an overhead. Knocks down."},
         "FS": {"whoosh": "WhooshKick", "fxBone": "calf_r", "flame": true, "shake": 0.45, "note": "Flying knee with flame. Ends light strings; knocks down."},
         "BS": {"whoosh": "FlameRoar", "fxBone": "spine_03", "flame": true, "shake": 0.6, "note": "Half gauge: invulnerable flame burst. Heavily punishable if blocked."},
-        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Clinch trip. Beats any guard up close; after a hit it can't be escaped."},
-        "U": {"whoosh": "WhooshHeavy", "fxBone": "lowerarm_r", "shake": 0.35, "note": "Down + Heavy. Rising elbow under jump-ins; launches; punished if blocked."},
-        "CL": {"whoosh": "WhooshKick", "fxBone": "foot_l", "note": "Down + Light. Low teep: block it crouching. Pushes away."},
+        "T": {"whoosh": "WhooshLight", "fxBone": "hand_r", "note": "Beats any guard up close. After a hit it can't be escaped."},
+        "U": {"whoosh": "WhooshHeavy", "fxBone": "lowerarm_r", "shake": 0.35, "note": "Anti-air: rises under jump-ins and launches. Risky if blocked."},
+        "CL": {"whoosh": "WhooshKick", "fxBone": "foot_l", "note": "Low: block it crouching. Pushes the opponent away."},
         "DF": {"whoosh": "Roll", "note": "Rolls through strikes and past the opponent."},
         "DB": {"whoosh": "Roll", "note": "Quick retreating roll. Recovery is punishable."}
       }

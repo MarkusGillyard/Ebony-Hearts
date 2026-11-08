@@ -3,36 +3,38 @@
 This is the shipped rule set for the first playable slice: Wren Ku and Ashka Rook in The Drowned Chapel. Every number lives
 in `Content/Data` (`rules.json`, `Fighters/*.json`). The move tables below are generated from those files by
 `Tools/Docs/move_tables.py`, and `Tests/Core` checks the behaviour. Values are tuning proposals that pass the automated
-checks. The creator played candidate `4cee9c1` on 2026-11-07 and reported that combat smoothness and jumping need
-refinement; the current tuning is not accepted as final.
+checks. The 2026-11-08 combat pass added crouching, guard heights, lows, the uppercuts, standalone combo-compatible throws
+and a retuned jump (decisions and sources: [Research](Research.md)); none of it has been played by the creator yet.
 
 ## Controls
 
-Movement is left/right, and up jumps. There are five combat actions in play, with no motion inputs and no chords:
+Movement is left/right; up jumps and down crouches. There are six combat actions, with no motion inputs and no chords:
 
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
-| Move | A / D | Arrow keys | Left stick / D-pad | Left stick / D-pad |
+| Move | A / D | Left / Right arrows | Left stick / D-pad | Left stick / D-pad |
 | Jump | W, or I | Up arrow, Numpad 5, or ; | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up |
+| Crouch (hold) | S | Down arrow | Left stick down / D-pad down | Left stick down / D-pad down |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
 | Special | L | Numpad 3, or / | R1 | RB |
+| Throw | U | Numpad 4, or M | L2 | LT |
 | Dodge | O | Numpad 6, or ' | Circle | B |
 | Block (hold) | Space | Numpad 0, or Right Shift | R2, or L1 | RT, or LB |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
-**Grappling is switched off** (`"grappling": false` in `rules.json`, after the creator's playtest of 2026-11-07). The grab
-move, both fighters' throws, escapes, their animations and this document's grab rules are kept for later; with the
-switch off no throw move can start, Grab is not listed in Controls, the move list, the Lesson or the results, and the CPU
-never grabs. Grab's former buttons have new jobs: Cross / A, I, Numpad 5 and ; jump (the way the stick or movement keys
-point), and L1 / LB blocks; see [Controls](Controls.md) for its former defaults if grappling returns. R2 / RT block
-reads the analog trigger. Menus use fixed controls separate from these gameplay layouts. Every gameplay action can
-be remapped, with up to three buttons each; a taken button is never silently reassigned (swap, replace or cancel), except
-from the hidden Grab. See
-[Controls](Controls.md).
-Direction modifiers are relative to the opponent: "toward" and "away" are judged when the button is pressed, so a side
-switch between the press and the move cannot reverse it.
+Directions modify buttons and are judged when the button is pressed (a press waiting in the buffer keeps them), so a
+side switch between the press and the move cannot reverse it: toward or away picks a toward/away move, and **down**
+picks the uppercut (down + Heavy) and the low attack (down + Light) ahead of any horizontal direction (down-toward +
+Heavy is the uppercut). Down with another button performs that button's standing move. Up wins over down when both are
+held. Menus use fixed controls separate from these layouts. Every gameplay action can be remapped, with up to three
+buttons each; see [Controls](Controls.md).
+
+**Throws are standalone** (`"throws": true` in `rules.json`): each fighter has one throw on the Throw button, whatever
+the stick says. The old grappling set (`"grappling": false`) stays in the data and code but out of play: directional
+throw variants (Wren's shoulder throw, Ashka's clinch knees and clinch turn), with their animations. Sustained grappling,
+clinch control and ground positions are not part of the game.
 
 ## Timing model
 
@@ -57,47 +59,52 @@ Each tick runs in this order:
 3. Throws in progress advance, and escape presses are checked.
 4. Actionable fighters act: a cancel, a buffered move, block, or walking.
 5. Movement, pushboxes, walls and the separation limit are resolved.
-6. Hits and grabs are detected.
+6. Hits and throws are detected.
 7. Facing updates.
 8. The round end is checked.
 
-Steps 3 and 6 involve grabs only while grappling is switched on. Detection outcomes:
+Steps 3 and 6 involve throws only while throws are switched on (`throws` or `grappling`). The posture (crouching) moves
+with the actionable step and while in blockstun or landing. Detection outcomes:
 - **Strike against strike on the same tick:** both hit (a trade). Trades never count as counter hits.
-- **Strike against grab on the same tick:** the strike wins.
-- **Grab against grab:** both break apart (tech).
-- **Grab against a fighter in strike startup:** the grab wins.
+- **Strike against throw on the same tick:** the strike wins.
+- **Throw against throw:** both break apart (tech).
+- **Throw against a fighter in strike startup or recovery, guarding (standing or crouching), crouching or rolling:** the
+  throw wins. Throws never catch a fighter in the air, knocked down, getting up or briefly after waking or leaving stun.
 - **Duplicate hits:** each hit entry of a move instance can connect once.
 
 ## Rules
 
 | Rule | Value | Notes |
 |---|---|---|
-| Input buffer | 6 ticks | A press stays usable for 6 ticks, including the tick it was made on. Buffer ageing pauses during the presser's hitstop. Newest press wins; on the same tick the order is Grab > Special > Heavy > Light > Dodge. Holding a button never repeats it. |
-| Cancels | per move | Light 1 > Light 2 > Light 3 on hit or block, and Light 1 / 2 into any special on hit or block. Heavy into a special on hit only. Light 3, toward + Heavy, specials, grabs and dodges never cancel. |
+| Input buffer | 6 ticks | A press stays usable for 6 ticks, including the tick it was made on, with the direction and down it was made with. Buffer ageing pauses during the presser's hitstop. Newest press wins; on the same tick the order is Throw > Special > Heavy > Light > Dodge. Holding a button never repeats it. |
+| Cancels | per move | Light 1 > Light 2 > Light 3 on hit or block, Light 1 / 2 into any special on hit or block, and Light 1 / 2 into the throw **on hit only** (the combo throw). Heavy into a special on hit only. Light 3, toward + Heavy, the low, the uppercut, specials, throws and dodges never cancel. |
 | Hitstop | 7-16 | Both fighters freeze; block hitstop is 2 shorter. |
 | Counter hit | +2 hitstun, x1.10 damage | Hitting a move in startup or active frames. Some heavies knock down on counter. |
-| Punish | +4 hitstun, x1.20 damage | Hitting a move's recovery, a whiffed grab or a dodge's vulnerable frames. |
+| Punish | +4 hitstun, x1.20 damage | Hitting a move's recovery, a whiffed throw or a dodge's vulnerable frames. |
 | Combo scaling | 100, 100, 80, 70, 60, 50, 40% | Per hit in a combo; the last value repeats. |
 | Hitstun decay | -2 per hit from the 3rd | Floor of 8 ticks. Combined with pushback this ends every route; a randomized search finds no combo longer than 5 hits. |
-| Knockdown | 42 lying + 60 rising | Fully invulnerable. After waking, the fighter cannot be grabbed for 6 ticks; after leaving hitstun or blockstun, for 4. |
-| Block | hold | Instant on an actionable tick. No walking while blocking. Blockstun and pushback are per move. Specials chip, but chip never KOs. |
-| Timed block (deflect) | 4-tick window | A fresh Block press 0-3 ticks before contact deflects: 4 fewer blockstun ticks, no chip, more gauge. A press that does not deflect locks out deflects for the next 12 ticks, so mashing never works. Holding Block blocks every ground strike; a jump attack takes a deflect (see Jump attacks). |
-| Grab (switched off) | startup 5, active 2 | Range is the gap between the fighters' fronts (Wren 26 cm, Ashka 30 cm). Whiff recovery 26-27. Beats blocking and recovery; cannot grab airborne, stunned, knocked-down or grab-invulnerable fighters. |
-| Grab escape (switched off) | 9 ticks | Press Grab within 9 ticks of being grabbed; both separate 120 cm and recover for 20 ticks. A press made before the grab connected does not count. |
-| Dodge | toward = forward roll, otherwise back roll | Strike-invulnerable frames 4-15 (forward) or 3-12/13 (back); grabbable on every frame while grappling is on. The forward roll passes through the opponent. A 14-tick lockout follows each dodge, and the recovery can be punished. |
-| Corners | stage half-width 700 cm | Pushback a wall absorbs moves the attacker back instead. A grab that would land a victim beyond the wall moves the thrower in to keep the authored spacing. |
+| Knockdown | 42 lying + 60 rising | Fully invulnerable. After waking, the fighter cannot be thrown for 6 ticks; after leaving hitstun or blockstun, for 4. An uppercut's knockdown is drawn as a launch (the body lifts and lands on its back); it is the same invulnerable knockdown, so nothing can follow it up. |
+| Crouch | hold down | The posture lowers one step a frame over 3 frames (and rises the same way on release); the hurtbox blends from standing to crouching (Wren 110 cm, Ashka 105 cm tall), so highs pass over a crouching fighter. At least half way down the fighter guards and reels as crouching. No walking while crouched. Hitstun keeps the posture; blockstun and landing can change it; a jump, a standing move, a throw or a knockdown stands the fighter up. Standing moves started from a crouch use the standing hurtbox from their first frame. |
+| Hit levels | per hit | **High**: blocked standing; passes over a crouching hurtbox (by its box). **Mid**: blocked standing or crouching. **Low**: blocked only crouching. **Overhead**: blocked only standing. Jump attacks are overheads on the way down and mids on the way up. |
+| Block | hold | Instant on an actionable tick. No walking while blocking. Down + Block guards crouching. Blockstun and pushback are per move. Specials chip, but chip never KOs. |
+| Timed block (deflect) | 4-tick window | A fresh Block press 0-3 ticks before a blockable hit deflects it: 4 fewer blockstun ticks, no chip, more gauge. A press that does not deflect locks out deflects for the next 12 ticks, so mashing never works. A deflect needs the right guard height. |
+| Throw | startup 5, active 2 | From neutral: range is the gap between the fighters' fronts (Wren 26 cm, Ashka 30 cm); whiff recovery 26-27 (punishable). It beats standing and crouching guards, recovery and rolls; it cannot catch a fighter in the air, in hit- or blockstun, knocked down, getting up or throw-invulnerable. The thrower closes the gap to the authored hold over the first 8 frames (nobody teleports). |
+| Combo throw | cancelled from Light 1 / 2 on hit | The throw then catches the opponent still reeling from that hit, from a little further (Wren 70 cm: a long shot; Ashka 45 cm: the clinch needs to be close). It is the combo's next hit: scaled by the combo, counted, and paying gauge once from the scaled damage. It cannot be escaped. A blocked light cannot cancel into it; a combo that dropped makes it an ordinary throw attempt. It ends in a knockdown. |
+| Throw escape | 9 ticks | Press Throw within 9 ticks of a neutral throw connecting; both separate 120 cm and recover for 20 ticks. A press made before the throw connected does not count. Combo throws cannot be escaped. |
+| Dodge | toward = forward roll, otherwise back roll | Strike-invulnerable frames 4-15 (forward) or 3-12/13 (back); throwable on every frame. The forward roll passes through the opponent. A 14-tick lockout follows each dodge, and the recovery can be punished. |
+| Corners | stage half-width 700 cm | Pushback a wall absorbs moves the attacker back instead. A throw that would hold or land a victim beyond the wall moves the thrower instead, keeping the authored spacing. |
 | Separation | 560 cm | The camera edge acts as a wall for whoever is retreating. |
 | Gauge | 0-1000 | Earned: hits 80% of damage dealt and 40% of damage taken; blocking +20 for the attacker and +30 for the defender; deflects +80. No gain while Spirit Enhanced Strikes is active. |
 | Rounds | first to 2, 75 s | KO wins the round. On timeout the higher health percentage wins and equal health is a draw. A throw already in progress may finish its animation after time expires, but cannot deal damage after the timeout result. A double KO is a draw. A draw round awards no win. At most 5 rounds; if wins are still level after that, the match is drawn. |
-| Jump | up | Up from neutral jumps straight up, toward or away by the direction held (a held Block comes first). 4 squat ticks on the floor (grabbable, hit as standing), 36 ticks in the air on a 90 cm arc covering 126 cm toward or 105 cm away, then 4 ticks of landing recovery (6 after a jump attack). In the air a fighter cannot block or be grabbed, and any hit knocks it down; it falls to the floor. Pushboxes still apply, so a jump cannot pass over the opponent. |
-| Jump attacks | Light / Heavy in the air | Each fighter has a light and a heavy jump attack (startup 6 / 8 from the press); landing ends them, and one jump allows one attack. A buffered press in the squat comes out once airborne. **A jump-in that opens contact (the grounded opponent is not already in hit- or blockstun) keeps them stunned until the jumper has landed and recovered, plus 12 ticks on hit or 2 on block, however high it connected**, so a jump-in that hits leads into a ground string. On an opponent already reeling, a jump attack takes its own stun with hitstun decay, so jump-ins cannot be chained into a loop. **Holding Block does not stop a jump attack** (`heldBlockStopsJumpIns`): it takes a timed block (deflect), which leaves the jumper at -2 or more, usually the defender's turn, or a fighter already in blockstun. Strikes knock any jumper down. So jumping answers a held guard, and anti-air strikes and deflects answer jumping. |
+| Jump | up | Up from neutral (or a crouch) jumps straight up, toward or away by the direction held (a held Block comes first). 4 squat ticks on the floor (throwable, hit as standing), 34 ticks in the air on a 115 cm arc covering 150 cm toward or 122 cm away, then 4 ticks of landing recovery (5 after a jump attack). No air control. In the air a fighter cannot block or be thrown, and any hit knocks it down; it falls to the floor. Pushboxes still apply, so a jump cannot pass over the opponent. |
+| Jump attacks | Light / Heavy in the air | Each fighter has a light and a heavy jump attack (startup 6 / 8 from the press); landing ends them, and one jump allows one attack. A buffered press in the squat comes out once airborne. **Coming down they are overheads, going up mids.** Their hit- and blockstun count from contact, so their worth depends on how deep they land: a jump-in that hits in the last few frames before landing combos into Light, the low or the uppercut, and one blocked that deep keeps the turn; one that connects high gives it away. A held standing guard blocks them; a crouching guard does not stop the overhead; a deflect works on them like on any blockable hit. Anti-air strikes, above all the uppercut, knock jumpers down. |
 | Rematch / reset | full | A rematch builds a fresh simulation; Training reset rebuilds both fighters (gauge kept). |
 
 ## Character kits
 
-Shared structure: each fighter has a Light string, Heavy, toward + Heavy, three specials (neutral, toward, away), a
-light and a heavy jump attack and two dodges, plus a Grab (toward/neutral or away picks the throw) that is switched
-off. The fighters do not share animations or tuning.
+Shared structure: each fighter has a Light string, Heavy, toward + Heavy, a low (down + Light), an uppercut (down +
+Heavy), three specials (neutral, toward, away), a light and a heavy jump attack, two dodges and one throw. The
+fighters do not share animations or tuning.
 
 **Wren Ku** is an all-rounder with kicking reach and spinning and flying techniques. Her Light string
 is jab, cross, spinning back elbow. Heavy is a long roundhouse kick; toward + Heavy is an advancing spinning back kick.
@@ -109,8 +116,10 @@ Her specials:
   strike damage to 120% and halves the damage of energy (flame) attacks. It cannot stack, gauge does not build while it
   is active, and it is lost if she is hit before it applies on frame 24.
 
-Her grabs (switched off) are a double-leg slam (toward/neutral) and a shoulder throw (away), which switches sides. (The shoulder
-throw keeps the data id `wren_suplex` from the scripted belly-to-belly suplex it replaced in `pkg-44-shoulder`.)
+Her low is a low kick to the shin from the crouch; her uppercut a rising rear uppercut from the crouch. Her throw is
+the **double-leg takedown**: a level change and penetration step on the grab's active frames, a drive through and a
+finish to the mat, and she is back on her feet before the throw ends; from Light or Light, Light on hit it is her combo
+throw (up to 70 cm away). The shoulder throw (data id `wren_suplex`) is kept for the dormant grappling set.
 
 **Ashka Rook** is a composed Muay Thai specialist who controls space with teeps and wins up close with elbows and
 knees. Her Light string is jab, stepping horizontal elbow, step-in knee. Heavy is a roundhouse to the body (the hips
@@ -120,11 +129,23 @@ is a long teep with large pushback. Her Lamplighter Flame variations:
 - **Flying Knee** (toward). Ends strings.
 - **Flame Burst** (away). Spends half a gauge. Invulnerable through frame 10, so it works as a reversal, but it is
   heavily punishable on block.
-Her flame attacks deal energy damage, which is what Spirit Enhanced Strikes defends against. Her grabs (switched off) are clinch knees
-(toward/neutral) and a clinch turn trip (away), which switches sides.
+Her flame attacks deal energy damage, which is what Spirit Enhanced Strikes defends against. Her low is a low teep to
+the lead shin; her uppercut a rising elbow (sok ngat). Her throw is the **clinch trip**: she locks the plum, breaks the
+posture, steers the head round on her planted rear foot and sweeps the loaded ankle with her lead foot; the opponent
+lands on the back in front of her. From Light, Light on hit it is her combo throw (the elbow brings her close; up to 45
+cm). Clinch knees and the clinch turn are kept for the dormant grappling set.
 
-Verified example combos (`Tests/Core`, `example_combos_each_fighter`): Light, Light, Light; Light, Light into
-toward + Special; and Light into toward + Special, from up to 100 cm, for both fighters.
+Verified example combos (`Tests/Core`, `example_combos_each_fighter`, `combo_throws_scale_cannot_be_escaped_and_need_a_hit`,
+`deep_jump_in_links_into_ground_offense`): Light, Light, Light; Light, Light into toward + Special; Light into toward +
+Special; **Light, Light into Throw** (and Light into Throw); and a deep jump-in into Light, the low or the uppercut, for
+both fighters. True strike-to-throw routes, reproducible in Training against the standing partner from the reset
+position after walking in:
+- **Wren:** Light (jab) on hit, then Throw while it hits (8-19 frames into the jab) → 30 + 110 = 140 damage, 2 hits.
+  Light, Light, Throw → 30 + 36 + 88 = 154, 3 hits (the takedown scaled to 80 %).
+- **Ashka:** Light, Light (jab, elbow) on hit, then Throw → 28 + 40 + 80 = 148, 3 hits. Light, Throw also combos when
+  the jab lands close (the clinch needs 45 cm or less).
+Pressure, not combos: a blocked light leaves the opponent in blockstun, which a throw cannot catch; walking in and
+throwing after it is a read the opponent can beat with a jump, a roll, a strike or an escape.
 
 <!-- move-tables:begin -->
 
@@ -139,14 +160,14 @@ Health 1000; walk 2.8 cm/frame forward, 2.4 back; pushbox half-width 24 cm; stan
 | Light x3 | Spinning Back Elbow | high | 9 | 3 | 19 | 109 | 52 | -7 | +1 | - | - | String ender. Pushes back; punishable up close on block. | `L3` |
 | Heavy | Roundhouse Kick | high | 16 | 3 | 29 | 152 | 88 | -6 | +2 (KD on counter) | @special on hit (16-27) | - | Long high kick (ducked by a crouch). Special-cancel on hit. | `H` |
 | toward + Heavy | Spinning Back Kick | mid | 21 | 3 | 24 | 189 | 100 | -5 | +3 (KD on counter) | - | - | Advancing spin with big pushback; safe at tip range. | `FH` |
-| Special | 720 Hook Kick | high | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
+| down + Light | Low Kick | low | 7 | 2 | 14 | 102 | 26 | -4 | +3 | - | - | Low: block it crouching. A quick poke from the crouch. | `CL` |
+| down + Heavy | Rising Uppercut | mid | 10 | 4 | 39 | 74 | 120 | -26 | launch, knockdown | - | - | Anti-air: rises under jump-ins and launches. Risky if blocked. | `U` |
+| Special | 720 Hook Kick | high | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; punishable if blocked. | `S` |
 | toward + Special | Tornado Kick | overhead | 17 | 3 | 33 | 206 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick: an overhead. Ends strings; knocks down. | `FS` |
 | away + Special | Spirit Enhanced Strikes | - | applies 24 | - | 44 | - | - | - | - | - | 1000 | Full gauge: more strike damage, half damage from flame for 8 s. | `BS` |
 | In a jump: Light | Jumping Punch | overhead (mid rising) | 6 | 6 | until landing | 66 | 40 | blockstun 14 from contact | hitstun 18 from contact | - | - | Overhead coming down: beats a crouching guard. Deep, it combos. | `JL` |
 | In a jump: Heavy | Flying Kick | overhead (mid rising) | 8 | 7 | until landing | 96 | 60 | blockstun 16 from contact | hitstun 22 from contact | - | - | Flying kick. Overhead coming down; deep, it leads into a combo. | `JH` |
-| Throw | Double-Leg Takedown | throw | 5 | 2 | 27 | grab 26, combo 70 | 110 (scaled in a combo) | - | throw | - | - | Double-leg takedown. Beats any guard up close; after a hit it can't be escaped. | `T` |
-| down + Heavy | Rising Uppercut | mid | 10 | 4 | 39 | 74 | 120 | -26 | launch, knockdown | - | - | Down + Heavy. Rises under jump-ins and launches; badly punished if blocked. | `U` |
-| down + Light | Low Kick | low | 7 | 2 | 14 | 102 | 26 | -4 | +3 | - | - | Down + Light. Low: block it crouching. Quick poke from the crouch. | `CL` |
+| Throw | Double-Leg Takedown | throw | 5 | 2 | 27 | grab 26, combo 70 | 110 (scaled in a combo) | - | throw | - | - | Beats any guard up close. After a hit it can't be escaped. | `T` |
 | toward + Dodge | Forward Roll | - | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. | `DF` |
 | Dodge (away/neutral) | Back Roll | - | invuln 3-13 | - | 19 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
 
@@ -166,14 +187,14 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
 | Light x3 | Step-In Knee | mid | 8 | 3 | 17 | 97 | 54 | -5 | +3 | - | - | Driving knee. String ender. | `L3` |
 | Heavy | Body Roundhouse | mid | 16 | 3 | 27 | 138 | 84 | -6 | +3 (KD on counter) | @special on hit (16-27) | - | Muay Thai roundhouse to the body. Special-cancel on hit. | `H` |
 | toward + Heavy | Teep | mid | 16 | 3 | 19 | 152 | 60 | -3 | +1 (KD on counter) | - | - | Teep. Long reach, huge pushback; controls space. | `FH` |
+| down + Light | Low Teep | low | 8 | 2 | 15 | 110 | 30 | -4 | +2 | - | - | Low: block it crouching. Pushes the opponent away. | `CL` |
+| down + Heavy | Rising Elbow | mid | 9 | 4 | 36 | 62 | 110 | -23 | launch, knockdown | - | - | Anti-air: rises under jump-ins and launches. Risky if blocked. | `U` |
 | Special | Flame Elbow | overhead | 12 | 3 | 25 | 149 | 115 (chip 12) | -11 | knockdown | - | - | Leaping flame elbow: an overhead. Knocks down. | `S` |
 | toward + Special | Flying Knee | mid | 22 | 3 | 26 | 207 | 120 (chip 12) | -11 | knockdown | - | - | Flying knee with flame. Ends light strings; knocks down. | `FS` |
 | away + Special | Flame Burst | mid | 7 | 4 | 39 | 125 | 115 (chip 12) | -28 | knockdown | - | 500 | Half gauge: invulnerable flame burst. Heavily punishable if blocked. | `BS` |
 | In a jump: Light | Jumping Elbow | overhead (mid rising) | 6 | 6 | until landing | 60 | 42 | blockstun 14 from contact | hitstun 18 from contact | - | - | Elbow coming down: an overhead. Deep, it combos on landing. | `JL` |
 | In a jump: Heavy | Jumping Knee | overhead (mid rising) | 8 | 7 | until landing | 70 | 62 | blockstun 16 from contact | hitstun 22 from contact | - | - | Jumping knee. Overhead coming down; deep, it leads into a combo. | `JH` |
-| Throw | Clinch Trip | throw | 5 | 2 | 26 | grab 30, combo 45 | 100 (scaled in a combo) | - | throw | - | - | Clinch trip. Beats any guard up close; after a hit it can't be escaped. | `T` |
-| down + Heavy | Rising Elbow | mid | 9 | 4 | 36 | 62 | 110 | -23 | launch, knockdown | - | - | Down + Heavy. Rising elbow under jump-ins; launches; punished if blocked. | `U` |
-| down + Light | Low Teep | low | 8 | 2 | 15 | 110 | 30 | -4 | +2 | - | - | Down + Light. Low teep: block it crouching. Pushes away. | `CL` |
+| Throw | Clinch Trip | throw | 5 | 2 | 26 | grab 30, combo 45 | 100 (scaled in a combo) | - | throw | - | - | Beats any guard up close. After a hit it can't be escaped. | `T` |
 | toward + Dodge | Forward Roll | - | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. | `DF` |
 | Dodge (away/neutral) | Back Roll | - | invuln 3-12 | - | 18 | - | - | - | - | - | - | Quick retreating roll. Recovery is punishable. | `DB` |
 
