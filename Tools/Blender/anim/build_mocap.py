@@ -25,7 +25,7 @@ import preview  # noqa: E402
 from build_anims import export_action, load_chains, pose_world, review_frames  # noqa: E402
 
 
-LIMP_HEAD = {"KO", "Knockdown", "KnockdownLie", "KnockdownLieRev", "Getup", "GetupRev", "Defeated", "DF", "DB"}
+LIMP_HEAD = {"KO", "Knockdown", "KnockdownLaunch", "KnockdownLie", "KnockdownLieRev", "Getup", "GetupRev", "Defeated", "DF", "DB"}
 
 
 def args():
@@ -636,7 +636,7 @@ def build(a):
             poses[k] = M.blend_pose(poses[k], guard_pose, A.ease("smooth", (i + 1) / nout))
         if spec.get("floor"):
             print(f"BUILDMOCAP {prefix}{key} lifted off the floor by up to {floor_clamp(arm, poses) * 100:.0f} cm")
-        emit_clip(a, arm, chains, hair, prefix, key, spec, by_id.get(key), poses, total, False)
+        emit_clip(a, arm, chains, hair, prefix, key, spec, by_id.get(key), poses, total, spec.get("loop", False))
     print("BUILDMOCAP done")
 
 

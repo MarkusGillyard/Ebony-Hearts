@@ -503,7 +503,8 @@ def capture_throw(a, td, cap, t_rig, v_rig, ends):
     shift = acc / n
     gap = src_a.pos[g].y - (turn @ src_v.pos[g] + shift).y      # victim hips ahead of the attacker's (forward is -Y)
     extra = gap * rt_a.scale - hold                              # the capture's distance beyond holdX
-    tmap = M.warp([(1, g), (td["damageFrame"], land_src), (td["duration"], end_src)])
+    # Extra timing anchors ([frame, source frame] pairs) can retime inside the grip-landing-end span.
+    tmap = M.warp([tuple(x) for x in cap["anchors"]] if cap.get("anchors") else [(1, g), (td["damageFrame"], land_src), (td["duration"], end_src)])
     total = td["duration"]
     out = []
     for src, rt, scale, back in ((src_a, rt_a, cap["root_scale"][0], 0.0), (src_v, rt_v, cap["root_scale"][1], extra)):

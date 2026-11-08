@@ -130,55 +130,58 @@ toward + Special; and Light into toward + Special, from up to 100 cm, for both f
 
 ### Wren Ku
 
-Health 1000; walk 2.8 cm/frame forward, 2.4 back; pushbox half-width 24 cm; standing hurtbox [-26, 0, 26, 178] cm.
+Health 1000; walk 2.8 cm/frame forward, 2.4 back; pushbox half-width 24 cm; standing hurtbox [-26, 0, 26, 178] cm; crouching hurtbox [-30, 0, 34, 110] cm.
 
-| Input | Move | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Light | Jab | 8 | 2 | 11 | 83 | 30 | +1 | +5 | L2, @special on hit/block (8-19) | - | Fast check. Chains into Cross, cancels into specials. | `L1` |
-| Light, Light | Cross | 9 | 2 | 14 | 96 | 36 | -1 | +4 | L3, @special on hit/block (9-21) | - | Second hit of the string. Cancels into the third hit or a special. | `L2` |
-| Light x3 | Spinning Back Elbow | 9 | 3 | 19 | 109 | 52 | -7 | +1 | - | - | String ender. Pushes back; punishable up close on block. | `L3` |
-| Heavy | Roundhouse Kick | 16 | 3 | 29 | 152 | 88 | -6 | +2 (KD on counter) | @special on hit (16-27) | - | Long kick. Special-cancel on hit; knocks down on counter. | `H` |
-| toward + Heavy | Spinning Back Kick | 21 | 3 | 24 | 189 | 100 | -5 | +3 (KD on counter) | - | - | Advancing spin with big pushback; safe at tip range. | `FH` |
-| Special | 720 Hook Kick | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
-| toward + Special | Tornado Kick | 17 | 3 | 33 | 206 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick. Ends light strings; knocks down. | `FS` |
-| away + Special | Spirit Enhanced Strikes | applies 24 | - | 44 | - | - | - | - | - | 1000 | Full gauge: more strike damage, half damage from flame for 8 s. | `BS` |
-| In a jump: Light | Jumping Punch | 6 | 6 | until landing | 66 | 40 | held Block cannot stop it; deflect -2 or more | +12 or more after landing | - | - | Punch on the way down. Beats a held guard; combo on landing. | `JL` |
-| In a jump: Heavy | Flying Kick | 8 | 7 | until landing | 96 | 60 | held Block cannot stop it; deflect -2 or more | +12 or more after landing | - | - | Flying kick. Beats a held guard, not a timed block. | `JH` |
-| toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. | `DF` |
-| Dodge (away/neutral) | Back Roll | invuln 3-13 | - | 19 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
+| Input | Move | Level | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Light | Jab | high | 8 | 2 | 11 | 83 | 30 | +1 | +5 | L2, @special on hit/block; T on hit (8-19) | - | Fast high check. Into Cross, a special, or the throw on hit. | `L1` |
+| Light, Light | Cross | high | 9 | 2 | 14 | 96 | 36 | -1 | +4 | L3, @special on hit/block; T on hit (9-21) | - | Second hit (high). Into the elbow, a special, or the takedown. | `L2` |
+| Light x3 | Spinning Back Elbow | high | 9 | 3 | 19 | 109 | 52 | -7 | +1 | - | - | String ender. Pushes back; punishable up close on block. | `L3` |
+| Heavy | Roundhouse Kick | high | 16 | 3 | 29 | 152 | 88 | -6 | +2 (KD on counter) | @special on hit (16-27) | - | Long high kick (ducked by a crouch). Special-cancel on hit. | `H` |
+| toward + Heavy | Spinning Back Kick | mid | 21 | 3 | 24 | 189 | 100 | -5 | +3 (KD on counter) | - | - | Advancing spin with big pushback; safe at tip range. | `FH` |
+| Special | 720 Hook Kick | high | 35 | 3 | 41 | 231 | 165 (chip 16) | -14 | knockdown | - | - | Signature. Slow, airborne, devastating; very punishable if blocked. | `S` |
+| toward + Special | Tornado Kick | overhead | 17 | 3 | 33 | 206 | 105 (chip 10) | -10 | knockdown | - | - | Travelling jump kick: an overhead. Ends strings; knocks down. | `FS` |
+| away + Special | Spirit Enhanced Strikes | - | applies 24 | - | 44 | - | - | - | - | - | 1000 | Full gauge: more strike damage, half damage from flame for 8 s. | `BS` |
+| In a jump: Light | Jumping Punch | overhead (mid rising) | 6 | 6 | until landing | 66 | 40 | blockstun 14 from contact | hitstun 18 from contact | - | - | Overhead coming down: beats a crouching guard. Deep, it combos. | `JL` |
+| In a jump: Heavy | Flying Kick | overhead (mid rising) | 8 | 7 | until landing | 96 | 60 | blockstun 16 from contact | hitstun 22 from contact | - | - | Flying kick. Overhead coming down; deep, it leads into a combo. | `JH` |
+| Throw | Double-Leg Takedown | throw | 5 | 2 | 27 | grab 26, combo 70 | 110 (scaled in a combo) | - | throw | - | - | Double-leg takedown. Beats any guard up close; after a hit it can't be escaped. | `T` |
+| down + Heavy | Rising Uppercut | mid | 10 | 4 | 39 | 74 | 120 | -26 | launch, knockdown | - | - | Down + Heavy. Rises under jump-ins and launches; badly punished if blocked. | `U` |
+| down + Light | Low Kick | low | 7 | 2 | 14 | 102 | 26 | -4 | +3 | - | - | Down + Light. Low: block it crouching. Quick poke from the crouch. | `CL` |
+| toward + Dodge | Forward Roll | - | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. | `DF` |
+| Dodge (away/neutral) | Back Roll | - | invuln 3-13 | - | 19 | - | - | - | - | - | - | Retreating roll. Recovery is punishable. | `DB` |
 
-Kept for later, not in play (`grappling` is false in `rules.json`): the Grab, `T` (startup 5, grab range 26 cm), and its throws.
-
-| Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
-|---|---|---|---|---|---|---|
-| Double-Leg Slam | 74 | 34 | 110 | 120 cm in front | 34 | `ThrowF` / `Victim_WrenThrowF` |
-| Shoulder Throw | 72 | 48 | 120 | 110 cm behind (side switch) | 36 | `ThrowB` / `Victim_WrenThrowB` |
+| Throw | In play | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
+|---|---|---|---|---|---|---|---|
+| Double-Leg Takedown | yes | 74 | 34 | 110 | 120 cm in front | 34 | `ThrowF` / `Victim_WrenThrowF` |
+| Shoulder Throw | grappling only (off) | 72 | 48 | 120 | 110 cm behind (side switch) | 36 | `ThrowB` / `Victim_WrenThrowB` |
 
 ### Ashka Rook
 
-Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; standing hurtbox [-24, 0, 24, 170] cm.
+Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; standing hurtbox [-24, 0, 24, 170] cm; crouching hurtbox [-28, 0, 32, 105] cm.
 
-| Input | Move | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Light | Jab | 8 | 2 | 15 | 77 | 28 | +2 | +6 | L2, @special on hit/block (8-22) | - | Fast jab. Chains into the elbow, cancels into specials. | `L1` |
-| Light, Light | Horizontal Elbow | 9 | 2 | 20 | 99 | 40 | +2 | +6 | L3, @special on hit/block (9-26) | - | Stepping horizontal elbow. Cancels into the knee or a special. | `L2` |
-| Light x3 | Step-In Knee | 8 | 3 | 17 | 97 | 54 | -5 | +3 | - | - | Driving knee. String ender. | `L3` |
-| Heavy | Body Roundhouse | 16 | 3 | 27 | 138 | 84 | -6 | +3 (KD on counter) | @special on hit (16-27) | - | Muay Thai roundhouse to the body. Special-cancel on hit. | `H` |
-| toward + Heavy | Teep | 16 | 3 | 19 | 152 | 60 | -3 | +1 (KD on counter) | - | - | Teep. Long reach, huge pushback; controls space. | `FH` |
-| Special | Flame Elbow | 12 | 3 | 25 | 149 | 115 (chip 12) | -11 | knockdown | - | - | Leaping downward elbow wreathed in crimson flame. Knocks down. | `S` |
-| toward + Special | Flying Knee | 22 | 3 | 26 | 207 | 120 (chip 12) | -11 | knockdown | - | - | Flying knee with flame. Ends light strings; knocks down. | `FS` |
-| away + Special | Flame Burst | 7 | 4 | 39 | 125 | 115 (chip 12) | -28 | knockdown | - | 500 | Half gauge: invulnerable flame burst. Heavily punishable if blocked. | `BS` |
-| In a jump: Light | Jumping Elbow | 6 | 6 | until landing | 60 | 42 | held Block cannot stop it; deflect -2 or more | +12 or more after landing | - | - | Elbow on the way down. Beats a held guard; combo on landing. | `JL` |
-| In a jump: Heavy | Jumping Knee | 8 | 7 | until landing | 70 | 62 | held Block cannot stop it; deflect -2 or more | +12 or more after landing | - | - | Jumping knee. Beats a held guard, not a timed block. | `JH` |
-| toward + Dodge | Forward Roll | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. | `DF` |
-| Dodge (away/neutral) | Back Roll | invuln 3-12 | - | 18 | - | - | - | - | - | - | Quick retreating roll. Recovery is punishable. | `DB` |
+| Input | Move | Level | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Light | Jab | high | 8 | 2 | 15 | 77 | 28 | +2 | +6 | L2, @special on hit/block; T on hit (8-22) | - | Fast high jab. Into the elbow, a special, or the throw on hit. | `L1` |
+| Light, Light | Horizontal Elbow | high | 9 | 2 | 20 | 99 | 40 | +2 | +6 | L3, @special on hit/block; T on hit (9-26) | - | Stepping elbow (high). Into the knee, a special, or the clinch trip. | `L2` |
+| Light x3 | Step-In Knee | mid | 8 | 3 | 17 | 97 | 54 | -5 | +3 | - | - | Driving knee. String ender. | `L3` |
+| Heavy | Body Roundhouse | mid | 16 | 3 | 27 | 138 | 84 | -6 | +3 (KD on counter) | @special on hit (16-27) | - | Muay Thai roundhouse to the body. Special-cancel on hit. | `H` |
+| toward + Heavy | Teep | mid | 16 | 3 | 19 | 152 | 60 | -3 | +1 (KD on counter) | - | - | Teep. Long reach, huge pushback; controls space. | `FH` |
+| Special | Flame Elbow | overhead | 12 | 3 | 25 | 149 | 115 (chip 12) | -11 | knockdown | - | - | Leaping flame elbow: an overhead. Knocks down. | `S` |
+| toward + Special | Flying Knee | mid | 22 | 3 | 26 | 207 | 120 (chip 12) | -11 | knockdown | - | - | Flying knee with flame. Ends light strings; knocks down. | `FS` |
+| away + Special | Flame Burst | mid | 7 | 4 | 39 | 125 | 115 (chip 12) | -28 | knockdown | - | 500 | Half gauge: invulnerable flame burst. Heavily punishable if blocked. | `BS` |
+| In a jump: Light | Jumping Elbow | overhead (mid rising) | 6 | 6 | until landing | 60 | 42 | blockstun 14 from contact | hitstun 18 from contact | - | - | Elbow coming down: an overhead. Deep, it combos on landing. | `JL` |
+| In a jump: Heavy | Jumping Knee | overhead (mid rising) | 8 | 7 | until landing | 70 | 62 | blockstun 16 from contact | hitstun 22 from contact | - | - | Jumping knee. Overhead coming down; deep, it leads into a combo. | `JH` |
+| Throw | Clinch Trip | throw | 5 | 2 | 26 | grab 30, combo 45 | 100 (scaled in a combo) | - | throw | - | - | Clinch trip. Beats any guard up close; after a hit it can't be escaped. | `T` |
+| down + Heavy | Rising Elbow | mid | 9 | 4 | 36 | 62 | 110 | -23 | launch, knockdown | - | - | Down + Heavy. Rising elbow under jump-ins; launches; punished if blocked. | `U` |
+| down + Light | Low Teep | low | 8 | 2 | 15 | 110 | 30 | -4 | +2 | - | - | Down + Light. Low teep: block it crouching. Pushes away. | `CL` |
+| toward + Dodge | Forward Roll | - | invuln 4-15 | - | 15 | - | - | - | - | - | - | Rolls through strikes and past the opponent. | `DF` |
+| Dodge (away/neutral) | Back Roll | - | invuln 3-12 | - | 18 | - | - | - | - | - | - | Quick retreating roll. Recovery is punishable. | `DB` |
 
-Kept for later, not in play (`grappling` is false in `rules.json`): the Grab, `T` (startup 5, grab range 30 cm), and its throws.
-
-| Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
-|---|---|---|---|---|---|---|
-| Clinch Knees | 74 | 54 | 115 | 115 cm in front | 34 | `ThrowF` / `Victim_AshkaThrowF` |
-| Clinch Turn Trip | 66 | 48 | 105 | 105 cm behind (side switch) | 36 | `ThrowB` / `Victim_AshkaThrowB` |
+| Throw | In play | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |
+|---|---|---|---|---|---|---|---|
+| Clinch Trip | yes | 62 | 46 | 100 | 100 cm in front | 34 | `ThrowC` / `Victim_AshkaThrowC` |
+| Clinch Knees | grappling only (off) | 74 | 54 | 115 | 115 cm in front | 34 | `ThrowF` / `Victim_AshkaThrowF` |
+| Clinch Turn Trip | grappling only (off) | 66 | 48 | 105 | 105 cm behind (side switch) | 36 | `ThrowB` / `Victim_AshkaThrowB` |
 
 <!-- move-tables:end -->
 

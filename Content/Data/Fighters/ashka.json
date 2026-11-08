@@ -88,16 +88,16 @@
       "hits": [{"frames": [8, 14], "box": [10, 30, 70, 100], "level": "overhead", "damage": 62, "hitstun": 22, "blockstun": 16, "hitstop": 11, "hitPush": 40, "blockPush": 40, "heavy": true, "react": "HitBodyHeavy"}]
     },
     {
-      "id": "T", "name": "Clinch", "anim": "T", "kind": "throw", "button": "throw", "dir": "any", "total": 32,
+      "id": "T", "name": "Clinch Trip", "anim": "T", "kind": "throw", "button": "throw", "dir": "any", "total": 32,
       "hits": [{"frames": [5, 6], "box": [20, 80, 64, 160], "level": "mid", "damage": 0, "hitstun": 1, "blockstun": 0, "hitstop": 0, "hitPush": 0, "blockPush": 0}],
       "throwRange": 30, "comboRange": 45, "throw": "ashka_clinch_trip", "throwForward": "ashka_clinch_knees", "throwBack": "ashka_clinch_turn",
       "hurt": [{"frames": [5, 19], "box": [0, 90, 58, 150]}]
     },
     {
       "id": "U", "name": "Rising Elbow", "anim": "U", "kind": "strike", "button": "heavy", "dir": "any", "down": true, "total": 48,
-      "hits": [{"frames": [9, 12], "box": [5, 80, 64, 215], "level": "mid", "damage": 110, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 60, "blockPush": 45, "heavy": true, "knockdown": true, "launch": true}],
+      "hits": [{"frames": [9, 12], "box": [5, 80, 52, 215], "level": "mid", "damage": 110, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 60, "blockPush": 45, "heavy": true, "knockdown": true, "launch": true}],
       "travel": [{"frames": [2, 8], "vx": 1.4}],
-      "hurt": [{"frames": [1, 6], "box": [-28, 0, 32, 105], "replaceBase": true}, {"frames": [9, 18], "box": [0, 120, 56, 205]}]
+      "hurt": [{"frames": [1, 2], "box": [-26, 0, 28, 142], "replaceBase": true}, {"frames": [3, 6], "box": [-28, 0, 32, 105], "replaceBase": true}, {"frames": [9, 18], "box": [0, 120, 56, 205]}]
     },
     {
       "id": "CL", "name": "Low Teep", "anim": "CL", "kind": "strike", "button": "light", "dir": "any", "down": true, "crouching": true, "total": 24,

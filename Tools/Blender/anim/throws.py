@@ -157,11 +157,74 @@ def ashka_clinch_turn(victim, td):
     return attacker, victim_keys
 
 
+def ashka_clinch_trip(victim, td):
+    """Muay Thai clinch sweep (as taught by Nong-O Gaiyanghadao): lock the plum behind the head and break the posture
+    by pulling it down, then steer the head like a wheel, pushing one side and pulling the other, turning the upper
+    body and hips toward the pulling side (her right). That loads the opponent onto the near leg, and as the hips turn
+    her lead foot sweeps that ankle low, across her body. The opponent loses the base and lands on the back in front
+    of her; she lets go as they fall and squares up again. No side switch: she turns about 70 degrees on her planted
+    rear foot and back."""
+    hold, land = td["holdX"] / 100.0, td["landX"] / 100.0
+    t = world_feet(ASHKA)(spin=0.0)
+    fl, fr_ = ASHKA["foot_l"], ASHKA["foot_r"]
+    pivot = (fr_[0], fr_[1])                     # she turns on the ball of her planted rear foot
+    lead = (fl[0] + 0.03, fl[1] + 0.02, 0.0)
+    ankle = (hold - victim["foot_l"][0], -victim["foot_l"][1])   # the opponent's lead (left) ankle in her space
+    plum = t(pivot=pivot, pivot_world=True, pelvis=(0.04, 0, -0.04), chest=(5, 14, 0), fist=0.0, gaze=1.0,
+             hand_l=(hold - 0.06, 0.08, 1.45), hand_r=(hold - 0.06, -0.08, 1.45), elbow_l=(0.4, 0.12, -0.3), elbow_r=(0.4, -0.12, -0.3),
+             foot_l_world=lead)
+    # Break the posture: the head comes down to her chest, elbows squeezing in, weight settling back over the rear leg.
+    down = plum(pelvis=(0.0, 0, -0.10), chest=(10, 24, 0), hand_l=(hold - 0.12, 0.08, 1.24), hand_r=(hold - 0.12, -0.08, 1.24), ball_l=20)
+    # Steer: the left hand pushes, the right pulls, chest and hips turn to her right on the rear foot; the lead foot
+    # comes off the floor as the hips turn.
+    steer = unrel(down(spin=-30.0, foot_l_world=None, foot_r_world=None, foot_r_abs=(fr_[0], fr_[1], 0.0), foot_r_rot=(-30, 0, 0),
+                       foot_l_abs=(lead[0] + 0.04, lead[1] - 0.04, 0.06), foot_l_rot=(-20, 0, 0), knee_l=(0.8, 0.0, 0.2),
+                       chest=(-20, 22, -6), hand_l=(hold - 0.06, 0.18, 1.30), hand_r=(hold - 0.20, -0.04, 1.22), pelvis=(0.0, 0, -0.14), ball_r=35))
+    # The sweep: turning on, the inside of her lead foot meets the planted ankle low, the hands driving the head down
+    # and round the same way.
+    sweep = steer(spin=-60.0, chest=(-28, 28, -10), foot_l_abs=(ankle[0] + 0.02, ankle[1] + 0.07, 0.05), foot_l_rot=(-70, 0, 20),
+                  knee_l=(0.7, -0.4, 0.2), hand_l=(hold - 0.10, 0.12, 1.05), hand_r=(hold - 0.30, -0.24, 0.98), pelvis=(0.0, 0, -0.16))
+    through = sweep(spin=-72.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.08), hand_l=(land - 0.40, -0.10, 0.72), hand_r=(land - 0.50, -0.30, 0.64),
+                    chest=(-32, 32, -12), fist=0.2)
+    # She lets go as the opponent drops, the lead foot comes back down in front of her, and she turns back square.
+    release = through(spin=-50.0, foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.05), hand_l=(0.45, 0.10, 1.25), hand_r=(0.38, -0.08, 1.20),
+                      chest=(-10, 14, 0), pelvis=(0.02, 0, -0.08), fist=0.8, elbow_l=(0.4, 0.1, -0.8), elbow_r=(0.4, -0.1, -0.8))
+    set_down = release(foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.0), foot_l_rot=(-50, 0, 0))
+    square = set_down(spin=0.0, foot_l_abs=(fl[0], fl[1], 0.0), foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0), chest=ASHKA["chest"], ball_r=ASHKA["ball_r"],
+                      ball_l=ASHKA["ball_l"], hand_l=ASHKA["hand_l"], hand_r=ASHKA["hand_r"], elbow_l=ASHKA["elbow_l"], elbow_r=ASHKA["elbow_r"])
+    attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, down, "smooth"), (18, steer, "smooth"), (24, sweep, "smooth"), (28, through, "out"),
+                (36, release, "smooth"), (42, set_down, "smooth"), (52, square, "smooth"),
+                (62, unrel(t(spin=0.0, foot_l_world=None, foot_r_world=None, foot_l_abs=None, foot_r_abs=None, foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0))), "smooth")]
+    # The victim turns with the steering about the clinch's centre, its head held down at her chest.
+    v = victim(spin=0.0, pivot=(hold / 2.0, 0.0))
+    held = victim_recoil(v, hold, 1.25)(chest=(0, 26, 0), head=(0, 24, 0), pelvis=(0.02, 0, -0.04))
+    bowed = held(chest=(0, 34, 0), head=(0, 28, 0), pelvis=(0.06, 0, -0.08))
+    # Steered round, the weight goes onto its left (lead) leg and the right foot comes light off the floor.
+    lifted = lambda foot, u: (foot[0], foot[1], u)
+    vl, vr = victim["foot_l"], victim["foot_r"]
+    stumble = bowed(spin=-15.0, foot_r=lifted(vr, 0.07), pelvis=(0.04, 0.05, -0.08), pelvis_rot=(0, 30, 8))
+    loaded = bowed(spin=-28.0, foot_r=lifted(vr, 0.10), pelvis=(0.0, 0.08, -0.06), pelvis_rot=(0, 30, 12), chest=(8, 32, 8))
+    # The sweep takes the loaded foot out to its left and the steering drives the head down the other way: the base is
+    # gone, both feet leave the floor and the body tips onto its back toward the swept side, hands reaching out to
+    # break the fall; it lands flat where the knockdown's lying pose starts.
+    swept = loaded(spin=-34.0, foot_l=(vl[0] + 0.12, vl[1] + 0.28, 0.24), foot_r=lifted(vr, 0.06), knee_l=(0.6, 0.6, 0.3),
+                   pelvis=(-0.04, 0.10, -0.18), pelvis_rot=(0, 10, 28), chest=(0, 14, 10), head=(0, 18, 4),
+                   hand_l=(0.10, 0.45, 1.05), hand_r=(0.20, -0.30, 1.10), fist=0.2)
+    air = swept(spin=-30.0, foot_l=(vl[0] + 0.25, vl[1] + 0.30, 0.42), foot_r=(vr[0] + 0.35, vr[1] + 0.05, 0.26),
+                knee_l=(0.6, 0.4, 0.6), knee_r=(0.6, -0.2, 0.6), pelvis=(-0.18, 0.12, -0.50), pelvis_rot=(0, -30, 30),
+                chest=(0, -6, 6), head=(0, 26, 0), hand_l=(-0.20, 0.60, 0.55), hand_r=(-0.10, -0.40, 0.75), elbow_l=(-0.2, 0.6, 0.0))
+    end = landed(v, hold, land)
+    victim_keys = [(1, v, "smooth"), (6, held, "snap"), (12, bowed, "smooth"), (18, stumble, "smooth"), (24, loaded, "smooth"),
+                   (28, swept, "smooth"), (36, unrel(air), "fall"), (46, end(head=(0, 22, -6)), "fall"), (52, end, "out"), (62, end, "smooth")]
+    return attacker, victim_keys
+
+
 THROWS = {
     ("wren", "wren_takedown"): wren_double_leg,
     ("wren", "wren_suplex"): wren_suplex,
     ("ashka", "ashka_clinch_knees"): ashka_clinch_knees,
     ("ashka", "ashka_clinch_turn"): ashka_clinch_turn,
+    ("ashka", "ashka_clinch_trip"): ashka_clinch_trip,
 }
 
 

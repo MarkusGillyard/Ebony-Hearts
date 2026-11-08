@@ -1846,9 +1846,10 @@ int main(int argc, char** argv)
 		{
 			const MoveDef& up = MoveOf(c, "U");
 			const std::string who = FighterName(c);
-			// Grounded hit: a launch knockdown (reaction 5), big damage, no follow-up while the victim is down.
+			// Grounded hit at close range (an uppercut is a close-range strike): a launch knockdown (reaction 5), big
+			// damage, no follow-up while the victim is down.
 			Match m = MakeMatch(c, 1 - c);
-			m.TrainingPlace(Cm(-45), Cm(45));
+			m.TrainingPlace(Cm(-38), Cm(38));
 			Step(m, Down(0, BtnHeavy));
 			bool hit = false;
 			int hitTick = -1;
@@ -1863,7 +1864,7 @@ int main(int argc, char** argv)
 			EXPECT_EQ(Fighter(1 - c).maxHealth - m.State().f[1].health, up.hits[0].damage, who + ": the uppercut's damage");
 			// It hits a crouching opponent too (it is a mid).
 			Match k = MakeMatch(c, 1 - c);
-			k.TrainingPlace(Cm(-45), Cm(45));
+			k.TrainingPlace(Cm(-38), Cm(38));
 			for (int t = 0; t < 6; ++t) Step(k, InputFrame(), Down());
 			Step(k, Down(0, BtnHeavy), Down());
 			bool crouchHit = false;
@@ -1875,7 +1876,7 @@ int main(int argc, char** argv)
 			EXPECT_TRUE(crouchHit, who + ": the uppercut hits a crouching opponent");
 			// Blocked, it is heavily punishable.
 			Match b = MakeMatch(c, 1 - c);
-			b.TrainingPlace(Cm(-45), Cm(45));
+			b.TrainingPlace(Cm(-38), Cm(38));
 			Step(b, Down(0, BtnHeavy), In(0, BtnBlock));
 			for (int t = 0; t < 120; ++t)
 			{
@@ -1884,7 +1885,7 @@ int main(int argc, char** argv)
 			EXPECT_TRUE(b.State().lastAdvantageValid && b.State().lastAdvantage <= -20, who + ": blocked, the uppercut leaves its user at " + std::to_string(b.State().lastAdvantage));
 			// Its wind-up is low: a high jab timed into it passes over and the uppercut wins.
 			Match d = MakeMatch(1 - c, c);
-			d.TrainingPlace(Cm(-45), Cm(45));
+			d.TrainingPlace(Cm(-38), Cm(38));
 			const MoveDef& jab = MoveOf(1 - c, "L1");
 			const int pressJab = 0;
 			const int pressUp = jab.hits[0].frames.first - 4;   // the jab is active on the uppercut's 4th frame
@@ -2246,13 +2247,19 @@ int main(int argc, char** argv)
 					const char* fname = follow == 0 ? " > L1" : (follow == 1 ? " > CL" : " > U");
 					const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy") + fname;
 					int deep = 0, linked = 0;
+					const MoveDef& fm = MoveOf(c, follow == 0 ? "L1" : (follow == 1 ? "CL" : "U"));
+					int32_t reach = fm.hits[0].box.x1 + Fighter(1 - c).hurt.x1;
+					for (const TravelSeg& seg : fm.travel)
+					{
+						for (int32_t f = seg.frames.first; f <= seg.frames.last && f < fm.hits[0].frames.first; ++f) reach += seg.vx;
+					}
 					for (int dist = 100; dist <= 200; dist += 20)
 					{
 						for (int press = 4; press <= 34; ++press)
 						{
 							Match m = MakeMatch(c, 1 - c);
 							m.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
-							bool hit = false, isDeep = false, pressed = false;
+							bool hit = false, isDeep = false, pressed = false, inReach = false, stunnedAtActive = false;
 							int maxCombo = 0;
 							for (int t = 0; t < 120; ++t)
 							{
@@ -2261,6 +2268,8 @@ int main(int argc, char** argv)
 								{
 									a = follow == 0 ? In(0, BtnLight) : Down(0, follow == 1 ? BtnLight : BtnHeavy);   // buffered during the landing
 									pressed = true;
+									const int32_t gapNow = m.State().f[1].x - m.State().f[0].x;
+									inReach = (gapNow < 0 ? -gapNow : gapNow) <= reach;
 								}
 								else if (pressed && follow > 0)
 								{
@@ -2275,8 +2284,15 @@ int main(int argc, char** argv)
 									isDeep = airLeft <= (follow == 2 ? 3 : 5);
 								}
 								maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+								const FighterState& af = m.State().f[0];
+								if (pressed && af.state == FState::Attack && af.move == Move(c, fm.id.c_str()) && af.moveFrame == fm.hits[0].frames.first)
+								{
+									stunnedAtActive = m.State().f[1].state == FState::Hitstun || maxCombo >= 2;
+								}
 							}
-							if (hit && isDeep)
+							// A deep jump-in whose follow-up is timed in: when the follow-up comes out the defender is still reeling (or
+							// already hit). Misses for range (pushback carried the defender out of a close-range move) are not timing.
+							if (hit && isDeep && inReach && !(maxCombo < 2 && stunnedAtActive))
 							{
 								++deep;
 								linked += maxCombo >= 2 ? 1 : 0;

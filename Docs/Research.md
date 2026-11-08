@@ -45,9 +45,45 @@ but no crouch or low attack; an unblockable designed to defeat jump would leave 
   limit damage.
 - **The SF6 Drive system.** Rejected for this slice, as the brief requires.
 - **Sekiro posture and Deathblow.** Rejected: a guard-break meter rewards turtling in symmetrical play.
-- **High/low mixups and crouching.** Deferred. Jumping and jump attacks are in the current slice; a held guard does not stop a jump-in, while a timed deflect or anti-air strike answers it. Grappling is retained in code and data but switched off in the shipped rules.
+- **High/low mixups and crouching.** Deferred in the first slice; adopted in the 2026-11-08 combat pass (below).
+- **Sustained grappling (clinch control, ground positions, submissions, grab minigames).** Rejected for the slice. The
+  directional throw variants and clinch knees stay in the data and code behind `"grappling": false`; the standalone
+  throws (below) use one throw per fighter.
 - **Kameos, finishers and extra fighters (MK1).** Rejected: they would widen the requested cast and scope.
 - **An adaptive score.** Deferred: the slice uses event stingers only.
+
+## Combat pass, 2026-11-08: crouch, throws, uppercuts and jumps
+
+The owner's 2026-11-08 directive asked for crouching, standalone combo-compatible throws, a rising uppercut and jumps
+inspired by Mortal Kombat. Mortal Kombat 11 was chosen as the one reference entry. What was observed in it comes from the
+SuperCombo wiki pages *Mortal Kombat 11/Movement*, */Offense*, */Defense* and */Attack Attributes* (read in full
+2026-11-08 [S]); no MK frame counts were found that could be checked, so none are claimed.
+
+| Question | Observed in MK11 [S] | Ebony Hearts | Why | Validation |
+|---|---|---|---|---|
+| What crouching does | After a couple of frames of animation the crouch lowers the hurtbox; many highs (and MK's throws) whiff on it. | Down lowers the posture one step a frame over 3 frames, blending the hurtbox to a crouching box (Wren 110 cm, Ashka 105 cm tall). No crouch walking. Highs pass over by geometry. | A reaction-speed duck that matches what is drawn; no new movement mode. | `crouch_posture_entry_exit_both_sides`, `hit_levels_agree_with_the_crouching_hurtboxes` |
+| Guard heights | Lows must be blocked crouching, overheads standing. Holding block blocks either side (no cross-up guard). | Standing guard: high, mid, overhead. Crouching guard (down + Block): low, mid. Every hit names its level and the boxes agree with it. | The smallest set that makes the posture a decision: crouching ducks highs and blocks lows, but loses to overheads and throws. | `guard_heights_lows_overheads_and_jump_ins` |
+| Lows and overheads | Pokes such as D1/D3/D4 are lows; jump attacks overheads. | One low per fighter (down + Light: Wren's low kick, Ashka's low teep), +2/+3 on hit and -4 on block. Overheads: falling jump attacks, Wren's tornado kick, Ashka's flame elbow. | Without a low a crouching guard would beat everything on the ground. | same |
+| Jump attacks | Rising jump attacks hit mid, falling ones overhead. Jump-ins combo into a string when the string is buffered at once. Players cannot block in the air. | The same rising/falling rule. The jump-in's stun counts from contact, so a deep jump-in leads into Light, the low or the uppercut and a high one does not; the former landing-relative stun and the "held Block cannot stop a jump attack" rule are removed (the loader rejects their fields). | Replaces the unusual 2026-11-07 rule, which made blocking meaningless against jumps once crouching existed; the reward now depends on how deep the jump-in lands. | `jump_in_reward_depends_on_height`, `deep_jump_in_links_into_ground_offense`, `jump_ins_cannot_loop` |
+| Jump arc | Tall, quick, committed jumps; forward jumps cover real distance. | 4 squat frames, 34 in the air, 115 cm high, 150 cm forward and 122 cm back (was 36 frames and 90 cm): about 40 % more gravity, so no hanging at the apex. No air control; one attack per jump. | "Decisive, not floaty"; a shorter jump keeps the uppercut a reaction rather than a guess, at the cost of a slightly tighter anti-air window. | `jump_arc_landing_and_directions`, `cpu_anti_airs_jump_ins` |
+| Passing over the opponent | MK jumps can land on the other side; with block a button, cross-ups do not change how to guard. | Kept out: pushboxes still apply in the air. | No left/right guard exists to mix up, and a body clearing a 178 cm opponent would need a jump far above the slice's grounded realism. Rolls already pass through. | `one_attack_per_jump`, `jump_attacks_hit_block_and_land_into_recovery` |
+| The uppercut | Every character's D2 is the universal anti-air and punish, launches, and is badly punishable. | Down + Heavy: Wren's rising rear uppercut (startup 10), Ashka's rising elbow (sok ngat, startup 9). A crouching wind-up (highs pass over it), a tall mid hitbox, a launch into the knockdown (no juggles), -26 / -23 on block. No invulnerability. | MK's role without its juggle system; the crouching wind-up is visible and is what wins anti-air trades. | `uppercut_anti_air_launch_and_risk` |
+| Throws | Throws are highs (crouching ducks them) and are escaped by a button shortly after the first hit; they cannot be escaped while blocking; command throws do not land in hitstun. | One throw per fighter on its own button. Throws catch crouching fighters too (unlike MK11), so a crouching guard has an answer up close. Neutral throws are escaped with Throw within 9 frames; a throw cancelled from a light that hit (a combo throw) catches the reeling opponent, counts as the next hit (scaling, gauge once), and cannot be escaped. | The owner asked for combo-compatible throws; making only hit-confirmed cancels eligible keeps every blocked jab from becoming a guaranteed throw. | `standalone_throws_without_grappling`, `combo_throws_scale_cannot_be_escaped_and_need_a_hit`, `throw_entry_closes_the_gap_without_teleporting`, `throw_and_uppercut_loops_are_bounded` |
+| CPU escapes | — | The CPU notices a grab after its difficulty's delay (3-9 frames on Hard, up to 15 on Easy) and may miss the 9-frame window; presses queued before the grab are dropped. | The dormant queue issue PR1-06 noted: a stale press could fire into or after the throw. | `cpu_throw_escape_uses_reaction_and_no_stale_press` |
+
+**Wren's double-leg takedown.** MMA double-leg: level change (hips drop, back straight, head up), penetration step
+with the lead knee driving forward, hands behind both knees, head tight to the side, then drive through and finish.
+The grab (the shot) now carries the level change and the penetration step on its active frames; the captured Mixamo
+pair (Double Leg Takedown attacker/victim) supplies the drive and the fall, retimed so she is back on her feet by
+about frame 60 of 74 and never holds a ground position.
+
+**Ashka's clinch trip.** From Nong-O Gaiyanghadao's clinch sweep (Evolve University, "Nong-O Gaiyanghadao Teaches How
+To Sweep From The Clinch", read 2026-11-08 [S]): control the head and shoulders, push one side and pull the other while
+turning the upper body toward the pulling side, and sweep the support foot low at the ankle as the hips turn. In the
+game she locks the plum, breaks the posture by pulling the head down, steers it to her right on her planted rear foot,
+and sweeps the loaded lead ankle with the inside of her lead foot; the opponent lands on the back in front of her and
+she squares up. No side switch, no knees from the clinch, and no clinch state: the clinch exists only inside the throw.
+The Evolve "knee bump dump" (single-collar tie, inside trip, swing) was the second reference considered.
 
 ## Martial-arts motion notes
 
@@ -55,7 +91,8 @@ but no crouch or low attack; an unblockable designed to defeat jump would leave 
   step-turn, a jumping spin with the heel hook landing at about 540° (frame 26, the move's first active frame), then a
   spin-out to the landing.
 - **Ashka's Muay Thai.** She keeps a tall, square guard and a rhythmic idle. Her teep (push kick) and body kick make
-  contact with the ball of the foot and the shin respectively. Clinch knees and the clinch trip are her grabs.
+  contact with the ball of the foot and the shin respectively. Her throw is the clinch trip (above); her uppercut is the
+  rising elbow (sok ngat) and her low is a teep to the lead shin.
 
 ## Fighting stances
 

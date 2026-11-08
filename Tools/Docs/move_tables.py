@@ -13,7 +13,7 @@ BEGIN = "<!-- move-tables:begin -->"
 END = "<!-- move-tables:end -->"
 
 DIR_TEXT = {"any": "", "neutral": "", "forward": "toward + ", "back": "away + "}
-BUTTON = {"light": "Light", "heavy": "Heavy", "special": "Special", "throw": "Grab", "dodge": "Dodge"}
+BUTTON = {"light": "Light", "heavy": "Heavy", "special": "Special", "throw": "Throw", "dodge": "Dodge"}
 
 
 def reach_cm(move):
@@ -31,15 +31,14 @@ def reach_cm(move):
 
 def table(char, pres, rules):
     notes = pres["characters"][char["id"]]["moves"]
-    grappling = rules.get("grappling", True)
-    rows = ["| Input | Move | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |",
-            "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
-    kept = []
+    throws_on = rules.get("throws", False) or rules.get("grappling", False)
+    grappling = rules.get("grappling", False)
+    rows = ["| Input | Move | Level | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for m in char["moves"]:
-        if m["kind"] == "throw" and not grappling:
-            kept.append(m)
+        if m["kind"] == "throw" and not throws_on:
             continue
-        inp = DIR_TEXT.get(m.get("dir", "any"), "") + BUTTON[m["button"]]
+        inp = ("down + " if m.get("down") else DIR_TEXT.get(m.get("dir", "any"), "")) + BUTTON[m["button"]]
         if m["id"] == "L2":
             inp = "Light, Light"
         if m["id"] == "L3":
@@ -49,28 +48,34 @@ def table(char, pres, rules):
         if m.get("air"):
             inp = "In a jump: " + BUTTON[m["button"]]
         hits = m.get("hits", [])
+        level = "-"
         if hits:
             first, last = hits[0]["frames"][0], hits[-1]["frames"][1]
             startup, active, recovery = str(first), str(last - first + 1), str(m["total"] - last)
             h = hits[0]
+            level = "overhead (mid rising)" if m.get("air") else h.get("level", "mid")
             remaining = (h["frames"][1] - h["frames"][0]) + (m["total"] - h["frames"][1])
             on_block = "-" if m["kind"] == "throw" else f"{h['blockstun'] - remaining:+d}"
             if m["kind"] == "throw":
                 on_hit = "throw"
+                level = "throw"
             elif h.get("knockdown"):
-                on_hit = "knockdown"
+                on_hit = "launch, knockdown" if h.get("launch") else "knockdown"
             else:
                 on_hit = f"{h['hitstun'] - remaining:+d}" + (" (KD on counter)" if h.get("knockdownOnCounter") else "")
             damage = "-" if m["kind"] == "throw" else str(h["damage"]) + (f" (chip {h['chip']})" if h.get("chip") else "")
-            reach = f"{reach_cm(m):.0f}" if m["kind"] != "throw" else f"grab {m['throwRange']}"
+            if m["kind"] == "throw":
+                t = next(x for x in char["throws"] if x["id"] == m["throw"])
+                damage = f"{t['damage']} (scaled in a combo)"
+                reach = f"grab {m['throwRange']}, combo {m.get('comboRange', m['throwRange'])}"
+            else:
+                reach = f"{reach_cm(m):.0f}"
             if m.get("air"):
-                # Landing ends a jump attack; against a grounded opponent the stun lasts until the jumper has landed
-                # and recovered, plus the rules' jump-in advantage, however high it connects.
+                # Landing ends a jump attack. Its stun runs from contact, so how much it is worth depends on how close to
+                # the floor it connects (see the jump-in rule).
                 recovery = "until landing"
-                on_hit = f"{rules['jumpInHitAdvantage']:+d} or more after landing"
-                block = f"{rules['jumpInBlockAdvantage']:+d} or more after landing"
-                deflect = f"{rules['jumpInBlockAdvantage'] - rules['timedBlockStunReduction']:+d} or more"
-                on_block = block if rules.get("heldBlockStopsJumpIns", True) else f"held Block cannot stop it; deflect {deflect}"
+                on_hit = f"hitstun {h['hitstun']} from contact"
+                on_block = f"blockstun {h['blockstun']} from contact"
         else:
             startup, active, recovery = "-", "-", str(m["total"])
             on_block = on_hit = damage = reach = "-"
@@ -83,18 +88,20 @@ def table(char, pres, rules):
         cancels = "-"
         if cancel:
             when = "hit/block" if cancel.get("onHit") and cancel.get("onBlock") else ("hit" if cancel.get("onHit") else "block")
-            cancels = f"{', '.join(cancel['into'])} on {when} ({cancel['frames'][0]}-{cancel['frames'][1]})"
+            cancels = f"{', '.join(cancel['into'])} on {when}"
+            if cancel.get("intoOnHit"):
+                cancels += f"; {', '.join(cancel['intoOnHit'])} on hit"
+            cancels += f" ({cancel['frames'][0]}-{cancel['frames'][1]})"
         gauge = str(m.get("meterCost", 0)) if m.get("meterCost") else "-"
         note = notes.get(m["id"], {}).get("note", "")
-        rows.append(f"| {inp} | {m['name']} | {startup} | {active} | {recovery} | {reach} | {damage} | {on_block} | {on_hit} | {cancels} | {gauge} | {note} | `{m['anim']}` |")
-    throws = [""]
-    if not grappling:
-        throws += [f"Kept for later, not in play (`grappling` is false in `rules.json`): the Grab, `{', '.join(m['id'] for m in kept)}` "
-                   f"(startup {kept[0]['hits'][0]['frames'][0]}, grab range {kept[0]['throwRange']} cm), and its throws.", ""] if kept else []
-    throws += ["| Throw | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |", "|---|---|---|---|---|---|---|"]
+        rows.append(f"| {inp} | {m['name']} | {level} | {startup} | {active} | {recovery} | {reach} | {damage} | {on_block} | {on_hit} | {cancels} | {gauge} | {note} | `{m['anim']}` |")
+    throw_move = next((m for m in char["moves"] if m["kind"] == "throw"), None)
+    primary = throw_move["throw"] if throw_move else None
+    throws = ["", "| Throw | In play | Duration | Damage frame | Damage | Lands | Victim knockdown | Anims |", "|---|---|---|---|---|---|---|---|"]
     for t in char["throws"]:
         side = "in front" if t["landX"] > 0 else "behind (side switch)"
-        throws.append(f"| {t['name']} | {t['duration']} | {t['damageFrame']} | {t['damage']} | {abs(t['landX'])} cm {side} | {t['victimKnockdown']} | `{t['attackerAnim']}` / `{t['victimAnim']}` |")
+        state = "yes" if (t["id"] == primary and throws_on and not grappling) else ("grappling only (off)" if not grappling else "yes")
+        throws.append(f"| {t['name']} | {state} | {t['duration']} | {t['damageFrame']} | {t['damage']} | {abs(t['landX'])} cm {side} | {t['victimKnockdown']} | `{t['attackerAnim']}` / `{t['victimAnim']}` |")
     return "\n".join(rows + throws)
 
 
@@ -105,7 +112,7 @@ def main():
     for fid in ("wren", "ashka"):
         char = json.loads((DATA / "Fighters" / f"{fid}.json").read_text())
         out += [f"### {char['name']}", "",
-                f"Health {char['maxHealth']}; walk {char['walkForward']} cm/frame forward, {char['walkBack']} back; pushbox half-width {char['halfWidth']} cm; standing hurtbox {char['hurt']} cm.",
+                f"Health {char['maxHealth']}; walk {char['walkForward']} cm/frame forward, {char['walkBack']} back; pushbox half-width {char['halfWidth']} cm; standing hurtbox {char['hurt']} cm; crouching hurtbox {char['crouchHurt']} cm.",
                 "", table(char, pres, rules), ""]
     out.append(END)
     text = DOC.read_text()

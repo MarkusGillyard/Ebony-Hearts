@@ -1,0 +1,176 @@
+# Combat pass review (crouch, low attack, uppercut, throws, combo throws, jumps), Training against the standing
+# partner, one fighter after the other. For footage: capture.py ... --start-on <evidence>/auto_log.txt:match_start,
+# at most 70 s. Script waits are not frame-exact; the screenshots mark the moments to check.
+wait 5
+press kbA Light
+wait 1
+match wren ashka training 0 left
+wait 2.5
+# Crouch: down, hold, up.
+hold kbA Down
+wait 0.9
+screenshot rc_wren_crouch
+release kbA Down
+wait 0.6
+# Low kick from the crouch, then the uppercut from the crouch.
+hold kbA Right
+wait 0.6
+release kbA Right
+hold kbA Down
+wait 0.3
+press kbA Light
+wait 0.9
+press kbA Heavy
+wait 0.18
+screenshot rc_wren_uppercut
+release kbA Down
+wait 2.2
+press kbA Reset
+wait 1.0
+# Neutral throw: walk in until the bodies touch, then throw.
+hold kbA Right
+wait 1.7
+release kbA Right
+press kbA Throw
+wait 0.6
+screenshot rc_wren_throw
+wait 2.6
+press kbA Reset
+wait 1.0
+# Combo throw: Light, Light, Throw while the lights hit (walked in close first).
+hold kbA Right
+wait 1.5
+release kbA Right
+press kbA Light
+wait 0.22
+press kbA Light
+wait 0.22
+press kbA Throw
+wait 0.5
+screenshot rc_wren_combo_throw
+wait 2.8
+press kbA Reset
+wait 1.0
+# Jumps: straight up, forward, back.
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 1.0
+hold kbA Right
+hold kbA Jump
+wait 0.1
+release kbA Jump
+release kbA Right
+wait 1.0
+hold kbA Left
+hold kbA Jump
+wait 0.1
+release kbA Jump
+release kbA Left
+wait 1.0
+press kbA Reset
+wait 1.0
+# A deep jump-in into a light string.
+hold kbA Right
+wait 0.4
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.25
+press kbA Heavy
+release kbA Right
+wait 0.12
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 1.6
+screenshot rc_wren_jumpin
+match ashka wren training 0 left
+wait 2.5
+hold kbA Down
+wait 0.9
+screenshot rc_ashka_crouch
+release kbA Down
+wait 0.6
+hold kbA Right
+wait 0.6
+release kbA Right
+hold kbA Down
+wait 0.3
+press kbA Light
+wait 0.9
+press kbA Heavy
+wait 0.18
+screenshot rc_ashka_uppercut
+release kbA Down
+wait 2.2
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 1.8
+release kbA Right
+press kbA Throw
+wait 0.7
+screenshot rc_ashka_throw
+wait 2.4
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 1.6
+release kbA Right
+press kbA Light
+wait 0.22
+press kbA Light
+wait 0.22
+press kbA Throw
+wait 0.6
+screenshot rc_ashka_combo_throw
+wait 2.6
+press kbA Reset
+wait 1.0
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 1.0
+hold kbA Right
+hold kbA Jump
+wait 0.1
+release kbA Jump
+release kbA Right
+wait 1.0
+hold kbA Left
+hold kbA Jump
+wait 0.1
+release kbA Jump
+release kbA Left
+wait 1.0
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.4
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.25
+press kbA Heavy
+release kbA Right
+wait 0.12
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 0.05
+press kbA Light
+wait 1.6
+screenshot rc_ashka_jumpin
+assets
+quit
