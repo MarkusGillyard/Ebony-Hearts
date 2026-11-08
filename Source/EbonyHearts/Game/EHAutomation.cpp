@@ -244,6 +244,7 @@ eh::InputFrame AEHGameDirector::AutoBotInput(int32 Player)
 	Apply(EEHAction::Left, Want.x < 0, false);
 	Apply(EEHAction::Right, Want.x > 0, false);
 	Apply(EEHAction::Jump, Want.y > 0, false);
+	Apply(EEHAction::Down, Want.y < 0, false);
 	Apply(EEHAction::Light, (Want.held & eh::BtnLight) != 0, (Want.pressed & eh::BtnLight) != 0);
 	Apply(EEHAction::Heavy, (Want.held & eh::BtnHeavy) != 0, (Want.pressed & eh::BtnHeavy) != 0);
 	Apply(EEHAction::Special, (Want.held & eh::BtnSpecial) != 0, (Want.pressed & eh::BtnSpecial) != 0);
@@ -262,9 +263,9 @@ eh::InputFrame AEHGameDirector::AutoBotInput(int32 Player)
 			AutoBotHeld[Player] &= ~Bit;
 		}
 	}
-	if (Got.pressed != Want.pressed || Got.x != Want.x)
+	if (Got.pressed != Want.pressed || Got.x != Want.x || Got.y != Want.y)
 	{
-		AutoLogLine(FString::Printf(TEXT("WARN router mismatch p%d want(x=%d p=%d) got(x=%d p=%d)"), Player, Want.x, Want.pressed, Got.x, Got.pressed));
+		AutoLogLine(FString::Printf(TEXT("WARN router mismatch p%d want(x=%d y=%d p=%d) got(x=%d y=%d p=%d)"), Player, Want.x, Want.y, Want.pressed, Got.x, Got.y, Got.pressed));
 	}
 	return Got;
 }
@@ -895,7 +896,8 @@ void AEHGameDirector::RunBindingsSelfTest()
 		Check(D.Get(Pad, A::Light, 0) == EKeys::Gamepad_FaceButton_Left, P + TEXT(" light = Square / X"));
 		Check(D.Get(Pad, A::Heavy, 0) == EKeys::Gamepad_FaceButton_Top, P + TEXT(" heavy = Triangle / Y"));
 		Check(D.Get(Pad, A::Dodge, 0) == EKeys::Gamepad_FaceButton_Right, P + TEXT(" dodge = Circle / B"));
-		Check(D.IsUnbound(Pad, A::Throw), P + TEXT(" grab has no button while grappling is off"));
+		Check(D.Get(Pad, A::Throw, 0) == EKeys::Gamepad_LeftTrigger && !D.Get(Pad, A::Throw, 1).IsValid(), P + TEXT(" throw = L2 / LT"));
+		Check(D.Get(Pad, A::Down, 0) == EKeys::Gamepad_DPad_Down && !D.Get(Pad, A::Down, 1).IsValid(), P + TEXT(" crouch = D-pad down (and the stick's down)"));
 		Check(D.Get(Pad, A::Jump, 1) == EKeys::Gamepad_FaceButton_Bottom, P + TEXT(" jump slot 2 = Cross / A"));
 		Check(D.Get(Pad, A::Block, 0) == EKeys::Gamepad_RightTrigger, P + TEXT(" block = R2 / RT"));
 		Check(D.Get(Pad, A::Block, 1) == EKeys::Gamepad_LeftShoulder, P + TEXT(" block slot 2 = L1 / LB"));
@@ -922,7 +924,8 @@ void AEHGameDirector::RunBindingsSelfTest()
 	// 2. PlayStation and Xbox names for the same physical buttons.
 	struct FName2 { A Act; int32 Slot; const TCHAR* PS; const TCHAR* XB; };
 	const FName2 Names[] = {{A::Light, 0, TEXT("Square"), TEXT("X")}, {A::Heavy, 0, TEXT("Triangle"), TEXT("Y")}, {A::Dodge, 0, TEXT("Circle"), TEXT("B")},
-		{A::Jump, 1, TEXT("Cross"), TEXT("A")}, {A::Block, 1, TEXT("L1"), TEXT("LB")}, {A::Block, 0, TEXT("R2"), TEXT("RT")}, {A::Special, 0, TEXT("R1"), TEXT("RB")}};
+		{A::Jump, 1, TEXT("Cross"), TEXT("A")}, {A::Block, 1, TEXT("L1"), TEXT("LB")}, {A::Block, 0, TEXT("R2"), TEXT("RT")}, {A::Special, 0, TEXT("R1"), TEXT("RB")},
+		{A::Throw, 0, TEXT("L2"), TEXT("LT")}};
 	for (const FName2& N : Names)
 	{
 		const FKey K = D.Get(S::GamepadP1, N.Act, N.Slot);
@@ -936,9 +939,14 @@ void AEHGameDirector::RunBindingsSelfTest()
 	// 3. Menus and gameplay are separate: Cross / A confirms in menus and jumps in a match; Circle / B backs out and dodges.
 	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_FaceButton_Bottom) == EEHNav::Confirm && D.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Bottom) == A::Jump, TEXT("Cross: confirm in menus, jump in play"));
 	// The keyboards' former grab keys jump too: I on the left side, Numpad 5 and ; on the right.
-	Check(D.Get(S::KeyboardA, A::Jump, 0) == EKeys::W && D.Get(S::KeyboardA, A::Jump, 1) == EKeys::I && D.IsUnbound(S::KeyboardA, A::Throw), TEXT("keyboard left: jump = W or I"));
-	Check(D.Get(S::KeyboardB, A::Jump, 0) == EKeys::Up && D.Get(S::KeyboardB, A::Jump, 1) == EKeys::NumPadFive && D.Get(S::KeyboardB, A::Jump, 2) == EKeys::Semicolon &&
-		D.IsUnbound(S::KeyboardB, A::Throw), TEXT("keyboard right: jump = Up, Numpad 5 or ;"));
+	Check(D.Get(S::KeyboardA, A::Jump, 0) == EKeys::W && D.Get(S::KeyboardA, A::Jump, 1) == EKeys::I, TEXT("keyboard left: jump = W or I"));
+	Check(D.Get(S::KeyboardB, A::Jump, 0) == EKeys::Up && D.Get(S::KeyboardB, A::Jump, 1) == EKeys::NumPadFive && D.Get(S::KeyboardB, A::Jump, 2) == EKeys::Semicolon,
+		TEXT("keyboard right: jump = Up, Numpad 5 or ;"));
+	Check(D.Get(S::KeyboardA, A::Down, 0) == EKeys::S && D.Get(S::KeyboardA, A::Throw, 0) == EKeys::U, TEXT("keyboard left: crouch = S, throw = U"));
+	Check(D.Get(S::KeyboardB, A::Down, 0) == EKeys::Down && D.Get(S::KeyboardB, A::Throw, 0) == EKeys::NumPadFour && D.Get(S::KeyboardB, A::Throw, 1) == EKeys::M,
+		TEXT("keyboard right: crouch = Down, throw = Numpad 4 or M"));
+	Check(EHMenuCommand(S::KeyboardA, EKeys::S) == EEHNav::Down && EHMenuCommand(S::KeyboardB, EKeys::Down) == EEHNav::Down && EHMenuCommand(S::GamepadP1, EKeys::Gamepad_DPad_Down) == EEHNav::Down,
+		TEXT("the crouch keys are the menus' down too"));
 	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_FaceButton_Right) == EEHNav::Back && D.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Right) == A::Dodge, TEXT("Circle: back in menus, dodge in play"));
 	Check(EHMenuCommand(S::GamepadP1, EKeys::Gamepad_FaceButton_Left) == EEHNav::Count, TEXT("Square has no menu role"));
 
@@ -959,12 +967,12 @@ void AEHGameDirector::RunBindingsSelfTest()
 	B.Assign(S::GamepadP1, A::Block, 1, EKeys::Gamepad_RightTrigger, EEHConflictResolve::Replace);
 	Check(B.Get(S::GamepadP1, A::Block, 1) == EKeys::Gamepad_RightTrigger && B.Get(S::GamepadP1, A::Block, 0) == EKeys::Gamepad_LeftShoulder, TEXT("a key from the action's other slot trades slots"));
 	B = D;
-	B.Assign(S::GamepadP1, A::Light, 2, EKeys::Gamepad_LeftTrigger, EEHConflictResolve::Replace);
-	Check(B.Get(S::GamepadP1, A::Light, 2) == EKeys::Gamepad_LeftTrigger && B.Find(S::GamepadP1, EKeys::Gamepad_LeftTrigger) == A::Light && B.First(S::GamepadP1, A::Light) == EKeys::Gamepad_FaceButton_Left,
+	B.Assign(S::GamepadP1, A::Light, 2, EKeys::Gamepad_RightThumbstick, EEHConflictResolve::Replace);
+	Check(B.Get(S::GamepadP1, A::Light, 2) == EKeys::Gamepad_RightThumbstick && B.Find(S::GamepadP1, EKeys::Gamepad_RightThumbstick) == A::Light && B.First(S::GamepadP1, A::Light) == EKeys::Gamepad_FaceButton_Left,
 		TEXT("a third button for an action"));
 	B = D;
-	B.Assign(S::GamepadP1, A::Light, 1, EKeys::Gamepad_LeftTrigger, EEHConflictResolve::Replace);
-	Check(B.Find(S::GamepadP1, EKeys::Gamepad_LeftTrigger) == A::Light && B.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Left) == A::Light, TEXT("two buttons for one action"));
+	B.Assign(S::GamepadP1, A::Light, 1, EKeys::Gamepad_RightThumbstick, EEHConflictResolve::Replace);
+	Check(B.Find(S::GamepadP1, EKeys::Gamepad_RightThumbstick) == A::Light && B.Find(S::GamepadP1, EKeys::Gamepad_FaceButton_Left) == A::Light, TEXT("two buttons for one action"));
 	B.Clear(S::GamepadP1, A::Block, 1);
 	Check(B.Find(S::GamepadP1, EKeys::Gamepad_LeftShoulder) == A::Count && B.Find(S::GamepadP1, EKeys::Gamepad_RightTrigger) == A::Block, TEXT("clear one block slot"));
 	B.ResetSet(S::GamepadP1);
@@ -1022,6 +1030,8 @@ void AEHGameDirector::RunBindingsSelfTest()
 	Check(V1.Bindings.Get(S::KeyboardA, A::Light, 0) == EKeys::U && V1.Bindings.Get(S::KeyboardA, A::Light, 1) == EKeys::Enter, TEXT("version-1 keyboard layout kept"));
 	Check(V1.Bindings.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Left && V1.Bindings.Get(S::GamepadP1, A::Jump, 1) == EKeys::Gamepad_FaceButton_Bottom && !Warning.IsEmpty(),
 		TEXT("version-1 controller layout moves to the new default, with a notice"));
+	Check(V1.Bindings.IsUnbound(S::KeyboardA, A::Throw) && V1.Bindings.Get(S::KeyboardA, A::Down, 0) == EKeys::S && Warning.Contains(TEXT("Throw")),
+		TEXT("version 1: the player's U stays on Light, so Throw is left for them to choose (named in the notice); S crouches ") + Warning);
 	// A version-2 file (two slots, Grab on its old buttons): the old grab buttons move to jump and block, a grab button
 	// the player had chosen stays with Grab, and the right keyboard's third jump key arrives.
 	const FString V2Path = FPaths::Combine(Dir, TEXT("version2.json"));
@@ -1033,11 +1043,34 @@ void AEHGameDirector::RunBindingsSelfTest()
 	Warning.Reset();
 	const FEHSettings V2 = FEHSettings::Load(&Warning, V2Path);
 	Check(V2.Bindings.Get(S::GamepadP1, A::Jump, 1) == EKeys::Gamepad_FaceButton_Bottom && V2.Bindings.Get(S::GamepadP1, A::Block, 1) == EKeys::Gamepad_LeftShoulder &&
-		V2.Bindings.IsUnbound(S::GamepadP1, A::Throw) && !Warning.IsEmpty(), TEXT("version 2: Cross jumps and L1 blocks, with a notice ") + Warning);
+		V2.Bindings.Get(S::GamepadP1, A::Throw, 0) == EKeys::Gamepad_LeftTrigger && !Warning.IsEmpty(), TEXT("version 2: Cross jumps, L1 blocks and L2 throws, with a notice ") + Warning);
 	Check(V2.Bindings.Get(S::GamepadP2, A::Throw, 0) == EKeys::Gamepad_LeftTrigger && V2.Bindings.Get(S::GamepadP2, A::Jump, 1) == EKeys::Gamepad_FaceButton_Bottom,
 		TEXT("version 2: a player's own grab button stays; the default jump button is free and arrives"));
 	Check(V2.Bindings.Get(S::KeyboardA, A::Jump, 1) == EKeys::I && V2.Bindings.Get(S::KeyboardB, A::Jump, 1) == EKeys::NumPadFive &&
 		V2.Bindings.Get(S::KeyboardB, A::Jump, 2) == EKeys::Semicolon && !V2.Bindings.HasConflicts(&Report), TEXT("version 2: keyboard grab keys jump ") + Report);
+	// A version-3 file (Grab empty, no Crouch): Throw and Crouch take their defaults where free; a key the player gave
+	// another action stays theirs, the new action is left unbound and the notice says so. Nothing else changes.
+	const FString V3Path = FPaths::Combine(Dir, TEXT("version3.json"));
+	FFileHelper::SaveStringToFile(TEXT("{\"version\":3,\"masterVolume\":55,\"bindings\":{")
+		TEXT("\"controller1\":{\"Grab\":[\"\",\"\",\"\"],\"Block\":[\"Gamepad_RightTrigger\",\"Gamepad_LeftTrigger\",\"\"],\"Jump\":[\"Gamepad_DPad_Up\",\"Gamepad_FaceButton_Bottom\",\"\"]},")
+		TEXT("\"controller2\":{\"Grab\":[\"\",\"\",\"\"]},")
+		TEXT("\"keyboard1\":{\"Special\":[\"S\",\"\",\"\"],\"Grab\":[\"\",\"\",\"\"]},")
+		TEXT("\"keyboard2\":{\"Grab\":[\"\",\"\",\"\"]}}}"), *V3Path);
+	Warning.Reset();
+	const FEHSettings V3 = FEHSettings::Load(&Warning, V3Path);
+	Check(V3.MasterVolume == 55 && V3.Bindings.Get(S::KeyboardA, A::Special, 0) == EKeys::S && V3.Bindings.IsUnbound(S::KeyboardA, A::Down) && V3.Bindings.Get(S::KeyboardA, A::Throw, 0) == EKeys::U,
+		TEXT("version 3: S stays on the player's Special; Crouch is left for them; Throw gets U"));
+	Check(V3.Bindings.Get(S::GamepadP1, A::Block, 1) == EKeys::Gamepad_LeftTrigger && V3.Bindings.IsUnbound(S::GamepadP1, A::Throw) && V3.Bindings.Get(S::GamepadP1, A::Down, 0) == EKeys::Gamepad_DPad_Down,
+		TEXT("version 3: L2 stays on the player's Block; Throw is left for them; the D-pad crouches"));
+	Check(V3.Bindings.Get(S::GamepadP2, A::Throw, 0) == EKeys::Gamepad_LeftTrigger && V3.Bindings.Get(S::KeyboardB, A::Throw, 0) == EKeys::NumPadFour && V3.Bindings.Get(S::KeyboardB, A::Down, 0) == EKeys::Down,
+		TEXT("version 3: untouched layouts get the new defaults"));
+	Check(Warning.Contains(TEXT("Crouch")) && Warning.Contains(TEXT("Throw")) && !V3.Bindings.HasConflicts(&Report), TEXT("version 3: the notice names what was left unbound ") + Warning + Report);
+	const FString V4Path = FPaths::Combine(Dir, TEXT("version4.json"));
+	Check(V3.Save(V4Path), TEXT("save the migrated file"));
+	Warning.Reset();
+	const FEHSettings V4 = FEHSettings::Load(&Warning, V4Path);
+	Check(Warning.IsEmpty() && V4.Bindings.IsUnbound(S::KeyboardA, A::Down) && V4.Bindings.Get(S::KeyboardA, A::Special, 0) == EKeys::S,
+		TEXT("a version-4 file loads as saved, without migrating again ") + Warning);
 	const FString BadPath = FPaths::Combine(Dir, TEXT("conflict.json"));
 	FFileHelper::SaveStringToFile(TEXT("{\"version\":2,\"bindings\":{\"controller1\":{\"LightAttack\":[\"Gamepad_FaceButton_Top\",\"\"]},\"controller2\":{\"LightAttack\":[\"Gamepad_LeftThumbstick\",\"\"]}}}"), *BadPath);
 	Warning.Reset();
@@ -1072,6 +1105,7 @@ void AEHGameDirector::RunInputSelfTest()
 		Sample();
 		return F;
 	};
+	eh::InputFrame F0;
 	auto LastNav = [&]() {
 		EEHNav Out = EEHNav::Count;
 		FEHNavEvent E;
@@ -1099,6 +1133,35 @@ void AEHGameDirector::RunInputSelfTest()
 		const eh::InputFrame F = Tap(EKeys::Gamepad_FaceButton_Bottom);
 		Check(F.y == 1 && F.pressed == 0 && F.x == 0, TEXT("Cross / A -> jump"));
 	}
+	// L2 / LT is the throw (through the trigger axis), and down crouches from the D-pad or the stick.
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftTriggerAxis, 0.8f);
+	Check((Sample().pressed & eh::BtnThrow) != 0, TEXT("L2 / LT -> throw"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftTriggerAxis, 0.0f);
+	Sample();
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, true);
+	Check(Sample().y == -1, TEXT("D-pad down -> crouch"));
+	R.InjectKey(Dev, EKeys::Gamepad_FaceButton_Bottom, true);
+	Check(Sample().y == 1, TEXT("Cross while crouching jumps (up wins over down)"));
+	R.InjectKey(Dev, EKeys::Gamepad_FaceButton_Bottom, false);
+	Check(Sample().y == -1, TEXT("back to crouching when the jump button is let go"));
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, false);
+	Check(Sample().y == 0, TEXT("D-pad down released"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftY, -0.5f);
+	Check(Sample().y == 0, TEXT("a half-way stick does not crouch"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftY, -0.9f);
+	Check(Sample().y == -1, TEXT("left stick down -> crouch"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftY, -0.45f);
+	Check(Sample().y == -1, TEXT("hysteresis: still crouched just inside the release threshold"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftY, -0.2f);
+	Check(Sample().y == 0, TEXT("stick released: standing"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftX, 0.7f);
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftY, -0.7f);
+	F0 = Sample();
+	Check(F0.y == -1 && F0.x == 1, TEXT("a diagonal down-toward: both directions"));
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftX, 0.0f);
+	R.InjectAnalog(Dev, EKeys::Gamepad_LeftY, 0.0f);
+	Sample();
+	LastNav();
 	// Menu roles of the same buttons.
 	LastNav();
 	Tap(EKeys::Gamepad_FaceButton_Bottom);

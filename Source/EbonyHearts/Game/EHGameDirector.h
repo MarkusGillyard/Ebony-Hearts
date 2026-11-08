@@ -107,6 +107,7 @@ struct FEHCallout
 struct FEHInputLogEntry
 {
 	int8 X = 0;
+	int8 Y = 0;      // +1 up, -1 down
 	uint8 Held = 0;
 	int32 Frames = 1;
 };
@@ -120,11 +121,31 @@ struct FEHStats
 	int32 Frames = 0;
 };
 
+// What a Lesson step teaches (its goal check and the partner's script).
+enum class EEHLessonStep : uint8
+{
+	Movement,
+	Light,
+	Heavy,
+	Block,
+	LowGuard,
+	TimedBlock,
+	JumpIn,
+	AntiAir,
+	Throw,
+	ThrowEscape,
+	ComboThrow,
+	Punish,
+	Special,
+	Done,
+};
+
 struct FEHTutorialStep
 {
 	FString Title;
 	FString Body;
 	int32 Goal = 1;
+	EEHLessonStep Kind = EEHLessonStep::Done;
 };
 
 UCLASS(NotBlueprintable)

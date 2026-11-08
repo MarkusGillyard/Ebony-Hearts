@@ -426,14 +426,10 @@ void FEHInputRouter::ProcessAxis(FEHDevice& D, const FKey& Axis, float V)
 		const EEHNav Command = i == 0 ? NavNeg : NavPos;
 		const bool bDown = i == 0 ? bNeg : bPos;
 		const bool bNewNav = SetNav(D, Command, bDown, true);
-		bool bNewAction = false;
-		EEHAction Action = EEHAction::Count;
-		if (bX || i == 1)
-		{
-			// Left and right move; up jumps (down does nothing in a fight).
-			Action = bX ? (i == 0 ? EEHAction::Left : EEHAction::Right) : EEHAction::Jump;
-			bNewAction = SetAction(D, Action, bDown, true);
-		}
+		// Left and right move; up jumps; down crouches. Each axis has its own hysteresis, so a diagonal must pass the
+		// same threshold on both axes and a resting or slightly off-centre stick neither crouches nor jumps.
+		const EEHAction Action = bX ? (i == 0 ? EEHAction::Left : EEHAction::Right) : (i == 0 ? EEHAction::Down : EEHAction::Jump);
+		const bool bNewAction = SetAction(D, Action, bDown, true);
 		if (bNewNav || bNewAction)
 		{
 			Pressed(D, bNewNav ? Command : EEHNav::Count, bNewAction ? Action : EEHAction::Count);
@@ -487,7 +483,11 @@ eh::InputFrame FEHInputRouter::SampleForTick(int32 DeviceKey)
 	const bool L = (D->Held & Bit(EEHAction::Left)) != 0;
 	const bool R = (D->Held & Bit(EEHAction::Right)) != 0;
 	F.x = static_cast<int8_t>((R ? 1 : 0) - (L ? 1 : 0));
-	F.y = static_cast<int8_t>((D->Held & Bit(EEHAction::Jump)) != 0 ? 1 : 0);
+	// Up (any jump input) wins over down when both are held, so the jump button jumps out of a crouch; down alone
+	// crouches. Opposite horizontal directions cancel.
+	const bool bUp = (D->Held & Bit(EEHAction::Jump)) != 0;
+	const bool bDownHeld = (D->Held & Bit(EEHAction::Down)) != 0;
+	F.y = static_cast<int8_t>(bUp ? 1 : (bDownHeld ? -1 : 0));
 	auto Map = [](uint32 Bits) {
 		uint8 Out = 0;
 		if (Bits & Bit(EEHAction::Light)) Out |= eh::BtnLight;

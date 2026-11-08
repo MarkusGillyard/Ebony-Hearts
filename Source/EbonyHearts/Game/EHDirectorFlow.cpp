@@ -44,8 +44,9 @@ const TCHAR* DummyName(eh::DummyMode M)
 	case eh::DummyMode::Block: return TEXT("Block all");
 	case eh::DummyMode::BlockAfterHit: return TEXT("Block after first hit");
 	case eh::DummyMode::RandomBlock: return TEXT("Random block");
-	case eh::DummyMode::TechThrows: return TEXT("Escape grabs");
+	case eh::DummyMode::TechThrows: return TEXT("Escape throws");
 	case eh::DummyMode::Cpu: return TEXT("CPU");
+	case eh::DummyMode::Crouch: return TEXT("Crouch");
 	}
 	return TEXT("?");
 }
@@ -127,10 +128,11 @@ void AEHGameDirector::BuildPauseMenu()
 	if (Mode == EEHMode::Training)
 	{
 		Menu.Add(Choice(TEXT("Dummy"), [this] { return FString(DummyName(Dummy)); }, [this](int32 D) {
-			int32 Next = (static_cast<int32>(Dummy) + D + 6) % 6;
-			if (!Rules.grappling && Next == static_cast<int32>(eh::DummyMode::TechThrows))
+			constexpr int32 Modes = static_cast<int32>(eh::DummyMode::Crouch) + 1;
+			int32 Next = (static_cast<int32>(Dummy) + D + Modes) % Modes;
+			if (!Rules.ThrowsEnabled() && Next == static_cast<int32>(eh::DummyMode::TechThrows))
 			{
-				Next = (Next + (D < 0 ? -1 : 1) + 6) % 6;   // nothing to escape without grappling
+				Next = (Next + (D < 0 ? -1 : 1) + Modes) % Modes;   // nothing to escape without throws
 			}
 			Dummy = static_cast<eh::DummyMode>(Next);
 			const int32 DummySlot = SlotCpu[0] ? 0 : 1;
@@ -273,13 +275,13 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 {
 	// Order follows the controller: attacks and defence first, then movement and the training shortcut.
-	// Grab is listed only while grappling is on; its bindings are kept either way.
+	// Throw is listed while throws are in the game (rules.json "throws"); its bindings are kept either way.
 	static const EEHAction AllActions[] = {EEHAction::Light, EEHAction::Heavy, EEHAction::Dodge, EEHAction::Throw, EEHAction::Block,
-		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Jump, EEHAction::Reset};
+		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Jump, EEHAction::Down, EEHAction::Reset};
 	TArray<EEHAction> Order;
 	for (EEHAction A : AllActions)
 	{
-		if (A != EEHAction::Throw || Rules.grappling)
+		if (A != EEHAction::Throw || Rules.ThrowsEnabled())
 		{
 			Order.Add(A);
 		}
@@ -305,6 +307,9 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 				MenuIndex = 0;
 			};
 			I.Hint = A == EEHAction::Reset ? FString(TEXT("Training only: puts both fighters back at their start positions."))
+				: A == EEHAction::Down ? FString(bPad ? TEXT("Hold to crouch; with Heavy, the uppercut; with Light, the low attack. The stick's down also crouches.")
+				                                      : TEXT("Hold to crouch; with Heavy, the uppercut; with Light, the low attack."))
+				: A == EEHAction::Throw ? FString(TEXT("Throws beat any guard up close; right after a light that hits, the throw cannot be escaped."))
 				: (bPad ? FString(TEXT("Confirm to change. The left stick always moves; Options / Menu always pauses."))
 				: FString(TEXT("Confirm to change. Escape always pauses.")));
 			Menu.Add(I);
@@ -317,9 +322,9 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 		Menu.Add(Button(TEXT("Back"), [this] {
 			SaveSettings();
 			FString Missing;
-			for (EEHAction A : {EEHAction::Light, EEHAction::Heavy, EEHAction::Special, EEHAction::Throw, EEHAction::Dodge, EEHAction::Block, EEHAction::Left, EEHAction::Right})
+			for (EEHAction A : {EEHAction::Light, EEHAction::Heavy, EEHAction::Special, EEHAction::Throw, EEHAction::Dodge, EEHAction::Block, EEHAction::Left, EEHAction::Right, EEHAction::Down})
 			{
-				if (Settings.Bindings.IsUnbound(BindingSet, A) && (A != EEHAction::Throw || Rules.grappling))
+				if (Settings.Bindings.IsUnbound(BindingSet, A) && (A != EEHAction::Throw || Rules.ThrowsEnabled()))
 				{
 					Missing += (Missing.IsEmpty() ? TEXT("") : TEXT(", ")) + FString(EHActionLabel(A));
 				}
@@ -457,9 +462,9 @@ void AEHGameDirector::ApplyCapturedKey(const FKey& Key)
 		return;
 	}
 	const FEHBindingRef C = Settings.Bindings.FindConflict(BindingSet, A, CaptureSlot, Key);
-	if (!C.IsValid() || (C.Set == BindingSet && C.Action == A) || (C.Action == EEHAction::Throw && !Rules.grappling))
+	if (!C.IsValid() || (C.Set == BindingSet && C.Action == A) || (C.Action == EEHAction::Throw && !Rules.ThrowsEnabled()))
 	{
-		// Free, the action's own other slot (the two slots trade), or held only by the hidden Grab, which gives it up.
+		// Free, the action's own other slot (the two slots trade), or held only by a hidden Throw, which gives it up.
 		Settings.Bindings.Assign(BindingSet, A, CaptureSlot, Key, EEHConflictResolve::Replace);
 		BindingsChanged(FString::Printf(TEXT("%s: %s."), EHActionLabel(A), *KeyName(BindingSet, Key)));
 		return;
@@ -920,29 +925,30 @@ void AEHGameDirector::HandleNav()
 void AEHGameDirector::SetupLesson()
 {
 	Lesson.Reset();
-	// Without grappling (rules.json "grappling"), steps 5 and 6 teach the jump-in and its answers instead of the grab
-	// and its escape; the step numbers stay the same either way.
-	const bool bGrab = Rules.grappling;
-	Lesson.Add({TEXT("Movement"), bGrab ? TEXT("Walk toward your opponent, then away. Movement is separate from the six actions.")
-		: TEXT("Walk toward your opponent, then away. Movement is separate from the five actions."), 2});
-	Lesson.Add({TEXT("Light"), TEXT("Light is fast and safe. Press it three times to run your short string."), 1});
-	Lesson.Add({TEXT("Heavy"), TEXT("Heavy reaches further and hits harder, but a miss leaves you open. Land one."), 1});
-	Lesson.Add({TEXT("Block"), TEXT("Hold Block to stop strikes. You cannot move while blocking. Block three strikes."), 3});
-	Lesson.Add({TEXT("Timed block"), TEXT("Press Block just before a strike lands to deflect it and recover sooner. Mashing does not work."), 1});
-	if (bGrab)
+	using K = EEHLessonStep;
+	const bool bThrows = Rules.ThrowsEnabled();
+	const bool bWren = Match.IsValid() && Match->Character(0).id == "wren";
+	Lesson.Add({TEXT("Movement"), TEXT("Walk toward your opponent, then away. Movement is separate from the actions."), 2, K::Movement});
+	Lesson.Add({TEXT("Light"), TEXT("Light is fast and safe. Press it three times to run your short string."), 1, K::Light});
+	Lesson.Add({TEXT("Heavy"), TEXT("Heavy reaches further and hits harder, but a miss leaves you open. Land one."), 1, K::Heavy});
+	Lesson.Add({TEXT("Block"), TEXT("Hold Block to stop strikes. You cannot move while blocking. Block three strikes."), 3, K::Block});
+	Lesson.Add({TEXT("Crouch"), TEXT("Hold down to crouch: high strikes such as the jab pass over you. Low kicks must be\nblocked crouching: hold down and Block. Block two low attacks."), 2, K::LowGuard});
+	Lesson.Add({TEXT("Timed block"), TEXT("Press Block just before a strike lands to deflect it and recover sooner. Mashing does not work."), 1, K::TimedBlock});
+	Lesson.Add({TEXT("Jump in"), TEXT("A crouching guard cannot stop an attack coming down from a jump. Jump toward your\ncrouching opponent and hit as you come down, then keep attacking when you land."), 1, K::JumpIn});
+	Lesson.Add({TEXT("Uppercut"), TEXT("Down + Heavy is your uppercut. It rises under a jump-in: when your opponent jumps\nat you, uppercut them as they come down. Blocked or missed, it is badly punished."), 1, K::AntiAir});
+	if (bThrows)
 	{
-		Lesson.Add({TEXT("Grab"), TEXT("Blocking stops strikes but not grabs. Grab your guarding opponent up close."), 1});
-		Lesson.Add({TEXT("Escape"), TEXT("When you are grabbed, press Grab straight away to break free."), 1});
+		Lesson.Add({TEXT("Throw"), TEXT("A throw beats any guard, standing or crouching, but only up close.\nWalk in and throw your guarding opponent."), 1, K::Throw});
+		Lesson.Add({TEXT("Throw escape"), TEXT("When you are thrown from neutral, press Throw straight away to break free."), 1, K::ThrowEscape});
+		Lesson.Add({TEXT("Combo throw"), bWren
+			? TEXT("Throw while a light is hitting: Light, Throw (or Light, Light, Throw) takes them\ndown with the double-leg. A throw that follows a hit cannot be escaped.")
+			: TEXT("Throw while a light is hitting: Light, Light, Throw takes the jab and elbow into the\nclinch trip. Stay close: a throw that follows a hit cannot be escaped."), 1, K::ComboThrow});
 	}
-	else
-	{
-		Lesson.Add({TEXT("Jump in"), TEXT("Holding Block stops strikes on the ground, not from the air. Jump toward your guarding\nopponent and attack as you come down, then keep attacking when you land."), 1});
-		Lesson.Add({TEXT("Anti-air"), TEXT("In the air you cannot block. When your opponent jumps in, hit them before their attack\nlands to knock them down, or press Block just before it lands to deflect it."), 1});
-	}
-	Lesson.Add({TEXT("Punish"), TEXT("Block or dodge the heavy kick, then hit back while it recovers."), 1});
-	Lesson.Add({TEXT("Special"), TEXT("Special changes with direction: neutral, toward, and away (which spends gauge). Use all three."), 3});
-	Lesson.Add({TEXT("Lesson complete"), bGrab ? TEXT("Strikes beat grabs, grabs beat blocks, blocks beat strikes, and dodges beat everything you read correctly.")
-		: TEXT("Strikes beat jumps, jumps beat a held block, blocks beat strikes, and dodges beat everything you read correctly."), 1});
+	Lesson.Add({TEXT("Punish"), TEXT("Block or dodge the heavy kick, then hit back while it recovers."), 1, K::Punish});
+	Lesson.Add({TEXT("Special"), TEXT("Special changes with direction: neutral, toward, and away (which spends gauge). Use all three."), 3, K::Special});
+	Lesson.Add({TEXT("Lesson complete"), bThrows
+		? TEXT("Strikes beat throws, throws beat guards, guards beat strikes. Crouch under highs and\nagainst lows, stand against overheads and jump-ins, and uppercut the jumps.")
+		: TEXT("Guards beat strikes, strikes beat jumps. Crouch under highs and against lows,\nstand against overheads and jump-ins, and uppercut the jumps."), 1, K::Done});
 	LessonStep = 0;
 	LessonCount = 0;
 	LessonDoneAge = -1.0f;
@@ -956,25 +962,27 @@ void AEHGameDirector::UpdateLesson(const eh::Event& E)
 		return;
 	}
 	const FString Move = (E.player == 0) ? EHMoveId(*Match, 0, E.move) : FString();
+	const FString PartnerMove = (E.player == 1) ? EHMoveId(*Match, 1, E.move) : FString();
 	bool bProgress = false;
-	switch (LessonStep)
+	switch (Lesson[LessonStep].Kind)
 	{
-	case 1: bProgress = E.type == eh::EventType::MoveStart && E.player == 0 && Move == TEXT("L3"); break;
-	case 2: bProgress = E.type == eh::EventType::Hit && E.player == 0 && (Move == TEXT("H") || Move == TEXT("FH")); break;
-	case 3: bProgress = (E.type == eh::EventType::Block || E.type == eh::EventType::Deflect) && E.player == 1; break;
-	case 4: bProgress = E.type == eh::EventType::Deflect && E.player == 1; break;
-	case 5:
-		bProgress = Rules.grappling ? (E.type == eh::EventType::ThrowConnect && E.player == 0)
-			: (E.type == eh::EventType::Hit && E.player == 0 && E.move >= 0 && Match->Character(0).moves[static_cast<size_t>(E.move)].air);
+	case EEHLessonStep::Light: bProgress = E.type == eh::EventType::MoveStart && E.player == 0 && Move == TEXT("L3"); break;
+	case EEHLessonStep::Heavy: bProgress = E.type == eh::EventType::Hit && E.player == 0 && (Move == TEXT("H") || Move == TEXT("FH")); break;
+	case EEHLessonStep::Block: bProgress = (E.type == eh::EventType::Block || E.type == eh::EventType::Deflect) && E.player == 1; break;
+	case EEHLessonStep::LowGuard: bProgress = (E.type == eh::EventType::Block || E.type == eh::EventType::Deflect) && E.player == 1 && PartnerMove == TEXT("CL"); break;
+	case EEHLessonStep::TimedBlock: bProgress = E.type == eh::EventType::Deflect && E.player == 1; break;
+	case EEHLessonStep::JumpIn:
+		bProgress = E.type == eh::EventType::Hit && E.player == 0 && E.move >= 0 && Match->Character(0).moves[static_cast<size_t>(E.move)].air;
 		break;
-	case 6:
-		// The partner's jump-ins are answered: hit out of the air (any hit on a jumper knocks it down) or deflected.
-		bProgress = Rules.grappling ? E.type == eh::EventType::ThrowTech
-			: ((E.type == eh::EventType::Hit && E.player == 0 && (E.flags & eh::EvKnockdown) && Match->State().f[1].y > 0) ||
-			   (E.type == eh::EventType::Deflect && E.player == 1 && E.move >= 0 && Match->Character(1).moves[static_cast<size_t>(E.move)].air));
+	case EEHLessonStep::AntiAir:
+		// The partner's jump-in is answered with the uppercut while it is still in the air.
+		bProgress = E.type == eh::EventType::Hit && E.player == 0 && Move == TEXT("U") && Match->State().f[1].y > 0;
 		break;
-	case 7: bProgress = E.type == eh::EventType::Hit && E.player == 0 && (E.flags & eh::EvPunish); break;
-	case 8:
+	case EEHLessonStep::Throw: bProgress = E.type == eh::EventType::ThrowConnect && E.player == 0; break;
+	case EEHLessonStep::ThrowEscape: bProgress = E.type == eh::EventType::ThrowTech && Match->State().f[0].state == eh::FState::Tech; break;
+	case EEHLessonStep::ComboThrow: bProgress = E.type == eh::EventType::ThrowConnect && E.player == 0 && (E.flags & eh::EvCancel); break;
+	case EEHLessonStep::Punish: bProgress = E.type == eh::EventType::Hit && E.player == 0 && (E.flags & eh::EvPunish); break;
+	case EEHLessonStep::Special:
 		if (E.type == eh::EventType::MoveStart && E.player == 0 && (Move == TEXT("S") || Move == TEXT("FS") || Move == TEXT("BS")))
 		{
 			static const TCHAR* Order[] = {TEXT("S"), TEXT("FS"), TEXT("BS")};
@@ -996,7 +1004,7 @@ eh::InputFrame AEHGameDirector::LessonScriptInput()
 	eh::InputFrame In;
 	const eh::MatchState& S = Match->State();
 	// Step completion and advancement happen here because some goals are states, not events.
-	if (LessonStep == 0 && S.f[0].state == eh::FState::Neutral && S.f[0].walk != 0)
+	if (Lesson.IsValidIndex(LessonStep) && Lesson[LessonStep].Kind == EEHLessonStep::Movement && S.f[0].state == eh::FState::Neutral && S.f[0].walk != 0)
 	{
 		if (S.f[0].walk != LessonWalkDir)
 		{
@@ -1028,41 +1036,56 @@ eh::InputFrame AEHGameDirector::LessonScriptInput()
 	const int8 Toward = static_cast<int8>(You.x > Me.x ? 1 : -1);
 	const int32 Cm = eh::kUnitsPerCm;
 	auto Approach = [&](int32 Range) { if (Gap > Range) In.x = Toward; };
-	switch (LessonStep)
+	const EEHLessonStep Kind = Lesson.IsValidIndex(LessonStep) ? Lesson[LessonStep].Kind : EEHLessonStep::Done;
+	switch (Kind)
 	{
-	case 3:
+	case EEHLessonStep::Block:
 		Approach(105 * Cm);
 		if (Gap <= 110 * Cm && ScriptTimer % 70 == 0) In.pressed = eh::BtnLight;
 		break;
-	case 4:
+	case EEHLessonStep::LowGuard:
+		// Low kicks from close range; down is held for the press (the low is a down move).
+		Approach(95 * Cm);
+		if (Gap <= 100 * Cm && ScriptTimer % 80 == 0)
+		{
+			In.pressed = eh::BtnLight;
+			In.y = -1;
+		}
+		break;
+	case EEHLessonStep::TimedBlock:
 		Approach(150 * Cm);
 		if (Gap <= 160 * Cm && ScriptTimer % 100 == 0) In.pressed = eh::BtnHeavy;
 		break;
-	case 5:
+	case EEHLessonStep::JumpIn:
 		In.held = eh::BtnBlock;
+		In.y = -1;   // a crouching guard: the overhead from the jump gets through
 		break;
-	case 6:
-		if (Rules.grappling)
+	case EEHLessonStep::AntiAir:
+		// Jump in from mid range every couple of seconds with a heavy on the way down.
+		Approach(170 * Cm);
+		if (Gap <= 185 * Cm && Me.state == eh::FState::Neutral && ScriptTimer % 120 == 0)
 		{
-			Approach(60 * Cm);
-			if (Gap <= 75 * Cm && ScriptTimer % 90 == 0) In.pressed = eh::BtnThrow;
+			In.x = Toward;
+			In.y = 1;
 		}
-		else
+		if (Me.state == eh::FState::Jump && Me.jumpFrame == Rules.jumpSquat + Rules.jumpAir / 2)
 		{
-			// Jump in from mid range every couple of seconds with a heavy at the top of the jump.
-			Approach(150 * Cm);
-			if (Gap <= 165 * Cm && Me.state == eh::FState::Neutral && ScriptTimer % 110 == 0)
-			{
-				In.x = Toward;
-				In.y = 1;
-			}
-			if (Me.state == eh::FState::Jump && Me.jumpFrame == Rules.jumpSquat + Rules.jumpAir / 2 - 4)
-			{
-				In.pressed = eh::BtnHeavy;
-			}
+			In.pressed = eh::BtnHeavy;
 		}
 		break;
-	case 7:
+	case EEHLessonStep::Throw:
+		// Guards, standing and crouching in turn: the throw beats both.
+		In.held = eh::BtnBlock;
+		In.y = (ScriptTimer / 120) % 2 == 0 ? 0 : -1;
+		break;
+	case EEHLessonStep::ThrowEscape:
+		Approach(50 * Cm);
+		if (Gap <= 60 * Cm && Me.state == eh::FState::Neutral && ScriptTimer % 100 == 0) In.pressed = eh::BtnThrow;
+		break;
+	case EEHLessonStep::ComboThrow:
+		Approach(70 * Cm);   // stands in reach and lets the player start the combo
+		break;
+	case EEHLessonStep::Punish:
 		Approach(150 * Cm);
 		if (Gap <= 160 * Cm && ScriptTimer % 95 == 0) In.pressed = eh::BtnHeavy;
 		break;

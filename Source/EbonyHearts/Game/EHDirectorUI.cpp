@@ -542,12 +542,9 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 		P.Text(CP.DisplayName.ToString(), Pos + FVector2f(32, 52), Fonts.Sized(Fonts.Display, 40), Bone, 0.0f, 0.5f);
 		P.Text(CP.Title.ToString(), Pos + FVector2f(32, 102), Fonts.Sized(Fonts.DisplayLight, 22), c == 0 ? Gold : FLinearColor(0.95f, 0.45f, 0.40f), 0.0f, 0.5f);
 		P.Text(CP.Style.ToString(), Pos + FVector2f(32, 142), Fonts.Sized(Fonts.BodyMedium, 22), Muted, 0.0f, 0.5f);
-		// The grappling texts return with grappling (rules.json "grappling").
-		const FString Blurb = Rules.grappling
-			? (c == 0 ? TEXT("All-rounder. Reach, spinning and flying kicks, grappling;\nthe 720 Hook Kick; golden Spirit Enhanced Strikes.")
-			          : TEXT("Muay Thai specialist. Teeps, elbows, knees and the clinch,\npunctuated by the crimson Lamplighter Flame."))
-			: (c == 0 ? TEXT("All-rounder. Reach, a spinning elbow, spinning and flying kicks;\nthe 720 Hook Kick; golden Spirit Enhanced Strikes.")
-			          : TEXT("Muay Thai specialist. Teeps, elbows, knees and roundhouse kicks,\npunctuated by the crimson Lamplighter Flame."));
+		const FString Blurb = c == 0
+			? TEXT("All-rounder. Reach, spinning and flying kicks, a double-leg takedown;\nthe 720 Hook Kick; golden Spirit Enhanced Strikes.")
+			: TEXT("Muay Thai specialist. Teeps, elbows, knees and the clinch trip,\npunctuated by the crimson Lamplighter Flame.");
 		P.Text(Blurb, Pos + FVector2f(32, 210), Fonts.Sized(Fonts.Body, 21), Bone, 0.0f, 0.5f);
 		// Cursor markers: gold for player one, silver for player two / CPU.
 		for (int32 s = 0; s < 2; ++s)
@@ -793,7 +790,9 @@ void AEHGameDirector::PaintTraining(FEHPainter& P)
 				if (E.Held & eh::BtnLight) Line += TEXT(" L");
 				if (E.Held & eh::BtnHeavy) Line += TEXT(" H");
 				if (E.Held & eh::BtnSpecial) Line += TEXT(" S");
-				if ((E.Held & eh::BtnThrow) && Rules.grappling) Line += TEXT(" G");
+				if (E.Y < 0) Line += TEXT(" ↓");
+				if (E.Y > 0) Line += TEXT(" ↑");
+				if ((E.Held & eh::BtnThrow) && Rules.ThrowsEnabled()) Line += TEXT(" T");
 				if (E.Held & eh::BtnDodge) Line += TEXT(" D");
 				if (E.Held & eh::BtnBlock) Line += TEXT(" B");
 				P.Text(Line, FVector2f(X, 458 + k * 26), Fonts.Sized(Fonts.BodyMedium, 20), A(Bone, 1.0f - k * 0.05f), bLeft ? 0.0f : 1.0f, 0.5f);
@@ -811,8 +810,12 @@ void AEHGameDirector::PaintTraining(FEHPainter& P)
 			const int32 V = S.lastAdvantagePlayer == 0 ? S.lastAdvantage : -S.lastAdvantage;
 			Adv = FString::Printf(TEXT("Advantage %+d"), V);
 		}
-		const eh::FighterState& F = S.f[0];
-		P.Text(FString::Printf(TEXT("%s    You: %s    Partner: %s"), *Adv, UTF8_TO_TCHAR(eh::StateName(F.state)), UTF8_TO_TCHAR(eh::StateName(S.f[1].state))), FVector2f(960, 932), Fonts.Sized(Fonts.Body, 20), Muted, 0.5f, 0.5f);
+		// Crouching is a posture of the neutral, guard, stun and low-attack states; it is shown with the state.
+		auto Posture = [this](int32 i) {
+			const FString Name = UTF8_TO_TCHAR(eh::StateName(Match->State().f[i].state));
+			return Match->IsCrouching(i) ? Name + TEXT(" (crouching)") : Name;
+		};
+		P.Text(FString::Printf(TEXT("%s    You: %s    Partner: %s"), *Adv, *Posture(0), *Posture(1)), FVector2f(960, 932), Fonts.Sized(Fonts.Body, 20), Muted, 0.5f, 0.5f);
 	}
 	PaintPromptRow(P, FVector2f(560, 1040), {FEHHint::Menu(EEHNav::Pause, TEXT("Training options")), FEHHint::Act(EEHAction::Reset, TEXT("Reset"))}, SlotDevice[0]);
 }
@@ -835,22 +838,20 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 		P.Text(bDone ? TEXT("Done") : FString::Printf(TEXT("%d / %d"), FMath::Min(LessonCount, Step.Goal), Step.Goal), Pos + FVector2f(968, 36), Fonts.Sized(Fonts.BodyBold, 24), bDone ? Gold : Muted, 1.0f, 0.5f);
 		// Which buttons this step is about.
 		TArray<FEHHint> Hints;
-		switch (LessonStep)
+		switch (Step.Kind)
 		{
-		case 0: Hints = {FEHHint::Act(EEHAction::Left, TEXT("Back")), FEHHint::Act(EEHAction::Right, TEXT("Forward"))}; break;
-		case 1: Hints = {FEHHint::Act(EEHAction::Light, TEXT("Light x3"))}; break;
-		case 2: Hints = {FEHHint::Act(EEHAction::Heavy, TEXT("Heavy"))}; break;
-		case 3: case 4: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block"))}; break;
-		case 5:
-			Hints = Rules.grappling ? TArray<FEHHint>{FEHHint::Act(EEHAction::Throw, TEXT("Grab"))}
-				: TArray<FEHHint>{FEHHint::Act(EEHAction::Jump, TEXT("Jump (+ toward)")), FEHHint::Act(EEHAction::Heavy, TEXT("Attack in the air"))};
-			break;
-		case 6:
-			Hints = Rules.grappling ? TArray<FEHHint>{FEHHint::Act(EEHAction::Throw, TEXT("Grab"))}
-				: TArray<FEHHint>{FEHHint::Act(EEHAction::Light, TEXT("Anti-air")), FEHHint::Act(EEHAction::Block, TEXT("Timed block"))};
-			break;
-		case 7: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block")), FEHHint::Act(EEHAction::Dodge, TEXT("Dodge")), FEHHint::Act(EEHAction::Light, TEXT("Punish"))}; break;
-		case 8: Hints = {FEHHint::Act(EEHAction::Special, TEXT("Special (+ toward / + away)"))}; break;
+		case EEHLessonStep::Movement: Hints = {FEHHint::Act(EEHAction::Left, TEXT("Back")), FEHHint::Act(EEHAction::Right, TEXT("Forward"))}; break;
+		case EEHLessonStep::Light: Hints = {FEHHint::Act(EEHAction::Light, TEXT("Light x3"))}; break;
+		case EEHLessonStep::Heavy: Hints = {FEHHint::Act(EEHAction::Heavy, TEXT("Heavy"))}; break;
+		case EEHLessonStep::Block: case EEHLessonStep::TimedBlock: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block"))}; break;
+		case EEHLessonStep::LowGuard: Hints = {FEHHint::Act(EEHAction::Down, TEXT("Crouch (hold)")), FEHHint::Act(EEHAction::Block, TEXT("Block"))}; break;
+		case EEHLessonStep::JumpIn: Hints = {FEHHint::Act(EEHAction::Jump, TEXT("Jump (+ toward)")), FEHHint::Act(EEHAction::Heavy, TEXT("Attack coming down"))}; break;
+		case EEHLessonStep::AntiAir: Hints = {FEHHint::Act(EEHAction::Down, TEXT("Down +")), FEHHint::Act(EEHAction::Heavy, TEXT("Uppercut"))}; break;
+		case EEHLessonStep::Throw: Hints = {FEHHint::Act(EEHAction::Throw, TEXT("Throw (up close)"))}; break;
+		case EEHLessonStep::ThrowEscape: Hints = {FEHHint::Act(EEHAction::Throw, TEXT("Throw to escape"))}; break;
+		case EEHLessonStep::ComboThrow: Hints = {FEHHint::Act(EEHAction::Light, TEXT("Light")), FEHHint::Act(EEHAction::Light, TEXT("Light")), FEHHint::Act(EEHAction::Throw, TEXT("Throw"))}; break;
+		case EEHLessonStep::Punish: Hints = {FEHHint::Act(EEHAction::Block, TEXT("Block")), FEHHint::Act(EEHAction::Dodge, TEXT("Dodge")), FEHHint::Act(EEHAction::Light, TEXT("Punish"))}; break;
+		case EEHLessonStep::Special: Hints = {FEHHint::Act(EEHAction::Special, TEXT("Special (+ toward / + away)"))}; break;
 		default: break;
 		}
 		const bool bSaved = Settings.bInputHints;
@@ -884,14 +885,14 @@ void AEHGameDirector::PaintResults(FEHPainter& P)
 	}
 	const FVector2f Table(560, 290);
 	P.Round(Table, FVector2f(800, 250), Panel, 8);
-	const TCHAR* Labels[] = {TEXT("Rounds"), TEXT("Damage dealt"), TEXT("Longest combo"), TEXT("Grabs landed"), TEXT("Deflects")};
+	const TCHAR* Labels[] = {TEXT("Rounds"), TEXT("Damage dealt"), TEXT("Longest combo"), TEXT("Throws landed"), TEXT("Deflects")};
 	for (int32 r = 0, Row = 0; r < 5; ++r)
 	{
-		if (r == 3 && !Rules.grappling)
+		if (r == 3 && !Rules.ThrowsEnabled())
 		{
-			continue;   // no grabs without grappling
+			continue;   // no throws in this rule set
 		}
-		const float Y = Table.Y + 40 + (Row++) * 42 + (Rules.grappling ? 0.0f : 21.0f);
+		const float Y = Table.Y + 40 + (Row++) * 42 + (Rules.ThrowsEnabled() ? 0.0f : 21.0f);
 		P.Text(Labels[r], FVector2f(960, Y), Fonts.Sized(Fonts.BodyMedium, 22), Muted, 0.5f, 0.5f);
 		for (int32 i = 0; i < 2; ++i)
 		{
@@ -930,13 +931,13 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	int32 Line = 0;
 	for (const eh::MoveDef& M : Def.moves)
 	{
-		if (M.kind == eh::MoveKind::Throw && !Rules.grappling)
+		if (M.kind == eh::MoveKind::Throw && !Rules.ThrowsEnabled())
 		{
-			continue;   // the grab stays in the data but is not part of the game while grappling is off
+			continue;   // the throw stays in the data but is not part of this rule set
 		}
 		const FString Id = UTF8_TO_TCHAR(M.id.c_str());
 		// Inputs are drawn with the viewer's own buttons: direction words, then the action's button glyph.
-		const FString DirText = M.air ? TEXT("In a jump: ") : (M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT("")));
+		const FString DirText = M.air ? TEXT("In a jump: ") : (M.down ? TEXT("Down + ") : (M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""))));
 		const EEHAction Act = M.button == eh::BtnLight ? EEHAction::Light : (M.button == eh::BtnHeavy ? EEHAction::Heavy : (M.button == eh::BtnSpecial ? EEHAction::Special : (M.button == eh::BtnThrow ? EEHAction::Throw : EEHAction::Dodge)));
 		int32 Repeats = 1;
 		FString Suffix;
@@ -944,9 +945,9 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 		if (Id == TEXT("L3")) Repeats = 3;
 		if (M.kind == eh::MoveKind::Dodge && M.dir == eh::DirReq::Any) Suffix = TEXT("  away or neutral");
 		const FString Startup = M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().frames.first);
-		const FString Damage = M.kind == eh::MoveKind::Throw ? FString::Printf(TEXT("%d"), Def.throws[0].damage) : (M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().damage));
+		const FString Damage = M.kind == eh::MoveKind::Throw ? FString::Printf(TEXT("%d"), Def.throws[static_cast<size_t>(M.throwIndex)].damage) : (M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().damage));
 		const FText* Note = CP.MoveNotes.Find(Id);
-		const float Y = 230 + Line * 54;   // 13 rows fit the panel
+		const float Y = 228 + Line * 48;   // 15 rows fit the panel
 		P.Text(UTF8_TO_TCHAR(M.name.c_str()), FVector2f(Cols[0], Y), Fonts.Sized(Fonts.BodyBold, 22), Bone, 0.0f, 0.5f);
 		{
 			float X = Cols[1];

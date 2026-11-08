@@ -14,10 +14,11 @@ enum class EEHAction : uint8
 	Light,
 	Heavy,
 	Special,
-	Throw,   // Grab / Throw: no default buttons while grappling is switched off (EHFormerGrabKey keeps its old ones)
+	Throw,   // the standalone throw (stored as "Grab", its id since version 1)
 	Dodge,
 	Block,
 	Reset,   // training quick reset
+	Down,    // crouch while held; with Heavy the uppercut, with Light the low attack (added in settings version 4)
 	Count
 };
 
@@ -139,9 +140,12 @@ struct FEHSettings
 	void Clamp();
 };
 
-// Grab's default buttons before grappling was switched off (slot 0..2, EKeys::Invalid when none): the settings loader
-// moves them to their new actions, and they are the defaults to restore if grappling returns.
+// Grab's default buttons before version 3 (slot 0..2, EKeys::Invalid when none): the settings loader moves them to the
+// jobs they were given in version 3 (jump; L1 / LB block). Throw has had its own defaults since version 4.
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
+
+// The settings file format written by this build.
+constexpr int32 EHSettingsVersion = 4;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

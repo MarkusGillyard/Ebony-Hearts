@@ -18,10 +18,11 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::Light: return TEXT("Light");
 	case EEHAction::Heavy: return TEXT("Heavy");
 	case EEHAction::Special: return TEXT("Special");
-	case EEHAction::Throw: return TEXT("Grab");
+	case EEHAction::Throw: return TEXT("Throw");
 	case EEHAction::Dodge: return TEXT("Dodge");
 	case EEHAction::Block: return TEXT("Block");
 	case EEHAction::Reset: return TEXT("Reset");
+	case EEHAction::Down: return TEXT("Down");
 	default: return TEXT("?");
 	}
 }
@@ -40,6 +41,7 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::Dodge: return TEXT("Dodge");
 	case EEHAction::Block: return TEXT("Block");
 	case EEHAction::Reset: return TEXT("TrainingReset");
+	case EEHAction::Down: return TEXT("Crouch");
 	default: return TEXT("?");
 	}
 }
@@ -54,10 +56,11 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::Light: return TEXT("Light attack");
 	case EEHAction::Heavy: return TEXT("Heavy attack");
 	case EEHAction::Special: return TEXT("Special");
-	case EEHAction::Throw: return TEXT("Grab / Throw");
+	case EEHAction::Throw: return TEXT("Throw");
 	case EEHAction::Dodge: return TEXT("Dodge / Roll");
 	case EEHAction::Block: return TEXT("Block (hold)");
 	case EEHAction::Reset: return TEXT("Training reset");
+	case EEHAction::Down: return TEXT("Crouch (hold)");
 	default: return TEXT("?");
 	}
 }
@@ -138,8 +141,9 @@ FEHBindings FEHBindings::Defaults()
 		B.Keys[Idx(S)][Idx(A)][1] = K1;
 		B.Keys[Idx(S)][Idx(A)][2] = K2;
 	};
-	// Grappling is switched off, so Grab has no buttons: its former ones (EHFormerGrabKey) jump, and L1 / LB also
-	// blocks. The jump buttons jump the way the stick or movement keys point, like up does.
+	// Grab's buttons before version 3 (EHFormerGrabKey) jump, and L1 / LB also blocks; the jump buttons jump the way
+	// the stick or movement keys point, like up does. Version 4 gave the standalone Throw and Crouch free keys of their
+	// own: U, Numpad 4 / M and L2 / LT throw; S, Down and down on the D-pad or left stick crouch.
 	using S = EEHBindingSet;
 	using A = EEHAction;
 	Set(S::KeyboardA, A::Left, EKeys::A);
@@ -151,6 +155,8 @@ FEHBindings FEHBindings::Defaults()
 	Set(S::KeyboardA, A::Dodge, EKeys::O);
 	Set(S::KeyboardA, A::Block, EKeys::SpaceBar);
 	Set(S::KeyboardA, A::Reset, EKeys::R);
+	Set(S::KeyboardA, A::Down, EKeys::S);
+	Set(S::KeyboardA, A::Throw, EKeys::U);
 
 	Set(S::KeyboardB, A::Left, EKeys::Left);
 	Set(S::KeyboardB, A::Right, EKeys::Right);
@@ -161,6 +167,8 @@ FEHBindings FEHBindings::Defaults()
 	Set(S::KeyboardB, A::Dodge, EKeys::NumPadSix, EKeys::Apostrophe);
 	Set(S::KeyboardB, A::Block, EKeys::NumPadZero, EKeys::RightShift);
 	Set(S::KeyboardB, A::Reset, EKeys::NumPadSeven, EKeys::Hyphen);
+	Set(S::KeyboardB, A::Down, EKeys::Down);
+	Set(S::KeyboardB, A::Throw, EKeys::NumPadFour, EKeys::M);
 
 	// Controller layout specified by the creator. Unreal names buttons by position, so PlayStation and Xbox match:
 	// FaceButton_Left = Square / X, Top = Triangle / Y, Right = Circle / B, Bottom = Cross / A.
@@ -175,6 +183,8 @@ FEHBindings FEHBindings::Defaults()
 		Set(Pad, A::Dodge, EKeys::Gamepad_FaceButton_Right);
 		Set(Pad, A::Block, EKeys::Gamepad_RightTrigger, EKeys::Gamepad_LeftShoulder);
 		Set(Pad, A::Reset, EKeys::Gamepad_Special_Left);
+		Set(Pad, A::Down, EKeys::Gamepad_DPad_Down);   // the left stick's down also crouches (EHInputRouter)
+		Set(Pad, A::Throw, EKeys::Gamepad_LeftTrigger);
 	}
 	return B;
 }
@@ -545,6 +555,19 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	if (Root->TryGetObjectField(TEXT("bindings"), BindingsObj))
 	{
 		FEHBindings Loaded = FEHBindings::Defaults();
+		if (Version < 4)
+		{
+			// Crouch did not exist and Throw had no buttons of its own: both start unbound and get their defaults
+			// below only where those keys are free, so a layout the player made is never overridden.
+			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			{
+				for (int32 K = 0; K < EHKeysPerAction; ++K)
+				{
+					Loaded.Keys[Set][Idx(EEHAction::Down)][K] = EKeys::Invalid;
+					Loaded.Keys[Set][Idx(EEHAction::Throw)][K] = EKeys::Invalid;
+				}
+			}
+		}
 		if (Version >= 2)
 		{
 			for (int32 Set = 0; Set < EHSetCount; ++Set)
@@ -630,7 +653,48 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			}
 			if (bMoved)
 			{
-				Notes += FString::Printf(TEXT("%sGrab is switched off: its buttons now jump (L1 / LB blocks)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				Notes += FString::Printf(TEXT("%sThe old Grab buttons now jump (L1 / LB blocks)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+			}
+		}
+		if (Version < 4)
+		{
+			// Throw's and Crouch's new defaults go wherever their keys are free. A key the player gave another action
+			// stays theirs: the new action is left without that key and the note says what to do.
+			const FEHBindings New = FEHBindings::Defaults();
+			FString Taken;
+			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			{
+				const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
+				for (EEHAction A : {EEHAction::Down, EEHAction::Throw})
+				{
+					const bool bHadCustom = !Loaded.IsUnbound(BS, A);
+					for (int32 K = 0; K < EHKeysPerAction && !bHadCustom; ++K)
+					{
+						const FKey Key = New.Keys[Set][Idx(A)][K];
+						if (!Key.IsValid())
+						{
+							continue;
+						}
+						const FEHBindingRef C = Loaded.FindConflict(BS, A, K, Key);
+						if (C.IsValid())
+						{
+							Taken += FString::Printf(TEXT("%s%s (%s) is used by %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), *Key.GetDisplayName(false).ToString(), EHActionLabel(A), EHActionLabel(C.Action));
+						}
+						else
+						{
+							Loaded.Keys[Set][Idx(A)][K] = Key;
+						}
+					}
+					if (Loaded.IsUnbound(BS, A))
+					{
+						Taken += FString::Printf(TEXT("%s%s has no button on %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), EHActionLabel(A), EHSetLabel(BS));
+					}
+				}
+			}
+			Notes += FString::Printf(TEXT("%sNew: Crouch (hold down) and Throw have their own buttons."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+			if (!Taken.IsEmpty())
+			{
+				Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
 			}
 		}
 		// A layout with a duplicate or reserved key falls back to its defaults; the others are kept.
@@ -664,7 +728,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 bool FEHSettings::Save(const FString& PathOverride) const
 {
 	TSharedRef<FJsonObject> Root = MakeShared<FJsonObject>();
-	Root->SetNumberField(TEXT("version"), 3);
+	Root->SetNumberField(TEXT("version"), EHSettingsVersion);
 	Root->SetNumberField(TEXT("windowMode"), WindowMode);
 	Root->SetNumberField(TEXT("resX"), Resolution.X);
 	Root->SetNumberField(TEXT("resY"), Resolution.Y);

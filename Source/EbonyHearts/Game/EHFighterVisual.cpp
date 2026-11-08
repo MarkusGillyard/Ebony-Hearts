@@ -36,17 +36,29 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		A.BlendSeconds = 0.0f;
 		return A;
 	}
+	// Crouching follows the simulation's posture, which lowers or raises one step a frame: the body blends into the crouch
+	// (or back up) over about the same frames as the hurtbox, so what can be hit is what is drawn.
+	const bool bCrouched = Match.IsCrouching(Player);
+	const float PostureBlend = static_cast<float>(FMath::Max(1, Match.GetRules().crouchFrames) + 1) / static_cast<float>(eh::kTickHz);
 	switch (F.state)
 	{
 	case eh::FState::Neutral:
-		A.Key = F.walk > 0 ? FName(TEXT("WalkF")) : (F.walk < 0 ? FName(TEXT("WalkB")) : FName(TEXT("Idle")));
+		if (F.posture > 0 && F.lastInput.y < 0)
+		{
+			A.Key = TEXT("Crouch");
+			A.BlendSeconds = PostureBlend;
+		}
+		else
+		{
+			A.Key = F.walk > 0 ? FName(TEXT("WalkF")) : (F.walk < 0 ? FName(TEXT("WalkB")) : FName(TEXT("Idle")));
+			A.BlendSeconds = F.posture > 0 ? PostureBlend : 0.22f;   // rising out of a crouch is as quick as going down
+		}
 		A.bLoop = true;
-		A.BlendSeconds = 0.22f;
 		break;
 	case eh::FState::Guard:
-		A.Key = TEXT("Guard");
+		A.Key = (F.posture > 0 && F.lastInput.y < 0) ? FName(TEXT("CrouchGuard")) : FName(TEXT("Guard"));
 		A.bLoop = true;
-		A.BlendSeconds = 0.10f;
+		A.BlendSeconds = F.posture > 0 ? PostureBlend : 0.10f;
 		break;
 	case eh::FState::Attack:
 	{
@@ -71,6 +83,14 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 	}
 	case eh::FState::Hitstun:
 	{
+		if (bCrouched)
+		{
+			// A crouching fighter is hit where it crouches (only mids and lows reach it) and reels crouched.
+			A.Key = TEXT("CrouchHit");
+			A.Frame = F.stateFrame;
+			A.BlendSeconds = 0.06f;
+			break;
+		}
 		A.Key = F.reaction >= 2 ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight"));
 		// A hit can name its own reaction: a hook turns the head away from it, a body shot folds the body. The clip
 		// opens on its impact pose, held through the hitstop, so contact reads on the frame the strike lands.
@@ -88,13 +108,14 @@ FEHAnimChoice EHChooseAnim(const eh::Match& Match, int32 Player)
 		break;
 	}
 	case eh::FState::Blockstun:
-		A.Key = TEXT("BlockHit");
+		A.Key = bCrouched ? FName(TEXT("CrouchBlockHit")) : FName(TEXT("BlockHit"));
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.06f;
 		break;
 	case eh::FState::Knockdown:
-		// Landed from a throw: already lying, head away from the thrower (3) or toward it (4, over the shoulder).
-		A.Key = F.reaction == 4 ? FName(TEXT("KnockdownLieRev")) : (F.reaction == 3 ? FName(TEXT("KnockdownLie")) : FName(TEXT("Knockdown")));
+		// Landed from a throw: already lying, head away from the thrower (3) or toward it (4, over the shoulder). Launched
+		// by an uppercut (5): lifted off the feet, then down on the back.
+		A.Key = F.reaction == 4 ? FName(TEXT("KnockdownLieRev")) : (F.reaction == 3 ? FName(TEXT("KnockdownLie")) : (F.reaction == 5 ? FName(TEXT("KnockdownLaunch")) : FName(TEXT("Knockdown"))));
 		A.Frame = F.stateFrame;
 		A.BlendSeconds = 0.08f;
 		break;
@@ -394,6 +415,10 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	{
 		// A hit's own reaction clip is missing from this fighter's set (reported by MissingAnimations): use the generic one.
 		Choice.Key = F.reaction >= 2 ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight"));
+	}
+	else if (F.state == eh::FState::Knockdown && F.reaction == 5 && !bGraybox && FindAnim(Choice.Key) == nullptr)
+	{
+		Choice.Key = TEXT("Knockdown");   // reported as missing; the plain knockdown still lands the body
 	}
 	const bool bFrozen = F.hitstop > 0;
 	double NewTime = 0.0;

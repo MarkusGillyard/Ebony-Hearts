@@ -468,12 +468,12 @@ void AEHGameDirector::RecordInput(int32 Player, const eh::InputFrame& In)
 	TArray<FEHInputLogEntry>& Log = InputLog[Player];
 	const uint8 Held = static_cast<uint8>(In.held | In.pressed);
 	const int8 X = static_cast<int8>(In.x * Match->State().f[Player].facing);   // shown relative to facing
-	if (Log.Num() > 0 && Log.Last().X == X && Log.Last().Held == Held && In.pressed == 0)
+	if (Log.Num() > 0 && Log.Last().X == X && Log.Last().Y == In.y && Log.Last().Held == Held && In.pressed == 0)
 	{
 		Log.Last().Frames = FMath::Min(Log.Last().Frames + 1, 999);
 		return;
 	}
-	Log.Add(FEHInputLogEntry{X, Held, 1});
+	Log.Add(FEHInputLogEntry{X, In.y, Held, 1});
 	if (Log.Num() > 18)
 	{
 		Log.RemoveAt(0);
