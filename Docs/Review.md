@@ -102,6 +102,15 @@ input if grappling is turned back on (P3, inactive with `grappling: false`); the
 although categories also select assets (P3, no current cross-category collision). These are recorded for later work,
 not counted as demonstrated defects in the playable configuration.
 
+| ID | Severity and location | Evidence, cause, disposition |
+|---|---|---|
+| PR1-01 | P2, `Source/EbonyHearts/Game/EHDirectorFlow.cpp:174,727` | Audio 80→85 was lost when its on-screen Back did not save and Video Back reloaded disk settings. Save on non-video Back (`6eebee0`); packaged regression now retains 85. |
+| PR1-02 | P2, `Source/EbonyHearts/Game/EHGameDirector.cpp:850-915`, `EHDirectorFlow.cpp:758-779` | A disconnected pause owner could leave the replacement unable to navigate, and one pad could fill two disconnected versus slots. Transfer owner and fill at most one slot (`6eebee0`); distinct-key virtual takeover passed, dual-human variant remains source-path verified only. |
+| PR1-03 | P2, `Docs/ThirdPartyManifest.json:578`, `Tools/Docs/third_party_manifest.py:60` | Active `ashka.H` references `K_MmaKick_Medium.fbx`, previously absent from the manifest. Raw copies match SHA-256 `f2488866df1ed1654ff72a5b30a5d12ae11ae0d1f7a51923ddf2382e0a883eeb`; ledger, manifest and missing-capture guard corrected (`263a3a7`, ten package tests). |
+| PR1-04 | P2, README and `Docs/CombatContract.md`, `Docs/Research.md`, `Docs/Validation.md` | Stale commands/playtest claims and rule descriptions conflicted with current source and owner feedback. Reconciled in `309c87c` and follow-up documentation commits; source and dated historical results were kept distinct. |
+| PR1-05 | P2 conditional, `Source/EbonyHeartsLinux/Private/EHSdlAudioOutput.cpp:238-263` | SDL may request more bytes than the fixed one-buffer callback supplies. No dropout was reproduced on the tested PulseAudio sink; retain as bounded platform risk pending a variable-request/device reproduction. |
+| PR1-06 | P3, `Source/EbonyHearts/Game/EHInputRouter.cpp:283-287`; `Source/EbonyHearts/Core/EHAI.cpp:231-240`; `Source/EbonyHearts/Game/EHAudio.cpp:37` | Digital-only trigger, dormant throw-tech queue, and future same-name/cross-category sound collision risks respectively. No observed failure in the enabled configuration; follow up when those paths or assets are exercised. |
+
 ### Evidence and limits
 
 - The original core suite was rerun: 44 cases, 890 checks, zero failures. Python compilation and the original nine
@@ -153,6 +162,10 @@ real input reached the host and some menu navigation reached the game; they do n
 The owner's settings file was restored to its exact pre-test SHA-256
 `2ab7d6ee683f7fc1ed74fdb1f4e31203fb1dcd1479b17a4b704c7d999aabdbdc`; later runs used Unreal's
 isolated `-UserDir` option.
+Packaged binding/router self-tests, remap/conflict/cancel and a second-process persistence check also passed with no
+automation FAIL/WARN. The existing `4cee9c1` review-playtest video was decoded and sampled as a 39-frame sequence:
+both fighters, jump arcs, strike contact and hit effects are visible, with no gross rendering failure in those samples.
+Sampling cannot judge smoothness between frames or settle the creator's animation and jumping feedback.
 
 A separate read-only AI verifier checked the changed settings and controller paths for counterexamples, reran all ten
 package tests and `git diff --check`, and checked all 32 active mocap FBX references against the manifest and both
