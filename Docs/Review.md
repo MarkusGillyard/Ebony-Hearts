@@ -1,4 +1,88 @@
-# Review guide: creator playtest round (2026-11-07)
+# Review guide: combat, animation and character pass (2026-11-08)
+
+This guide is for reviewing branch `dev/combat-pass-1108`, which carries the creator's 2026-11-08 combat, animation and
+character requests on top of the PR #1 head. It is the implementer's account, not an independent review. Earlier rounds
+follow below, unchanged, as history; the 2026-11-08 independent audit (previous round, section 6) applies to its own
+candidate, not to this one.
+
+| | |
+|---|---|
+| Branch | `dev/combat-pass-1108` (local task branch; see [Status](Status.md) for where it is pushed) |
+| Base | `release/first-slice` at `ea3ddc655fdf10666ede89f14df201e43b25daad` (PR #1 head, also the merge base) |
+| Candidate source | `5d5c316` (code, data and content of the packaged build); later commits change documentation only |
+| Package | `EbonyHearts-Slice-5d5c316.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" |
+| Not done | nothing merged, tagged or released; PR #1 and `release/first-slice` are untouched |
+
+## 1. What changed and where
+
+| Request | Change | Where | Checked by |
+|---|---|---|---|
+| Crouching | Hold down: the posture lowers over 3 ticks and the hurtbox blends from standing to crouching (Wren 110 cm, Ashka 105 cm), so highs pass over and the guard turns crouching half way down. No walking crouched; hitstun keeps the posture, a knockdown resets it. New clips: crouch, crouching guard, crouching hit and block reactions | `Core/EHMatch.*` (`UpdatePosture`, `PostureHurt`, `IsCrouching`), `EHCombatData.*` (`crouchHurt`, `crouchFrames`), fighter JSON | `crouch_posture_entry_exit_both_sides`, `hit_levels_agree_with_the_crouching_hurtboxes`, `guard_heights_lows_overheads_and_jump_ins`, `reset_clears_state`, `state_hash_covers_every_field` |
+| Hit levels | Every hit is high, mid, low or overhead (required in data). Lows are blocked only crouching, overheads only standing; jump attacks are overheads coming down and mids going up. Each fighter gains a low (down + Light) | `EHCombatData.*` (`HitLevel`), `EHMatch.cpp` (`ApplyStrike`, `EffectiveLevel`), `wren.json`, `ashka.json` | the same tests; packaged `lesson` (crouching-guard step) |
+| Uppercuts | Down + Heavy: Wren's Rising Uppercut, Ashka's Rising Elbow. Mid, close range, no invulnerability; a hit launches into the normal invulnerable knockdown (nothing follows it); blocked it leaves the user at -20 or worse; its low wind-up passes under highs | `EHMatch.cpp` (`SelectMove`, launch reaction 5), fighter JSON, `moves.py` (keyed clips) | `down_selects_the_uppercut_and_the_low`, `uppercut_anti_air_launch_and_risk`, `throw_and_uppercut_loops_are_bounded`, `cpu_anti_airs_jump_ins` |
+| Throws without grappling | One standalone throw per fighter (Throw button): Wren's double-leg takedown, Ashka's Muay Thai clinch trip. `grappling` stays off; the older grab variants stay dormant. Neutral throws are escapable (9 ticks). The thrower closes the gap to the authored hold over 8 frames instead of snapping | `EHCombatData.*` (`throws`, `throwEntryFrames`, `throwId`), `EHMatch.cpp` (`ConnectThrow`, `AdvanceThrow`, `HoldVictim`), `throws.py`, `mocap_clips.json` | `standalone_throws_without_grappling`, `throw_entry_closes_the_gap_without_teleporting`, `corner_throw_release_and_pushback_transfer`, `timeout_throw_boundaries_both_sides`, `throw_ko_stays_down` |
+| Combo throws | Light 1 or Light 2 cancels into the throw on hit only: the throw is the combo's next hit, scaled, counted, gauge paid once, and cannot be escaped. A blocked light cannot | `EHMatch.cpp` (`ComboThrowable`, `cancelIntoOnHit`), fighter JSON | `combo_throws_scale_cannot_be_escaped_and_need_a_hit`; route traces (section 2) |
+| Jumps (MK-inspired) | Higher, longer and quicker: 115 cm arc (was 90), 34 air ticks (36), 150 cm toward / 122 cm away; landing 4 (5 after an attack). A jump-in's reward depends on how deep it lands; a deep one links into the string, the low or the uppercut. A **standing** guard now blocks jump-ins (they are overheads); a crouching guard does not. Jump-in loops stay impossible | `rules.json`, `EHMatch.cpp` (jump state, `ResolveCollisions`) | `jump_in_reward_depends_on_height`, `deep_jump_in_links_into_ground_offense`, `jump_ins_cannot_loop`, `jump_arc_landing_and_directions`; `review_jump` footage |
+| CPU | Guards high or low by what is coming, uses lows, throws and combo throws, anti-airs with the uppercut on timing, escapes throws on a reaction delay (no stale press) | `Core/EHAI.*` | `cpu_anti_airs_jump_ins`, `cpu_throw_escape_uses_reaction_and_no_stale_press`, `cpu_levels_play_legal_complete_matches` |
+| Controls | New actions Crouch (down) and Throw: S / Down arrow, U / Numpad 4 / M; D-pad down, left trigger. Settings format 4: an older file gains them where the buttons are free, with a notice. Input log shows down/up and T; move list "Down +" | `Game/EHSettings.*`, `EHInputRouter.cpp`, `EHDirectorFlow.cpp`, `EHDirectorUI.cpp`, `EHAutomation.cpp` | `controls_selftest` (107 + 43 checks), `controls_remap`, `controls_persist`, simulated pads |
+| Lesson | Fourteen steps: movement, lights, heavy, block, crouching guard, deflect, jump-in, uppercut anti-air, throw, throw escape, combo throw, punish a blocked uppercut, specials | `EHDirectorFlow.cpp`, `EHGameDirector.h` | packaged `lesson` (`lesson_full.txt`, all 14 steps) |
+| Animation audit | Every exported clip measured (fastest joint step, pops, held frames, elbow/knee flips, floor, seams) and listed with its runtime use and source; every flag has a written disposition. New clips cleared of pops and flips | `Tools/Blender/anim/audit_clips.py`, `Tools/Docs/anim_audit_table.py`, [AnimationAudit](AnimationAudit.md) | 155 clips, none unexplained; Unreal import sampled against the source (Validation) |
+| Move relationships | Every source state x follow-up pair run through the combat core and tabulated | `Tools/Docs/move_matrix.cpp`, [MoveMatrix](MoveMatrix.md) | regenerated unchanged on the candidate |
+| Wren's feet and materials | Layered ankle wraps (under-wrap, five bands, open heel and toes; no spike); scoop-neck top; fabric detail at the right scale (no lattice), with hems and seams | `Tools/Blender/characters/eh_wren.py`, `eh_paint.py`, `eh_specs.py`, `eh_tex.py` | renders before/after; in-game shots (Validation) |
+| Ashka's overhaul | Tailored black coat hanging from the shoulders (notched lapels, collar, double-breasted buttons, belt, cuff straps, four-panel skirt); collared shirt and knotted tie; pressed trousers; loafers on a fitted last; layered bangs and braid flyaways; new brows. Blacks stay near-black (coat #101114) | `eh_ashka.py`, `eh_hair*.py`, `eh_garment.py`, `eh_mesh.py`, `characters.json` | as above; rig unchanged (every bone's rest position identical) |
+| Unreal import | Coat, outfit and clothes use a two-sided master (`M_CharacterTwoSided`) for single-surface openings and hems | `Tools/Unreal/build_characters.py` | packaged build, art shots |
+
+## 2. Check it yourself
+
+- **Core.** `Tests/Core/run_core_tests.sh`: 52 cases, `1341 checks, 0 failures`.
+- **Move matrix.** `Tools/Docs/move_matrix.sh` regenerates `Docs/MoveMatrix.md`; on this candidate it is unchanged.
+- **Route traces.** The handoff folder (`review-handoff-20261108/routes`) has a combat-core program printing tick-by-tick
+  traces with exact input schedules, each replayed from a fresh match to the same state hash: a combo throw for each
+  fighter (Light at tick 0, Light at 14, Throw at 30 for Wren / 31 for Ashka, from 84 cm apart), a deep jump-in into
+  the Light string (forward jump at tick 0, Heavy at tick 26, from 140 cm), the uppercut anti-air (down + Heavy at tick
+  23 for Wren / 24 for Ashka against a forward jump with Heavy at tick 26), each fighter's low against a crouching
+  and a standing guard, and the jump-in loop search against a crouching guard (longest true combo: 1 hit).
+- **Training (packaged).** Training options (Esc) > Dummy: Crouch makes the partner crouch-block: lows are blocked, jump-ins hit.
+  Light, Light, Throw (U on the left keyboard) while the lights hit throws from the string. Down + Heavy under a
+  jump-in knocks the jumper down.
+- **Animation.** `Docs/AnimationAudit.md` lists every clip; `Tools/Blender/anim/audit_clips.py` regenerates the CSV.
+
+## 3. Where to look closely
+
+- **A held standing guard blocks jump-ins again.** The previous round let jump attacks through a held Block; this round
+  makes them overheads (blocked standing, beat a crouching guard), the way MK-style games pair jumps with crouching
+  lows. A jump-in now opens a defender who crouches, and throws open a defender who stands still.
+- **Combo throws cannot be escaped** (they are the next hit of a combo, so there is nothing to react to); neutral
+  throws can. The combo-throw range is longer for Wren (70 cm, a shot) than for Ashka (45 cm, a clinch).
+- **Down + Light during a string's cancel window continues the string** (Light 2), as the move matrix shows: the low
+  needs a press outside a cancel window. Deliberate (it keeps strings reliable), documented in the contract.
+- **The uppercut has no invulnerability**; it wins against jump-ins by timing and its low wind-up, and against a jab
+  timed into its startup. Blocked, it is a large punish (the Lesson teaches that).
+- **Art limits** the art pass left: Ashka's face is still a MakeHuman head with painted shading (heavy brows, very
+  saturated eyes in neutral light); her bangs look comb-like up close; the braid is woven tubes; the coat still
+  shows some bust shaping and its front panels ride on the thigh in kicks and crouches; under a bright key her
+  blacks read charcoal (in the chapel they read black). Wren's wraps are fixed geometry, not cloth. Triangle counts
+  rose 16% (Wren) and 26% (Ashka). Two character builds give identical geometry but not byte-identical files
+  (Blender's UV island packer varies; textures differ by at most 8/255).
+- **A light wedge under Ashka in her crouch** is a coat panel catching the moonlight; it was there before this pass.
+
+## 4. Open
+
+- Owner playtest of the new mechanics, art and feel (checklist in [Status](Status.md)).
+- Independent review of this candidate.
+- Physical controllers were simulated (virtual Xbox and DualShock 4 pads), not held.
+
+## 5. Commit structure
+
+Eleven commits on `ea3ddc6`: combat core and data with tests (`a8cc695`), controls, Lesson and presentation
+(`4fc8704`), motion for the new moves (`96275a9`), the move matrix and contract prose (`cf675e1`), the Lesson punish
+step (`61badfc`), the clip audit and its fixes (`c6de32d`), the audit table and production notes (`5dfe4c2`), README
+and research (`c425f4e`), controls tests (`f11f04e`), the character art (`8677cb2`) and the imported meshes and
+rebuilt clips (`5d5c316`), then documentation of the results.
+
+---
+
+## Previous round: creator playtest round (2026-11-07)
 
 This guide is for reviewing `release/first-slice` (pull request #1) after the creator's playtest of candidate `060a75f`
 on 2026-11-07. The creator asked for four changes, in this order: a natural spinning elbow for Wren and a proper
@@ -13,7 +97,7 @@ SHA-256 `c5ad9309292571b400aae0aa215d8f66f945e4af6ad576527f171458f924f591`. Comm
 documentation only up to the initial independent-review head `0965ff2`. Subsequent repairs and their package are in
 section 6. Results for the creator-played candidate: Validation, "Current candidate".
 
-## 1. What changed and where
+### 1. What changed and where
 
 | Request | Change | Where | Checked by |
 |---|---|---|---|
@@ -29,7 +113,7 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 `Tools/Docs/move_tables.py` prints jump-in advantage from the rules and lists the grab as kept;
 `Tests/Auto/review_playtest.txt` records the changed moves and jump-ins.
 
-## 2. Check it yourself
+### 2. Check it yourself
 
 - **Core.** `Tests/Core/run_core_tests.sh`: 44 cases, `890 checks, 0 failures`. Set `heldBlockStopsJumpIns` to `true`
   or `jumpInHitAdvantage` to `0` in `rules.json`, remove the `airAttackUsed` check in the jump state, apply the landing-relative stun to every jump attack
@@ -40,7 +124,7 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 - **Grappling switch.** Set `"grappling": true` in the staged `Content/Data/rules.json` (it is a plain file in the
   package) to bring grabs, their Lesson steps and texts back.
 
-## 3. Where to look closely
+### 3. Where to look closely
 
 - **A held Block no longer stops jump attacks.** This is the one rule change beyond what was asked for by name: with
   grabs gone nothing else beat a held guard, and the creator asked for jumping to complement the other mechanics. Jumps
@@ -56,7 +140,7 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 - **Lesson step numbers** are shared by both variants (grab or jump steps 6 and 7), so the hint and goal code switches
   on the rule instead of shifting indices.
 
-## 4. Open
+### 4. Open
 
 - The creator played this candidate on 2026-11-07. They later identified combat smoothness and jumping feel as needing
   refinement; the character models are acceptable placeholders that need more work. On 2026-11-08 the creator clarified
@@ -65,7 +149,7 @@ Supporting changes: `Tools/Unreal/build_characters.py` can import just named cli
 - Not verified: hardware other than the test machine; Wayland sessions.
 - The animation sources (raw captures, `.blend` files) are outside the repository, unchanged from earlier rounds.
 
-## 5. Commit structure
+### 5. Commit structure
 
 Eight commits on top of the previous head `22fa565`: combat rules and tests (`80e57fa`), game layer (`d3548d7`),
 animation (`bb4823b`), documentation and move notes (`d1ede0e`), a stronger jump-in test (`37d6ab4`), the CPU's
@@ -73,7 +157,7 @@ anti-air (`b445999`), the repurposed buttons (`d2f7cb7`) and the jump-in loop fi
 the results. Earlier history is
 unchanged; nothing has been merged, tagged or released.
 
-## 6. Independent PR audit (2026-11-08)
+### 6. Independent PR audit (2026-11-08)
 
 This section records a new review of PR #1, not the engineer's acceptance report above. The live starting head was
 `0965ff285d391948c192bd447a586b77d3bc23bd`; the base and merge base were both
@@ -81,7 +165,7 @@ This section records a new review of PR #1, not the engineer's acceptance report
 with 51 commits, 514 changed files and two passing core checks. There were no open review threads or approvals.
 The original source candidate was `4cee9c1`; the later commits up to the starting head changed documentation only.
 
-### Coverage and issue ledger
+#### Coverage and issue ledger
 
 | Area | Independent coverage | Result |
 |---|---|---|
@@ -113,7 +197,7 @@ not counted as demonstrated defects in the playable configuration.
 | PR1-05 | P2 conditional, `Source/EbonyHeartsLinux/Private/EHSdlAudioOutput.cpp:238-263` | SDL may request more bytes than the fixed one-buffer callback supplies. No dropout was reproduced on the tested PulseAudio sink; retain as bounded platform risk pending a variable-request/device reproduction. |
 | PR1-06 | P3, `Source/EbonyHearts/Game/EHInputRouter.cpp:283-287`; `Source/EbonyHearts/Core/EHAI.cpp:231-240`; `Source/EbonyHearts/Game/EHAudio.cpp:37` | Digital-only trigger, dormant throw-tech queue, and future same-name/cross-category sound collision risks respectively. No observed failure in the enabled configuration; follow up when those paths or assets are exercised. |
 
-### Evidence and limits
+#### Evidence and limits
 
 - The original core suite was rerun: 44 cases, 890 checks, zero failures. Python compilation and the original nine
   package tests passed; the added provenance guard made ten passing package tests. LFS fsck passed.
@@ -128,7 +212,7 @@ not counted as demonstrated defects in the playable configuration.
   alone does not establish that buttons, trigger, pause recovery or feel work in the new package. The creator's earlier
   physical PS4 and TV-audio checks apply to `060a75f`. The later physical input observations are recorded below.
 
-### Repaired-package qualification and verdict
+#### Repaired-package qualification and verdict
 
 Editor and Shipping code compiled with UE 5.8.4, and `BuildCookRun` completed with `BUILD SUCCESSFUL` from
 `309c87c072851526650d8c1b0daec87b0bcccc8b`. The staged review archive is

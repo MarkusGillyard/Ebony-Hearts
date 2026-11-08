@@ -105,6 +105,14 @@ workspace, not this repository.
 - **Character skeletons.** These use MPFB's game_engine skeleton (`root`, `pelvis`, `spine_01-03`, ... ) plus twist
   bones and secondary chains (braids, face strands, coat tails). The chains are spring-simulated and baked into every
   clip.
+- **Character rebuilds.** The generator keeps the shipped rig: secondary-chain rest positions are stored in
+  `Tools/Blender/characters/characters.json` and reused, so a garment or hair change does not move a bone (compare
+  the new `bones.json` with the old one before importing). `EH_CHAR_OUT=<folder>` builds into a separate folder for
+  review; `render_characters.py` with `EH_CHAR_EVI=<folder>` renders turnarounds, close-ups, feet and deformation
+  poses in neutral and chapel light, and `compose_sheets.py --compare <before> <after> <out>` makes side-by-sides.
+  Cloth with single-surface openings and hems (Ashka's coat and clothes, Wren's outfit) imports onto the two-sided
+  master `M_CharacterTwoSided`. After any character rebuild, rebuild every clip against the new `.blend` (keyed moves,
+  captured clips, then each throw pair against both victims, in that order) and reimport meshes and clips.
 - **Naming.**
   - `SK_<Fighter>`, `A_<Fighter>_<Key>`, `MI_<Fighter>_<Material>`, `T_<Fighter>_<Material>_{D,N,ORM}`
   - Chapel: `SM_<Piece>`, `MI_<Material>`
