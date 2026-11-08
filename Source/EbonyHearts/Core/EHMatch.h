@@ -14,7 +14,7 @@ namespace eh
 struct InputFrame
 {
 	int8_t x = 0;
-	int8_t y = 0;          // +1 up (jump), 0 none
+	int8_t y = 0;          // +1 up (jump), -1 down (crouch), 0 neither; up wins when both are held (the device layer)
 	uint8_t held = 0;
 	uint8_t pressed = 0;   // buttons that went down since the previous tick
 };
@@ -91,6 +91,7 @@ struct Buffered
 {
 	uint8_t button = 0;
 	int8_t dir = 0;         // -1 away from opponent, 0 neutral, +1 toward opponent (at press time)
+	bool down = false;      // down was held at press time (selects the uppercut and the low attack)
 	uint8_t age = 0;
 };
 
@@ -106,6 +107,8 @@ struct FighterState
 	int16_t move = -1;
 	int8_t moveDir = 0;
 	int32_t moveFrame = 0;
+	int8_t posture = 0;       // 0 standing .. rules.crouchFrames fully crouched
+	bool comboThrow = false;  // the current throw (move or sequence) was cancelled from a strike that hit
 	uint32_t hitMask = 0;
 	bool connected = false;
 	bool connectedHit = false;
@@ -124,6 +127,7 @@ struct FighterState
 	int16_t throwIndex = -1;
 	int8_t throwOwner = -1;   // index of the fighter whose ThrowDef is playing (for Thrown/Throwing)
 	int32_t throwFrame = 0;
+	int32_t throwEntry = 0;   // thrower: how much further than the authored hold the victim was at the grab (closes over the entry)
 	bool throwKO = false;
 	int32_t lastBlockPress = -100000;
 	bool lastBlockPressTimed = false;
@@ -133,7 +137,7 @@ struct FighterState
 	int16_t jumpFrame = 0;    // frames since the jump started (squat, then air); 0 on the ground
 	int8_t jumpDir = 0;       // -1 back, 0 straight up, +1 toward the opponent (at the jump start)
 	bool airAttackUsed = false;   // a jump allows one jump attack
-	uint8_t reaction = 0;     // presentation: 1 light hit, 2 heavy hit, 3 landed from a throw, 4 landed head toward the thrower
+	uint8_t reaction = 0;     // presentation: 1 light hit, 2 heavy hit, 3 landed from a throw, 4 landed head toward the thrower, 5 launched
 	int16_t reactMove = -1;   // presentation: the opponent's move and hit that put this fighter in hitstun
 	int8_t reactHit = -1;
 	int32_t roundWins = 0;
@@ -191,6 +195,10 @@ public:
 	Box GetPushbox(int player) const;
 	bool IsActionable(int player) const;
 	bool IsThrowable(int player) const;
+	// The fighter guards and is hit as crouching (at least half way down).
+	bool IsCrouching(int player) const;
+	// The level a hit counts as when it lands now: jump attacks are overheads only on the way down.
+	HitLevel EffectiveLevel(int player, const HitDef& hit) const;
 
 private:
 	Rules rules_;
@@ -206,13 +214,17 @@ private:
 	void TryActions(int i, const InputFrame& in);
 	bool TryCancel(int i);
 	bool StartFromBuffer(int i, bool cancel);
-	int32_t SelectMove(int i, uint8_t button, int8_t dir, bool cancel) const;
+	int32_t SelectMove(int i, uint8_t button, int8_t dir, bool down, bool cancel) const;
 	void StartMove(int i, int32_t moveIndex, int8_t dir, bool cancel);
+	void UpdatePosture(int i, const InputFrame& in);
+	Box PostureHurt(int i) const;
+	bool ComboThrowable(int thrower) const;
 	void EndToNeutral(int i);
 	void Move(bool allowCollision);
 	void ResolveCollisions();
 	void ApplyStrike(int a, int k, bool trade);
 	void ConnectThrow(int a);
+	void HoldVictim(int thrower, const ThrowDef& d);
 	void BeginTech(int thrower, int victim);
 	void CheckRoundEnd();
 	void UpdateRoundEnd();

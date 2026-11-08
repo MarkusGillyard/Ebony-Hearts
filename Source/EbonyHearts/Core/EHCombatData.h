@@ -28,6 +28,11 @@ enum class DirReq : uint8_t { Any, Neutral, Forward, Back };
 
 enum class MoveKind : uint8_t { Strike, Throw, Buff, Dodge };
 
+// Where a hit lands, for guarding. A standing guard stops high, mid and overhead hits; a crouching guard stops low and
+// mid hits. Whether a high hit can reach a crouching fighter at all is decided by the boxes (crouching lowers the
+// hurtbox under every high hit), not by this tag; tests keep the two in agreement.
+enum class HitLevel : uint8_t { High, Mid, Low, Overhead };
+
 // Axis-aligned box relative to the fighter origin (feet), authored as if facing right. y grows upward.
 struct Box
 {
@@ -62,6 +67,8 @@ struct HitDef
 	bool knockdownOnCounter = false;
 	bool energy = false;      // flame/energy damage (reduced by Spirit Enhanced Strikes defence)
 	bool heavy = false;       // presentation: heavy reaction and impact
+	bool launch = false;      // a knockdown that lifts the defender off its feet first (the uppercuts); presentation only
+	HitLevel level = HitLevel::Mid;
 	std::string react;        // presentation: the defender's reaction clip ("": HitLight, or HitHeavy when heavy)
 };
 
@@ -96,6 +103,8 @@ struct MoveDef
 	DirReq dir = DirReq::Any;
 	bool chainOnly = false;       // reachable only through a cancel (string follow-ups)
 	bool air = false;             // performed only in the air (a jump attack); ends on landing
+	bool down = false;            // selected when down is held at the press (the uppercut and the low attack)
+	bool crouching = false;       // performed in the crouching posture: crouching hurtbox throughout, ends crouched
 	bool special = false;         // belongs to the special group for "@special" cancels and chip rules
 	int32_t total = 0;
 	int32_t meterCost = 0;
@@ -110,9 +119,15 @@ struct MoveDef
 	bool cancelOnHit = false;
 	bool cancelOnBlock = false;
 	std::vector<std::string> cancelInto;   // move ids or "@special"
-	std::vector<int32_t> cancelIndices;    // resolved at load
+	std::vector<std::string> cancelIntoOnHit;   // move ids reachable from this move only when it hit (the combo throw)
+	std::vector<int32_t> cancelIndices;    // resolved at load (cancelInto, then cancelIntoOnHit)
+	size_t cancelHitOnlyFrom = 0;          // cancelIndices[n] for n >= this are hit-only
 	// Throw moves
 	int32_t throwRange = 0;                // max front-to-front gap in units
+	int32_t comboRange = 0;                // max gap when the throw is cancelled from a strike that hit (combo throw)
+	std::string throwId;                   // the fighter's throw (standalone throws)
+	int32_t throwIndex = -1;
+	// Dormant directional variants of the old grappling set (rules.grappling); not used by standalone throws.
 	std::string throwForward;              // ThrowDef id when forward/neutral is held
 	std::string throwBack;                 // ThrowDef id when back is held
 	int32_t throwForwardIndex = -1;
@@ -147,6 +162,7 @@ struct CharacterDef
 	int32_t walkBack = 0;
 	int32_t halfWidth = 0;      // pushbox half width
 	Box hurt;                   // standing hurtbox
+	Box crouchHurt;             // crouching hurtbox (the posture blends between the two)
 	std::vector<MoveDef> moves;
 	std::vector<ThrowDef> throws;
 
@@ -192,6 +208,10 @@ struct Rules
 	int32_t meterBlockDefender = 0;
 	int32_t meterDeflect = 0;
 	int32_t blockHitstopReduction = 0;
+	// Crouching: holding down lowers the posture one step a frame over crouchFrames frames (and raises it the same way
+	// on release). The hurtbox blends from the standing to the crouching box with the posture; a fighter at least half
+	// way down guards low.
+	int32_t crouchFrames = 0;
 	// Jumping: up leaves the floor after jumpSquat frames, flies jumpAir frames on a parabola jumpHeight high (units)
 	// moving jumpForward / jumpBack units a frame, and lands into jumpLanding frames of recovery (airAttackLanding
 	// after a jump attack). Pushboxes still apply in the air, so a jump cannot pass over the opponent.
@@ -203,17 +223,16 @@ struct Rules
 	int32_t jumpForward = 0;
 	int32_t jumpBack = 0;
 	int32_t fallSpeed = 0;      // units a frame added to a falling body's speed (hit out of the air)
-	// A jump attack that connects with a grounded opponent keeps them in hit- or blockstun until its attacker has
-	// landed and recovered, plus this many frames, however high it connected (a timed block still subtracts its
-	// reduction from the blockstun).
-	int32_t jumpInHitAdvantage = 0;
-	int32_t jumpInBlockAdvantage = 0;
-	// With false, holding Block does not stop a jump attack: only a timed block (deflect), or a fighter already in
-	// blockstun, blocks it. Jumping then answers a held guard, as strikes (anti-air) and deflects answer jumping.
-	bool heldBlockStopsJumpIns = true;
-	// Grappling (the grab action, throws and their escapes) stays in the data and code but can be switched off:
-	// with false, no throw move can start.
-	bool grappling = true;
+	// Standalone throws: the Throw button performs each fighter's one throw (its move's "throw"), from neutral or as
+	// a combo ender cancelled from a strike that hit. Neutral throws can be escaped; combo throws cannot.
+	bool throws = true;
+	// A throw connects anywhere in its range but is authored with the victim at holdX: the thrower closes the
+	// difference over this many frames.
+	int32_t throwEntryFrames = 0;
+	// The old grappling set (directional throw variants, clinch knees) is kept in the data and code but stays off:
+	// with true, toward/neutral and away pick throwForward / throwBack instead of the fighter's one throw.
+	bool grappling = false;
+	bool ThrowsEnabled() const { return throws || grappling; }
 };
 
 // Loaders validate everything the simulation relies on and report the first problem with a JSON path.

@@ -33,6 +33,19 @@ int32_t FindByAnim(const CharacterDef& c, const char* id)
 {
 	return c.FindMove(id);
 }
+
+// The level of the next hit a move has yet to land (its first hit when none has been checked).
+HitLevel NextLevel(const MoveDef& m, int32_t moveFrame)
+{
+	for (const HitDef& h : m.hits)
+	{
+		if (h.frames.last >= moveFrame)
+		{
+			return h.level;
+		}
+	}
+	return m.hits.empty() ? HitLevel::Mid : m.hits.back().level;
+}
 }
 
 using namespace aidetail;
@@ -43,13 +56,13 @@ CpuTuning TuningFor(CpuLevel level)
 	switch (level)
 	{
 	case CpuLevel::Easy:
-		t = CpuTuning{26, 25, 0, 15, 10, 30, 25, 15, 3};
+		t = CpuTuning{26, 25, 0, 15, 10, 30, 25, 15, 3, 35, 6, 10};
 		break;
 	case CpuLevel::Normal:
-		t = CpuTuning{18, 55, 5, 45, 35, 12, 40, 55, 6};
+		t = CpuTuning{18, 55, 5, 45, 35, 12, 40, 55, 6, 15, 4, 8};
 		break;
 	case CpuLevel::Hard:
-		t = CpuTuning{11, 80, 20, 80, 60, 4, 50, 70, 8};
+		t = CpuTuning{11, 80, 20, 80, 60, 4, 50, 70, 8, 5, 3, 6};
 		break;
 	}
 	return t;
@@ -111,7 +124,7 @@ int8_t CpuController::RawX(const Match& match, int8_t dirToward) const
 	return static_cast<int8_t>(dirToward * side);
 }
 
-void CpuController::Queue(uint8_t button, int8_t dirToward, int32_t delay)
+void CpuController::Queue(uint8_t button, int8_t dirToward, int32_t delay, bool down)
 {
 	if (pendingDelay_ >= 0 || Roll(tune_.dropPct))
 	{
@@ -119,6 +132,7 @@ void CpuController::Queue(uint8_t button, int8_t dirToward, int32_t delay)
 	}
 	pendingButton_ = button;
 	pendingDir_ = dirToward;
+	pendingDown_ = down;
 	pendingDelay_ = delay < 0 ? 0 : delay;
 }
 
@@ -126,8 +140,9 @@ InputFrame CpuController::Emit(const Match& match, uint8_t pressed, int8_t dirTo
 {
 	InputFrame in;
 	in.x = RawX(match, dirToward);
-	in.y = jumpNext_ ? 1 : 0;
+	in.y = jumpNext_ ? 1 : (downNext_ ? -1 : 0);
 	jumpNext_ = false;
+	downNext_ = false;
 	in.held = static_cast<uint8_t>(held_ | pressed);
 	// A physical button cannot become held without a press: emit the edge so CPU input matches a device.
 	in.pressed = static_cast<uint8_t>(pressed | (in.held & ~lastHeld_));
@@ -171,9 +186,24 @@ InputFrame CpuController::Decide(const Match& match)
 		{
 			press = BtnThrow;
 		}
+		int8_t dummyY = 0;
 		if (dummy_ == DummyMode::Block)
 		{
+			// A tool: it reads the live attack and guards at the height it needs (low crouching, otherwise standing).
 			held_ = BtnBlock;
+			const FighterState& opp = cur.f[opponent];
+			if (opp.state == FState::Attack && opp.move >= 0)
+			{
+				const MoveDef& om = theirs.moves[static_cast<size_t>(opp.move)];
+				if (om.kind == MoveKind::Strike && NextLevel(om, opp.moveFrame) == HitLevel::Low)
+				{
+					dummyY = -1;
+				}
+			}
+		}
+		else if (dummy_ == DummyMode::Crouch)
+		{
+			dummyY = -1;
 		}
 		else if (dummy_ == DummyMode::BlockAfterHit)
 		{
@@ -209,6 +239,7 @@ InputFrame CpuController::Decide(const Match& match)
 			}
 		}
 		InputFrame in;
+		in.y = dummyY;
 		in.held = static_cast<uint8_t>(held_ | press);
 		in.pressed = static_cast<uint8_t>(press | ((held_ & ~prevHeld) & BtnBlock));
 		return in;
@@ -221,23 +252,33 @@ InputFrame CpuController::Decide(const Match& match)
 	uint8_t press = 0;
 	int8_t pressDir = 0;
 
+	// An escape press still waiting after the throw is over would only start a stray throw: drop it.
+	if (me.state != FState::Thrown && pendingDelay_ >= 0 && pendingButton_ == BtnThrow && techDecidedFor_ >= 0)
+	{
+		ClearQueue();
+		techDecidedFor_ = -1;
+	}
 	if (pendingDelay_ >= 0 && pendingDelay_-- == 0)
 	{
 		press = pendingButton_;
 		pressDir = pendingDir_;
+		downNext_ = pendingDown_;
 		pendingDelay_ = -1;
 	}
 
-	// Throw escape: the window is short, so the CPU answers on a guess rather than on reaction.
+	// Throw escape: the CPU notices the grab after its own reaction delay (difficulty), which may be too late for the
+	// escape window; presses queued before the grab are dropped. A combo throw cannot be escaped, so it does not try.
 	if (me.state == FState::Thrown)
 	{
 		const int32_t start = cur.frame - me.throwFrame;
 		if (techDecidedFor_ != start)
 		{
 			techDecidedFor_ = start;
-			if (Roll(tune_.techPct))
+			ClearQueue();
+			press = 0;
+			if (!me.comboThrow && Roll(tune_.techPct))
 			{
-				Queue(BtnThrow, 0, 1 + static_cast<int32_t>(Next() % 7u));
+				Queue(BtnThrow, 0, tune_.techDelayMin + static_cast<int32_t>(Next() % static_cast<uint32_t>(tune_.techDelaySpread + 1)));
 			}
 		}
 		held_ = 0;
@@ -250,8 +291,20 @@ InputFrame CpuController::Decide(const Match& match)
 		const MoveDef& m = mine.moves[static_cast<size_t>(me.move)];
 		if (!m.cancelIndices.empty() && m.cancelFrames.Contains(me.moveFrame + 2) && pendingDelay_ < 0)
 		{
+			// A confirmed light can end in the throw when the opponent is close enough for it.
+			const int32_t t = FindByAnim(mine, "T");
+			const int32_t gap = AbsA(cur.f[opponent].x - me.x) - mine.halfWidth - theirs.halfWidth;
+			const bool throwEnder = me.connectedHit && match.GetRules().ThrowsEnabled() && t >= 0 && m.cancelIndices.size() > m.cancelHitOnlyFrom &&
+				gap <= mine.moves[static_cast<size_t>(t)].comboRange && Roll(35);
 			const bool finish = me.connectedHit && (m.id == "L2" || Roll(20)) && Roll(60);
-			Queue(finish ? BtnSpecial : BtnLight, finish ? static_cast<int8_t>(Roll(50) ? 1 : 0) : 0, 0);
+			if (throwEnder)
+			{
+				Queue(BtnThrow, 0, 0);
+			}
+			else
+			{
+				Queue(finish ? BtnSpecial : BtnLight, finish ? static_cast<int8_t>(Roll(50) ? 1 : 0) : 0, 0);
+			}
 		}
 	}
 
@@ -261,9 +314,9 @@ InputFrame CpuController::Decide(const Match& match)
 		--guardFrames_;
 	}
 
-	// Anti-air: a jump coming in is met with a jab (any hit knocks a jumper down), decided once per seen jump. The jab
-	// waits until the jumper is about to come into its reach; thrown on sight it often missed short of the jumper.
-	// Otherwise the CPU blocks, or, when a held block cannot stop a jump attack, may step back out of its reach.
+	// Anti-air: a jump coming in is met with the uppercut (any hit knocks a jumper down), decided once per seen jump. It
+	// waits until the jumper is about to come into its reach; thrown on sight it whiffs under the jumper and is
+	// punished. Otherwise the CPU blocks standing (falling jump attacks are overheads), or steps back out of reach.
 	const Rules& rules = match.GetRules();
 	// A jump is the most visible thing a fighter does: it is noticed in two thirds of the usual reaction time (at the
 	// full delay a Normal CPU saw a jump-in only once its attack was already out).
@@ -283,13 +336,14 @@ InputFrame CpuController::Decide(const Match& match)
 			{
 				antiAirArmed_ = jumpStart;
 			}
-			else if (!rules.heldBlockStopsJumpIns && Roll(50))
+			else if (Roll(25))
 			{
 				retreatFrames_ = 30;
 			}
 			else if (Roll(tune_.blockPct))
 			{
 				defend_ = true;
+				crouchGuard_ = Roll(tune_.misreadPct);   // a crouching guard loses to the overhead
 				guardFrames_ = 40;
 			}
 		}
@@ -298,18 +352,23 @@ InputFrame CpuController::Decide(const Match& match)
 	{
 		const FighterState& jumper = cur.f[opponent];
 		const bool sameJump = jumper.jumpFrame > 0 && cur.frame - jumper.jumpFrame == antiAirArmed_;
-		const int32_t l1 = FindByAnim(mine, "L1");
-		const int32_t jabRange = (l1 >= 0 ? Reach(mine.moves[static_cast<size_t>(l1)]) : 80 * cm) + theirs.halfWidth + 15 * cm;
+		const int32_t up = FindByAnim(mine, "U");
+		const int32_t aa = up >= 0 ? up : FindByAnim(mine, "L1");
+		const MoveDef* am = aa >= 0 ? &mine.moves[static_cast<size_t>(aa)] : nullptr;
+		const int32_t first = am != nullptr && !am->hits.empty() ? am->hits.front().frames.first : 8;
+		const int32_t aaRange = (am != nullptr ? Reach(*am) : 80 * cm) + theirs.halfWidth + 10 * cm;
+		const int32_t airLeft = rules.jumpSquat + rules.jumpAir - jumper.jumpFrame;
+		const int32_t closing = jumper.jumpDir > 0 ? first * rules.jumpForward : 0;
 		if (!sameJump)
 		{
 			antiAirArmed_ = -1;
 		}
-		// Fire so the jab is out (8 frames after the press) when the jumper arrives in its reach.
-		else if (actionable && press == 0 && pendingDelay_ < 0 && jumper.jumpFrame > rules.jumpSquat && dist - 8 * rules.jumpForward <= jabRange)
+		// Fire so the strike is active (its startup after the press) as the jumper comes down into its reach.
+		else if (actionable && press == 0 && pendingDelay_ < 0 && jumper.jumpFrame > rules.jumpSquat && airLeft <= first + 10 && dist - closing <= aaRange)
 		{
 			antiAirArmed_ = -1;
 			retreatFrames_ = 0;
-			Queue(BtnLight, 0, 0);
+			Queue(up >= 0 ? BtnHeavy : BtnLight, 0, 0, up >= 0);
 		}
 	}
 	// Its own jump: an attack on the way down, once per jump.
@@ -352,6 +411,14 @@ InputFrame CpuController::Decide(const Match& match)
 			{
 				const int32_t framesToActive = om.hits.front().frames.first - (opp.moveFrame + tune_.reactionFrames);
 				guardFrames_ = (lastActive - opp.moveFrame) + 12;
+				// Guard height for what it saw: lows crouching, overheads standing (sometimes misread), and highs or mids
+				// either way (a crouch also ducks the highs).
+				const HitLevel lv = NextLevel(om, opp.moveFrame);
+				crouchGuard_ = lv == HitLevel::Low || ((lv == HitLevel::High || lv == HitLevel::Mid) && Roll(25));
+				if ((lv == HitLevel::Low || lv == HitLevel::Overhead) && Roll(tune_.misreadPct))
+				{
+					crouchGuard_ = !crouchGuard_;
+				}
 				if (Roll(tune_.deflectPct) && framesToActive > 1)
 				{
 					held_ = 0;   // release so the timed press is a fresh press
@@ -382,8 +449,14 @@ InputFrame CpuController::Decide(const Match& match)
 			{
 				const int32_t l1 = FindByAnim(mine, "L1");
 				const int32_t h = FindByAnim(mine, "H");
+				const int32_t up = FindByAnim(mine, "U");
 				const int32_t gap = dist - theirs.halfWidth;
-				if (l1 >= 0 && gap <= Reach(mine.moves[static_cast<size_t>(l1)]))
+				const int32_t recoveryLeft = om.total - opp.moveFrame - tune_.reactionFrames;
+				if (up >= 0 && gap <= Reach(mine.moves[static_cast<size_t>(up)]) && recoveryLeft > mine.moves[static_cast<size_t>(up)].hits.front().frames.first && Roll(60))
+				{
+					Queue(BtnHeavy, 0, 0, true);
+				}
+				else if (l1 >= 0 && gap <= Reach(mine.moves[static_cast<size_t>(l1)]))
 				{
 					Queue(BtnLight, 0, 0);
 				}
@@ -403,8 +476,10 @@ InputFrame CpuController::Decide(const Match& match)
 	if (blocking)
 	{
 		walk_ = 0;
+		downNext_ = downNext_ || crouchGuard_;
 		return Emit(match, static_cast<uint8_t>(press & ~prevHeld), press ? pressDir : 0);
 	}
+	crouchGuard_ = false;
 
 	// Neutral game: hold a preferred range, poke from it, and occasionally commit.
 	if (actionable && press == 0 && pendingDelay_ < 0)
@@ -435,12 +510,20 @@ InputFrame CpuController::Decide(const Match& match)
 			waitFrames_ = 14 + static_cast<int32_t>(Next() % 40u);
 			const int32_t gap = dist - theirs.halfWidth;
 			const uint32_t roll = Next() % 100u;
-			// A guard it has seen held is opened with a grab (grappling on) or, when a held Block cannot stop jump-ins,
-			// with a jump-in from mid range.
-			const bool jumpOpensGuard = !rules.heldBlockStopsJumpIns && opp.state == FState::Guard;
-			if (rules.grappling && dist < 80 * cm && opp.state != FState::Attack && Roll(35))
+			// A guard it has seen held is opened up close with a throw, a crouching guard from mid range with a jump-in (an
+			// overhead), and a standing one with the low attack.
+			const bool crouchGuarding = opp.state == FState::Guard && opp.posture * 2 >= rules.crouchFrames;
+			const bool standGuarding = opp.state == FState::Guard && !crouchGuarding;
+			const bool jumpOpensGuard = crouchGuarding;
+			const int32_t lowIndex = FindByAnim(mine, "CL");
+			const int32_t lowReach = lowIndex >= 0 ? Reach(mine.moves[static_cast<size_t>(lowIndex)]) : 0;
+			if (rules.ThrowsEnabled() && gap - mine.halfWidth <= 30 * cm && opp.state != FState::Attack && Roll(opp.state == FState::Guard ? 45 : 15))
 			{
-				Queue(BtnThrow, roll < 50 ? 0 : -1, 0);
+				Queue(BtnThrow, 0, 0);
+			}
+			else if (lowIndex >= 0 && gap <= lowReach && (standGuarding ? Roll(55) : Roll(12)))
+			{
+				Queue(BtnLight, 0, 0, true);
 			}
 			else if (gap <= pref + 60 * cm && gap >= pref - 40 * cm && Roll(jumpOpensGuard ? tune_.jumpPct * 4 : tune_.jumpPct))
 			{

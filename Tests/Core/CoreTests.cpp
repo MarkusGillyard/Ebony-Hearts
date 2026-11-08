@@ -114,7 +114,8 @@ int8_t Toward(const Match& m, int p)
 
 int32_t Move(int c, const char* id) { return Fighter(c).FindMove(id); }
 
-// Grappling is switched off in rules.json but its code stays; the throw tests switch it on for their own matches.
+// The old grappling set (directional throw variants) is switched off in rules.json but its code stays; the tests of
+// those variants switch it on for their own matches. Standalone throws are on in the shipped rules.
 struct GrapplingOn
 {
 	bool previous = g_rules.grappling;
@@ -124,15 +125,23 @@ struct GrapplingOn
 	GrapplingOn& operator=(const GrapplingOn&) = delete;
 };
 
-// The shipped rules let a jump attack beat a held Block; tests of the held-block path switch that back on.
-struct HeldBlockStopsJumpIns
+struct ThrowsOff
 {
-	bool previous = g_rules.heldBlockStopsJumpIns;
-	HeldBlockStopsJumpIns() { g_rules.heldBlockStopsJumpIns = true; }
-	~HeldBlockStopsJumpIns() { g_rules.heldBlockStopsJumpIns = previous; }
-	HeldBlockStopsJumpIns(const HeldBlockStopsJumpIns&) = delete;
-	HeldBlockStopsJumpIns& operator=(const HeldBlockStopsJumpIns&) = delete;
+	bool previous = g_rules.throws;
+	ThrowsOff() { g_rules.throws = false; }
+	~ThrowsOff() { g_rules.throws = previous; }
+	ThrowsOff(const ThrowsOff&) = delete;
+	ThrowsOff& operator=(const ThrowsOff&) = delete;
 };
+
+InputFrame Down(int8_t x = 0, uint8_t pressed = 0, uint8_t held = 0)
+{
+	InputFrame f = In(x, pressed, held);
+	f.y = -1;
+	return f;
+}
+
+const MoveDef& MoveOf(int c, const char* id) { return Fighter(c).moves[static_cast<size_t>(Fighter(c).FindMove(id))]; }
 
 void Run(const char* name, const std::function<void()>& fn)
 {
@@ -178,15 +187,22 @@ int main(int argc, char** argv)
 	}
 
 	Run("data_loads_and_matches_contract", [] {
-		EXPECT_EQ(static_cast<int>(g_wren.moves.size()), 13, "Wren move count");
-		EXPECT_EQ(static_cast<int>(g_ashka.moves.size()), 13, "Ashka move count");
+		EXPECT_EQ(static_cast<int>(g_wren.moves.size()), 15, "Wren move count");
+		EXPECT_EQ(static_cast<int>(g_ashka.moves.size()), 15, "Ashka move count");
 		for (int c = 0; c < 2; ++c)
 		{
-			for (const char* id : {"L1", "L2", "L3", "H", "FH", "S", "FS", "BS", "T", "DF", "DB"})
+			for (const char* id : {"L1", "L2", "L3", "H", "FH", "S", "FS", "BS", "T", "DF", "DB", "U", "CL"})
 			{
 				EXPECT_TRUE(Move(c, id) >= 0, std::string(FighterName(c)) + " has " + id);
 			}
+			EXPECT_TRUE(MoveOf(c, "U").down && !MoveOf(c, "U").crouching && MoveOf(c, "U").button == BtnHeavy, std::string(FighterName(c)) + " uppercut is down + Heavy and rises");
+			EXPECT_TRUE(MoveOf(c, "CL").down && MoveOf(c, "CL").crouching && MoveOf(c, "CL").button == BtnLight, std::string(FighterName(c)) + " low attack is down + Light and stays crouched");
+			EXPECT_TRUE(MoveOf(c, "U").hits[0].launch && MoveOf(c, "U").hits[0].level == HitLevel::Mid, std::string(FighterName(c)) + " uppercut launches and hits mid");
+			EXPECT_TRUE(MoveOf(c, "CL").hits[0].level == HitLevel::Low, std::string(FighterName(c)) + " low attack hits low");
 		}
+		EXPECT_TRUE(g_rules.throws && !g_rules.grappling, "standalone throws on, the old grappling set off");
+		EXPECT_TRUE(g_wren.throws[static_cast<size_t>(MoveOf(0, "T").throwIndex)].id == "wren_takedown", "Wren's throw is the double-leg takedown");
+		EXPECT_TRUE(g_ashka.throws[static_cast<size_t>(MoveOf(1, "T").throwIndex)].id == "ashka_clinch_trip", "Ashka's throw is the clinch trip");
 		EXPECT_TRUE(g_wren.moves[static_cast<size_t>(Move(0, "BS"))].kind == MoveKind::Buff, "Wren BS is the Spirit Enhanced Strikes buff");
 		EXPECT_TRUE(g_ashka.moves[static_cast<size_t>(Move(1, "S"))].hits[0].energy, "Ashka flame specials are energy");
 	});
@@ -217,6 +233,19 @@ int main(int argc, char** argv)
 		const std::string rules = ReadFile(g_dataDir + "/rules.json");
 		EXPECT_TRUE(!LoadRulesText(Replace(rules, "[100, 100, 80, 70, 60, 50, 40]", "[100, 120]"), r, rerr) && rerr.find("comboScaling[1]") != std::string::npos, "increasing scaling rejected: " + rerr);
 		EXPECT_TRUE(!LoadRulesText(Replace(rules, "\"bufferFrames\": 6", "\"bufferFrames\": 6.5"), r, rerr) && rerr.find("bufferFrames") != std::string::npos, "non-integer rejected: " + rerr);
+		EXPECT_TRUE(!LoadRulesText(Replace(rules, "\"throws\": true,", "\"throws\": true, \"heldBlockStopsJumpIns\": false,"), r, rerr) && rerr.find("heldBlockStopsJumpIns") != std::string::npos, "a removed rule is reported, not ignored: " + rerr);
+		e = LoadError(Replace(good, "\"level\": \"high\", \"damage\": 30,", "\"damage\": 30,"));
+		EXPECT_TRUE(e.find("hits[0].level") != std::string::npos, "every hit names its level: " + e);
+		e = LoadError(Replace(good, "\"level\": \"high\", \"damage\": 30,", "\"level\": \"head\", \"damage\": 30,"));
+		EXPECT_TRUE(e.find("unknown level") != std::string::npos, "unknown level: " + e);
+		e = LoadError(Replace(good, "\"hitPush\": 18, \"blockPush\": 22}],\n      \"hurt\": [{\"frames\": [6, 14]", "\"hitPush\": 18, \"blockPush\": 22, \"launch\": true}],\n      \"hurt\": [{\"frames\": [6, 14]"));
+		EXPECT_TRUE(e.find("launch") != std::string::npos, "a launch must knock down: " + e);
+		e = LoadError(Replace(good, "\"dir\": \"any\", \"down\": true, \"crouching\": true,", "\"dir\": \"any\", \"crouching\": true,"));
+		EXPECT_TRUE(e.find("crouching") != std::string::npos, "a crouching move needs down: " + e);
+		e = LoadError(Replace(good, "\"crouchHurt\": [-30, 0, 34, 110],", "\"crouchHurt\": [-30, 0, 34, 190],"));
+		EXPECT_TRUE(e.find("crouchHurt") != std::string::npos, "a crouching hurtbox lower than standing: " + e);
+		e = LoadError(Replace(good, "\"intoOnHit\": [\"T\"]}", "\"intoOnHit\": [\"T9\"]}"));
+		EXPECT_TRUE(e.find("intoOnHit") != std::string::npos && e.find("T9") != std::string::npos, "unknown hit-only cancel target: " + e);
 	});
 
 	Run("startup_matches_data_both_fighters_both_sides", [] {
@@ -438,7 +467,6 @@ int main(int argc, char** argv)
 	});
 
 	Run("jumps_cannot_block_or_be_thrown_and_anti_air_knocks_down", [] {
-		GrapplingOn grappling;
 		for (int c = 0; c < 2; ++c)
 		{
 			const std::string tag = FighterName(c);
@@ -468,8 +496,7 @@ int main(int argc, char** argv)
 	});
 
 	Run("jump_attacks_hit_block_and_land_into_recovery", [] {
-		HeldBlockStopsJumpIns heldBlocks;   // the blocked half checks the held-block path (see jump_ins_beat_a_held_block_but_not_a_deflect)
-		const Rules& r = g_rules;
+		const Rules& r = g_rules;   // a held standing guard blocks a falling jump attack (an overhead)
 		for (int c = 0; c < 2; ++c)
 		{
 			for (int blocking = 0; blocking < 2; ++blocking)
@@ -490,7 +517,7 @@ int main(int argc, char** argv)
 						const bool falling = a.y > 0 && a.y < lastY;
 						lastY = a.y;
 						InputFrame in;
-						if (!pressed && falling && a.y < Cm(80))
+						if (!pressed && falling)   // the first frame of the fall: early enough for either attack to come out
 						{
 							in = In(0, button);
 							pressed = true;
@@ -799,11 +826,12 @@ int main(int argc, char** argv)
 	});
 
 	Run("example_combos_each_fighter", [] {
-		// Documented routes: L1 > L2 > L3, L1 > L2 > forward special and L1 > forward special, both fighters.
-		const char* routes[] = {" L1 L2 L3", " L1 L2 FS", " L1 FS"};
+		// Documented routes: L1 > L2 > L3, L1 > L2 > forward special, L1 > forward special and L1 > L2 > Throw (the combo
+		// throw), both fighters, from 100 cm (centre to centre).
+		const char* routes[] = {" L1 L2 L3", " L1 L2 FS", " L1 FS", " L1 L2 T"};
 		for (int c = 0; c < 2; ++c)
 		{
-			for (int ender = 0; ender < 3; ++ender)
+			for (int ender = 0; ender < 4; ++ender)
 			{
 				const int links = ender == 2 ? 1 : 2;
 				Match m = MakeMatch(c, 1 - c);
@@ -821,10 +849,15 @@ int main(int argc, char** argv)
 					else if (f.state == FState::Attack && f.connectedHit && f.hitstop == 1 && presses < links)
 					{
 						++presses;
-						p0 = (presses == links && ender > 0) ? In(Toward(m, 0), BtnSpecial) : In(0, BtnLight);
+						p0 = (presses == links && ender == 3) ? In(0, BtnThrow) : ((presses == links && ender > 0) ? In(Toward(m, 0), BtnSpecial) : In(0, BtnLight));
 					}
 					Step(m, p0);
 					maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+					if (ender == 3 && m.State().f[1].state == FState::Thrown)
+					{
+						// The throw never lets the victim act: it counts as the combo's next hit at its damage frame.
+						EXPECT_TRUE(m.State().f[0].comboThrow, std::string(FighterName(c)) + " the throw is a combo throw");
+					}
 				}
 				EXPECT_EQ(maxCombo, links + 1, std::string(FighterName(c)) + routes[ender] + " is a " + std::to_string(links + 1) + "-hit combo");
 			}
@@ -852,10 +885,16 @@ int main(int argc, char** argv)
 					static const uint8_t buttons[] = {0, 0, BtnLight, BtnHeavy, BtnSpecial, BtnThrow};
 					const uint8_t b = buttons[r % 6];
 					const int8_t x = static_cast<int8_t>(static_cast<int>((r >> 8) % 3) - 1);
-					Step(m, In(x, b));
+					InputFrame in = In(x, b);
+					in.y = static_cast<int8_t>(static_cast<int>((r >> 12) % 3) - 1);   // down moves, jumps and jump-ins too
+					const FighterState before = m.State().f[1];
+					Step(m, in);
 					const FighterState& d = m.State().f[1];
 					worst = d.combo > worst ? d.combo : worst;
-					stunRun = (d.state == FState::Hitstun || d.state == FState::Knockdown || d.state == FState::Getup || d.state == FState::Thrown) ? stunRun + 1 : 0;
+					// A tick on which the defender leaves stun or wakes up is a decision point: it acts in that tick (a
+					// held Block or a buffered move), so a meaty on the wake-up starts a new stretch rather than a loop.
+					const bool decides = (before.state == FState::Hitstun || before.state == FState::Blockstun || before.state == FState::Getup) && before.stun == 0 && before.hitstop == 0;
+					stunRun = (!decides && (d.state == FState::Hitstun || d.state == FState::Knockdown || d.state == FState::Getup || d.state == FState::Thrown)) ? stunRun + 1 : 0;
 					worstStun = stunRun > worstStun ? stunRun : worstStun;
 				}
 			}
@@ -1145,8 +1184,8 @@ int main(int argc, char** argv)
 	Run("state_hash_covers_every_field", [] {
 		// Every field of the combat state can change what happens next, so changing any one must change the hash.
 		// The size checks fail when a field is added; add it to HashState() and to the lists below.
-		static_assert(sizeof(FighterState) == 160, "FighterState changed: hash the new field and add it here");
-		static_assert(sizeof(MatchState) == 368, "MatchState changed: hash the new field and add it here");
+		static_assert(sizeof(FighterState) == 176, "FighterState changed: hash the new field and add it here");
+		static_assert(sizeof(MatchState) == 400, "MatchState changed: hash the new field and add it here");
 		Match m = MakeMatch(0, 1, Mode::Versus);
 		Idle(m, g_rules.introFrames + 3);
 		MatchState base = m.State();
@@ -1154,8 +1193,8 @@ int main(int argc, char** argv)
 		for (FighterState& f : base.f)
 		{
 			f.bufferCount = 2;
-			f.buffer[0] = Buffered{BtnLight, 1, 3};
-			f.buffer[1] = Buffered{BtnHeavy, 0, 1};
+			f.buffer[0] = Buffered{BtnLight, 1, false, 3};
+			f.buffer[1] = Buffered{BtnHeavy, 0, false, 1};
 		}
 		const uint64_t h0 = HashState(base);
 		using MatchEdit = std::function<void(MatchState&)>;
@@ -1188,6 +1227,9 @@ int main(int argc, char** argv)
 			{"move", [](FighterState& f) { f.move = static_cast<int16_t>(f.move + 1); }},
 			{"moveDir", [](FighterState& f) { f.moveDir = static_cast<int8_t>(f.moveDir + 1); }},
 			{"moveFrame", [](FighterState& f) { ++f.moveFrame; }},
+			{"posture", [](FighterState& f) { f.posture = static_cast<int8_t>(f.posture + 1); }},
+			{"comboThrow", [](FighterState& f) { f.comboThrow = !f.comboThrow; }},
+			{"throwEntry", [](FighterState& f) { ++f.throwEntry; }},
 			{"hitMask", [](FighterState& f) { f.hitMask ^= 1u; }},
 			{"connected", [](FighterState& f) { f.connected = !f.connected; }},
 			{"connectedHit", [](FighterState& f) { f.connectedHit = !f.connectedHit; }},
@@ -1223,6 +1265,7 @@ int main(int argc, char** argv)
 			{"bufferCount", [](FighterState& f) { f.bufferCount = 1; }},
 			{"buffer[1].button", [](FighterState& f) { f.buffer[1].button = BtnSpecial; }},
 			{"buffer[1].dir", [](FighterState& f) { f.buffer[1].dir = -1; }},
+			{"buffer[1].down", [](FighterState& f) { f.buffer[1].down = !f.buffer[1].down; }},
 			{"buffer[1].age", [](FighterState& f) { ++f.buffer[1].age; }},
 			{"lastInput.x", [](FighterState& f) { f.lastInput.x = static_cast<int8_t>(f.lastInput.x + 1); }},
 			{"lastInput.y", [](FighterState& f) { f.lastInput.y = static_cast<int8_t>(f.lastInput.y + 1); }},
@@ -1245,7 +1288,7 @@ int main(int argc, char** argv)
 			}
 			// Slots past bufferCount are never read, so they must not change the hash.
 			MatchState stale = base;
-			stale.f[p].buffer[kBufferCapacity - 1] = Buffered{BtnThrow, 1, 9};
+			stale.f[p].buffer[kBufferCapacity - 1] = Buffered{BtnThrow, 1, true, 9};
 			EXPECT_TRUE(HashState(stale) == h0, "hash ignores unused buffer slots of f[" + std::to_string(p) + "]");
 		}
 	});
@@ -1443,7 +1486,7 @@ int main(int argc, char** argv)
 		EXPECT_EQ(outOfBounds, 0, "positions stay on stage");
 		std::printf("  info: %d CPU matches; Hard beat Easy %d/%d; %d jumps, %d jump attacks, %d jump-in hits, %d knocked out of the air\n", matches, hardWins, hardGames, jumps, jumpAttacks, jumpInHits, airDowns);
 		EXPECT_TRUE(jumps > 0 && jumpAttacks > 0 && jumpInHits > 0 && airDowns > 0, "the CPU jumps in, lands jump-ins, attacks from the air and is anti-aired");
-		EXPECT_EQ(grabs, 0, "with grappling off the CPU never grabs");
+		EXPECT_TRUE(grabs > 0, "the CPU uses its throw");
 		EXPECT_TRUE(hardWins * 2 > hardGames, "Hard CPU usually beats Easy CPU");
 	});
 
@@ -1461,7 +1504,38 @@ int main(int argc, char** argv)
 			blocked = blocked || HasEvent(m, EventType::Block);
 		}
 		EXPECT_TRUE(blocked, "block dummy blocks");
-		GrapplingOn grappling;
+		// The block dummy guards low against the low attack (it reads the live move, as a tool).
+		for (int c = 0; c < 2; ++c)
+		{
+			Match l = MakeMatch(c, 1 - c);
+			l.TrainingPlace(Cm(-45), Cm(45));
+			CpuController d;
+			d.Setup(1, CpuLevel::Normal, 3);
+			d.SetDummy(DummyMode::Block);
+			bool lowBlocked = false, lowHit = false;
+			for (int t = 0; t < 60; ++t)
+			{
+				const InputFrame in[2] = {t == 8 ? Down(0, BtnLight) : (t < 8 ? Down() : InputFrame()), d.Decide(l)};
+				l.Tick(in);
+				lowBlocked = lowBlocked || HasEvent(l, EventType::Block, 0);
+				lowHit = lowHit || HasEvent(l, EventType::Hit, 0);
+			}
+			EXPECT_TRUE(lowBlocked && !lowHit, std::string(FighterName(c)) + ": the block dummy blocks the low attack crouching");
+		}
+		// The crouch dummy ducks the highs.
+		Match h = MakeMatch(0, 1);
+		h.TrainingPlace(Cm(-45), Cm(45));
+		CpuController crouch;
+		crouch.Setup(1, CpuLevel::Normal, 3);
+		crouch.SetDummy(DummyMode::Crouch);
+		bool ducked = true;
+		for (int t = 0; t < 60; ++t)
+		{
+			const InputFrame in[2] = {t == 10 ? In(0, BtnLight) : InputFrame(), crouch.Decide(h)};
+			h.Tick(in);
+			ducked = ducked && !HasEvent(h, EventType::Hit, 0);
+		}
+		EXPECT_TRUE(ducked && h.State().f[1].posture == g_rules.crouchFrames, "the crouch dummy stays down and the jab passes over it");
 		Match n = MakeMatch(0, 1);
 		n.TrainingPlace(Cm(-35), Cm(35));
 		CpuController tech;
@@ -1474,33 +1548,587 @@ int main(int argc, char** argv)
 			n.Tick(in);
 			teched = teched || HasEvent(n, EventType::ThrowTech);
 		}
-		EXPECT_TRUE(teched, "tech dummy escapes throws");
+		EXPECT_TRUE(teched, "tech dummy escapes neutral throws");
 	});
 
-	Run("grappling_off_grab_does_nothing", [] {
-		// rules.json switches grappling off; the grab press starts nothing and the throw data stays loaded.
-		EXPECT_TRUE(!g_rules.grappling, "grappling is off in the shipped rules");
+	Run("hit_levels_agree_with_the_crouching_hurtboxes", [] {
+		// The level tag and the boxes must tell the same story: a high hit cannot reach any fighter's crouching
+		// hurtbox (so crouching ducks it), mids, overheads and lows on the ground can, and lows sit at the legs.
+		int32_t lowestCrouchTop = g_wren.crouchHurt.y1 < g_ashka.crouchHurt.y1 ? g_wren.crouchHurt.y1 : g_ashka.crouchHurt.y1;
+		int32_t highestCrouchTop = g_wren.crouchHurt.y1 > g_ashka.crouchHurt.y1 ? g_wren.crouchHurt.y1 : g_ashka.crouchHurt.y1;
 		for (int c = 0; c < 2; ++c)
 		{
-			const std::string who = c == 0 ? "wren: " : "ashka: ";
-			bool hasThrowMove = false;
 			for (const MoveDef& mv : Fighter(c).moves)
 			{
-				hasThrowMove = hasThrowMove || mv.kind == MoveKind::Throw;
+				if (mv.kind != MoveKind::Strike)
+				{
+					continue;
+				}
+				for (const HitDef& h : mv.hits)
+				{
+					const std::string what = std::string(FighterName(c)) + " " + mv.id;
+					if (mv.air)
+					{
+						EXPECT_TRUE(h.level == HitLevel::Overhead, what + ": a jump attack is an overhead (mid on the way up)");
+						continue;
+					}
+					switch (h.level)
+					{
+					case HitLevel::High:
+						EXPECT_TRUE(h.box.y0 >= highestCrouchTop, what + ": a high hit passes over every crouching hurtbox");
+						break;
+					case HitLevel::Mid:
+					case HitLevel::Overhead:
+						EXPECT_TRUE(h.box.y0 < lowestCrouchTop, what + ": a mid or overhead hit reaches a crouching fighter");
+						break;
+					case HitLevel::Low:
+						EXPECT_TRUE(h.box.y0 <= Cm(10) && h.box.y1 <= Cm(60), what + ": a low hit is at the legs");
+						break;
+					}
+				}
 			}
-			EXPECT_TRUE(hasThrowMove && !Fighter(c).throws.empty(), who + "throw move and throws kept in the data");
+			// The standing moves' extra hurtboxes (limbs) never reach down into the space a crouch frees, and the
+			// crouching moves keep theirs at the crouch.
+			for (const MoveDef& mv : Fighter(c).moves)
+			{
+				if (mv.crouching)
+				{
+					for (const HurtDef& hd : mv.hurt)
+					{
+						EXPECT_TRUE(hd.box.y1 <= Fighter(c).crouchHurt.y1, std::string(FighterName(c)) + " " + mv.id + ": a crouching move's hurtboxes stay low");
+					}
+				}
+			}
+		}
+		// Dynamic: against a fully crouched defender at close range, every high whiffs and every mid hits.
+		for (int c = 0; c < 2; ++c)
+		{
+			for (const MoveDef& mv : Fighter(c).moves)
+			{
+				if (mv.kind != MoveKind::Strike || mv.air || mv.chainOnly || mv.meterCost > 0 || mv.hits[0].level == HitLevel::Overhead)
+				{
+					continue;
+				}
+				Match m = MakeMatch(c, 1 - c);
+				m.TrainingPlace(Cm(-40), Cm(40));
+				for (int t = 0; t < 10; ++t)
+				{
+					Step(m, InputFrame(), Down());
+				}
+				const int8_t x = mv.dir == DirReq::Forward ? 1 : (mv.dir == DirReq::Back ? -1 : 0);
+				InputFrame press = In(x, mv.button);
+				press.y = mv.down ? -1 : 0;
+				bool hit = false;
+				Step(m, press, Down());
+				for (int t = 0; t < 80; ++t)
+				{
+					Step(m, mv.down ? Down() : InputFrame(), Down());
+					hit = hit || HasEvent(m, EventType::Hit, 0);
+				}
+				const std::string what = std::string(FighterName(c)) + " " + mv.id + " vs a crouching " + FighterName(1 - c);
+				if (mv.hits[0].level == HitLevel::High)
+				{
+					EXPECT_TRUE(!hit, what + ": a high passes over");
+				}
+				else
+				{
+					EXPECT_TRUE(hit, what + ": a " + (mv.hits[0].level == HitLevel::Low ? "low" : "mid") + " connects");
+				}
+			}
+		}
+	});
+
+	Run("crouch_posture_entry_exit_both_sides", [] {
+		const int n = g_rules.crouchFrames;
+		for (int c = 0; c < 2; ++c)
+		{
+			for (int side = 0; side < 2; ++side)
+			{
+				const std::string tag = std::string(FighterName(c)) + (side ? " on the right" : " on the left");
+				Match m = MakeMatch(side ? 1 - c : c, side ? c : 1 - c);
+				m.TrainingPlace(Cm(-150), Cm(150));
+				const int p = side;
+				const int8_t toward = Toward(m, p);
+				const int32_t x0 = m.State().f[p].x;
+				int32_t lastTop = m.GetPushbox(p).y1;
+				bool monotonic = true;
+				for (int t = 1; t <= n + 6; ++t)
+				{
+					const InputFrame d = Down(toward);   // down-toward: no crouch walking
+					Step(m, p == 0 ? d : InputFrame(), p == 1 ? d : InputFrame());
+					const FighterState& f = m.State().f[p];
+					EXPECT_EQ(static_cast<int>(f.posture), t < n ? t : n, tag + ": the posture lowers one step a frame");
+					const int32_t top = m.GetPushbox(p).y1;
+					monotonic = monotonic && top <= lastTop;
+					lastTop = top;
+				}
+				EXPECT_TRUE(monotonic, tag + ": the body lowers steadily, no instant drop");
+				EXPECT_EQ(lastTop, Fighter(c).crouchHurt.y1, tag + ": fully down, the box is the crouching one");
+				EXPECT_EQ(m.State().f[p].x, x0, tag + ": holding down-toward does not walk");
+				EXPECT_TRUE(m.IsCrouching(p) && m.IsActionable(p), tag + ": crouching is actionable");
+				for (int t = 1; t <= n; ++t)
+				{
+					Step(m);
+					EXPECT_EQ(static_cast<int>(m.State().f[p].posture), n - t, tag + ": rising takes the same frames");
+				}
+				// Down + Block is a crouching guard; up while crouched jumps (the device layer gives up priority).
+				for (int t = 0; t < n + 1; ++t)
+				{
+					const InputFrame g = Down(0, 0, BtnBlock);
+					Step(m, p == 0 ? g : InputFrame(), p == 1 ? g : InputFrame());
+				}
+				EXPECT_TRUE(m.State().f[p].state == FState::Guard && m.IsCrouching(p), tag + ": down + Block guards crouching");
+				Step(m, p == 0 ? InputFrame() : InputFrame(), InputFrame());
+				for (int t = 0; t < n + 1; ++t)
+				{
+					Step(m, p == 0 ? Down() : InputFrame(), p == 1 ? Down() : InputFrame());
+				}
+				Step(m, p == 0 ? Up() : InputFrame(), p == 1 ? Up() : InputFrame());
+				EXPECT_TRUE(m.State().f[p].state == FState::Jump && m.State().f[p].posture == 0, tag + ": a jump from a crouch stands first");
+			}
+		}
+		// Landing while holding down settles straight into the crouch.
+		Match m = MakeMatch(0, 1);
+		m.TrainingPlace(Cm(-150), Cm(150));
+		Step(m, Up());
+		bool landed = false;
+		for (int t = 0; t < 80; ++t)
+		{
+			Step(m, Down());
+			landed = landed || HasEvent(m, EventType::Land, 0);
+		}
+		EXPECT_TRUE(landed && m.State().f[0].posture == n && m.IsActionable(0), "holding down through a landing ends crouched");
+	});
+
+	Run("guard_heights_lows_overheads_and_jump_ins", [] {
+		// Standing guard: blocks high, mid and overhead; loses to the low. Crouching guard: blocks low and mid; loses to
+		// the overhead, including a jump attack on the way down. On the way up a jump attack hits mid.
+		struct Case { int c; const char* id; bool crouchGuard; bool blocked; };
+		const Case cases[] = {
+			{0, "CL", false, false}, {0, "CL", true, true}, {1, "CL", false, false}, {1, "CL", true, true},
+			{0, "FS", true, false}, {0, "FS", false, true}, {1, "S", true, false}, {1, "S", false, true},
+			{0, "FH", true, true}, {1, "H", true, true}, {0, "U", true, true}, {1, "U", false, true},
+		};
+		for (const Case& k : cases)
+		{
+			const MoveDef& mv = MoveOf(k.c, k.id);
+			const std::string tag = std::string(FighterName(k.c)) + " " + k.id + (k.crouchGuard ? " vs a crouching guard" : " vs a standing guard");
+			Match m = MakeMatch(k.c, 1 - k.c);
+			m.TrainingPlace(Cm(-42), Cm(42));
+			const InputFrame guard = k.crouchGuard ? Down(0, 0, BtnBlock) : In(0, 0, BtnBlock);
+			for (int t = 0; t < 8; ++t)
+			{
+				Step(m, InputFrame(), guard);
+			}
+			InputFrame press = In(mv.dir == DirReq::Forward ? Toward(m, 0) : 0, mv.button);
+			press.y = mv.down ? -1 : 0;
+			bool blocked = false, hit = false;
+			Step(m, press, guard);
+			for (int t = 0; t < 70 && !blocked && !hit; ++t)
+			{
+				Step(m, mv.down ? Down() : InputFrame(), guard);
+				blocked = HasEvent(m, EventType::Block, 0) || HasEvent(m, EventType::Deflect, 0);
+				hit = HasEvent(m, EventType::Hit, 0);
+			}
+			EXPECT_TRUE(blocked || hit, tag + ": connects");
+			EXPECT_TRUE(blocked == k.blocked, tag + (k.blocked ? ": is blocked" : ": gets through"));
+		}
+		// Jump attacks: falling = overhead, rising = mid.
+		for (int c = 0; c < 2; ++c)
+		{
+			for (int crouch = 0; crouch < 2; ++crouch)
+			{
+				int fallBlocked = 0, fallHit = 0, riseBlocked = 0, riseHit = 0;
+				for (int dist = 80; dist <= 200; dist += 20)
+				{
+					for (int t = 3; t <= 34; ++t)
+					{
+						for (uint8_t b : {BtnLight, BtnHeavy})
+						{
+							Match m = MakeMatch(c, 1 - c);
+							m.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
+							const InputFrame guard = crouch ? Down(0, 0, BtnBlock) : In(0, 0, BtnBlock);
+							for (int k = 0; k < 6; ++k)
+							{
+								Step(m, InputFrame(), guard);
+							}
+							bool rising = false;
+							for (int k = 0; k < 120; ++k)
+							{
+								const FighterState& a = m.State().f[0];
+								rising = a.jumpFrame > 0 && (a.jumpFrame - g_rules.jumpSquat) * 2 < g_rules.jumpAir;
+								Step(m, k == 0 ? Up(1) : (k == t ? In(0, b) : InputFrame()), guard);
+								const bool bl = HasEvent(m, EventType::Block, 0) || HasEvent(m, EventType::Deflect, 0);
+								const bool ht = HasEvent(m, EventType::Hit, 0);
+								if (bl || ht)
+								{
+									if (m.State().f[0].state == FState::Attack && MoveOf(c, "JL").button && Fighter(c).moves[static_cast<size_t>(m.State().f[0].move)].air)
+									{
+										(rising ? (bl ? riseBlocked : riseHit) : (bl ? fallBlocked : fallHit))++;
+									}
+									break;
+								}
+							}
+						}
+					}
+				}
+				const std::string tag = std::string(FighterName(c)) + (crouch ? " jump attacks vs a crouching guard" : " jump attacks vs a standing guard");
+				if (crouch)
+				{
+					EXPECT_TRUE(fallHit > 5 && fallBlocked == 0, tag + ": falling ones are overheads and get through (" + std::to_string(fallHit) + " hit, " + std::to_string(fallBlocked) + " blocked)");
+					EXPECT_TRUE(riseHit == 0, tag + ": rising ones are mids and are blocked (" + std::to_string(riseBlocked) + " blocked, " + std::to_string(riseHit) + " hit)");
+				}
+				else
+				{
+					EXPECT_TRUE(fallBlocked > 5 && fallHit == 0 && riseHit == 0, tag + ": a held standing guard blocks them all (" + std::to_string(fallBlocked + riseBlocked) + " blocked, " + std::to_string(fallHit + riseHit) + " hit)");
+				}
+			}
+		}
+	});
+
+	Run("down_selects_the_uppercut_and_the_low", [] {
+		struct Case { int8_t x; int8_t y; uint8_t b; const char* want; };
+		const Case cases[] = {
+			{0, -1, BtnHeavy, "U"}, {1, -1, BtnHeavy, "U"}, {-1, -1, BtnHeavy, "U"}, {0, 0, BtnHeavy, "H"}, {1, 0, BtnHeavy, "FH"},
+			{0, -1, BtnLight, "CL"}, {1, -1, BtnLight, "CL"}, {0, 0, BtnLight, "L1"}, {0, -1, BtnSpecial, "S"}, {1, -1, BtnSpecial, "FS"},
+			{0, -1, BtnThrow, "T"}, {1, -1, BtnDodge, "DF"}, {0, -1, BtnDodge, "DB"},
+		};
+		for (int c = 0; c < 2; ++c)
+		{
+			for (const Case& k : cases)
+			{
+				Match m = MakeMatch(c, 1 - c);
+				m.TrainingPlace(Cm(-150), Cm(150));
+				m.SetMeter(0, 0);
+				InputFrame in = In(k.x, k.b);
+				in.y = k.y;
+				Step(m, in);
+				const FighterState& f = m.State().f[0];
+				const std::string tag = std::string(FighterName(c)) + " x " + std::to_string(k.x) + " y " + std::to_string(k.y) + " -> " + k.want;
+				EXPECT_TRUE(f.state == FState::Attack && f.move == Move(c, k.want), tag);
+			}
+			// The down at the press is what counts, through the buffer: down + Heavy pressed in the last frames of a
+			// heavy's recovery gives the uppercut on the first free frame even if down is let go before then.
+			Match b = MakeMatch(c, 1 - c);
+			b.TrainingPlace(Cm(-150), Cm(150));
+			Step(b, In(0, BtnHeavy));
+			const int total = MoveOf(c, "H").total;
+			for (int t = 1; t < total - 2; ++t)
+			{
+				Step(b);
+			}
+			InputFrame late = In(0, BtnHeavy);
+			late.y = -1;
+			Step(b, late);
+			bool up = false;
+			for (int t = 0; t < 8 && !up; ++t)
+			{
+				Step(b);
+				up = b.State().f[0].state == FState::Attack && b.State().f[0].move == Move(c, "U");
+			}
+			EXPECT_TRUE(up, std::string(FighterName(c)) + ": a buffered down + Heavy comes out as the uppercut");
+			// The low attack stays down and ends crouched; the uppercut rises and ends standing up from it.
+			Match l = MakeMatch(c, 1 - c);
+			l.TrainingPlace(Cm(-150), Cm(150));
+			Step(l, Down(0, BtnLight));
+			bool low = true;
+			for (int t = 0; t < MoveOf(c, "CL").total; ++t)
+			{
+				low = low && l.State().f[0].posture == g_rules.crouchFrames;
+				Step(l, Down());
+			}
+			EXPECT_TRUE(low && l.IsActionable(0) && l.IsCrouching(0), std::string(FighterName(c)) + ": the low attack is crouched throughout and after");
+		}
+	});
+
+	Run("uppercut_anti_air_launch_and_risk", [] {
+		for (int c = 0; c < 2; ++c)
+		{
+			const MoveDef& up = MoveOf(c, "U");
+			const std::string who = FighterName(c);
+			// Grounded hit: a launch knockdown (reaction 5), big damage, no follow-up while the victim is down.
 			Match m = MakeMatch(c, 1 - c);
-			m.TrainingPlace(Cm(-35), Cm(35));
-			bool started = false;
-			bool connected = false;
+			m.TrainingPlace(Cm(-45), Cm(45));
+			Step(m, Down(0, BtnHeavy));
+			bool hit = false;
+			int hitTick = -1;
+			for (int t = 2; t < 60 && !hit; ++t)
+			{
+				Step(m, Down());
+				hit = HasEvent(m, EventType::Hit, 0);
+				hitTick = hit ? t : hitTick;
+			}
+			EXPECT_TRUE(hit && m.State().f[1].state == FState::Knockdown && m.State().f[1].reaction == 5, who + ": the uppercut launches a standing opponent into a knockdown");
+			EXPECT_EQ(hitTick, up.hits[0].frames.first, who + ": the uppercut connects on its first active frame");
+			EXPECT_EQ(Fighter(1 - c).maxHealth - m.State().f[1].health, up.hits[0].damage, who + ": the uppercut's damage");
+			// It hits a crouching opponent too (it is a mid).
+			Match k = MakeMatch(c, 1 - c);
+			k.TrainingPlace(Cm(-45), Cm(45));
+			for (int t = 0; t < 6; ++t) Step(k, InputFrame(), Down());
+			Step(k, Down(0, BtnHeavy), Down());
+			bool crouchHit = false;
+			for (int t = 0; t < 40; ++t)
+			{
+				Step(k, Down(), Down());
+				crouchHit = crouchHit || HasEvent(k, EventType::Hit, 0);
+			}
+			EXPECT_TRUE(crouchHit, who + ": the uppercut hits a crouching opponent");
+			// Blocked, it is heavily punishable.
+			Match b = MakeMatch(c, 1 - c);
+			b.TrainingPlace(Cm(-45), Cm(45));
+			Step(b, Down(0, BtnHeavy), In(0, BtnBlock));
+			for (int t = 0; t < 120; ++t)
+			{
+				Step(b, Down(), In(0, 0, BtnBlock));
+			}
+			EXPECT_TRUE(b.State().lastAdvantageValid && b.State().lastAdvantage <= -20, who + ": blocked, the uppercut leaves its user at " + std::to_string(b.State().lastAdvantage));
+			// Its wind-up is low: a high jab timed into it passes over and the uppercut wins.
+			Match d = MakeMatch(1 - c, c);
+			d.TrainingPlace(Cm(-45), Cm(45));
+			const MoveDef& jab = MoveOf(1 - c, "L1");
+			const int pressJab = 0;
+			const int pressUp = jab.hits[0].frames.first - 4;   // the jab is active on the uppercut's 4th frame
+			bool jabHit = false, upHit = false;
 			for (int t = 0; t < 60; ++t)
 			{
-				Step(m, t == 1 ? In(0, BtnThrow) : InputFrame(), In(0, 0, BtnBlock));
-				started = started || HasEvent(m, EventType::MoveStart, 0);
-				connected = connected || HasEvent(m, EventType::ThrowConnect);
+				InputFrame p1 = t == pressUp ? Down(0, BtnHeavy) : (t > pressUp ? Down() : InputFrame());
+				Step(d, t == pressJab ? In(0, BtnLight) : InputFrame(), p1);
+				jabHit = jabHit || HasEvent(d, EventType::Hit, 0);
+				upHit = upHit || HasEvent(d, EventType::Hit, 1);
 			}
-			EXPECT_TRUE(!started && !connected, who + "a grab press starts no move and grabs nothing");
-			EXPECT_TRUE(m.State().f[0].state == FState::Neutral && m.State().f[1].state == FState::Guard, who + "both fighters stay in neutral and guard");
+			EXPECT_TRUE(!jabHit && upHit, who + ": a high jab passes over the uppercut's wind-up and the uppercut lands");
+			// Anti-air: an uppercut pressed as a forward jump comes down knocks the jumper out of the air; pressed far too
+			// early it whiffs under the jump and recovers too late to block the landing.
+			int beats = 0, tries = 0, whiffs = 0;
+			for (int dist = 120; dist <= 200; dist += 20)
+			{
+				for (int press = 6; press <= 30; press += 2)
+				{
+					Match a = MakeMatch(1 - c, c);
+					a.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
+					bool aa = false, jumperHit = false, uWhiff = false;
+					for (int t = 0; t < 90; ++t)
+					{
+						const InputFrame jumper = t == 0 ? Up(1) : (t == 24 ? In(0, BtnHeavy) : InputFrame());
+						Step(a, jumper, t == press ? Down(0, BtnHeavy) : Down());
+						for (const Event& e : a.Events())
+						{
+							aa = aa || (e.type == EventType::Hit && e.player == 1 && (e.flags & EvKnockdown) && a.State().f[0].y > 0);
+							jumperHit = jumperHit || (e.type == EventType::Hit && e.player == 0);
+						}
+						const FighterState& u = a.State().f[1];
+						uWhiff = uWhiff || (u.state == FState::Attack && u.move == Move(c, "U") && u.moveFrame > up.hits[0].frames.last && !u.connected);
+					}
+					++tries;
+					beats += aa && !jumperHit ? 1 : 0;
+					whiffs += uWhiff ? 1 : 0;
+				}
+			}
+			EXPECT_TRUE(beats * 4 >= tries, who + ": a timed uppercut beats a jump-in cleanly (" + std::to_string(beats) + "/" + std::to_string(tries) + ")");
+			EXPECT_TRUE(whiffs > 0, who + ": a mistimed uppercut whiffs (" + std::to_string(whiffs) + ")");
+		}
+	});
+
+	Run("standalone_throws_without_grappling", [] {
+		// The Throw button performs each fighter's one throw from neutral, whichever way the stick points; it beats a
+		// standing or crouching guard and lands the victim in front (no side switch). The old directional variants stay
+		// in the data but never come out while grappling is off. With throws switched off too, Throw does nothing.
+		EXPECT_TRUE(!g_rules.grappling && g_rules.throws, "shipped: standalone throws on, grappling off");
+		for (int c = 0; c < 2; ++c)
+		{
+			const MoveDef& tm = MoveOf(c, "T");
+			const ThrowDef& td = Fighter(c).throws[static_cast<size_t>(tm.throwIndex)];
+			for (int dir = -1; dir <= 1; ++dir)
+			{
+				for (int crouch = 0; crouch < 2; ++crouch)
+				{
+					const std::string tag = std::string(FighterName(c)) + " dir " + std::to_string(dir) + (crouch ? " vs a crouching guard" : " vs a standing guard");
+					Match m = MakeMatch(c, 1 - c);
+					m.TrainingPlace(Cm(-36), Cm(36));
+					const InputFrame guard = crouch ? Down(0, 0, BtnBlock) : In(0, 0, BtnBlock);
+					for (int t = 0; t < 6; ++t) Step(m, InputFrame(), guard);
+					Step(m, In(static_cast<int8_t>(dir * Toward(m, 0)), BtnThrow), guard);
+					int connect = -1;
+					int16_t index = -1;
+					int dmg = 0;
+					for (int t = 2; t < 160; ++t)
+					{
+						Step(m, InputFrame(), guard);
+						if (HasEvent(m, EventType::ThrowConnect, 0) && connect < 0)
+						{
+							connect = t;
+							index = m.State().f[0].throwIndex;
+						}
+						for (const Event& e : m.Events()) dmg += e.type == EventType::ThrowDamage ? e.value : 0;
+					}
+					EXPECT_EQ(connect, tm.hits[0].frames.first, tag + ": connects on the grab's first active frame");
+					EXPECT_EQ(static_cast<int>(index), tm.throwIndex, tag + ": performs the fighter's throw");
+					EXPECT_EQ(dmg, td.damage, tag + ": unscaled damage from neutral");
+					EXPECT_TRUE(m.State().f[1].x > m.State().f[0].x, tag + ": lands in front, no side switch");
+				}
+			}
+			{
+				ThrowsOff off;
+				Match m = MakeMatch(c, 1 - c);
+				m.TrainingPlace(Cm(-35), Cm(35));
+				bool started = false;
+				for (int t = 0; t < 40; ++t)
+				{
+					Step(m, t == 1 ? In(0, BtnThrow) : InputFrame());
+					started = started || HasEvent(m, EventType::MoveStart, 0);
+				}
+				EXPECT_TRUE(!started, std::string(FighterName(c)) + ": with throws off, Throw starts nothing");
+			}
+		}
+	});
+
+	Run("combo_throws_scale_cannot_be_escaped_and_need_a_hit", [] {
+		for (int c = 0; c < 2; ++c)
+		{
+			const std::string who = FighterName(c);
+			const MoveDef& tm = MoveOf(c, "T");
+			const ThrowDef& td = Fighter(c).throws[static_cast<size_t>(tm.throwIndex)];
+			for (int links = 1; links <= 2; ++links)
+			{
+				const std::string tag = who + (links == 1 ? " L1 > T" : " L1 L2 > T");
+				Match m = MakeMatch(c, 1 - c);
+				m.TrainingPlace(Cm(-42), Cm(42));
+				int presses = 0;
+				int throwDamage = 0, comboAtThrow = 0, maxCombo = 0;
+				bool techPressed = false, teched = false, comboFlag = false, victimActed = false, firstHit = false;
+				const int meter0 = m.State().f[0].meter;
+				int meterFromThrow = -1;
+				for (int t = 0; t < 200; ++t)
+				{
+					InputFrame p0;
+					const FighterState& f = m.State().f[0];
+					const FighterState& v = m.State().f[1];
+					if (t == 0) p0 = In(0, BtnLight);
+					else if (f.state == FState::Attack && f.connectedHit && f.hitstop == 1 && presses < links)
+					{
+						++presses;
+						p0 = presses == links ? In(0, BtnThrow) : In(0, BtnLight);
+					}
+					// The victim tries to escape on every frame of the throw's early window.
+					InputFrame p1;
+					if (v.state == FState::Thrown && v.throwFrame <= g_rules.throwTechWindow)
+					{
+						p1 = In(0, BtnThrow);
+						techPressed = true;
+					}
+					const int meterBefore = m.State().f[0].meter;
+					Step(m, p0, p1);
+					comboFlag = comboFlag || (m.State().f[0].state == FState::Throwing && m.State().f[0].comboThrow);
+					teched = teched || HasEvent(m, EventType::ThrowTech);
+					for (const Event& e : m.Events())
+					{
+						if (e.type == EventType::ThrowDamage)
+						{
+							throwDamage = e.value;
+							comboAtThrow = e.y;
+							meterFromThrow = m.State().f[0].meter - meterBefore;
+						}
+					}
+					maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+					firstHit = firstHit || HasEvent(m, EventType::Hit, 0);
+					victimActed = victimActed || (firstHit && throwDamage == 0 && m.IsActionable(1));
+				}
+				(void)meter0;
+				const size_t idx = static_cast<size_t>(links) < g_rules.comboScaling.size() ? static_cast<size_t>(links) : g_rules.comboScaling.size() - 1;
+				const int want = td.damage * g_rules.comboScaling[idx] / 100;
+				EXPECT_TRUE(comboFlag, tag + ": the throw is a combo throw");
+				EXPECT_TRUE(!victimActed, tag + ": the victim never gets to act before the throw lands (a true combo)");
+				EXPECT_TRUE(techPressed && !teched, tag + ": escape presses do not escape a combo throw");
+				EXPECT_EQ(comboAtThrow, links + 1, tag + ": the throw is the combo's next hit");
+				EXPECT_EQ(maxCombo, links + 1, tag + ": combo count");
+				EXPECT_EQ(throwDamage, want, tag + ": the throw's damage is scaled as hit " + std::to_string(links + 1));
+				EXPECT_EQ(meterFromThrow, want * g_rules.meterHitAttackerPct / 100, tag + ": gauge is paid once, from the scaled damage");
+				EXPECT_TRUE(m.State().f[1].state == FState::Neutral || m.State().f[1].state == FState::Getup || m.State().f[1].state == FState::Knockdown, tag + ": ends in a knockdown and recovery");
+			}
+			// On block the jab cannot cancel into the throw; the press stays a press (no grab on a reeling opponent).
+			Match b = MakeMatch(c, 1 - c);
+			b.TrainingPlace(Cm(-42), Cm(42));
+			bool grabbed = false;
+			Step(b, In(0, BtnLight), In(0, BtnBlock));
+			for (int t = 0; t < 60; ++t)
+			{
+				const FighterState& f = b.State().f[0];
+				Step(b, (f.state == FState::Attack && f.connected && f.hitstop == 1) ? In(0, BtnThrow) : InputFrame(), In(0, 0, BtnBlock));
+				grabbed = grabbed || HasEvent(b, EventType::ThrowConnect);
+			}
+			EXPECT_TRUE(!grabbed, who + ": a blocked jab does not lead into a guaranteed throw");
+			// A neutral throw is not a combo throw and can be escaped.
+			Match n = MakeMatch(c, 1 - c);
+			n.TrainingPlace(Cm(-36), Cm(36));
+			Step(n, In(0, BtnThrow));
+			bool escaped = false;
+			for (int t = 0; t < 40; ++t)
+			{
+				const FighterState& v = n.State().f[1];
+				Step(n, InputFrame(), (v.state == FState::Thrown && v.throwFrame == 3) ? In(0, BtnThrow) : InputFrame());
+				escaped = escaped || HasEvent(n, EventType::ThrowTech);
+			}
+			EXPECT_TRUE(escaped, who + ": a neutral throw is escaped by an early Throw press");
+			// A throw cannot reach an opponent knocked down or in the air, combo or not.
+			Match a = MakeMatch(c, 1 - c);
+			a.TrainingPlace(Cm(-40), Cm(40));
+			Step(a, InputFrame(), Up());
+			for (int t = 0; t < 8; ++t) Step(a);
+			Step(a, In(0, BtnThrow));
+			bool airGrab = false;
+			for (int t = 0; t < 10; ++t) { Step(a); airGrab = airGrab || HasEvent(a, EventType::ThrowConnect); }
+			EXPECT_TRUE(!airGrab, who + ": throws whiff on a jumper");
+		}
+	});
+
+	Run("throw_entry_closes_the_gap_without_teleporting", [] {
+		// From anywhere in its range the throw connects with nobody moving; over the entry the thrower closes the
+		// distance (the victim stays put), then the pair holds the authored spacing. Both corners, both sides.
+		for (int c = 0; c < 2; ++c)
+		{
+			const MoveDef& tm = MoveOf(c, "T");
+			const ThrowDef& td = Fighter(c).throws[static_cast<size_t>(tm.throwIndex)];
+			for (int layout = 0; layout < 3; ++layout)
+			{
+				for (int gapCm : {0, 10, 20})
+				{
+					if (Cm(gapCm) > tm.throwRange) continue;
+					Match m = MakeMatch(c, 1 - c);
+					const int32_t dist = Cm(gapCm) + Fighter(c).halfWidth + Fighter(1 - c).halfWidth;
+					const int32_t centre = layout == 0 ? 0 : (layout == 1 ? g_rules.stageHalfWidth - dist : -g_rules.stageHalfWidth + dist);
+					m.TrainingPlace(centre - dist / 2 - (layout == 2 ? dist / 2 : 0), centre + dist / 2 - (layout == 2 ? dist / 2 : 0));
+					Step(m, In(0, BtnThrow));
+					int32_t prev[2] = {m.State().f[0].x, m.State().f[1].x};
+					int32_t maxStep = 0;
+					bool connected = false;
+					bool held = true;
+					for (int t = 0; t < 30; ++t)
+					{
+						Step(m);
+						const FighterState& w = m.State().f[0];
+						const FighterState& v = m.State().f[1];
+						if (w.state == FState::Throwing)
+						{
+							connected = true;
+							for (int i = 0; i < 2; ++i)
+							{
+								const int32_t d = m.State().f[i].x - prev[i];
+								maxStep = (d < 0 ? -d : d) > maxStep ? (d < 0 ? -d : d) : maxStep;
+							}
+							if (w.throwFrame >= g_rules.throwEntryFrames)
+							{
+								held = held && ((v.x - w.x) * w.facing == td.holdX || v.x == g_rules.stageHalfWidth - Fighter(1 - c).halfWidth || v.x == -g_rules.stageHalfWidth + Fighter(1 - c).halfWidth);
+							}
+						}
+						prev[0] = w.x;
+						prev[1] = v.x;
+					}
+					const std::string tag = std::string(FighterName(c)) + " layout " + std::to_string(layout) + " gap " + std::to_string(gapCm);
+					EXPECT_TRUE(connected, tag + ": connects");
+					EXPECT_TRUE(maxStep <= Cm(12), tag + ": no body moves more than 12 cm in a frame of the throw (max " + std::to_string(maxStep / kUnitsPerCm) + ")");
+					EXPECT_TRUE(held, tag + ": after the entry the pair keeps the authored hold");
+				}
+			}
 		}
 	});
 
@@ -1511,6 +2139,7 @@ int main(int argc, char** argv)
 		bool connected = false;
 		bool blocked = false;
 		int contactTick = -1;
+		int airLeft = 0;
 		int advantage = 0;
 	};
 	auto RunJumpIn = [](int attacker, uint8_t button, int tick, int distCm, int defence, int deflectTick) {
@@ -1532,6 +2161,7 @@ int main(int argc, char** argv)
 				d = In(0, BtnBlock, BtnBlock);
 			}
 			const bool airborne = m.State().f[0].jumpFrame > g_rules.jumpSquat;
+			const int airLeft = g_rules.jumpSquat + g_rules.jumpAir - m.State().f[0].jumpFrame;
 			Step(m, a, d);
 			if (r.contactTick < 0 && (HasEvent(m, EventType::Hit, 0) || HasEvent(m, EventType::Block, 0) || HasEvent(m, EventType::Deflect, 0)))
 			{
@@ -1542,6 +2172,7 @@ int main(int argc, char** argv)
 				r.connected = true;
 				r.blocked = !HasEvent(m, EventType::Hit, 0);
 				r.contactTick = t;
+				r.airLeft = airLeft;
 			}
 			if (r.contactTick >= 0)
 			{
@@ -1554,168 +2185,115 @@ int main(int argc, char** argv)
 		return r;
 	};
 
-	Run("jump_ins_have_landing_relative_advantage", [&RunJumpIn] {
-		// However high a jump attack connects, its attacker lands with at least jumpInHitAdvantage on hit and
-		// jumpInBlockAdvantage on block; a timed block (deflect) takes timedBlockStunReduction off that.
-		// Measured with a held Block stopping jump-ins, so the block path is covered too.
-		HeldBlockStopsJumpIns heldBlocks;
+	Run("jump_in_reward_depends_on_height", [&RunJumpIn] {
+		// No landing-relative stun: a jump attack's hitstun counts from contact like any hit, so a deep jump-in (late,
+		// near the floor) leads into ground offense and a high one does not; on block a deep one keeps the turn and an
+		// early one gives it away. A deflect takes the timed-block reduction off.
 		for (int c = 0; c < 2; ++c)
 		{
 			for (uint8_t button : {BtnLight, BtnHeavy})
 			{
 				const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy");
-				int hits = 0;
-				int blocks = 0;
-				int minHit = 999;
-				int minBlock = 999;
+				int deepPlus = 0, deepHits = 0, highMinus = 0, highHits = 0, deepBlockPlus = 0, deepBlocks = 0, earlyBlockMinus = 0, earlyBlocks = 0;
 				int deflectChecks = 0;
 				bool deflectExact = true;
-				bool deflectFlips = false;
-				for (int dist = 100; dist <= 220; dist += 40)
+				for (int dist = 100; dist <= 220; dist += 20)
 				{
-					for (int t = 6; t <= 34; t += 2)
+					for (int t = 4; t <= 34; t += 1)
 					{
 						const JumpIn hit = RunJumpIn(c, button, t, dist, 0, -1);
 						if (hit.connected)
 						{
-							++hits;
-							minHit = hit.advantage < minHit ? hit.advantage : minHit;
+							const bool deep = hit.airLeft <= 6;
+							deepHits += deep;
+							deepPlus += deep && hit.advantage >= 8;
+							highHits += hit.airLeft >= 14;
+							highMinus += hit.airLeft >= 14 && hit.advantage < 8;
 						}
 						const JumpIn block = RunJumpIn(c, button, t, dist, 1, -1);
 						if (block.connected)
 						{
-							++blocks;
-							minBlock = block.advantage < minBlock ? block.advantage : minBlock;
+							deepBlocks += block.airLeft <= 4;
+							deepBlockPlus += block.airLeft <= 4 && block.advantage > 0;
+							earlyBlocks += block.airLeft >= 14;
+							earlyBlockMinus += block.airLeft >= 14 && block.advantage < 0;
 							const JumpIn deflect = RunJumpIn(c, button, t, dist, 1, block.contactTick - 2);
 							if (deflect.connected && deflect.blocked)
 							{
 								++deflectChecks;
 								deflectExact = deflectExact && deflect.advantage == block.advantage - g_rules.timedBlockStunReduction;
-								deflectFlips = deflectFlips || (block.advantage > 0 && deflect.advantage < 0);
 							}
 						}
 					}
 				}
-				EXPECT_TRUE(hits > 10 && blocks > 10, what + ": jump-ins connect from several heights and distances");
-				EXPECT_TRUE(minHit >= g_rules.jumpInHitAdvantage, what + ": every jump-in hit leaves the jumper at least " + std::to_string(g_rules.jumpInHitAdvantage) + " ahead (min " + std::to_string(minHit) + ")");
-				EXPECT_TRUE(minBlock >= g_rules.jumpInBlockAdvantage, what + ": every blocked jump-in leaves the jumper at least " + std::to_string(g_rules.jumpInBlockAdvantage) + " ahead (min " + std::to_string(minBlock) + ")");
-				EXPECT_TRUE(deflectChecks > 5 && deflectExact, what + ": a deflect takes the timed-block reduction off the jumper's advantage");
-				EXPECT_TRUE(deflectFlips, what + ": a deflect turns a typical blocked jump-in into the defender's turn");
+				EXPECT_TRUE(deepHits > 3 && deepPlus == deepHits, what + ": every deep jump-in hit leaves the jumper 8 or more ahead (" + std::to_string(deepPlus) + "/" + std::to_string(deepHits) + ")");
+				EXPECT_TRUE(highHits > 0 && highMinus == highHits, what + ": a jump-in that hits high in the jump does not (" + std::to_string(highMinus) + "/" + std::to_string(highHits) + ")");
+				EXPECT_TRUE(deepBlocks > 3 && deepBlockPlus == deepBlocks, what + ": a deep blocked jump-in keeps the turn (" + std::to_string(deepBlockPlus) + "/" + std::to_string(deepBlocks) + ")");
+				EXPECT_TRUE(earlyBlocks > 0 && earlyBlockMinus == earlyBlocks, what + ": an early blocked one gives it away (" + std::to_string(earlyBlockMinus) + "/" + std::to_string(earlyBlocks) + ")");
+				EXPECT_TRUE(deflectChecks > 5 && deflectExact, what + ": a deflect takes the timed-block reduction off");
 			}
 		}
 	});
 
-	Run("jump_ins_beat_a_held_block_but_not_a_deflect", [&RunJumpIn] {
-		// Shipped rules: holding Block does not stop a jump attack (it hits, with the jump-in hit advantage); a timed
-		// Block press deflects it and the jumper is never left better off than a blocked jump-in would be.
-		EXPECT_TRUE(!g_rules.heldBlockStopsJumpIns, "a held Block does not stop jump-ins in the shipped rules");
+	Run("deep_jump_in_links_into_ground_offense", [] {
+		// The point of a jump-in: one that hits deep leads into a light string, the low or the uppercut on landing.
 		for (int c = 0; c < 2; ++c)
 		{
 			for (uint8_t button : {BtnLight, BtnHeavy})
 			{
-				const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy");
-				int held = 0;
-				int heldHits = 0;
-				int minHit = 999;
-				int deflects = 0;
-				int deflected = 0;
-				int defenderFirst = 0;
-				int maxDeflectAdvantage = -999;
-				for (int dist = 100; dist <= 220; dist += 40)
+				for (int follow = 0; follow < 3; ++follow)
 				{
-					for (int t = 6; t <= 34; t += 2)
+					const char* fname = follow == 0 ? " > L1" : (follow == 1 ? " > CL" : " > U");
+					const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy") + fname;
+					int deep = 0, linked = 0;
+					for (int dist = 100; dist <= 200; dist += 20)
 					{
-						const JumpIn h = RunJumpIn(c, button, t, dist, 1, -1);
-						if (!h.connected)
+						for (int press = 4; press <= 34; ++press)
 						{
-							continue;
-						}
-						++held;
-						if (!h.blocked)
-						{
-							++heldHits;
-							minHit = h.advantage < minHit ? h.advantage : minHit;
-						}
-						const JumpIn d = RunJumpIn(c, button, t, dist, 1, h.contactTick - 2);
-						if (d.connected)
-						{
-							++deflects;
-							deflected += d.blocked ? 1 : 0;
-							defenderFirst += d.advantage < 0 ? 1 : 0;
-							maxDeflectAdvantage = d.advantage > maxDeflectAdvantage ? d.advantage : maxDeflectAdvantage;
+							Match m = MakeMatch(c, 1 - c);
+							m.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
+							bool hit = false, isDeep = false, pressed = false;
+							int maxCombo = 0;
+							for (int t = 0; t < 120; ++t)
+							{
+								InputFrame a = t == 0 ? Up(1) : (t == press ? In(0, button) : InputFrame());
+								if (hit && !pressed && m.State().f[0].state == FState::Landing)
+								{
+									a = follow == 0 ? In(0, BtnLight) : Down(0, follow == 1 ? BtnLight : BtnHeavy);   // buffered during the landing
+									pressed = true;
+								}
+								else if (pressed && follow > 0)
+								{
+									a.y = -1;
+								}
+								const int airLeft = g_rules.jumpSquat + g_rules.jumpAir - m.State().f[0].jumpFrame;
+								const bool airborne = m.State().f[0].jumpFrame > g_rules.jumpSquat;
+								Step(m, a);
+								if (!hit && airborne && HasEvent(m, EventType::Hit, 0))
+								{
+									hit = true;
+									isDeep = airLeft <= (follow == 2 ? 3 : 5);
+								}
+								maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+							}
+							if (hit && isDeep)
+							{
+								++deep;
+								linked += maxCombo >= 2 ? 1 : 0;
+							}
 						}
 					}
+					EXPECT_TRUE(deep > 2 && linked == deep, what + ": every deep jump-in hit combos into it (" + std::to_string(linked) + "/" + std::to_string(deep) + ")");
 				}
-				EXPECT_TRUE(held > 10 && heldHits == held, what + ": every jump-in into a held Block hits (" + std::to_string(heldHits) + "/" + std::to_string(held) + ")");
-				EXPECT_TRUE(minHit >= g_rules.jumpInHitAdvantage, what + ": and leaves the jumper at least " + std::to_string(g_rules.jumpInHitAdvantage) + " ahead (min " + std::to_string(minHit) + ")");
-				EXPECT_TRUE(deflects > 10 && deflected == deflects, what + ": a timed Block press deflects every one (" + std::to_string(deflected) + "/" + std::to_string(deflects) + ")");
-				EXPECT_TRUE(defenderFirst * 2 > deflects, what + ": a deflect usually gives the defender the next turn (" + std::to_string(defenderFirst) + "/" + std::to_string(deflects) + ", jumper best " + std::to_string(maxDeflectAdvantage) + ")");
-			}
-		}
-	});
-
-	Run("jump_in_hit_links_into_a_light", [] {
-		// The point of a jump-in: one that hits, high or low, leads into a ground string when the jumper lands. High
-		// contacts only link because of the landing-relative stun (the move's own hitstun runs out in the air).
-		for (int c = 0; c < 2; ++c)
-		{
-			for (uint8_t button : {BtnLight, BtnHeavy})
-			{
-				const std::string what = std::string(c == 0 ? "wren " : "ashka ") + (button == BtnLight ? "light" : "heavy");
-				int connected = 0;
-				int linked = 0;
-				int highConnected = 0;
-				int highLinked = 0;
-				for (int dist = 100; dist <= 180; dist += 40)
-				{
-					for (int press = 6; press <= 30; press += 4)
-					{
-						Match m = MakeMatch(c, 1 - c);
-						m.TrainingPlace(Cm(-dist / 2.0), Cm(dist / 2.0));
-						bool hit = false;
-						bool high = false;
-						bool landed = false;
-						bool pressed = false;
-						int maxCombo = 0;
-						for (int t = 0; t < 120; ++t)
-						{
-							InputFrame a = t == 0 ? Up(1) : (t == press ? In(0, button) : InputFrame());
-							if (landed && !pressed && m.IsActionable(0))
-							{
-								a = In(0, BtnLight);
-								pressed = true;
-							}
-							const int airLeft = g_rules.jumpSquat + g_rules.jumpAir - m.State().f[0].jumpFrame;
-							const bool airborne = m.State().f[0].jumpFrame > g_rules.jumpSquat;
-							Step(m, a);
-							if (!hit && airborne && HasEvent(m, EventType::Hit, 0))
-							{
-								hit = true;
-								high = airLeft > 14;   // well before landing: the move's own hitstun would run out
-							}
-							landed = landed || HasEvent(m, EventType::Land, 0);
-							maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
-						}
-						if (!hit)
-						{
-							continue;
-						}
-						++connected;
-						linked += (pressed && maxCombo >= 2) ? 1 : 0;
-						highConnected += high ? 1 : 0;
-						highLinked += (high && pressed && maxCombo >= 2) ? 1 : 0;
-					}
-				}
-				EXPECT_TRUE(connected > 4 && linked == connected, what + ": every jump-in hit, then a light on landing, combos (" + std::to_string(linked) + "/" + std::to_string(connected) + ")");
-				EXPECT_TRUE(highConnected > 0 && highLinked == highConnected, what + ": including ones that hit high in the jump (" + std::to_string(highLinked) + "/" + std::to_string(highConnected) + ")");
 			}
 		}
 	});
 
 	Run("cpu_anti_airs_jump_ins", [] {
-		// A player who keeps jumping in (toward from mid range, Heavy at the top, a light string on landing) is knocked
-		// out of the air often enough by the CPU that jumping stays a read, not a free win, from Normal up.
-		const int minPct[3] = {0, 35, 55};
+		// A player who keeps jumping in (toward from mid range, Heavy on the way down, a light string on landing) is
+		// knocked out of the air often enough by the CPU (its uppercut, at its difficulty's reaction time) that jumping
+		// stays a read, not a free win, from Normal up.
+		const int minPct[3] = {0, 30, 45};
 		for (int level = 1; level < 3; ++level)
 		{
 			int jumps = 0;
@@ -1740,11 +2318,11 @@ int main(int argc, char** argv)
 							if (me.state == FState::Neutral || me.state == FState::Guard)
 							{
 								if (t < lightUntil && t % 6 == 0) a = In(0, BtnLight);
-								else if (gap > 200) a.x = toward;
-								else if (gap >= 110) { a.x = toward; a.y = 1; }
+								else if (gap > 220) a.x = toward;
+								else if (gap >= 120) { a.x = toward; a.y = 1; }
 								else a.x = static_cast<int8_t>(-toward);
 							}
-							else if (me.state == FState::Jump && me.jumpFrame == g_rules.jumpSquat + g_rules.jumpAir / 2)
+							else if (me.state == FState::Jump && me.jumpFrame == g_rules.jumpSquat + g_rules.jumpAir * 2 / 3)
 							{
 								a = In(0, BtnHeavy);
 								lightUntil = t + 40;
@@ -1761,26 +2339,56 @@ int main(int argc, char** argv)
 				}
 			}
 			const int pct = jumps > 0 ? antiAired * 100 / jumps : 0;
+			std::printf("  info: %s CPU anti-airs %d%% of %d jump-ins\n", level == 1 ? "Normal" : "Hard", pct, jumps);
 			EXPECT_TRUE(jumps > 40 && pct >= minPct[level], std::string(level == 1 ? "Normal" : "Hard") + " CPU knocks " + std::to_string(pct) +
 				"% of " + std::to_string(jumps) + " jump-ins out of the air (at least " + std::to_string(minPct[level]) + "%)");
 		}
 	});
 
+	Run("cpu_throw_escape_uses_reaction_and_no_stale_press", [] {
+		// The CPU escapes some neutral throws by level, never every one, never a combo throw, and a press queued before
+		// the grab does not fire into the throw.
+		for (int level = 0; level < 3; ++level)
+		{
+			int throws = 0, escapes = 0;
+			for (uint32_t seed = 1; seed <= 120; ++seed)
+			{
+				Match m = MakeMatch(0, 1);
+				m.TrainingPlace(Cm(-36), Cm(36));
+				CpuController cpu;
+				cpu.Setup(1, static_cast<CpuLevel>(level), seed);
+				for (int t = 0; t < 70; ++t)
+				{
+					const InputFrame in[2] = {t == 30 ? In(0, BtnThrow) : InputFrame(), cpu.Decide(m)};
+					m.Tick(in);
+					throws += HasEvent(m, EventType::ThrowConnect, 0) ? 1 : 0;
+					escapes += HasEvent(m, EventType::ThrowTech) ? 1 : 0;
+				}
+			}
+			std::printf("  info: CPU level %d escaped %d of %d neutral throws\n", level, escapes, throws);
+			EXPECT_TRUE(throws > 0 && escapes < throws, "level " + std::to_string(level) + ": does not escape every throw");
+			if (level == 2)
+			{
+				EXPECT_TRUE(escapes * 4 >= throws, "Hard escapes a fair share of neutral throws");
+			}
+		}
+	});
+
 	Run("jump_ins_cannot_loop", [] {
 		// After a jump-in hit, jumping again on the first free frame (toward, up or away) and attacking on the way up must
-		// not keep the defender stunned: the landing-relative stun applies only to a jump-in that opens contact, so these
-		// routes end like any other combo (hitstun decay and pushback), standing or holding Block.
+		// not keep the defender stunned: hitstun decay and pushback end these routes like any other combo, standing,
+		// holding Block or crouching.
 		int longest = 0;
 		std::string where;
 		for (int c = 0; c < 2; ++c)
 		{
-			for (int defBlock = 0; defBlock < 2; ++defBlock)
+			for (int defence = 0; defence < 3; ++defence)
 			{
 				for (int dir = -1; dir <= 1; ++dir)
 				{
 					for (uint8_t button : {BtnLight, BtnHeavy})
 					{
-						for (int press = 5; press <= 30; press += 1)
+						for (int press = 5; press <= 34; press += 1)
 						{
 							for (int dist = 60; dist <= 200; dist += 20)
 							{
@@ -1798,11 +2406,12 @@ int main(int argc, char** argv)
 									{
 										ai = Up(static_cast<int8_t>((jumps == 0 ? 1 : dir) * toward));
 									}
-									if (a.state == FState::Jump && a.jumpFrame == (jumps <= 1 ? 22 : press))
+									if (a.state == FState::Jump && a.jumpFrame == (jumps <= 1 ? 28 : press))
 									{
 										ai = In(0, jumps <= 1 ? static_cast<uint8_t>(BtnHeavy) : button);
 									}
-									Step(m, ai, defBlock ? In(0, 0, BtnBlock) : InputFrame());
+									const InputFrame di = defence == 1 ? In(0, 0, BtnBlock) : (defence == 2 ? Down(0, 0, BtnBlock) : InputFrame());
+									Step(m, ai, di);
 									jumps += HasEvent(m, EventType::Jump, 0) ? 1 : 0;
 									maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
 									if (m.State().f[1].state == FState::Knockdown || m.State().phase != Phase::Fight)
@@ -1813,7 +2422,7 @@ int main(int argc, char** argv)
 								if (maxCombo > longest)
 								{
 									longest = maxCombo;
-									where = std::string(c == 0 ? "wren" : "ashka") + (defBlock ? " vs block" : " vs stand") + " dir " + std::to_string(dir) +
+									where = std::string(c == 0 ? "wren" : "ashka") + (defence == 1 ? " vs block" : (defence == 2 ? " vs crouch block" : " vs stand")) + " dir " + std::to_string(dir) +
 										(button == BtnLight ? " light" : " heavy") + " at jump frame " + std::to_string(press) + " from " + std::to_string(dist) + " cm";
 								}
 							}
@@ -1823,6 +2432,36 @@ int main(int argc, char** argv)
 			}
 		}
 		EXPECT_TRUE(longest <= 3, "repeated jump-ins after a jump-in hit end within 3 hits (longest " + std::to_string(longest) + ": " + where + ")");
+	});
+
+	Run("throw_and_uppercut_loops_are_bounded", [] {
+		// Throwing again on the wake-up, or uppercutting the wake-up, cannot chain: knockdowns are invulnerable and a
+		// woken fighter is briefly unthrowable, so each loop iteration hands the defender a free frame to act.
+		for (int c = 0; c < 2; ++c)
+		{
+			for (int ender = 0; ender < 2; ++ender)
+			{
+				Match m = MakeMatch(c, 1 - c);
+				m.TrainingPlace(Cm(-34), Cm(34));
+				int freeFrames = 0, enders = 0;
+				for (int t = 0; t < 1200; ++t)
+				{
+					const FighterState& a = m.State().f[0];
+					const FighterState& v = m.State().f[1];
+					const int32_t gap = (v.x > a.x ? v.x - a.x : a.x - v.x) - Fighter(c).halfWidth - Fighter(1 - c).halfWidth;
+					InputFrame ai;
+					if (a.state == FState::Neutral)
+					{
+						// Walk in to range, then throw (or uppercut) the moment the defender can be reached.
+						ai = gap > Cm(20) ? In(Toward(m, 0)) : (ender == 0 ? In(0, BtnThrow) : Down(0, BtnHeavy));
+					}
+					Step(m, ai, InputFrame());
+					freeFrames += m.IsActionable(1) ? 1 : 0;
+					enders += HasEvent(m, ender == 0 ? EventType::ThrowConnect : EventType::Hit, 0) ? 1 : 0;
+				}
+				EXPECT_TRUE(enders >= 2 && freeFrames >= enders - 1, std::string(FighterName(c)) + (ender == 0 ? " throw" : " uppercut") + " on the wake-up: the defender gets free frames between them (" + std::to_string(freeFrames) + " for " + std::to_string(enders) + ")");
+			}
+		}
 	});
 
 	Run("one_attack_per_jump", [] {

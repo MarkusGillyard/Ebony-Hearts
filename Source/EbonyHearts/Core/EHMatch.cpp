@@ -268,6 +268,14 @@ bool Match::IsThrowable(int i) const
 	return false;
 }
 
+bool Match::ComboThrowable(int thrower) const
+{
+	// The combo throw's target: on the floor and still reeling from a hit (the cancel that started the throw needed its
+	// strike to hit). Blockstun, knockdowns and bodies in the air never qualify.
+	const FighterState& v = s_.f[1 - thrower];
+	return v.state == FState::Hitstun && v.hitstop == 0 && !InAir(1 - thrower);
+}
+
 void Match::GetHurtboxes(int player, std::vector<Box>& out) const
 {
 	out.clear();
@@ -291,7 +299,7 @@ void Match::GetHurtboxes(int player, std::vector<Box>& out) const
 	}
 	if (!replaced)
 	{
-		out.push_back(WorldBox(player, chars_[player].hurt));
+		out.push_back(WorldBox(player, PostureHurt(player)));
 	}
 }
 
@@ -317,7 +325,7 @@ Box Match::GetPushbox(int player) const
 {
 	const FighterState& f = s_.f[player];
 	const int32_t hw = chars_[player].halfWidth;
-	return Box{f.x - hw, f.y, f.x + hw, f.y + chars_[player].hurt.y1};
+	return Box{f.x - hw, f.y, f.x + hw, f.y + PostureHurt(player).y1};
 }
 
 void Match::EndToNeutral(int i)
@@ -336,12 +344,60 @@ void Match::EndToNeutral(int i)
 	f.throwIndex = -1;
 	f.throwOwner = -1;
 	f.throwFrame = 0;
+	f.throwEntry = 0;
+	f.comboThrow = false;
 	f.reaction = 0;
 	f.reactMove = -1;
 	f.reactHit = -1;
 	f.jumpFrame = 0;
 	f.jumpDir = 0;
 	f.airAttackUsed = false;
+}
+
+bool Match::IsCrouching(int player) const
+{
+	return rules_.crouchFrames > 0 && s_.f[player].posture * 2 >= rules_.crouchFrames;
+}
+
+HitLevel Match::EffectiveLevel(int player, const HitDef& hit) const
+{
+	const FighterState& f = s_.f[player];
+	if (hit.level == HitLevel::Overhead && f.state == FState::Attack && chars_[player].moves[static_cast<size_t>(f.move)].air &&
+		f.jumpFrame > 0 && (f.jumpFrame - rules_.jumpSquat) * 2 < rules_.jumpAir)
+	{
+		return HitLevel::Mid;   // a jump attack on the way up hits mid; only on the way down is it an overhead
+	}
+	return hit.level;
+}
+
+Box Match::PostureHurt(int i) const
+{
+	const CharacterDef& c = chars_[i];
+	const int32_t p = s_.f[i].posture;
+	const int32_t n = rules_.crouchFrames;
+	if (p <= 0 || n <= 0)
+	{
+		return c.hurt;
+	}
+	if (p >= n)
+	{
+		return c.crouchHurt;
+	}
+	auto lerp = [p, n](int32_t a, int32_t b) { return a + static_cast<int32_t>((static_cast<int64_t>(b - a) * p) / n); };
+	return Box{lerp(c.hurt.x0, c.crouchHurt.x0), lerp(c.hurt.y0, c.crouchHurt.y0), lerp(c.hurt.x1, c.crouchHurt.x1), lerp(c.hurt.y1, c.crouchHurt.y1)};
+}
+
+void Match::UpdatePosture(int i, const InputFrame& in)
+{
+	FighterState& f = s_.f[i];
+	if (in.y < 0)
+	{
+		f.posture = static_cast<int8_t>(f.posture < rules_.crouchFrames ? f.posture + 1 : rules_.crouchFrames);
+	}
+	else if (f.posture > 0)
+	{
+		--f.posture;
+	}
 }
 
 bool Match::InAir(int i) const
@@ -360,6 +416,7 @@ void Match::StartJump(int i, int8_t dir)
 	f.airAttackUsed = false;
 	f.walk = 0;
 	f.vy = 0;
+	f.posture = 0;
 	Emit(EventType::Jump, i, -1, f.x, 0, dir, 0);
 }
 
@@ -403,6 +460,7 @@ void Match::Ingest(int i, const InputFrame& in)
 	// Lowest priority first, so the newest-first buffer scan prefers throw > special > heavy > light > dodge.
 	static const uint8_t order[] = {BtnDodge, BtnLight, BtnHeavy, BtnSpecial, BtnThrow};
 	const int8_t dir = DirToward(i, in.x);
+	const bool down = in.y < 0;
 	for (uint8_t b : order)
 	{
 		if ((in.pressed & b) == 0)
@@ -417,7 +475,7 @@ void Match::Ingest(int i, const InputFrame& in)
 			}
 			--f.bufferCount;
 		}
-		f.buffer[f.bufferCount++] = Buffered{b, dir, 0};
+		f.buffer[f.bufferCount++] = Buffered{b, dir, down, 0};
 	}
 }
 
@@ -569,7 +627,9 @@ void Match::AdvanceThrow(int a)
 	v.throwFrame = t.throwFrame;
 	const ThrowDef& d = chars_[a].throws[static_cast<size_t>(t.throwIndex)];
 
-	if (s_.phase == Phase::Fight && t.throwFrame <= rules_.throwTechWindow && v.state == FState::Thrown)
+	// A neutral throw can be escaped by pressing Throw early in it; a combo throw (the victim was already reeling from a
+	// strike that confirmed it) cannot.
+	if (s_.phase == Phase::Fight && !t.comboThrow && t.throwFrame <= rules_.throwTechWindow && v.state == FState::Thrown)
 	{
 		for (int k = 0; k < v.bufferCount; ++k)
 		{
@@ -581,21 +641,22 @@ void Match::AdvanceThrow(int a)
 		}
 	}
 
-	// The victim is carried at a fixed offset so both animations stay in contact.
-	int32_t hold = t.x + t.facing * d.holdX;
-	const int32_t clamped = Clamp(1 - a, hold);
-	if (clamped != hold)
-	{
-		t.x = Clamp(a, t.x - (hold - clamped));
-		hold = clamped;
-	}
-	v.x = hold;
+	HoldVictim(a, d);
 
 	// RoundEnd lets an existing throw finish visually. Once a timeout result is
 	// awarded, its health comparison and winner must remain final.
 	if (s_.phase == Phase::Fight && t.throwFrame == d.damageFrame)
 	{
-		int32_t dmg = d.damage;
+		// A combo throw is the next hit of the combo it ended: it scales, counts and pays gauge like a strike would.
+		const int32_t combo = t.comboThrow ? v.combo + 1 : 1;
+		const size_t scaleIndex = static_cast<size_t>(combo - 1) < rules_.comboScaling.size() ? static_cast<size_t>(combo - 1) : rules_.comboScaling.size() - 1;
+		int32_t dmg = Pct(d.damage, rules_.comboScaling[scaleIndex]);
+		if (d.damage > 0 && dmg < 1)
+		{
+			dmg = 1;
+		}
+		v.combo = combo;
+		v.comboDamage = (combo == 1 ? 0 : v.comboDamage) + dmg;
 		v.health -= dmg;
 		AddMeter(a, Pct(dmg, rules_.meterHitAttackerPct));
 		AddMeter(1 - a, Pct(dmg, rules_.meterHitDefenderPct));
@@ -611,7 +672,7 @@ void Match::AdvanceThrow(int a)
 				v.throwKO = true;
 			}
 		}
-		Emit(EventType::ThrowDamage, a, t.throwIndex, v.x, 0, dmg, v.throwKO ? EvKnockdown : 0);
+		Emit(EventType::ThrowDamage, a, t.throwIndex, v.x, combo, dmg, static_cast<uint8_t>((v.throwKO ? EvKnockdown : 0) | (t.comboThrow ? EvCancel : 0)));
 	}
 
 	if (t.throwFrame >= d.duration)
@@ -655,6 +716,30 @@ void Match::AdvanceThrow(int a)
 	}
 }
 
+void Match::HoldVictim(int a, const ThrowDef& d)
+{
+	FighterState& t = s_.f[a];
+	FighterState& v = s_.f[1 - a];
+	// Entry: a throw can connect from anywhere in its range, but the pair is authored at holdX. The thrower closes the
+	// difference over the first throwEntryFrames frames (shooting in, stepping into the clinch) while the victim stays
+	// where it was grabbed, so neither body jumps into the grip.
+	if (t.throwEntry != 0 && t.throwFrame <= rules_.throwEntryFrames)
+	{
+		const int32_t left = rules_.throwEntryFrames - t.throwFrame + 1;
+		t.throwEntry -= t.throwEntry / left;
+		t.x = Clamp(a, v.x - t.facing * (d.holdX + t.throwEntry));
+	}
+	// The victim is carried at a fixed offset so both animations stay in contact.
+	int32_t hold = t.x + t.facing * (d.holdX + t.throwEntry);
+	const int32_t clamped = Clamp(1 - a, hold);
+	if (clamped != hold)
+	{
+		t.x = Clamp(a, t.x - (hold - clamped));
+		hold = clamped;
+	}
+	v.x = hold;
+}
+
 void Match::BeginTech(int thrower, int victim)
 {
 	const int pair[2] = {thrower, victim};
@@ -673,29 +758,39 @@ void Match::BeginTech(int thrower, int victim)
 	Emit(EventType::ThrowTech, thrower, -1, (t.x + s_.f[victim].x) / 2, 120 * kUnitsPerCm, 0, 0);
 }
 
-int32_t Match::SelectMove(int i, uint8_t button, int8_t dir, bool cancel) const
+int32_t Match::SelectMove(int i, uint8_t button, int8_t dir, bool down, bool cancel) const
 {
 	const CharacterDef& c = chars_[i];
 	const FighterState& f = s_.f[i];
 	int32_t best = -1;
 	int bestScore = -1;
-	const size_t count = cancel ? c.moves[static_cast<size_t>(f.move)].cancelIndices.size() : c.moves.size();
+	const MoveDef* source = cancel ? &c.moves[static_cast<size_t>(f.move)] : nullptr;
+	const size_t count = cancel ? source->cancelIndices.size() : c.moves.size();
 	for (size_t n = 0; n < count; ++n)
 	{
-		const int32_t idx = cancel ? c.moves[static_cast<size_t>(f.move)].cancelIndices[n] : static_cast<int32_t>(n);
+		if (cancel && n >= source->cancelHitOnlyFrom && !f.connectedHit)
+		{
+			continue;   // hit-only cancels (the combo throw) need the source move to have hit
+		}
+		const int32_t idx = cancel ? source->cancelIndices[n] : static_cast<int32_t>(n);
 		const MoveDef& m = c.moves[static_cast<size_t>(idx)];
-		if (m.button != button || (!cancel && m.chainOnly) || m.air != InAir(i) || (m.kind == MoveKind::Throw && !rules_.grappling))
+		if (m.button != button || (!cancel && m.chainOnly) || m.air != InAir(i) || (m.kind == MoveKind::Throw && !rules_.ThrowsEnabled()))
 		{
 			continue;
 		}
-		int score = 0;
+		// Down at the press selects the down moves (uppercut, low attack) ahead of any direction; without a down move
+		// for that button the press falls through to the standing moves.
+		if (m.down && !down)
+		{
+			continue;
+		}
+		int score = (m.down && down) ? 10 : 0;
 		if (m.dir == DirReq::Any)
 		{
-			score = 0;
 		}
 		else if ((m.dir == DirReq::Forward && dir > 0) || (m.dir == DirReq::Back && dir < 0) || (m.dir == DirReq::Neutral && dir == 0))
 		{
-			score = 2;
+			score += 2;
 		}
 		else
 		{
@@ -734,7 +829,7 @@ bool Match::StartFromBuffer(int i, bool cancel)
 	for (int k = f.bufferCount - 1; k >= 0; --k)
 	{
 		const Buffered e = f.buffer[k];
-		const int32_t idx = SelectMove(i, e.button, e.dir, cancel);
+		const int32_t idx = SelectMove(i, e.button, e.dir, e.down, cancel);
 		if (idx < 0)
 		{
 			continue;
@@ -766,6 +861,10 @@ void Match::StartMove(int i, int32_t moveIndex, int8_t dir, bool cancel)
 	f.connectedHit = false;
 	f.walk = 0;
 	f.meter -= m.meterCost;
+	// A crouching move keeps the fighter down; anything else rises into its standing technique on its first frame
+	// (the uppercut keeps a crouching hurtbox through its wind-up in its own data).
+	f.posture = static_cast<int8_t>(m.crouching ? rules_.crouchFrames : 0);
+	f.comboThrow = cancel && m.kind == MoveKind::Throw;
 	if (m.air)
 	{
 		f.airAttackUsed = true;
@@ -810,6 +909,11 @@ void Match::TryActions(int i, const InputFrame& in)
 		}
 		return;
 	}
+	if (f.state == FState::Blockstun || f.state == FState::Landing)
+	{
+		UpdatePosture(i, in);   // a guard can switch height while blocking; a landing can settle into a crouch
+		return;
+	}
 	if (f.state != FState::Neutral && f.state != FState::Guard)
 	{
 		return;
@@ -831,6 +935,7 @@ void Match::TryActions(int i, const InputFrame& in)
 			f.stateFrame = 1;
 		}
 		f.walk = 0;
+		UpdatePosture(i, in);   // down + Block is a crouching guard
 		return;
 	}
 	if (f.state == FState::Guard)
@@ -843,7 +948,9 @@ void Match::TryActions(int i, const InputFrame& in)
 		StartJump(i, DirToward(i, in.x));
 		return;
 	}
-	f.walk = DirToward(i, in.x);
+	UpdatePosture(i, in);
+	// No crouch walking: a fighter walks only once fully standing.
+	f.walk = (in.y == 0 && f.posture == 0) ? DirToward(i, in.x) : 0;
 }
 
 void Match::Move(bool allowCollision)
@@ -1015,14 +1122,21 @@ void Match::ResolveCollisions()
 		}
 		else if (m.kind == MoveKind::Throw)
 		{
-			if ((f.hitMask & 1u) != 0 || !m.hits[0].frames.Contains(f.moveFrame) || !IsThrowable(d))
+			if ((f.hitMask & 1u) != 0 || !m.hits[0].frames.Contains(f.moveFrame))
 			{
 				continue;
 			}
 			const FighterState& v = s_.f[d];
 			const int32_t gap = AbsI(f.x - v.x) - chars_[a].halfWidth - chars_[d].halfWidth;
 			const bool inFront = (v.x - f.x) * f.facing > 0;
-			throwCand[a] = inFront && gap <= m.throwRange;
+			// A combo throw takes the reeling opponent its strike confirmed, from a little further; if the combo has
+			// dropped it is an ordinary throw attempt.
+			const bool combo = f.comboThrow && ComboThrowable(a) && gap <= m.comboRange;
+			throwCand[a] = inFront && (combo || (IsThrowable(d) && gap <= m.throwRange));
+			if (throwCand[a] && !combo)
+			{
+				s_.f[a].comboThrow = false;
+			}
 		}
 	}
 
@@ -1048,20 +1162,6 @@ void Match::ResolveCollisions()
 		const FighterState& def = before[d];
 		const MoveDef& m = chars_[a].moves[static_cast<size_t>(atk.move)];
 		const HitDef& h = m.hits[static_cast<size_t>(strikeHit[a])];
-		// A jump attack keeps a grounded defender in stun until its attacker has landed and recovered, so a jump-in is
-		// worth the same at any height: the attacker lands, recovers (airAttackLanding if the attack is still running at
-		// touchdown, jumpLanding otherwise) and then has jumpInHit/BlockAdvantage frames on the defender. Only a jump-in
-		// that opens contact does this: on a defender already in hit- or blockstun a jump attack takes its own stun
-		// (hitstun decay included), or jumping again on landing and hitting on the way up looped until a KO.
-		const bool jumpAttack = m.air && atk.jumpFrame > rules_.jumpSquat;
-		const bool opensContact = def.state != FState::Hitstun && def.state != FState::Blockstun;
-		int32_t jumpInRecovery = -1;
-		if (jumpAttack && opensContact)
-		{
-			const int32_t airLeft = rules_.jumpSquat + rules_.jumpAir - atk.jumpFrame;
-			const int32_t attackLeft = m.total - atk.moveFrame + 1;
-			jumpInRecovery = (airLeft > 0 ? airLeft : 0) + (airLeft <= attackLeft ? rules_.airAttackLanding : rules_.jumpLanding) - 1;
-		}
 		FighterState& fa = s_.f[a];
 		FighterState& fd = s_.f[d];
 		if (!trade)
@@ -1072,20 +1172,19 @@ void Match::ResolveCollisions()
 		const Box hb = WorldBox(a, h.box);
 		const int32_t cx = atk.facing > 0 ? (hb.x1 < def.x ? hb.x1 : def.x) : (hb.x0 > def.x ? hb.x0 : def.x);
 		const int32_t cy = (hb.y0 + hb.y1) / 2;
-		const bool timed = def.lastBlockPressTimed && (s_.frame - def.lastBlockPress) < rules_.timedBlockWindow;
-		// A held guard stops ground strikes; against a jump attack it takes a timed press (or blockstun already running)
-		// unless the rules let a held Block stop jump-ins too.
-		const bool guarding = def.state == FState::Blockstun ||
-			(def.state == FState::Guard && (!jumpAttack || timed || rules_.heldBlockStopsJumpIns));
+		// A standing guard stops high, mid and overhead hits; a crouching guard stops low and mid hits (and high hits
+		// pass over a crouching fighter's hurtbox before they get here). A guard already in blockstun keeps blocking,
+		// at whatever height it holds now.
+		const HitLevel level = EffectiveLevel(a, h);
+		const bool crouchGuard = rules_.crouchFrames > 0 && def.posture * 2 >= rules_.crouchFrames;
+		const bool guardable = level == HitLevel::Low ? crouchGuard : (level == HitLevel::Overhead ? !crouchGuard : true);
+		const bool guarding = (def.state == FState::Blockstun || def.state == FState::Guard) && guardable;
+		const bool timed = guarding && def.lastBlockPressTimed && (s_.frame - def.lastBlockPress) < rules_.timedBlockWindow;
 		const int dirAway = atk.facing;   // defender slides in the attacker's facing direction
 
 		if (guarding)
 		{
 			int32_t stun = h.blockstun;
-			if (jumpInRecovery >= 0 && jumpInRecovery + rules_.jumpInBlockAdvantage > stun)
-			{
-				stun = jumpInRecovery + rules_.jumpInBlockAdvantage;
-			}
 			if (timed)
 			{
 				stun = stun > rules_.timedBlockStunReduction ? stun - rules_.timedBlockStunReduction : 0;
@@ -1184,7 +1283,7 @@ void Match::ResolveCollisions()
 			fd.walk = 0;
 			fd.combo = combo;
 			fd.comboDamage = (combo == 1 ? 0 : def.comboDamage) + dmg;
-			fd.reaction = h.heavy ? 2 : 1;
+			fd.reaction = h.launch ? 5 : (h.heavy ? 2 : 1);
 			fd.reactMove = atk.move;
 			fd.reactHit = static_cast<int8_t>(strikeHit[a]);
 			fd.jumpFrame = 0;   // a jump ends where it is hit; a body in the air falls
@@ -1196,6 +1295,7 @@ void Match::ResolveCollisions()
 			{
 				fd.state = FState::Knockdown;
 				fd.stun = rules_.knockdownFrames;
+				fd.posture = 0;
 				flags |= EvKnockdown;
 			}
 			else
@@ -1208,10 +1308,6 @@ void Match::ResolveCollisions()
 					{
 						stun = rules_.minComboHitstun;
 					}
-				}
-				if (jumpInRecovery >= 0 && jumpInRecovery + rules_.jumpInHitAdvantage > stun)
-				{
-					stun = jumpInRecovery + rules_.jumpInHitAdvantage;
 				}
 				fd.state = FState::Hitstun;
 				fd.stun = stun;
@@ -1251,8 +1347,12 @@ void Match::ConnectThrow(int a)
 	FighterState& t = s_.f[a];
 	FighterState& v = s_.f[1 - a];
 	const MoveDef& m = chars_[a].moves[static_cast<size_t>(t.move)];
-	const int16_t throwIndex = static_cast<int16_t>(t.moveDir < 0 ? m.throwBackIndex : m.throwForwardIndex);
+	// Standalone throws always perform the fighter's one throw; the dormant grappling set picks a variant by direction.
+	const int16_t throwIndex = static_cast<int16_t>(rules_.grappling ? (t.moveDir < 0 ? m.throwBackIndex : m.throwForwardIndex) : m.throwIndex);
+	const bool combo = t.comboThrow;
 	const int32_t meter = v.meter;
+	const int32_t victimCombo = v.combo;
+	const int32_t victimComboDamage = v.comboDamage;
 	EndToNeutral(a);
 	t.state = FState::Throwing;
 	t.stateFrame = 1;
@@ -1260,6 +1360,8 @@ void Match::ConnectThrow(int a)
 	t.throwOwner = static_cast<int8_t>(a);
 	t.throwFrame = 0;
 	t.hitMask = 1u;
+	t.posture = 0;
+	t.comboThrow = combo;
 	EndToNeutral(1 - a);
 	v.state = FState::Thrown;
 	v.stateFrame = 1;
@@ -1267,21 +1369,18 @@ void Match::ConnectThrow(int a)
 	v.throwOwner = static_cast<int8_t>(a);
 	v.throwFrame = 0;
 	v.bufferCount = 0;     // only presses after the grab can escape it
-	v.combo = 0;
+	v.combo = combo ? victimCombo : 0;
+	v.comboDamage = combo ? victimComboDamage : 0;
+	v.comboThrow = combo;
+	v.posture = 0;
 	v.pushRemaining = 0;
 	v.pushFramesLeft = 0;
 	v.hitstop = 0;
 	v.meter = meter;
 	const ThrowDef& d = chars_[a].throws[static_cast<size_t>(throwIndex)];
-	int32_t hold = t.x + t.facing * d.holdX;
-	const int32_t clamped = Clamp(1 - a, hold);
-	if (clamped != hold)
-	{
-		t.x = Clamp(a, t.x - (hold - clamped));
-		hold = clamped;
-	}
-	v.x = hold;
-	Emit(EventType::ThrowConnect, a, throwIndex, (t.x + v.x) / 2, 110 * kUnitsPerCm, 0, 0);
+	// Nobody moves on the grab tick: the entry closes the gap to the authored hold over the next frames.
+	t.throwEntry = (v.x - t.x) * t.facing - d.holdX;
+	Emit(EventType::ThrowConnect, a, throwIndex, (t.x + v.x) / 2, 110 * kUnitsPerCm, 0, combo ? EvCancel : 0);
 }
 
 void Match::CheckRoundEnd()
@@ -1537,6 +1636,9 @@ uint64_t HashState(const MatchState& state)
 		Mix(h, f.move);
 		Mix(h, f.moveDir);
 		Mix(h, f.moveFrame);
+		Mix(h, f.posture);
+		Mix(h, f.comboThrow);
+		Mix(h, f.throwEntry);
 		Mix(h, f.hitMask);
 		Mix(h, f.connected);
 		Mix(h, f.connectedHit);
@@ -1574,6 +1676,7 @@ uint64_t HashState(const MatchState& state)
 		{
 			Mix(h, f.buffer[k].button);
 			Mix(h, f.buffer[k].dir);
+			Mix(h, f.buffer[k].down);
 			Mix(h, f.buffer[k].age);
 		}
 		Mix(h, f.lastInput.x);

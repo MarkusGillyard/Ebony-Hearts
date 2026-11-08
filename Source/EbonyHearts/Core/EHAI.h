@@ -13,11 +13,12 @@ enum class CpuLevel : uint8_t { Easy, Normal, Hard };
 enum class DummyMode : uint8_t
 {
 	Stand,          // no input
-	Block,          // holds block and techs throws
+	Block,          // holds block at the height each incoming hit needs, and techs throws
 	BlockAfterHit,  // blocks for a while after being hit
 	RandomBlock,    // blocks each incoming attack half of the time
 	TechThrows,     // stands but always escapes throws
 	Cpu,            // full CPU behaviour
+	Crouch,         // holds down (highs pass over, throws still catch it)
 };
 
 struct CpuTuning
@@ -29,8 +30,11 @@ struct CpuTuning
 	int32_t techPct = 30;          // chance to escape a throw
 	int32_t dropPct = 15;          // chance an intended press is not made (execution errors)
 	int32_t aggressionPct = 35;    // chance per decision to step in rather than wait
-	int32_t antiAirPct = 40;       // chance to meet a seen jump-in with a jab (otherwise block it)
+	int32_t antiAirPct = 40;       // chance to meet a seen jump-in with an uppercut (otherwise block it)
 	int32_t jumpPct = 6;           // chance per neutral decision to jump in from mid range
+	int32_t misreadPct = 10;       // chance a guard is held at the wrong height (low vs overhead)
+	int32_t techDelayMin = 3;      // frames from being grabbed to the escape press (the window is rules.throwTechWindow)
+	int32_t techDelaySpread = 6;
 };
 
 CpuTuning TuningFor(CpuLevel level);
@@ -62,6 +66,9 @@ private:
 	int32_t pendingDelay_ = -1;
 	uint8_t pendingButton_ = 0;
 	int8_t pendingDir_ = 0;
+	bool pendingDown_ = false;
+	bool crouchGuard_ = false;     // the guard being held is a crouching one
+	bool downNext_ = false;        // emit down with the next input (a down move's press)
 	int32_t decidedFor_ = -1;      // opponent move-start frame the defence decision was made for
 	bool defend_ = false;
 	int32_t techDecidedFor_ = -1;
@@ -77,7 +84,8 @@ private:
 	bool Roll(int32_t pct);
 	const MatchState& Observed() const;
 	const MatchState& ObservedAgo(int32_t frames) const;
-	void Queue(uint8_t button, int8_t dirToward, int32_t delay);
+	void Queue(uint8_t button, int8_t dirToward, int32_t delay, bool down = false);
+	void ClearQueue() { pendingDelay_ = -1; pendingButton_ = 0; pendingDown_ = false; }
 	InputFrame Emit(const Match& match, uint8_t pressed, int8_t dirToward);
 	int8_t RawX(const Match& match, int8_t dirToward) const;
 };
