@@ -24,6 +24,7 @@ keyboard and pad identical navigation. Changes are made in place, screen by scre
 | Settings | `EHGameDirector.h` (`FEHMenuItem::Pending`, `VideoSaved`), `EHDirectorFlow.cpp`, `EHDirectorUI.cpp`, `Tests/Auto/ui_settings.txt` | On the Video page a value that differs from what is saved is shown in light violet with a dot, and Apply says how many are unapplied (A11) | None |
 | Motion | `EHDirectorUI.cpp` | The title prompt pulses for 4 s, then holds; the Local Versus "Both ready" line is steady (A13; XAG 117) | None |
 | Move list | `EHDirectorUI.cpp` (`PaintMoveList`) | A wider panel (100–1820); a note wider than its column wraps onto a second line, and the row spacing adapts so all rows fit; direction words in light violet; 34 px glyphs (A10) | None |
+| Training and Lesson | `EHDirectorUI.cpp` (`PaintTraining`, `PaintLesson`) | Frame data: ADVANTAGE large and signed (green plus, red minus, a dash before any hit), then the move and both states. Lesson: a 14-segment progress strip (done filled, current outlined, later dim), with the panel 22 px taller to hold it | None |
 | Menus | `EHDirectorFlow.cpp` (`Header`), `EHDirectorUI.cpp` (`PaintMenu`) | Section headers in the training pause (Partner, Positions, Practice aids, More). Navigation skips headers, so every item is the same number of presses away | None |
 
 ## Risks and checks

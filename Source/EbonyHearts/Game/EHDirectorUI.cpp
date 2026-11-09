@@ -933,21 +933,34 @@ void AEHGameDirector::PaintTraining(FEHPainter& P)
 	}
 	if (bShowFrameData)
 	{
-		P.Round(FVector2f(560, 860), FVector2f(800, 104), FLinearColor(0, 0, 0, 0.6f), 6);
-		const FString Move = LastMoveName[0].IsEmpty() ? TEXT("-") : LastMoveName[0];
-		P.Text(FString::Printf(TEXT("%s   %s"), *Move, *LastMoveFrames[0]), FVector2f(960, 888), Fonts.Sized(Fonts.BodyMedium, 22), Bone, 0.5f, 0.5f);
-		FString Adv = TEXT("Advantage -");
+		namespace St = EHStyle;
+		// The number a player acts on (frame advantage) large and signed; the move and the states beside it.
+		const FVector2f Box(520, 846);
+		P.Round(Box, FVector2f(880, 124), St::Plate, 8);
+		P.NextLayer();
+		P.Frame(Box, FVector2f(880, 124), St::Alpha(St::Silver, 0.35f), 1.0f);
+		FSlateFontInfo LabelF = Fonts.Sized(Fonts.BodyBold, St::Type::Label);
+		LabelF.LetterSpacing = 120;
+		P.Text(TEXT("ADVANTAGE"), Box + FVector2f(40, 30), LabelF, St::TextSecondary, 0.0f, 0.5f);
+		FString AdvText = TEXT("-");
+		FLinearColor AdvCol = St::TextSecondary;
 		if (S.lastAdvantageValid)
 		{
 			const int32 V = S.lastAdvantagePlayer == 0 ? S.lastAdvantage : -S.lastAdvantage;
-			Adv = FString::Printf(TEXT("Advantage %+d"), V);
+			AdvText = V == 0 ? FString(TEXT("0")) : FString::Printf(TEXT("%+d"), V);
+			AdvCol = V > 0 ? St::Success : (V < 0 ? St::Warning : St::TextPrimary);
 		}
+		P.Text(AdvText, Box + FVector2f(40, 82), Fonts.Sized(Fonts.Display, 44), AdvCol, 0.0f, 0.5f);
+		P.Rect(Box + FVector2f(220, 22), FVector2f(1, 80), St::Alpha(St::Silver, 0.35f));
+		const FString Move = LastMoveName[0].IsEmpty() ? TEXT("-") : LastMoveName[0];
+		const float MoveW = P.Text(Move, Box + FVector2f(250, 40), Fonts.Sized(Fonts.BodyBold, St::Type::Body), St::TextPrimary, 0.0f, 0.5f).X;
+		P.Text(LastMoveFrames[0], Box + FVector2f(250 + MoveW + 18, 40), Fonts.Sized(Fonts.Body, St::Type::Body), St::TextSecondary, 0.0f, 0.5f);
 		// Crouching is a posture of the neutral, guard, stun and low-attack states; it is shown with the state.
 		auto Posture = [this](int32 i) {
 			const FString Name = UTF8_TO_TCHAR(eh::StateName(Match->State().f[i].state));
 			return Match->IsCrouching(i) ? Name + TEXT(" (crouching)") : Name;
 		};
-		P.Text(FString::Printf(TEXT("%s    You: %s    Partner: %s"), *Adv, *Posture(0), *Posture(1)), FVector2f(960, 932), Fonts.Sized(Fonts.Body, EHStyle::Type::Label), Bone, 0.5f, 0.5f);
+		P.Text(FString::Printf(TEXT("You: %s     Partner: %s"), *Posture(0), *Posture(1)), Box + FVector2f(250, 86), Fonts.Sized(Fonts.Body, St::Type::Label), St::TextPrimary, 0.0f, 0.5f);
 	}
 	PaintPromptRow(P, FVector2f(560, 1040), {FEHHint::Menu(EEHNav::Pause, TEXT("Training options")), FEHHint::Act(EEHAction::Reset, TEXT("Reset"))}, SlotDevice[0]);
 }
@@ -961,10 +974,33 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 	const FEHTutorialStep& Step = Lesson[LessonStep];
 	// Below the HUD's name and gauge rows (which end at about y = 172).
 	const FVector2f Pos(460, 204);
-	P.Round(Pos, FVector2f(1000, 150), FLinearColor(0, 0, 0, 0.62f), 8);
+	P.Round(Pos, FVector2f(1000, 172), FLinearColor(0, 0, 0, 0.62f), 8);
 	P.NextLayer();
 	P.Rect(Pos, FVector2f(1000, 3), Violet);
 	P.Text(FString::Printf(TEXT("%d / %d   %s"), LessonStep + 1, Lesson.Num(), *Step.Title), Pos + FVector2f(32, 36), Fonts.Sized(Fonts.Display, 28), Bone, 0.0f, 0.5f);
+	// Progress through the lesson: one segment per step; done steps filled, the current one outlined (shape and fill,
+	// not colour alone), later ones dim.
+	{
+		const int32 N = Lesson.Num();
+		const float Gap = 6.0f;
+		const float SegW = (1000.0f - 64.0f - Gap * (N - 1)) / FMath::Max(1, N);
+		for (int32 k = 0; k < N; ++k)
+		{
+			const FVector2f SP = Pos + FVector2f(32 + k * (SegW + Gap), 156);
+			if (k < LessonStep || (k == LessonStep && LessonDoneAge >= 0.0f))
+			{
+				P.Rect(SP, FVector2f(SegW, 6), EHStyle::Success);
+			}
+			else if (k == LessonStep)
+			{
+				P.Frame(SP - FVector2f(0, 1), FVector2f(SegW, 8), EHStyle::FocusText, 2.0f);
+			}
+			else
+			{
+				P.Rect(SP, FVector2f(SegW, 6), EHStyle::Alpha(EHStyle::Silver, 0.25f));
+			}
+		}
+	}
 	P.Text(Step.Body, Pos + FVector2f(32, 82), Fonts.Sized(Fonts.Body, 22), Bone, 0.0f, 0.5f);
 	if (LessonStep < Lesson.Num() - 1)
 	{

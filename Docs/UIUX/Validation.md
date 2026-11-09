@@ -23,6 +23,9 @@ Waiting on the creator's choice of art direction (`Directions.md`):
 | Journey on each later build (every screen, keyboard) | **PASS**, no `FAIL` | `journey-tokens*`, `journey-focus*`, `journey-layers`, `check93-journey` |
 | Results screens (CPU and local versus) | Decision first, columns named, no overprint | `results1/` |
 | Video page: unapplied marking, Back discards | **PASS** | `check93-ui_settings/` |
+| Training frame data and the Lesson's progress strip; the full Lesson | The full Lesson (`lesson_full.txt`) completes; journey **PASS** | `check94-journey/`, `check94-lesson_full/` |
+| 2560 × 1440 (16:9) | Journey **PASS**; the canvas scales uniformly | `journey-2560/` |
+| Colour vision (protanopia, deuteranopia, tritanopia; Machado 2009 at full severity, applied to screenshots) | No state is lost: the focus band shifts toward blue or grey but stays distinct from the panel; player colours shift, while the P1, CPU and state words, the filled-versus-outlined chips and the dot on unapplied values carry the meaning | `colour-vision/cvd_sheet.jpg` |
 | 3440 × 1440 (21:9) | Layouts hold. The stage is pillarboxed to 16:9 as before; the interface stays in that safe area, and its bands span the width | `journey-3440/` |
 
 ## Interface cost (`Tests/Auto/perf_ui.txt`, mean / p99 ms of CPU to build the draw list)
@@ -54,7 +57,5 @@ Frame times are unchanged in every scenario (median 16.67 ms, p99 ≤ 16.80 ms a
 ## Not run yet
 
 - Hands-on play with a physical controller.
-- 2560 × 1440 (16:9; the canvas scales uniformly, as at 1080p).
 - The direction-dependent screens.
 - Transitions and sounds.
-- A colour-vision simulation pass.
