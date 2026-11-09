@@ -50,7 +50,8 @@ Errors: data error screen ("could not start", confirm or Escape quits); missing-
 
 **Presses from the title to a fight with default choices:**
 - Versus CPU: 5.
-- Training and Lesson: 6 (two moves down, then confirm the mode, fighter and partner).
+- Training: 6 (the title, two moves down, then confirm the mode, fighter and partner). Lesson: 6 (the title, three
+  moves down, then confirm the mode and fighter).
 - Local Versus: 2 to reach select, then each player joins, chooses, locks and one confirms the fight.
 - Rematch: 1, since it is the results screen's first item.
 - Quit: 2 from the main menu.

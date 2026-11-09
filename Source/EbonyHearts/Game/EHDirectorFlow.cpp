@@ -244,6 +244,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 	}
 	case 2:
 		MenuTitle = TEXT("Video");
+		VideoSaved = Settings;
 		Menu.Add(Choice(TEXT("Display mode"), [this] { return FString(Settings.WindowMode == 0 ? TEXT("Fullscreen") : (Settings.WindowMode == 1 ? TEXT("Borderless") : TEXT("Windowed"))); }, [this](int32 D) { Settings.WindowMode = (Settings.WindowMode + D + 3) % 3; }));
 		Menu.Add(Choice(TEXT("Resolution"), [this] { return FString::Printf(TEXT("%d x %d"), Settings.Resolution.X, Settings.Resolution.Y); }, [this](int32 D) {
 			const TArray<FIntPoint>& R = Resolutions();
@@ -260,11 +261,34 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			Settings.FrameCap = Caps[(Index + D + 6) % 6];
 		}, TEXT("Combat always runs at 60 steps per second.")));
 		Menu.Add(Choice(TEXT("VSync"), [this] { return OnOff(Settings.bVSync); }, [this](int32) { Settings.bVSync = !Settings.bVSync; }));
+		{
+			// Mark what Apply would change (the first six rows, in order).
+			const TFunction<bool()> Differs[] = {
+				[this] { return Settings.WindowMode != VideoSaved.WindowMode; },
+				[this] { return Settings.Resolution != VideoSaved.Resolution; },
+				[this] { return Settings.Quality != VideoSaved.Quality; },
+				[this] { return Settings.RenderScale != VideoSaved.RenderScale; },
+				[this] { return Settings.FrameCap != VideoSaved.FrameCap; },
+				[this] { return Settings.bVSync != VideoSaved.bVSync; },
+			};
+			for (int32 i = 0; i < UE_ARRAY_COUNT(Differs); ++i)
+			{
+				Menu[i].Pending = Differs[i];
+			}
+		}
 		Menu.Add(Button(TEXT("Apply"), [this] {
 			DisplayRevert = FEHSettings::Load();
 			ApplySettings(true);
 			GoTo(EEHScreen::DisplayConfirm);
 		}, TEXT("Reverts automatically unless you confirm.")));
+		Menu.Last().Value = [this] {
+			int32 N = 0;
+			for (const FEHMenuItem& It : Menu)
+			{
+				N += It.Pending && It.Pending() ? 1 : 0;
+			}
+			return N == 0 ? FString() : FString::Printf(TEXT("%d unapplied"), N);
+		};
 		Menu.Add(Button(TEXT("Back"), [this] { Settings = FEHSettings::Load(); BuildSettingsMenu(0); }, TEXT("Discards unapplied video changes.")));
 		break;
 	case 3:

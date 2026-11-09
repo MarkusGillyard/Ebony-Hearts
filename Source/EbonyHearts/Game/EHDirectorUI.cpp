@@ -466,7 +466,8 @@ void AEHGameDirector::PaintTitle(FEHPainter& P)
 		}
 		P.Text(Glyphs, FVector2f(960, 940), Fonts.Sized(Fonts.DisplayLight, 36), Ghost, 0.5f, 0.5f, false);
 	}
-	const float Pulse = 0.55f + 0.45f * FMath::Sin(static_cast<float>(RenderTime) * 2.4f);
+	// The prompt breathes for its first seconds, then holds still (nothing blinks on its own for more than 5 s).
+	const float Pulse = ScreenAge < 4.0f ? 0.55f + 0.45f * FMath::Sin(static_cast<float>(RenderTime) * 2.4f) : 1.0f;
 	P.Text(TEXT("Press any button"), FVector2f(960, 820), Fonts.Sized(Fonts.DisplayLight, 30), A(Bone, In * Pulse), 0.5f, 0.5f);
 	P.Text(TEXT("© 2026 Markus Gillyard  ·  Cinqic"), FVector2f(960, 1030), Fonts.Sized(Fonts.BodyMedium, EHStyle::Type::Label), A(Muted, In), 0.5f, 0.5f);
 }
@@ -527,7 +528,13 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 		{
 			const FString V = It.Value();
 			const FString Shown = It.Change ? FString::Printf(TEXT("‹  %s  ›"), *V) : V;
-			P.Text(Shown, Row + FVector2f(W - 40, RowH * 0.5f), Fonts.Sized(Fonts.BodyMedium, 24), bSel ? Bone : Muted, 1.0f, 0.5f);
+			// An unapplied value: light violet plus a dot (not colour alone); the Apply row counts them.
+			const bool bPending = It.Pending && It.Pending();
+			const float TW = P.Text(Shown, Row + FVector2f(W - 40, RowH * 0.5f), Fonts.Sized(Fonts.BodyMedium, 24), bPending ? EHStyle::FocusText : (bSel ? Bone : Muted), 1.0f, 0.5f).X;
+			if (bPending)
+			{
+				P.Round(Row + FVector2f(W - 40 - TW - 24, RowH * 0.5f - 6), FVector2f(12, 12), EHStyle::FocusText, 6);
+			}
 		}
 	}
 	const FEHMenuItem* Sel = Menu.IsValidIndex(MenuIndex) ? &Menu[MenuIndex] : nullptr;
@@ -702,8 +709,7 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 		}
 		if (SelectLocked[0] && SelectLocked[1])
 		{
-			const float Pulse = 0.75f + 0.25f * FMath::Sin(static_cast<float>(RenderTime) * 3.0f);
-			P.Text(TEXT("Both ready  ·  press Confirm to fight"), FVector2f(960, 900), Fonts.Sized(Fonts.Display, St::Type::Heading), A(St::FocusText, Pulse), 0.5f, 0.5f);
+			P.Text(TEXT("Both ready  ·  press Confirm to fight"), FVector2f(960, 900), Fonts.Sized(Fonts.Display, St::Type::Heading), St::FocusText, 0.5f, 0.5f);
 		}
 	}
 	PaintPromptRow(P, FVector2f(700, 1012), {FEHHint::Menu(EEHNav::Left, TEXT("Choose")), FEHHint::Menu(EEHNav::Confirm, TEXT("Lock in")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Mode == EEHMode::Versus ? EHDeviceNone : SelectDevice[0]);
@@ -1053,62 +1059,114 @@ void AEHGameDirector::PaintResults(FEHPainter& P)
 
 void AEHGameDirector::PaintMoveList(FEHPainter& P)
 {
+	namespace St = EHStyle;
 	P.Fill(FLinearColor(0, 0, 0, 0.55f));
 	const int32 C = SelectCursor[0];
 	const FEHCharacterPresentation& CP = Pres.Get(CharId(C));
 	const eh::CharacterDef& Def = Chars[C];
-	P.Text(CP.DisplayName.ToString(), FVector2f(960, 70), Fonts.Sized(Fonts.Display, 44), Bone, 0.5f, 0.5f);
-	P.Text(TEXT("‹  Move List  ›"), FVector2f(960, 118), Fonts.Sized(Fonts.DisplayLight, 22), Muted, 0.5f, 0.5f);
-	P.Round(FVector2f(220, 160), FVector2f(1480, 800), Panel, 8);
+	P.Text(CP.DisplayName.ToString(), FVector2f(960, 70), Fonts.Sized(Fonts.Display, St::Type::Title), St::TextPrimary, 0.5f, 0.5f);
+	P.Text(TEXT("‹  Move List  ›"), FVector2f(960, 118), Fonts.Sized(Fonts.DisplayLight, St::Type::Body), St::TextSecondary, 0.5f, 0.5f);
+	const float Left = 100.0f;
+	const float Right = 1820.0f;
+	P.Round(FVector2f(Left, 160), FVector2f(Right - Left, 822), St::Panel, 8);
 	P.NextLayer();
-	const FSlateFontInfo Head = Fonts.Sized(Fonts.BodyBold, EHStyle::Type::Label);
-	const FSlateFontInfo Row = Fonts.Sized(Fonts.Body, EHStyle::Type::Body);
-	const float Cols[] = {260, 620, 860, 1000, 1110};
-	P.Text(TEXT("Technique"), FVector2f(Cols[0], 196), Head, Muted, 0.0f, 0.5f);
-	P.Text(TEXT("Input"), FVector2f(Cols[1], 196), Head, Muted, 0.0f, 0.5f);
-	P.Text(TEXT("Startup"), FVector2f(Cols[2], 196), Head, Muted, 0.0f, 0.5f);
-	P.Text(TEXT("Damage"), FVector2f(Cols[3], 196), Head, Muted, 0.0f, 0.5f);
-	P.Text(TEXT("Notes"), FVector2f(Cols[4], 196), Head, Muted, 0.0f, 0.5f);
-	int32 Line = 0;
+	const FSlateFontInfo Head = Fonts.Sized(Fonts.BodyBold, St::Type::Label);
+	const FSlateFontInfo RowF = Fonts.Sized(Fonts.Body, St::Type::Body);
+	const FSlateFontInfo NoteF = Fonts.Sized(Fonts.Body, St::Type::Label);
+	const float Cols[] = {140, 440, 712, 812, 912};
+	const float NoteW = Right - Cols[4] - 24.0f;
+	P.Text(TEXT("Technique"), FVector2f(Cols[0], 196), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Input"), FVector2f(Cols[1], 196), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Startup"), FVector2f(Cols[2], 196), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Damage"), FVector2f(Cols[3], 196), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Notes"), FVector2f(Cols[4], 196), Head, St::TextSecondary, 0.0f, 0.5f);
+	// Collect the rows first: a note wider than its column wraps onto a second line, and the spacing adapts so every
+	// row fits above the prompt row.
+	struct FRow
+	{
+		const eh::MoveDef* Move = nullptr;
+		FString Id;
+		TArray<FString> Note;
+	};
+	TArray<FRow> Rows;
+	int32 ExtraLines = 0;
 	for (const eh::MoveDef& M : Def.moves)
 	{
 		if (M.kind == eh::MoveKind::Throw && !Rules.ThrowsEnabled())
 		{
 			continue;   // the throw stays in the data but is not part of this rule set
 		}
-		const FString Id = UTF8_TO_TCHAR(M.id.c_str());
+		FRow R;
+		R.Move = &M;
+		R.Id = UTF8_TO_TCHAR(M.id.c_str());
+		const FText* Note = CP.MoveNotes.Find(R.Id);
+		TArray<FString> Words;
+		(Note ? Note->ToString() : FString()).ParseIntoArray(Words, TEXT(" "));
+		FString LineText;
+		for (const FString& Word : Words)
+		{
+			const FString Try = LineText.IsEmpty() ? Word : LineText + TEXT(" ") + Word;
+			if (!LineText.IsEmpty() && P.Measure(Try, NoteF).X > NoteW && R.Note.Num() == 0)
+			{
+				R.Note.Add(LineText);
+				LineText = Word;
+			}
+			else
+			{
+				LineText = Try;
+			}
+		}
+		if (!LineText.IsEmpty())
+		{
+			R.Note.Add(LineText);
+		}
+		ExtraLines += FMath::Max(0, R.Note.Num() - 1);
+		Rows.Add(MoveTemp(R));
+	}
+	const float Top = 222.0f;
+	const float Bottom = 970.0f;
+	const float ExtraH = 26.0f;
+	const float RowH = FMath::Clamp((Bottom - Top - ExtraLines * ExtraH) / FMath::Max(1, Rows.Num()), 36.0f, 48.0f);
+	float Y = Top + RowH * 0.5f;
+	for (const FRow& R : Rows)
+	{
+		const eh::MoveDef& M = *R.Move;
+		const float Extra = R.Note.Num() > 1 ? ExtraH : 0.0f;
+		const float Mid = Y + Extra * 0.5f;
 		// Inputs are drawn with the viewer's own buttons: direction words, then the action's button glyph.
 		const FString DirText = M.air ? TEXT("In a jump: ") : (M.down ? TEXT("Down + ") : (M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""))));
 		const EEHAction Act = M.button == eh::BtnLight ? EEHAction::Light : (M.button == eh::BtnHeavy ? EEHAction::Heavy : (M.button == eh::BtnSpecial ? EEHAction::Special : (M.button == eh::BtnThrow ? EEHAction::Throw : EEHAction::Dodge)));
 		int32 Repeats = 1;
 		FString Suffix;
-		if (Id == TEXT("L2")) Repeats = 2;
-		if (Id == TEXT("L3")) Repeats = 3;
+		if (R.Id == TEXT("L2")) Repeats = 2;
+		if (R.Id == TEXT("L3")) Repeats = 3;
 		if (M.kind == eh::MoveKind::Dodge && M.dir == eh::DirReq::Any) Suffix = TEXT("  away or neutral");
 		const FString Startup = M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().frames.first);
 		const FString Damage = M.kind == eh::MoveKind::Throw ? FString::Printf(TEXT("%d"), Def.throws[static_cast<size_t>(M.throwIndex)].damage) : (M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().damage));
-		const FText* Note = CP.MoveNotes.Find(Id);
-		const float Y = 228 + Line * 48;   // 15 rows fit the panel
-		P.Text(UTF8_TO_TCHAR(M.name.c_str()), FVector2f(Cols[0], Y), Fonts.Sized(Fonts.BodyBold, 22), Bone, 0.0f, 0.5f);
+		P.Text(UTF8_TO_TCHAR(M.name.c_str()), FVector2f(Cols[0], Mid), Fonts.Sized(Fonts.BodyBold, St::Type::Body), St::TextPrimary, 0.0f, 0.5f);
 		{
 			float X = Cols[1];
 			if (!DirText.IsEmpty())
 			{
-				X += P.Text(DirText, FVector2f(X, Y), Row, Gold, 0.0f, 0.5f).X + 4.0f;
+				X += P.Text(DirText, FVector2f(X, Mid), RowF, St::FocusText, 0.0f, 0.5f).X + 4.0f;
 			}
+			const float G = 34.0f;
 			for (int32 r = 0; r < Repeats; ++r)
 			{
-				X += PaintPrompt(P, FVector2f(X, Y - 15.0f), FEHHint::Act(Act, FString()), EHDeviceNone, 30.0f) + 6.0f;
+				X += PaintPrompt(P, FVector2f(X, Mid - G * 0.5f), FEHHint::Act(Act, FString()), EHDeviceNone, G) + 6.0f;
 			}
 			if (!Suffix.IsEmpty())
 			{
-				P.Text(Suffix, FVector2f(X, Y), Fonts.Sized(Fonts.Body, EHStyle::Type::Label), Muted, 0.0f, 0.5f);
+				P.Text(Suffix, FVector2f(X, Mid), Fonts.Sized(Fonts.Body, St::Type::Label), St::TextSecondary, 0.0f, 0.5f);
 			}
 		}
-		P.Text(Startup, FVector2f(Cols[2], Y), Row, Bone, 0.0f, 0.5f);
-		P.Text(Damage, FVector2f(Cols[3], Y), Row, Bone, 0.0f, 0.5f);
-		P.Text(Note ? Note->ToString() : FString(), FVector2f(Cols[4], Y), Fonts.Sized(Fonts.Body, EHStyle::Type::Label), Muted, 0.0f, 0.5f);
-		++Line;
+		P.Text(Startup, FVector2f(Cols[2], Mid), RowF, St::TextPrimary, 0.0f, 0.5f);
+		P.Text(Damage, FVector2f(Cols[3], Mid), RowF, St::TextPrimary, 0.0f, 0.5f);
+		for (int32 l = 0; l < R.Note.Num(); ++l)
+		{
+			P.Text(R.Note[l], FVector2f(Cols[4], Mid + (l - (R.Note.Num() - 1) * 0.5f) * ExtraH), NoteF, St::TextSecondary, 0.0f, 0.5f);
+		}
+		Y += RowH + Extra;
 	}
 	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Left, TEXT("Other fighter")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, EHDeviceNone);
 }

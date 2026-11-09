@@ -90,4 +90,4 @@ glyphs are 40 px tall, so the letter inside is at the floor too. The interface-s
 ## Performance
 
 The interface's draw list costs 0.01–0.13 ms of CPU a frame on average, 0.3 ms at most at p99, before and after these
-changes (`Tests/Auto/perf_ui.txt`, `ui_paint_*`). The budget is 1.0 ms mean and 2.0 ms p99.
+changes (the move list 0.22 ms since it wraps long notes each frame) (`Tests/Auto/perf_ui.txt`, `ui_paint_*`). The budget is 1.0 ms mean and 2.0 ms p99.

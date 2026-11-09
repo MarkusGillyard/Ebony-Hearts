@@ -74,6 +74,8 @@ struct FEHMenuItem
 	TFunction<void(FEHPainter&, FVector2f, bool)> PaintValue;
 	FString Hint;
 	bool bHeader = false;
+	// Optional: true while the value differs from what is saved (shown marked until applied).
+	TFunction<bool()> Pending;
 };
 
 // One entry of a prompt row: a gameplay action or a menu command, and its label.
@@ -229,6 +231,8 @@ private:
 	bool bShowFrameData = true;
 	bool bShowInputs = true;
 	bool bInfiniteMeter = false;
+	// The video settings as saved when the Video page opened; values that differ are shown as unapplied.
+	FEHSettings VideoSaved;
 	// Automation only (`ui_hidden 1`): paint nothing, for clean captures of the stage and fighters (UI mockups, art review).
 	bool bAutoHideUI = false;
 	TArray<FEHInputLogEntry> InputLog[2];

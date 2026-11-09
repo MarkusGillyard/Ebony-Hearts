@@ -21,6 +21,9 @@ keyboard and pad identical navigation. Changes are made in place, screen by scre
 | Select | `EHDirectorUI.cpp` (`PaintSelect`) | Nameplates in the corners (the cards and paragraphs over the fighters are gone), state chips, CPU level and side panel; "press Confirm" wording (it said Light, which is wrong after remapping) | None |
 | Results | `EHDirectorUI.cpp` (`PaintResults`), `PaintMenu(TopY)`, `Tests/Auto/ui_results.txt` | Winner, then the menu (Rematch focused) right under it, then the stats with each column named (fighter and player); the menu no longer overprints the table | None |
 | Focus and layers | `EHDirectorUI.cpp` | The focus band is a 55% violet band with a light-violet edge, and it is now actually visible: content on rounded plates is drawn a layer up (A16) | None |
+| Settings | `EHGameDirector.h` (`FEHMenuItem::Pending`, `VideoSaved`), `EHDirectorFlow.cpp`, `EHDirectorUI.cpp`, `Tests/Auto/ui_settings.txt` | On the Video page a value that differs from what is saved is shown in light violet with a dot, and Apply says how many are unapplied (A11) | None |
+| Motion | `EHDirectorUI.cpp` | The title prompt pulses for 4 s, then holds; the Local Versus "Both ready" line is steady (A13; XAG 117) | None |
+| Move list | `EHDirectorUI.cpp` (`PaintMoveList`) | A wider panel (100–1820); a note wider than its column wraps onto a second line, and the row spacing adapts so all rows fit; direction words in light violet; 34 px glyphs (A10) | None |
 | Menus | `EHDirectorFlow.cpp` (`Header`), `EHDirectorUI.cpp` (`PaintMenu`) | Section headers in the training pause (Partner, Positions, Practice aids, More). Navigation skips headers, so every item is the same number of presses away | None |
 
 ## Risks and checks
