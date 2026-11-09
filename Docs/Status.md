@@ -5,8 +5,8 @@ ready for independent review and the creator's playtest; nothing merged).
 
 ## Where things stand
 
-- **This round's work** is on branch `dev/combat-pass-1108`, eleven commits on the PR #1 head `ea3ddc6` plus
-  documentation. It answers the creator's 2026-11-08 requests: crouching, Wren's takedown, Ashka's clinch trip, throws
+- **This round's work** is on branch `dev/combat-pass-1108` (pushed to GitHub as a task branch, no pull request),
+  eleven commits on the PR #1 head `ea3ddc6` plus documentation. It answers the creator's 2026-11-08 requests: crouching, Wren's takedown, Ashka's clinch trip, throws
   that work inside combos without grappling, higher and more useful jumps, uppercuts, an audit of every animation and
   move relationship, Wren's feet and materials, Ashka's overhaul, and the controls for all of it.
 - **Candidate:** `EbonyHearts-Slice-5d5c316.tar.gz` (Shipping, Linux), built from commit `5d5c316`; SHA-256
