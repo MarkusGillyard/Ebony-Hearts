@@ -227,6 +227,8 @@ private:
 	bool bShowFrameData = true;
 	bool bShowInputs = true;
 	bool bInfiniteMeter = false;
+	// Automation only (`ui_hidden 1`): paint nothing, for clean captures of the stage and fighters (UI mockups, art review).
+	bool bAutoHideUI = false;
 	TArray<FEHInputLogEntry> InputLog[2];
 	FString LastMoveName[2];
 	FString LastMoveFrames[2];

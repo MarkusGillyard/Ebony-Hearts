@@ -329,6 +329,10 @@ void AEHGameDirector::PaintBackdrop(FEHPainter& P, float Dim)
 
 void AEHGameDirector::PaintUI(FEHPainter& P)
 {
+	if (bAutoHideUI && Screen != EEHScreen::Error)
+	{
+		return;
+	}
 	if (Screen == EEHScreen::Error)
 	{
 		PaintError(P);

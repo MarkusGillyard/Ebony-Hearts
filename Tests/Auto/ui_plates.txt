@@ -1,0 +1,40 @@
+# Clean plates for UI design work (2026-11-09): the title scene, the main menu scene, the select scene and moments of
+# a versus fight, with the interface hidden (`ui_hidden 1`), then the same moments with it shown for comparison.
+# Used to draw mockups on the real stage at the game's own resolution; not a pass/fail test.
+wait 5
+ui_hidden 1
+screenshot pl_title
+press kbA Light
+wait 1.2
+screenshot pl_main
+press kbA Light
+wait 1.0
+screenshot pl_select
+ui_hidden 0
+screenshot pl_select_ui
+goto_main
+wait 0.6
+match wren ashka cpu 2 left
+bots 2 none
+wait 4.5
+ui_hidden 1
+screenshot pl_fight_a
+wait 1.3
+screenshot pl_fight_b
+wait 1.7
+screenshot pl_fight_c
+ui_hidden 0
+screenshot pl_fight_c_ui
+wait 0.4
+goto_main
+wait 0.6
+match ashka wren cpu 2 right
+bots none 2
+wait 4.5
+ui_hidden 1
+screenshot pl_fight_d
+ui_hidden 0
+screenshot pl_fight_d_ui
+goto_main
+wait 0.5
+quit

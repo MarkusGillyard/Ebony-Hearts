@@ -567,6 +567,11 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			AutoLogLine(FString::Printf(TEXT("%slesson_status step=%d/%d \"%s\" count=%d"), Want > 0 ? (LessonStep + 1 >= Want ? TEXT("ok ") : TEXT("FAIL ")) : TEXT(""),
 				LessonStep + 1, Lesson.Num(), *Title, LessonCount));
 		}
+		else if (Cmd == TEXT("ui_hidden"))
+		{
+			bAutoHideUI = Arg(1, TEXT("1")) != TEXT("0");
+			AutoLogLine(FString::Printf(TEXT("ui hidden %d"), bAutoHideUI ? 1 : 0));
+		}
 		else if (Cmd == TEXT("training_gauge"))
 		{
 			bInfiniteMeter = Arg(1, TEXT("full")) == TEXT("full");
