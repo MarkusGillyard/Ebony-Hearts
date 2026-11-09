@@ -81,6 +81,9 @@ struct FEHBindings
 	FKey Keys[EHSetCount][EHActionCount][EHKeysPerAction];
 
 	static FEHBindings Defaults();
+	// The layout before settings version 5 (Cross / A also jumped, L1 / LB also blocked, R1 / RB was Special, L2 / LT
+	// threw). Kept only to migrate older files: actions still on these keys move to Defaults().
+	static FEHBindings DefaultsV4();
 	const FKey& Get(EEHBindingSet Set, EEHAction Action, int32 Slot) const { return Keys[static_cast<int32>(Set)][static_cast<int32>(Action)][Slot]; }
 	// The first bound key of an action (primary, else secondary), or EKeys::Invalid.
 	FKey First(EEHBindingSet Set, EEHAction Action) const;
@@ -134,18 +137,20 @@ struct FEHSettings
 
 	static FString FilePath();
 	// Loads settings; a missing or corrupt file yields defaults (a corrupt file is kept as .bad for inspection).
-	// Version 1 files keep their keyboard layouts; their controller layout moves to the current default.
+	// Version 1 files keep their keyboard layouts; their controller layout moves to the current default. Files before
+	// version 5 move every action still on its old default to the current layout (DefaultsV4).
 	static FEHSettings Load(FString* OutWarning = nullptr, const FString& PathOverride = FString());
 	bool Save(const FString& PathOverride = FString()) const;
 	void Clamp();
 };
 
 // Grab's default buttons before version 3 (slot 0..2, EKeys::Invalid when none): the settings loader moves them to the
-// jobs they were given in version 3 (jump; L1 / LB block). Throw has had its own defaults since version 4.
+// jobs they were given in version 3 (jump; L1 / LB block), and version 5 then moves those to the current layout.
+// Throw has had its own defaults since version 4.
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 4;
+constexpr int32 EHSettingsVersion = 5;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

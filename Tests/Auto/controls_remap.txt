@@ -10,14 +10,14 @@ expect_binding controller1 Light 0 Gamepad_FaceButton_Top
 expect_binding controller1 Heavy 0 Gamepad_FaceButton_Left
 remap controller1 Dodge 0 Gamepad_FaceButton_Bottom replace
 expect_binding controller1 Dodge 0 Gamepad_FaceButton_Bottom
-expect_binding controller1 Jump 1 none
+expect_binding controller1 Special 0 none
 expect_binding controller1 Jump 0 Gamepad_DPad_Up
-remap controller1 Special 0 Gamepad_FaceButton_Top cancel
-expect_binding controller1 Special 0 Gamepad_RightShoulder
+remap controller1 Throw 0 Gamepad_FaceButton_Top cancel
+expect_binding controller1 Throw 0 Gamepad_LeftShoulder
 expect_binding controller1 Light 0 Gamepad_FaceButton_Top
-remap controller2 Block 1 Gamepad_LeftTrigger swap
-expect_binding controller2 Block 1 Gamepad_LeftTrigger
-expect_binding controller2 Throw 0 Gamepad_LeftShoulder
+remap controller2 Throw 0 Gamepad_RightTrigger swap
+expect_binding controller2 Throw 0 Gamepad_RightTrigger
+expect_binding controller2 Block 0 Gamepad_LeftShoulder
 expect_binding controller2 Light 0 Gamepad_FaceButton_Left
 remap keyboard1 Light 0 U swap
 expect_binding keyboard1 Light 0 U
@@ -31,13 +31,15 @@ expect_binding keyboard2 Light 0 NumPadOne
 expect_binding keyboard1 Heavy 0 none
 reset_action keyboard1 Heavy
 expect_binding keyboard1 Heavy 0 K
+remap controller1 Block 1 Gamepad_LeftTrigger replace
+expect_binding controller1 Block 1 Gamepad_LeftTrigger
 clear_binding controller1 Block 1
 expect_binding controller1 Block 1 none
 expect_binding controller1 Block 0 Gamepad_RightTrigger
 remap keyboard2 Light 2 NumPadFour swap
 expect_binding keyboard2 Light 2 NumPadFour
-reset_action controller1 Jump
-expect_binding controller1 Jump 1 Gamepad_FaceButton_Bottom
+reset_action controller1 Special
+expect_binding controller1 Special 0 Gamepad_FaceButton_Bottom
 expect_binding controller1 Dodge 0 none
 remap keyboard1 Down 0 X replace
 expect_binding keyboard1 Down 0 X

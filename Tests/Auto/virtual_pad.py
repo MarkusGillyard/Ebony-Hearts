@@ -4,8 +4,9 @@ Usage: python3 virtual_pad.py <scenario> [xbox|ds4]
   menu-and-fight  title -> Versus CPU -> fight with every default action, then quits through the menus.
   disconnect      fights, destroys the device mid-match (disconnect), recreates it (reconnect), takes the slot back
                   with Cross / A, fights again, then quits.
-  layout          presses every default button once (an analog R2 / RT hold, an L2 / LT squeeze, D-pad down) while the
-                  game logs what each produced (pair it with an automation script that runs log_input in Training).
+  layout          presses every default button once (an analog R2 / RT hold, D-pad up and down) and the two buttons the
+                  layout leaves free (R1 / RB, L2 / LT) while the game logs what each produced (pair it with an
+                  automation script that runs log_input in Training).
   remap           through Settings > Controls > Controller - Player 1: moves Light attack onto Triangle / Y,
                   answers the conflict with Swap, backs out to the main menu, then quits.
 Pads: "xbox" is a Microsoft Xbox 360 pad (045e:028e); "ds4" is a Sony DualShock 4 (054c:05c4) laid out like the
@@ -148,17 +149,16 @@ def to_fight(pad):
 
 
 def fight_inputs(pad):
-    """Every default action once, with the creator's layout."""
+    """Every default action once, with the creator's layout (MK-style, settings version 5)."""
     pad.stick(1.0, 0.6)            # walk forward with the analog stick
     for _ in range(3):
         pad.press("left", gap=0.1)     # Square / X: light string
     pad.press("top", gap=0.4)          # Triangle / Y: heavy
     pad.hold_trigger("r", 0.8)         # R2 / RT: block while held
-    pad.press("bottom", gap=0.6)       # Cross / A: jump (D-pad up and the stick's up jump too)
-    pad.press("l1", gap=0.6)           # L1 / LB: block (second binding beside R2 / RT)
+    pad.dpad(y=-1, hold=0.1, gap=0.8)  # D-pad up: jump (the stick's up jumps too)
+    pad.press("l1", gap=0.9)           # L1 / LB: throw
     pad.press("right", gap=0.6)        # Circle / B: dodge
-    pad.press("r1", gap=0.8)           # R1 / RB: special
-    pad.hold_trigger("l", 0.1, gap=0.9)  # L2 / LT: throw
+    pad.press("bottom", gap=0.8)       # Cross / A: special
     pad.dpad(y=1, hold=0.4, gap=0.5)   # D-pad down: crouch
 
 
@@ -178,15 +178,17 @@ def pause_to_main(pad):
 
 def layout(pad):
     """One press of every default button, spaced so the game's log shows each result separately."""
-    steps = [("left", "Square / X"), ("top", "Triangle / Y"), ("right", "Circle / B"), ("bottom", "Cross / A"),
-             ("l1", "L1 / LB"), ("r1", "R1 / RB")]
+    steps = [("left", "Square / X (light)"), ("top", "Triangle / Y (heavy)"), ("right", "Circle / B (dodge)"),
+             ("bottom", "Cross / A (special)"), ("l1", "L1 / LB (throw)"), ("r1", "R1 / RB (free)")]
     for button, label in steps:
         log(f"press {label}")
         pad.press(button, hold=0.1, gap=0.7)
-    log("hold R2 / RT")
+    log("hold R2 / RT (block)")
     pad.hold_trigger("r", 0.6, gap=0.7)
-    log("squeeze L2 / LT (throw)")
+    log("squeeze L2 / LT (free)")
     pad.hold_trigger("l", 0.1, gap=0.9)
+    log("D-pad up (jump)")
+    pad.dpad(y=-1, hold=0.1, gap=1.0)
     log("D-pad down (crouch)")
     pad.dpad(y=1, hold=0.4, gap=0.5)
     log("D-pad right")

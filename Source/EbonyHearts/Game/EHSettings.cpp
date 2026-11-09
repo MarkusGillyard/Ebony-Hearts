@@ -141,14 +141,14 @@ FEHBindings FEHBindings::Defaults()
 		B.Keys[Idx(S)][Idx(A)][1] = K1;
 		B.Keys[Idx(S)][Idx(A)][2] = K2;
 	};
-	// Grab's buttons before version 3 (EHFormerGrabKey) jump, and L1 / LB also blocks; the jump buttons jump the way
-	// the stick or movement keys point, like up does. Version 4 gave the standalone Throw and Crouch free keys of their
-	// own: U, Numpad 4 / M and L2 / LT throw; S, Down and down on the D-pad or left stick crouch.
+	// The usual fighting-game layout (settings version 5): up jumps and down crouches, on the stick, the D-pad or the
+	// movement keys; the face buttons are Light, Heavy, Special and Dodge; R2 / RT blocks and L1 / LB throws, as in
+	// Mortal Kombat. The layouts before it are in DefaultsV4.
 	using S = EEHBindingSet;
 	using A = EEHAction;
 	Set(S::KeyboardA, A::Left, EKeys::A);
 	Set(S::KeyboardA, A::Right, EKeys::D);
-	Set(S::KeyboardA, A::Jump, EKeys::W, EKeys::I);
+	Set(S::KeyboardA, A::Jump, EKeys::W);
 	Set(S::KeyboardA, A::Light, EKeys::J, EKeys::Enter);
 	Set(S::KeyboardA, A::Heavy, EKeys::K, EKeys::BackSpace);
 	Set(S::KeyboardA, A::Special, EKeys::L);
@@ -160,7 +160,7 @@ FEHBindings FEHBindings::Defaults()
 
 	Set(S::KeyboardB, A::Left, EKeys::Left);
 	Set(S::KeyboardB, A::Right, EKeys::Right);
-	Set(S::KeyboardB, A::Jump, EKeys::Up, EKeys::NumPadFive, EKeys::Semicolon);
+	Set(S::KeyboardB, A::Jump, EKeys::Up);
 	Set(S::KeyboardB, A::Light, EKeys::NumPadOne, EKeys::Comma);
 	Set(S::KeyboardB, A::Heavy, EKeys::NumPadTwo, EKeys::Period);
 	Set(S::KeyboardB, A::Special, EKeys::NumPadThree, EKeys::Slash);
@@ -170,20 +170,44 @@ FEHBindings FEHBindings::Defaults()
 	Set(S::KeyboardB, A::Down, EKeys::Down);
 	Set(S::KeyboardB, A::Throw, EKeys::NumPadFour, EKeys::M);
 
-	// Controller layout specified by the creator. Unreal names buttons by position, so PlayStation and Xbox match:
-	// FaceButton_Left = Square / X, Top = Triangle / Y, Right = Circle / B, Bottom = Cross / A.
+	// Controller layout chosen by the creator (MK-style). Unreal names buttons by position, so PlayStation and Xbox
+	// match: FaceButton_Left = Square / X, Top = Triangle / Y, Right = Circle / B, Bottom = Cross / A.
 	for (S Pad : {S::GamepadP1, S::GamepadP2})
 	{
 		Set(Pad, A::Left, EKeys::Gamepad_DPad_Left);
 		Set(Pad, A::Right, EKeys::Gamepad_DPad_Right);
-		Set(Pad, A::Jump, EKeys::Gamepad_DPad_Up, EKeys::Gamepad_FaceButton_Bottom);   // the left stick's up also jumps (EHInputRouter)
+		Set(Pad, A::Jump, EKeys::Gamepad_DPad_Up);   // the left stick's up also jumps (EHInputRouter)
 		Set(Pad, A::Light, EKeys::Gamepad_FaceButton_Left);
 		Set(Pad, A::Heavy, EKeys::Gamepad_FaceButton_Top);
-		Set(Pad, A::Special, EKeys::Gamepad_RightShoulder);
+		Set(Pad, A::Special, EKeys::Gamepad_FaceButton_Bottom);
 		Set(Pad, A::Dodge, EKeys::Gamepad_FaceButton_Right);
-		Set(Pad, A::Block, EKeys::Gamepad_RightTrigger, EKeys::Gamepad_LeftShoulder);
+		Set(Pad, A::Block, EKeys::Gamepad_RightTrigger);
 		Set(Pad, A::Reset, EKeys::Gamepad_Special_Left);
 		Set(Pad, A::Down, EKeys::Gamepad_DPad_Down);   // the left stick's down also crouches (EHInputRouter)
+		Set(Pad, A::Throw, EKeys::Gamepad_LeftShoulder);
+	}
+	return B;
+}
+
+FEHBindings FEHBindings::DefaultsV4()
+{
+	// Versions 3 and 4: Grab's former buttons (EHFormerGrabKey) jumped and L1 / LB also blocked; Special was on R1 / RB
+	// and Throw on L2 / LT. Everything else matches the current layout.
+	FEHBindings B = Defaults();
+	auto Set = [&B](EEHBindingSet S, EEHAction A, const FKey& K0, const FKey& K1 = EKeys::Invalid, const FKey& K2 = EKeys::Invalid) {
+		B.Keys[Idx(S)][Idx(A)][0] = K0;
+		B.Keys[Idx(S)][Idx(A)][1] = K1;
+		B.Keys[Idx(S)][Idx(A)][2] = K2;
+	};
+	using S = EEHBindingSet;
+	using A = EEHAction;
+	Set(S::KeyboardA, A::Jump, EKeys::W, EKeys::I);
+	Set(S::KeyboardB, A::Jump, EKeys::Up, EKeys::NumPadFive, EKeys::Semicolon);
+	for (S Pad : {S::GamepadP1, S::GamepadP2})
+	{
+		Set(Pad, A::Jump, EKeys::Gamepad_DPad_Up, EKeys::Gamepad_FaceButton_Bottom);
+		Set(Pad, A::Special, EKeys::Gamepad_RightShoulder);
+		Set(Pad, A::Block, EKeys::Gamepad_RightTrigger, EKeys::Gamepad_LeftShoulder);
 		Set(Pad, A::Throw, EKeys::Gamepad_LeftTrigger);
 	}
 	return B;
@@ -554,7 +578,9 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	const TSharedPtr<FJsonObject>* BindingsObj = nullptr;
 	if (Root->TryGetObjectField(TEXT("bindings"), BindingsObj))
 	{
-		FEHBindings Loaded = FEHBindings::Defaults();
+		// Files before version 5 were written against the older layout; whatever they leave out is that layout's, and
+		// the version 5 step below moves it to the current one.
+		FEHBindings Loaded = Version < 5 ? FEHBindings::DefaultsV4() : FEHBindings::Defaults();
 		if (Version < 4)
 		{
 			// Crouch did not exist and Throw had no buttons of its own: both start unbound and get their defaults
@@ -611,7 +637,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			// Those buttons leave Grab and take their new job wherever its slot is free and the button is not used
 			// elsewhere; a button the player gave Grab themselves stays with Grab. (Files before version 3 also had no
 			// third slot, which is how the right keyboard's ; arrives.)
-			const FEHBindings New = FEHBindings::Defaults();
+			const FEHBindings New = FEHBindings::DefaultsV4();
 			auto IsFormer = [](EEHBindingSet InSet, const FKey& Key) {
 				for (int32 F = 0; F < EHKeysPerAction; ++F)
 				{
@@ -660,7 +686,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 		{
 			// Throw's and Crouch's new defaults go wherever their keys are free. A key the player gave another action
 			// stays theirs: the new action is left without that key and the note says what to do.
-			const FEHBindings New = FEHBindings::Defaults();
+			const FEHBindings New = FEHBindings::DefaultsV4();
 			FString Taken;
 			for (int32 Set = 0; Set < EHSetCount; ++Set)
 			{
@@ -695,6 +721,80 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			if (!Taken.IsEmpty())
 			{
 				Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
+			}
+		}
+		if (Version < 5)
+		{
+			// Version 5 moved to the usual fighting-game layout: jump on up only (Cross / A, I, Numpad 5 and ; stop
+			// jumping), Cross / A is Special, L1 / LB throws and R2 / RT alone blocks. An action still on its old default
+			// moves to the new one; an action the player changed stays as they made it. A move that would take a button
+			// the player kept on another action is undone, and the notice names it.
+			const FEHBindings Old = FEHBindings::DefaultsV4();
+			const FEHBindings New = FEHBindings::Defaults();
+			const FEHBindings Before = Loaded;
+			bool bMoved[EHSetCount][EHActionCount] = {};
+			bool bAny = false;
+			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			{
+				for (int32 A = 0; A < EHActionCount; ++A)
+				{
+					bool bOnOld = true;
+					bool bChanged = false;
+					for (int32 K = 0; K < EHKeysPerAction; ++K)
+					{
+						bOnOld &= Loaded.Keys[Set][A][K] == Old.Keys[Set][A][K];
+						bChanged |= Old.Keys[Set][A][K] != New.Keys[Set][A][K];
+					}
+					if (bOnOld && bChanged)
+					{
+						for (int32 K = 0; K < EHKeysPerAction; ++K)
+						{
+							Loaded.Keys[Set][A][K] = New.Keys[Set][A][K];
+						}
+						bMoved[Set][A] = true;
+						bAny = true;
+					}
+				}
+			}
+			// Undoing one move can give back a button another move took, so repeat until nothing collides.
+			FString Kept;
+			for (bool bUndid = true; bUndid;)
+			{
+				bUndid = false;
+				for (int32 Set = 0; Set < EHSetCount && !bUndid; ++Set)
+				{
+					const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
+					for (int32 A = 0; A < EHActionCount && !bUndid; ++A)
+					{
+						if (!bMoved[Set][A])
+						{
+							continue;
+						}
+						for (int32 K = 0; K < EHKeysPerAction; ++K)
+						{
+							const FKey Key = Loaded.Keys[Set][A][K];
+							if (Key.IsValid() && Loaded.FindConflict(BS, static_cast<EEHAction>(A), K, Key).IsValid())
+							{
+								for (int32 J = 0; J < EHKeysPerAction; ++J)
+								{
+									Loaded.Keys[Set][A][J] = Before.Keys[Set][A][J];
+								}
+								bMoved[Set][A] = false;
+								bUndid = true;
+								Kept += FString::Printf(TEXT("%s%s on %s"), Kept.IsEmpty() ? TEXT("") : TEXT(", "), EHActionLabel(static_cast<EEHAction>(A)), EHSetLabel(BS));
+								break;
+							}
+						}
+					}
+				}
+			}
+			if (bAny)
+			{
+				Notes += FString::Printf(TEXT("%sControls now use the usual fighting-game layout: up jumps; on a controller Cross / A is Special, L1 / LB throws and R2 / RT blocks."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+			}
+			if (!Kept.IsEmpty())
+			{
+				Notes += FString::Printf(TEXT(" Kept as you had them, because the new button is one of yours: %s."), *Kept);
 			}
 		}
 		// A layout with a duplicate or reserved key falls back to its defaults; the others are kept.
