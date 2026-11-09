@@ -157,13 +157,12 @@ Tests/Core/run_core_tests.sh
   resolution costs as much GPU time as the native one. The game carries its own fixes for two engine/SDL defects
   (`Source/EbonyHeartsLinux`, see `Docs/Production.md`); Wayland sessions were not tested.
 - **Evaluation.** The creator played the `4cee9c1` candidate on 2026-11-07 and reported that combat smoothness and
-  jumping need refinement and the character models need work; this pass answers that, and nobody has played its
-  candidate yet. Automated checks do not settle
-  gameplay feel, balance, or acceptance of the tuning values (see the combat contract). The creator verified TV audio
+  jumping need refinement and the character models need work; this pass answers that. The creator began playing its
+  candidate on 2026-11-09; their feedback is not in yet. Automated checks do not settle gameplay feel, balance, or acceptance of the tuning values (see the combat contract). The creator verified TV audio
   on the earlier `060a75f` candidate; an independent listening check of this candidate has not been recorded.
 - **Controllers.** Gamepads were verified with simulated Xbox 360 and DualShock 4 pads, including disconnect, reconnect
-  and remapping. The creator physically checked a PS4 controller on `060a75f`; the later candidate's revised bindings
-  have packaged and simulated-controller checks, but no recorded physical button-by-button check.
+  and remapping. The creator physically checked a PS4 controller on `060a75f`, and played the `5d5c316` candidate with
+  a Bluetooth DualShock 4 and reported that it works; that session has no per-button log.
 - **Art.**
   - The fighters are built by script from a MakeHuman base. They read well at gameplay distance; close-up detail is
     modest: Ashka's face is a MakeHuman head with painted shading, her bangs are hair cards, and her braid, her coat's

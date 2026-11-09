@@ -8,8 +8,9 @@ previous candidates' under `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/
 ## Current candidate `5d5c316` (2026-11-08, combat, animation and character pass)
 
 **Result: PASS on every objective check run; ready for independent review and the creator's playtest.** This is the
-implementer's own verification on branch `dev/combat-pass-1108`, not an independent review; nobody has played this
-candidate yet. The runs that need the test machine's monitor were done later the same day ("Monitor-bound runs", at
+implementer's own verification on branch `dev/combat-pass-1108`, not an independent review. The creator began playing
+the candidate on 2026-11-09 and reports that a physical DualShock 4 works ("Physical DualShock 4", below); their
+playtest feedback is not in yet. The runs that need the test machine's monitor were done later the same day ("Monitor-bound runs", at
 the end of this section).
 
 ### Build identity
@@ -172,8 +173,13 @@ either; the creator quit with the keyboard. The pad stayed listed by Linux and B
 sending anything. Its input node had no events, and its raw HID node delivered no input reports in 5.5 s, a period
 in which a connected DualShock 4 streams reports continuously. That held even while a small probe built against the
 engine's own SDL 3.4.4 had it open, and the probe did find it ("PS4 Controller", wireless, `/dev/hidraw5`). So no
-press could reach the game. No button presses were recorded, so the candidate's bindings still have no physical
-button-by-button check; a wired (USB) connection is the next thing to try.
+press could reach the game. No button presses were recorded in either attempt.
+
+**The creator then played the candidate with the pad** (`evidence/rc-5d5c316/physical-ds4-3/notes.txt`): a fresh,
+checksum-verified copy of the release on their own profile, Versus CPU, over Bluetooth again. A passive read of the
+pad's raw HID node during play counted 425 input reports in 3 s, so this time the pad was streaming normally. The
+creator's report: "The controller works fine." This is the creator's observation in play; no automation ran, so there
+is no per-button log of that session.
 
 ## Candidate `4cee9c1` (2026-11-07, creator playtest round; PR #1)
 

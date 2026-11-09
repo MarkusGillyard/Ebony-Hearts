@@ -82,10 +82,10 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 - **Observed by the implementer** (screenshots and footage): every new move on both fighters, both throws, the new
   character art in the chapel and in neutral light, before and after; before/after recordings of the art and jump
   scripts against the previous release, with phone copies.
-- **Not physically tested:** no human played this candidate with a real controller. A Bluetooth DualShock 4 was
-  recognised by the game, but its battery ran out and, after it came back, it sent no input over Bluetooth, so no
-  press reached the game; pads were otherwise simulated. A wired (USB) connection is the next thing to try.
-- **Not independently reviewed** and **not accepted by the creator** yet.
+- **Physical controller:** the creator played the candidate with a Bluetooth DualShock 4 on 2026-11-09 and reports
+  "The controller works fine" (their observation in play; no per-button log). Two earlier attempts logged no press:
+  the pad's battery ran out, then its Bluetooth link went silent.
+- **Not independently reviewed** and **not accepted by the creator** yet; the creator's playtest feedback is not in.
 - **Not verified:** hardware other than the test machine. One of three native-resolution captures of the candidate
   had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur.
 

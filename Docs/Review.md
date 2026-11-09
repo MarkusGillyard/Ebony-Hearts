@@ -70,9 +70,9 @@ candidate, not to this one.
 
 - Owner playtest of the new mechanics, art and feel (checklist in [Status](Status.md)).
 - Independent review of this candidate.
-- Physical controllers were simulated (virtual Xbox and DualShock 4 pads), not held. A Bluetooth DualShock 4 was
-  recognised by the candidate but sent no input over Bluetooth in two attempts (battery, then a silent link), so no
-  press was logged (Validation, "Physical DualShock 4").
+- Controllers: automated checks used simulated Xbox and DualShock 4 pads. The creator then played the candidate with
+  a Bluetooth DualShock 4 and reports it works (no per-button log; two earlier attempts logged no press because
+  the pad sent nothing; Validation, "Physical DualShock 4").
 - Frame times at the native 3440 × 1440 match the previous release, except one 0.4 s burst of slow frames (worst
   32.8 ms) in one of three candidate captures, cause not found, not repeated (Validation, "Frame times").
 - Before/after footage of the art and jump scripts against release `309c87c`, with phone copies, is listed in
