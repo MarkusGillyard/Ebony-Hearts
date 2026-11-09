@@ -23,14 +23,14 @@ DISPOSITIONS = {
     "A_Wren_DB": "Back roll: the leg swings over (42 cm/f on one frame). Keyed; kept.",
     "A_Ashka_H": "Body roundhouse (captured): the kicking foot's toes flick on two frames after contact (35 cm/f), smoothed by the transition into recovery in play. Minor; kept.",
     "A_Wren_JH": "Flying kick: the extended foot is 3.7 cm below the clip's floor on frame 20; the game draws jump attacks lifted by the jump height, and the attack ends on landing, so it is above the floor in play. Kept.",
-    "A_Wren_U": "New (2026-11-08): keyed rising uppercut. One 21 cm forearm step at the start of the rise (frame 5) stays as the drive begins.",
-    "A_Ashka_U": "New (2026-11-08): keyed rising elbow. Rises over frames 5-9; the elbow point peaks near 40 cm/f at the strike.",
+    "A_Wren_U": "New (2026-11-08): keyed rising uppercut. Since 2026-11-09 it loads from the crouching guard with an eased wind-up (the 21 cm forearm step at frame 5 is gone); the lead forearm peaks near 33 cm/f as the fist rises.",
+    "A_Ashka_U": "New (2026-11-08): keyed rising elbow. Rises over frames 5-9; the elbow point peaks near 30-40 cm/f at the strike.",
     "A_Ashka_BH": "New (2026-11-09): keyed spinning elbow (sok klap). Through the turn the elbow point leads at about 36 cm/f "
                   "into contact while the folded fist and the shoulder stay near the spin axis, which trips the flip test; frames "
                   "11-16 checked: the forearm stays folded and the arm's plane does not flip.",
     "A_Wren_Victim_AshkaThrowC": "New (2026-11-08): keyed clinch-trip fall. Arms follow the torso while falling (pelvis-relative); the left forearm's 21 cm step on frame 17 (the trip taking the legs) trips the flip test; fastest joint is the head landing (33 cm/f, frame 47).",
 }
-HOLDS = {"Crouch", "CrouchGuard", "KnockdownLie", "KnockdownLieRev", "JL", "CL", "BS", "ThrowF", "ThrowB", "U"}
+HOLDS = {"Guard", "Crouch", "CrouchGuard", "KnockdownLie", "KnockdownLieRev", "JL", "CL", "BS", "ThrowF", "ThrowB", "U"}
 
 
 def runtime_use(char, key, victim_dir):

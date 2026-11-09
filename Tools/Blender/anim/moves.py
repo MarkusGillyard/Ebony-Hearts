@@ -22,17 +22,36 @@ def _stance(name):
 WREN = _stance("wren")
 ASHKA = _stance("ashka")
 
-# Each fighter's crouch (see crouch_pose): pelvis drop, hips and chest angles (yaw, pitch, roll), guard hands open and
-# tight (the crouching guard), elbow and knee aims, rear heel lift.
+# Each fighter's crouch (see crouch_pose): pelvis drop, hips and chest angles (yaw, pitch, roll), the guard open and
+# tight (the crouching guard) as wrist offsets from the head joint (forward, left, up; see Rig.apply, hand_*_head),
+# elbow and knee aims, rear heel lift. Until 2026-11-09 the hands were plain character-space points: the crouch carries
+# the head 43-47 cm forward, so they ended 12-24 cm behind and above it, the forearms crossed over the head.
 WREN_CROUCH = {
-    "pelvis": (0.02, 0.0, -0.46), "pelvis_rot": (-30, 24, 0), "chest": (-6, 26, 0), "head": (0, -8, 0),
-    "hands": ((0.46, 0.06, 1.02), (0.24, -0.14, 1.05)), "hands_tight": ((0.30, 0.10, 1.07), (0.24, -0.08, 1.08)),
-    "elbow_l": (0.3, 0.2, -0.9), "elbow_r": (0.3, -0.1, -0.9), "knee_l": (0.8, 0.25, 0.0), "knee_r": (0.6, -0.5, 0.0), "ball_r": 45,
+    "pelvis": (0.0, 0.0, -0.47), "pelvis_rot": (-28, 14, 0), "chest": (-4, 26, 0), "head": (0, 6, 0),
+    "hands": ((0.30, 0.06, -0.16), (0.17, -0.08, -0.12)), "hands_tight": ((0.16, 0.07, -0.03), (0.12, -0.08, -0.02)),
+    "elbow_l": (0.3, -0.12, -0.95), "elbow_r": (0.3, 0.12, -0.95), "knee_l": (0.9, 0.25, 0.0), "knee_r": (0.8, -0.25, 0.1), "ball_r": 45,
 }
 ASHKA_CROUCH = {
-    "pelvis": (0.0, 0.0, -0.47), "pelvis_rot": (-14, 22, 0), "chest": (2, 30, 0), "head": (0, -4, 0),
-    "hands": ((0.34, 0.07, 0.98), (0.28, -0.10, 0.99)), "hands_tight": ((0.26, 0.09, 1.01), (0.24, -0.06, 1.02)),
-    "elbow_l": (0.3, 0.35, -0.9), "elbow_r": (0.3, -0.35, -0.9), "knee_l": (0.8, 0.2, 0.0), "knee_r": (0.6, -0.45, 0.0), "ball_r": 40, "ball_l": 10,
+    "pelvis": (0.0, 0.0, -0.49), "pelvis_rot": (-12, 12, 0), "chest": (2, 30, 0), "head": (0, 6, 0),
+    "hands": ((0.28, 0.06, -0.14), (0.17, -0.08, -0.10)), "hands_tight": ((0.16, 0.07, -0.04), (0.13, -0.08, -0.03)),
+    "elbow_l": (0.4, -0.1, -0.9), "elbow_r": (0.4, 0.1, -0.9), "knee_l": (0.9, 0.2, 0.0), "knee_r": (0.8, -0.25, 0.1), "ball_r": 45, "ball_l": 10,
+}
+# Each fighter's standing guard (see guard): the stance a little lower, chest and head pitched forward (degrees added
+# to the stance's), the shoulders up a little, both wrists as offsets from the head joint so the gloves sit in front of
+# the face with the forearms upright, and the elbows aimed down and in. Wren holds a compact MMA shell (lower,
+# hunched, gloves at the temples, elbows on the ribs); Ashka a taller Muay Thai high guard (upright, gloves at the
+# brow, elbows forward over the body). Until 2026-11-09 the guard put the wrists 17-20 cm forward of the root at
+# 1.52 m, where the leaning stance already has the head: the hands wrapped over the head and the outward elbow aims
+# flared the elbows to shoulder height.
+WREN_GUARD = {
+    "pelvis": (-0.01, 0.0, -0.03), "chest": (0, 3, 0), "head": (0, 5, 0), "clav": 4,
+    "hand_l": (0.16, 0.07, -0.03), "hand_r": (0.12, -0.08, -0.02),
+    "elbow_l": (0.25, -0.12, -0.95), "elbow_r": (0.25, 0.12, -0.95),
+}
+ASHKA_GUARD = {
+    "pelvis": (0.0, 0.0, -0.015), "chest": (0, 3, 0), "head": (0, 5, 0), "clav": 3,
+    "hand_l": (0.17, 0.07, -0.04), "hand_r": (0.13, -0.08, -0.03),
+    "elbow_l": (0.45, -0.22, -0.86), "elbow_r": (0.45, 0.22, -0.86),
 }
 
 
@@ -97,18 +116,32 @@ def walk(s, frames, stride, forward, speed_cm):
     return keys, frames + 1, travel, True
 
 
-def guard(s, high):
-    g = s(pelvis=(s["pelvis"][0] - 0.02, 0, s["pelvis"][2] - 0.04), chest=(s["chest"][0], s["chest"][1] + 10, s["chest"][2]), head=(0, 12, 0),
-          hand_l=high[0], hand_r=high[1], elbow_l=(0.35, 0.12, -0.5), elbow_r=(0.35, -0.12, -0.5), clav_l=(0, 0, 8), clav_r=(0, 0, -8))
-    breathe = g(pelvis=(g["pelvis"][0], 0, g["pelvis"][2] - 0.015), chest=(g["chest"][0] - 2, g["chest"][1] + 2, 0))
-    return [(1, g, "smooth"), (21, breathe, "smooth"), (41, g, "smooth")], 41, None, True
+def guard_pose(s, g):
+    px, py, pz = g["pelvis"]
+    return s(pelvis=(s["pelvis"][0] + px, s["pelvis"][1] + py, s["pelvis"][2] + pz),
+             chest=tuple(a + b for a, b in zip(s["chest"], g["chest"])), head=tuple(a + b for a, b in zip(s["head"], g["head"])),
+             hand_l_head=g["hand_l"], hand_r_head=g["hand_r"], elbow_l=g["elbow_l"], elbow_r=g["elbow_r"],
+             clav_l=(0, 0, g["clav"]), clav_r=(0, 0, -g["clav"]), fist=1.0)
 
 
-def block_hit(s, high):
-    g = guard(s, high)[0][0][1]
-    hit = g(pelvis=(g["pelvis"][0] - 0.07, 0, g["pelvis"][2] - 0.02), chest=(g["chest"][0], g["chest"][1] - 8, 0), head=(0, 2, 0),
-            hand_l=(high[0][0] - 0.06, high[0][1], high[0][2] + 0.02), hand_r=(high[1][0] - 0.06, high[1][1], high[1][2] + 0.02))
-    return [(1, g, "smooth"), (3, hit, "snap"), (9, hit(pelvis=(g["pelvis"][0] - 0.04, 0, g["pelvis"][2])), "smooth"), (18, g, "smooth")], 18, None, False
+def guard(s, g):
+    """Standing block (held): the fighter's guard (WREN_GUARD, ASHKA_GUARD) with a slow breath. Its feet are the
+    stance's, so going into and out of it from the stance moves the arms and the upper body only."""
+    gp = guard_pose(s, g)
+    p = gp["pelvis"]
+    breathe = gp(pelvis=(p[0], p[1], p[2] - 0.012), chest=(gp["chest"][0], gp["chest"][1] + 1.5, gp["chest"][2]))
+    return [(1, gp, "smooth"), (31, breathe, "smooth"), (61, gp, "smooth")], 61, None, True
+
+
+def block_hit(s, g):
+    """A blocked hit (blockstun): the guard takes it, the hips and chest give a little and the gloves are pushed back
+    toward the face, then it settles; from frame 18 the guard holds until blockstun ends."""
+    gp = guard_pose(s, g)
+    p, ch, hd = gp["pelvis"], gp["chest"], gp["head"]
+    hl, hr = g["hand_l"], g["hand_r"]
+    hit = gp(pelvis=(p[0] - 0.05, p[1], p[2] - 0.01), chest=(ch[0], ch[1] - 6, ch[2]), head=(hd[0], hd[1] - 3, hd[2]),
+             hand_l_head=(hl[0] - 0.04, hl[1], hl[2] + 0.01), hand_r_head=(hr[0] - 0.03, hr[1], hr[2] + 0.01))
+    return [(1, gp, "smooth"), (3, hit, "snap"), (9, hit(pelvis=(p[0] - 0.03, p[1], p[2])), "smooth"), (18, gp, "smooth")], 18, None, False
 
 
 def hit_light(s):
@@ -279,7 +312,7 @@ def crouch_pose(s, look, guard_tight=False):
     w = world_feet(s)
     hl, hr = look["hands_tight"] if guard_tight else look["hands"]
     return w(pelvis=look["pelvis"], pelvis_rot=look["pelvis_rot"], chest=look["chest"], head=look["head"], gaze=0.9,
-             hand_l=hl, hand_r=hr, elbow_l=look["elbow_l"], elbow_r=look["elbow_r"], knee_l=look["knee_l"], knee_r=look["knee_r"],
+             hand_l_head=hl, hand_r_head=hr, elbow_l=look["elbow_l"], elbow_r=look["elbow_r"], knee_l=look["knee_l"], knee_r=look["knee_r"],
              ball_r=look["ball_r"], ball_l=look.get("ball_l", 0), fist=1.0)
 
 
@@ -294,7 +327,7 @@ def crouch_block_hit(s, look):
     g = crouch_pose(s, look, True)
     (hl, hr), p = look["hands_tight"], g["pelvis"]
     hit = g(pelvis=(p[0] - 0.06, p[1], p[2] - 0.02), chest=(g["chest"][0], g["chest"][1] - 7, 0), head=(g["head"][0], g["head"][1] - 6, 0),
-            hand_l=(hl[0] - 0.06, hl[1], hl[2] + 0.02), hand_r=(hr[0] - 0.06, hr[1], hr[2] + 0.02))
+            hand_l_head=(hl[0] - 0.04, hl[1], hl[2] + 0.01), hand_r_head=(hr[0] - 0.03, hr[1], hr[2] + 0.01))
     return [(1, g, "smooth"), (3, hit, "snap"), (9, hit(pelvis=(p[0] - 0.03, p[1], p[2])), "smooth"), (18, g, "smooth")], 18, None, False
 
 
@@ -305,7 +338,7 @@ def crouch_hit(s, look):
     p, ch = c["pelvis"], c["chest"]
     (hl, hr) = look["hands"]
     rec = c(pelvis=(p[0] - 0.09, p[1], p[2] + 0.03), chest=(ch[0] - 14, ch[1] - 22, 6), head=(12, -26, 6),
-            hand_l=(hl[0] - 0.14, hl[1] + 0.08, hl[2] - 0.10), hand_r=(hr[0] - 0.10, hr[1] - 0.04, hr[2] - 0.06), fist=0.6)
+            hand_l_head=(hl[0] - 0.12, hl[1] + 0.08, hl[2] - 0.10), hand_r_head=(hr[0] - 0.08, hr[1] - 0.04, hr[2] - 0.06), fist=0.6)
     return [(1, c, "smooth"), (3, rec, "snap"), (9, rec(head=(6, -12, 3), chest=(ch[0] - 6, ch[1] - 10, 3)), "smooth"), (22, c, "smooth")], 22, None, False
 
 
@@ -337,9 +370,8 @@ def wren_moves(data):
     out["Idle"] = idle_bounce(s, 72, 0.025, 3)
     out["WalkF"] = walk(s, 16, 0.448, True, data["walkForward"])
     out["WalkB"] = walk(s, 16, 0.384, False, data["walkBack"])
-    high = ((0.20, 0.11, 1.52), (0.17, -0.07, 1.53))
-    out["Guard"] = guard(s, high)
-    out["BlockHit"] = block_hit(s, high)
+    out["Guard"] = guard(s, WREN_GUARD)
+    out["BlockHit"] = block_hit(s, WREN_GUARD)
     out["HitLight"] = hit_light(s)
     out["HitHeavy"] = hit_heavy(s)
     out["Knockdown"] = knockdown(s)
@@ -373,7 +405,7 @@ def wren_moves(data):
     tu = sum((seg["frames"][1] - seg["frames"][0] + 1) * seg["vx"] for seg in m["U"]["travel"]) / 100.0
     fl_in = (s["foot_l"][0] + tu, s["foot_l"][1], 0.0)
     loadu = c(pelvis=(0.0, 0, WREN_CROUCH["pelvis"][2] - 0.02), pelvis_rot=(-48, 24, 0), chest=(-10, 28, 0), hand_r=(0.18, -0.22, 0.86),
-              elbow_r=(0.1, -0.8, -0.6), hand_l=(0.32, 0.08, 1.04))
+              elbow_r=(0.1, -0.8, -0.6), hand_l_head=(0.20, 0.06, -0.06), hand_r_head=None)
     drive = w(pelvis=(0.08, 0, -0.10), pelvis_rot=(18, 8, 0), chest=(16, 0, 0), head=(0, 4, 0), hand_r=(0.55, -0.02, 1.48), elbow_r=(0.6, -0.2, -1.0),
               clav_r=(12, 0, 10), hand_l=(0.24, 0.10, 1.40), elbow_l=(0.4, 0.3, -0.6), ball_r=50, foot_r_rot=(-10, 0, 0), foot_l_world=fl_in, fist=1.0)
     # The follow-through keeps the bend (fist above the eyes, elbow under it) and the rear foot steps up behind it.
@@ -382,7 +414,9 @@ def wren_moves(data):
     back = w(pelvis=(0.04, 0, -0.10), pelvis_rot=(-15, 6, 0), chest=(0, 8, 0), hand_r=(0.28, -0.12, 1.36), elbow_r=(0.3, -0.2, -0.9), foot_l_world=fl_in, ball_r=20,
              foot_r_world=(s["foot_r"][0] + tu, s["foot_r"][1], 0.0))
     # The rise accelerates into contact ("in"), so the body is still low through the crouching hurtbox's frames.
-    out["U"] = ([(1, c, "smooth"), (4, loadu, "in"), (10, drive, "in"), (13, finish, "out"), (17, finish, "hold"), (30, back, "smooth"),
+    # The load eases both ways: from the crouching guard the rear fist travels further to the hip than it did from the
+    # old open crouch, and an "in" load put a 25 cm hand step on frame 5.
+    out["U"] = ([(1, c, "smooth"), (4, loadu, "smooth"), (10, drive, "in"), (13, finish, "out"), (17, finish, "hold"), (30, back, "smooth"),
                  (52, w(foot_l_world=fl_in, foot_r_world=(s["foot_r"][0] + tu, s["foot_r"][1], 0.0)), "smooth")], 52, m["U"]["travel"], False)
 
     # Light 1: jab. The lead foot steps in with the 6 cm of travel; contact on frame 5.
@@ -507,9 +541,8 @@ def ashka_moves(data):
     out["Idle"] = idle_bounce(s, 96, 0.015, 5)
     out["WalkF"] = walk(s, 18, 0.468, True, data["walkForward"])
     out["WalkB"] = walk(s, 18, 0.414, False, data["walkBack"])
-    high = ((0.24, 0.10, 1.53), (0.20, -0.06, 1.53))
-    out["Guard"] = guard(s, high)
-    out["BlockHit"] = block_hit(s, high)
+    out["Guard"] = guard(s, ASHKA_GUARD)
+    out["BlockHit"] = block_hit(s, ASHKA_GUARD)
     out["HitLight"] = hit_light(s)
     out["HitHeavy"] = hit_heavy(s)
     out["Knockdown"] = knockdown(s)
@@ -541,7 +574,7 @@ def ashka_moves(data):
     # through the legs and turn the rear hip over: the right elbow rises straight up the centre line past the
     # opponent's chin to above her own head, the lead forearm covering her face; then the arm comes down into the guard.
     load = c(pelvis=(0.02, 0, ASHKA_CROUCH["pelvis"][2] - 0.03), pelvis_rot=(-40, 24, 0), chest=(-6, 32, 0), hand_r=(0.30, -0.20, 0.78),
-             elbow_r=(0.1, -0.8, -0.5), hand_l=(0.30, 0.08, 1.00))
+             elbow_r=(0.1, -0.8, -0.5), hand_l_head=(0.20, 0.06, -0.06), hand_r_head=None)
     # The forearm stays folded, fist by the ear: the elbow's point is the weapon, rising up the centre line.
     rise = w(pelvis=(0.10, 0, 0.0), pelvis_rot=(15, -2, 0), chest=(22, 4, 0), head=(0, 6, 0), hand_r=(0.28, -0.02, 1.52),
              elbow_r=(0.7, -0.5, 0.6), clav_r=(0, 0, 24), hand_l=(0.30, 0.10, 1.42), elbow_l=(0.5, 0.3, -0.5), ball_r=45, foot_r_rot=(-15, 0, 0),

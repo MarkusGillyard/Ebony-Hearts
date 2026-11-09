@@ -157,7 +157,8 @@ def sample(keys, frame):
 def _control(p, limb):
     """Which control a hand or foot is under in a pose, in the rig's order of precedence."""
     side = limb[-1]
-    kinds = [f"{limb}_rel", f"{limb}_abs"] + ([f"foot_{side}_world"] if limb.startswith("foot") else []) + [limb]
+    kinds = [f"{limb}_rel", f"{limb}_abs"] + ([f"foot_{side}_world"] if limb.startswith("foot") else []) + \
+        ([f"hand_{side}_head"] if limb.startswith("hand") else []) + [limb]
     return next((k for k in kinds if p.get(k) is not None), None)
 
 
@@ -299,10 +300,15 @@ class Rig:
         # Spine shares the chest rotation; neck and head share the head rotation (relative to the chest).
         chest = rot(*p["chest"])
         w_prev = w_pel
+        # Posed joint positions down the spine to the head (each joint is its parent's posed position plus the rest
+        # offset turned by the parent's rotation), for hands placed from the head (hand_*_head).
+        joint, prev_name = pel_pos, "pelvis"
         for name, share in SPINE:
             part = Quaternion().slerp(chest, share)
             w = w_prev @ part
             self.set_world_rot(name, w_prev, w)
+            joint = joint + w_prev @ (self.head(name) - self.head(prev_name))
+            prev_name = name
             w_prev = w
         w_chest = w_prev
         head_q = rot(*p["head"])
@@ -314,7 +320,10 @@ class Rig:
         for name, share in NECK:
             w = w_prev2 @ Quaternion().slerp(head_q, share)
             self.set_world_rot(name, w_prev2, w)
+            joint = joint + w_prev2 @ (self.head(name) - self.head(prev_name))
+            prev_name = name
             w_prev2 = w
+        head_pos = joint
         for side in ("l", "r"):
             self.set_world_rot(f"clavicle_{side}", w_chest, w_chest @ rot(*p[f"clav_{side}"]))
         # Arms: hand targets are character-space positions, spun with the body.
@@ -325,6 +334,10 @@ class Rig:
         def hand_at(kind, vec):
             if kind.endswith("_rel"):
                 return rel(vec)
+            if kind.endswith("_head"):
+                # Offset from the head joint (base of the skull) in character space: guards stay in front of the face
+                # wherever the stance or the crouch carries the head.
+                return head_pos + spin @ V(*S(vec))
             if kind.endswith("_abs"):
                 return V(*S(vec))
             return place(V(*S(vec)))
