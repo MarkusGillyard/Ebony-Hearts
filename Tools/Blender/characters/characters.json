@@ -482,7 +482,9 @@
     "waistcoat_hem_below_waist": 0.03,
     "cravat_width": 0.1,
     "cravat_length": 0.115,
-    "boot_shaft_above_ankle": 0.1
+    "boot_shaft_above_ankle": 0.1,
+    "tail_thigh_follow": 0.7,
+    "tail_thigh_reach": 0.25
    },
    "face": {
     "contour": 0.05,

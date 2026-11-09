@@ -591,6 +591,32 @@ def _skirt(coat, loop, rig, cfg, leg_objs, lining_part=None):
         Wc_ = R.chain_weights(s_m, bounds, chains[key]["names"])
         for nm, w in Wc_.items():
             Wall[nm] = Wall.get(nm, 0) + w * Wpanel[:, pi_] * k_hand
+    # The cloth in front of and beside each thigh partly follows it, most in the upper half of the tails and less toward
+    # the hem (which keeps their swing), so a thigh raised in the crouch, a knee or a kick carries the cloth over itself.
+    # Hung from the pelvis and their own bones only, the front tails let the crouching thighs through by up to 7 cm.
+    follow_max = o.get("tail_thigh_follow", 0.0)
+    if follow_max > 0.0:
+        Vv = np.asarray(verts, dtype=float)
+        front = M.smoothstep(-0.35, 0.25, np.cos(A))
+        prof = M.smoothstep(0.02, 0.12, s_m) * (1.0 - 0.75 * M.smoothstep(0.3, 1.0, s_m / max(L, 1e-6)))
+        follow = {}
+        for s_ in "lr":
+            bone = rig.data.bones["thigh_" + s_]
+            hd, tl = np.array(bone.head_local), np.array(bone.tail_local)
+            seg_len = float(np.linalg.norm(tl - hd))
+            dv = (tl - hd) / seg_len
+            tt = np.clip((Vv - hd) @ dv / seg_len, 0.0, 1.0)
+            lat = np.linalg.norm((Vv - (hd + np.outer(tt * seg_len, dv)))[:, :2], axis=1)
+            follow["thigh_" + s_] = follow_max * np.exp(-(lat / o.get("tail_thigh_reach", 0.12)) ** 2) * front * prof
+        tot = follow["thigh_l"] + follow["thigh_r"]
+        cap = np.where(tot > follow_max, follow_max / np.maximum(tot, 1e-9), 1.0)
+        for k in follow:
+            follow[k] = follow[k] * cap
+        tot = follow["thigh_l"] + follow["thigh_r"]
+        for k in list(Wall):
+            Wall[k] = Wall[k] * (1.0 - tot)
+        for k, w in follow.items():
+            Wall[k] = Wall.get(k, 0) + w
     M.set_weights(ob, M.normalize_limit(Wall, 8))
     G.set_part_attr(ob, "part", COAT_SKIRT)
     sk = np.zeros(n, np.float32)
