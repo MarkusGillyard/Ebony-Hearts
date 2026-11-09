@@ -671,6 +671,8 @@ void AEHGameDirector::UpdatePresentation(float DeltaSeconds, float Alpha)
 			Vfx->AuraMote(MoteAt);
 		}
 		// Lamplighter Flame accents ride the striking limb around the active frames of flame moves.
+		float FlameLevel = 0.0f;
+		FVector FlameAt = FVector::ZeroVector;
 		if (F.state == eh::FState::Attack)
 		{
 			const eh::MoveDef& M = Match->Character(i).moves[static_cast<size_t>(F.move)];
@@ -679,9 +681,16 @@ void AEHGameDirector::UpdatePresentation(float DeltaSeconds, float Alpha)
 			if (MP && MP->bFlame && !M.hits.empty())
 			{
 				const int32 First = M.hits.front().frames.first;
+				const FVector Fallback = SimToWorld(F.x + F.facing * 60 * eh::kUnitsPerCm, 120 * eh::kUnitsPerCm);
+				if (F.moveFrame >= First - 6 && F.moveFrame <= M.LastActiveFrame() + 4)
+				{
+					// the fire's light reaches into the coat: between the hips and the burning limb
+					FlameLevel = M.id == "BS" ? 1.6f : 1.0f;
+					const FVector Hips = Visual[i]->BoneLocation(TEXT("pelvis"), SimToWorld(F.x, 95 * eh::kUnitsPerCm));
+					FlameAt = FMath::Lerp(Hips, Visual[i]->BoneLocation(MP->FxBone, Fallback), 0.4f);
+				}
 				if (F.moveFrame >= First - 6 && F.moveFrame <= M.LastActiveFrame() + 4 && FMath::Fmod(RenderTime, 0.05) < DeltaSeconds)
 				{
-					const FVector Fallback = SimToWorld(F.x + F.facing * 60 * eh::kUnitsPerCm, 120 * eh::kUnitsPerCm);
 					Vfx->Flame(Visual[i]->BoneLocation(MP->FxBone, Fallback), M.id == "BS" ? 1.6f : 0.8f);
 				}
 				if (M.id == "BS" && F.moveFrame == First && F.hitstop == 0)
@@ -690,6 +699,7 @@ void AEHGameDirector::UpdatePresentation(float DeltaSeconds, float Alpha)
 				}
 			}
 		}
+		Visual[i]->SetFlame(FlameLevel, FlameAt);
 		// Water underfoot: ripples while walking, a splash when a fighter hits the floor.
 		if (F.state == eh::FState::Neutral && F.walk != 0)
 		{

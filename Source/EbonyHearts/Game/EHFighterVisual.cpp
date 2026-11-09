@@ -1,6 +1,7 @@
 #include "EHFighterVisual.h"
 
 #include "Animation/AnimSequence.h"
+#include "Components/PointLightComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EHAnimInstance.h"
@@ -201,6 +202,18 @@ AEHFighterVisual::AEHFighterVisual()
 	}
 	Aura->SetUsingAbsoluteLocation(true);
 	Aura->SetUsingAbsoluteRotation(true);
+	// Ashka's Lamplighter Flame lights the inside of her coat while it burns (character sheet v2): crimson, soft,
+	// shadowless and dark (hidden) the rest of the time.
+	FlameLight = CreateDefaultSubobject<UPointLightComponent>(TEXT("FlameLight"));
+	FlameLight->SetupAttachment(Root);
+	FlameLight->SetUsingAbsoluteLocation(true);
+	FlameLight->IntensityUnits = ELightUnits::Candelas;
+	FlameLight->Intensity = 0.0f;
+	FlameLight->LightColor = FLinearColor(1.0f, 0.09f, 0.05f).ToFColor(true);
+	FlameLight->AttenuationRadius = 120.0f;
+	FlameLight->SourceRadius = 10.0f;
+	FlameLight->CastShadows = false;
+	FlameLight->SetVisibility(false);
 }
 
 void AEHFighterVisual::Setup(const FEHCharacterPresentation& InPresentation, int32 InPlayer, bool bMirrorMatch)
@@ -309,6 +322,9 @@ void AEHFighterVisual::Setup(const FEHCharacterPresentation& InPresentation, int
 	bLastWasAttack = false;
 	CurrentInstance = -1;
 	AuraIntensity = 0.0f;
+	FlameIntensity = 0.0f;
+	FlameShown = 0.0f;
+	FlameLight->SetVisibility(false);
 }
 
 UAnimSequence* AEHFighterVisual::FindAnim(FName Key, bool bOptional)
@@ -407,6 +423,7 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	{
 		UpdateGraybox(Match, DeltaSeconds);
 		UpdateAura(Time);
+		UpdateFlame(DeltaSeconds, Time);
 		return;
 	}
 
@@ -488,6 +505,7 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 		Inst->SetSample(Cur, CurSample);
 	}
 	UpdateAura(Time);
+	UpdateFlame(DeltaSeconds, Time);
 }
 
 void AEHFighterVisual::UpdateGraybox(const eh::Match& Match, float DeltaSeconds)
@@ -549,6 +567,35 @@ bool AEHFighterVisual::RandomAuraPoint(FVector& Out) const
 	const FName Bone = Presentation.AuraBones[FMath::RandRange(0, Presentation.AuraBones.Num() - 1)];
 	Out = BoneLocation(Bone, GetActorLocation() + FVector(0, 0, 100));
 	return true;
+}
+
+void AEHFighterVisual::UpdateFlame(float DeltaSeconds, double Time)
+{
+	// Character sheet v2: when Ashka channels the Lamplighter Flame, the fire on her limbs briefly lights the
+	// inside of her coat, so the crimson lining glows where the tails open and the embroidery and silver catch
+	// it. The flare comes up in a few frames and fades over about a tenth of a second; a soft flicker keeps it
+	// alive. Presentation only.
+	constexpr float PeakCandelas = 0.6f;
+	const float Target = bGraybox ? 0.0f : FMath::Max(0.0f, FlameIntensity);
+	const float Rate = Target > FlameShown ? 40.0f : 12.0f;
+	FlameShown += (Target - FlameShown) * (1.0f - FMath::Exp(-Rate * FMath::Max(DeltaSeconds, 0.0f)));
+	if (FlameShown < 0.02f)
+	{
+		FlameShown = Target > 0.0f ? FlameShown : 0.0f;
+		if (FlameLight->IsVisible())
+		{
+			FlameLight->SetVisibility(false);
+		}
+		return;
+	}
+	const float T = static_cast<float>(Time);
+	const float Flicker = 0.84f + 0.10f * FMath::Sin(T * 37.0f) + 0.06f * FMath::Sin(T * 91.0f + 1.3f);
+	FlameLight->SetWorldLocation(FlameAt);
+	FlameLight->SetIntensity(PeakCandelas * FlameShown * Flicker);
+	if (!FlameLight->IsVisible())
+	{
+		FlameLight->SetVisibility(true);
+	}
 }
 
 void AEHFighterVisual::UpdateAura(double Time)

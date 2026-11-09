@@ -12,6 +12,7 @@
 class UAnimSequence;
 class UEHAnimInstance;
 class UMaterialInstanceDynamic;
+class UPointLightComponent;
 class UProceduralMeshComponent;
 class USkeletalMeshComponent;
 class UStaticMeshComponent;
@@ -47,7 +48,8 @@ public:
 	void SetAuraIntensity(float Intensity) { AuraIntensity = Intensity; }
 	// A point on the body for an aura mote to stream off (one of the aura bones, at random); false without an aura.
 	bool RandomAuraPoint(FVector& Out) const;
-	void SetFlameIntensity(float Intensity) { FlameIntensity = Intensity; }
+	// Lamplighter Flame: while a flame move burns, a crimson light at At (world) lights the coat's lining and silver.
+	void SetFlame(float Intensity, const FVector& At) { FlameIntensity = Intensity; FlameAt = At; }
 	USkeletalMeshComponent* GetMesh() const { return Mesh; }
 
 	UPROPERTY(VisibleAnywhere)
@@ -64,6 +66,8 @@ public:
 	TObjectPtr<UStaticMeshComponent> Marker;
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UProceduralMeshComponent> Aura;
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UPointLightComponent> FlameLight;
 
 private:
 	UPROPERTY()
@@ -95,6 +99,8 @@ private:
 	double LoopTime = 0.0;
 	float AuraIntensity = 0.0f;
 	float FlameIntensity = 0.0f;
+	FVector FlameAt = FVector::ZeroVector;
+	float FlameShown = 0.0f;       // eased level actually lit
 	// Lightning arcs live a few frames each, anchored to two nearby bones so they ride the body as it moves.
 	struct FAuraArc
 	{
@@ -116,4 +122,5 @@ private:
 	UAnimSequence* FindAnim(FName Key, bool bOptional = false);
 	void UpdateGraybox(const eh::Match& Match, float DeltaSeconds);
 	void UpdateAura(double Time);
+	void UpdateFlame(float DeltaSeconds, double Time);
 };
