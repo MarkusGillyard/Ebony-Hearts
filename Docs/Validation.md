@@ -2,10 +2,116 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-4cee9c1/<run>`, the
-previous candidate's under `evidence/rc-060a75f/<run>` and the original release's under `evidence/rc-f3ae5ab/<run>`.
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`, the
+previous candidates' under `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>` and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `4cee9c1` (2026-11-07, creator playtest round)
+## Current candidate `5d5c316` (2026-11-08, combat, animation and character pass)
+
+**Result: PASS on every objective check run; ready for independent review and the creator's playtest.** This is the
+implementer's own verification on branch `dev/combat-pass-1108`, not an independent review; nobody has played this
+candidate yet, and no physical controller was used. Runs that need the test machine's monitor and were not done in
+this session are listed at the end of this section.
+
+### Build identity
+
+| Item | Value |
+|---|---|
+| Source | `5d5c316` on `dev/combat-pass-1108`: eleven commits on `ea3ddc6` (the PR #1 head, also the merge base with `release/first-slice`). Packaged from a working tree with no uncommitted code, data or content. Later commits change documentation only. The commits were rebuilt once before they were first pushed, only to drop attribution trailers from their messages; the trees are identical and the package was built from the same tree under its earlier id `6b65343` |
+| Release archive | `EbonyHearts-Slice-5d5c316.tar.gz`, 333 499 654 bytes, SHA-256 `25c7054055fa10a40d45443bef6b98c677e73b9e08c14b1a1b009f12b3534ef0` |
+| Content hash | `e5a604c4fd07c1135fb598b8e6e40b4e44baa783788ef074d5ef0895d5a3d7c1` (SHA-256 over the pak files, in `VERSION.txt`) |
+| Same package, staged first | `EbonyHearts-Slice-6b65343.tar.gz` (SHA-256 `39f15dc14100e385588210f724a8b6d7f0392f01a7a76230ecc699cf256dff9d`): every file identical except `VERSION.txt` (the source id). The battery ran on that staging (`evidence/rc-6b65343`); the off-screen launch check and the soak ran on `5d5c316` (`evidence/rc-5d5c316`) |
+| Build | Unreal Engine 5.8.4, Shipping, Linux x86-64, Vulkan SM6 (package `pkg-73-combat1108b`). 857 packages cooked, 0 warnings, 0 errors |
+| Release check | Each staging extracted into a new folder whose path contains a space; all 21 files matched their `.files.sha256` list and each archive its `SHA256SUMS` line |
+| Test machine | FLOWBOX: AMD Ryzen 7 5700G, 32 GB RAM, NVIDIA GeForce RTX 2060 6 GB (driver 595.99.02), Linux Mint 22.3 (kernel 7.0.0-42), Cinnamon on X11; one Samsung 3440 × 1440 monitor on DisplayPort at 165 Hz (`evidence/rc-6b65343/environment.txt`) |
+
+### Results on the candidate
+
+Evidence: `evidence/rc-6b65343/battery/<run>` unless noted. A pass has exit 0, no `FAIL` or `WARN` line, and the
+script's own completion marker. The battery started from an empty game profile.
+
+| Suite | Result | Notes |
+|---|---|---|
+| Combat core | **PASS** | 52 cases, 1341 checks, 0 failures (output: `review-handoff-20261108/probes/core_tests_output_5d5c316.txt`) |
+| Packaging safety, move tables, move matrix | **PASS** | 10 tests; `move_tables.py` and `move_matrix.sh` regenerate `CombatContract.md` and `MoveMatrix.md` unchanged |
+| Smoke | **PASS** | No missing animations or sounds; `platform_check` ok. Repeated off-screen on the `5d5c316` staging (`evidence/rc-5d5c316/smoke-offscreen`) |
+| Controls | **PASS** | `bindings_selftest` 107 checks (Crouch and Throw defaults, a version-3 settings file migrated to format 4), `input_selftest` 43 checks (stick down crouches; up still wins over down), remap (26), persistence (17), Controls UI (6), video settings keep the audio settings (4) |
+| Journey | **PASS** | 25 checks across the menus, then Quit through the menu |
+| Lesson | **PASS** | `lesson_full.txt`: all 14 steps, "Lesson complete" (the anti-air step played by the Hard CPU on player 1's keyboard) |
+| Real X11 keyboard | **PASS** | Title, menu, fight, inputs, pause, quit (`xinput/x01`-`x06`) |
+| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts (every button the scenario pressed then: faces, shoulders, R2 / RT, D-pad left and right, stick, Options), menu-and-fight, disconnect and reconnect, remapping. L2 / LT (Throw) and D-pad down (Crouch) are checked by `input_selftest` through the input router; the scenario has been extended to press them too, but that version has not run yet: the game sees pads only with its window open, which needs the monitor |
+| Matrix | **PASS** | 12/12 complete matches (both fighters, both sides, mirrors, all CPU levels, rematch, local versus), 3 383 sounds, no missing assets; memory 1 509 MiB at the end (peak 1 527; previous candidate 1 492 / 1 510) |
+| Review scripts | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_playtest`, `review_combat`, `review_jump`, `review_art` |
+| Signature footage | **PASS** | Golden aura and crimson flame rendered |
+| Soak | **PASS** | On the `5d5c316` staging, rendering off-screen (`-RenderOffScreen`, so the test machine's monitor stayed free; audio on SDL's dummy driver): 58 minutes, 36 complete matches with rematches, mirrors, versus and pause, 12/12 settings save-and-reload round trips, menu transitions; 0 failures, warnings or stuck states; no missing assets; clean exit. Game memory 1 483 → 1 497 MiB (first and last tenth of the run, peak 1 501); VRAM at most 1 046 MiB including the desktop (`evidence/rc-5d5c316/soak-offscreen`) |
+| Start-ups | **PASS** | 20 starts in the battery, 2.2 s on average to the first automation line (at most 2.5 s), no failures |
+
+**Frame times** (1920 × 1080 windowed, 100% render scale, default quality, the monitor at 165 Hz; fight = 60 s of a
+Hard bot against the Hard CPU, which now crouches, throws and uppercuts; no video recording during these runs):
+
+| Run | Frames | Median | p99 | Max | Over 33 ms | GPU median | Previous candidate `4cee9c1` |
+|---|---|---|---|---|---|---|---|
+| Fight, V-Sync on | 3 602 | 16.67 ms | 16.74 | 16.96 | 0 | 6.0 ms | 16.66 / 16.78 / 17.09, GPU 7.4 |
+| Menu, V-Sync on | 1 201 | 16.67 | 16.73 | 16.79 | 0 | 6.6 | max 17.02 |
+| Fight, V-Sync off | 8 235 | 7.28 | 8.00 | 8.75 | 0 | 6.9 | (not run) |
+| Menu, V-Sync off | 2 719 | 7.34 | 8.46 | 9.22 | 0 | 7.1 | (not run) |
+| Training, both auras and none | 422-601 | 16.67 | 16.72-16.75 | 16.82 | 0 | 6.6-6.7 | |
+| First match from its start (cold) | 1 501 | 16.67 | 16.76 | 16.91 | 0 | 6.7 | 16.67 / 16.78 / 16.87 |
+
+VRAM peaked at 1 048 MiB including the desktop (1 071 for `4cee9c1`). The clock's dropped-tick counter reads 15-16
+in every capture, as it did on `4cee9c1`: it counts from launch and includes loading, not the measured windows. The
+new meshes have 16% (Wren) and 26% (Ashka) more triangles; at 1080p the GPU stays near 6-7 ms a frame.
+
+### Combat measurements
+
+- **Route traces** (`review-handoff-20261108/routes/route_traces_5d5c316.txt`): tick-by-tick, each replayed from a
+  fresh match to the same state hash. Light, Light, Throw lands as a three-hit combo for both fighters, and the
+  defender's escape presses through the window do nothing. A forward jump from 140 cm with Heavy at tick 26 hits deep
+  and the Light string links after landing. Down + Heavy anti-airs that jump-in from tick 1 to 23 (Wren) or 4 to 24
+  (Ashka). Each fighter's low is blocked by a crouching guard and hits a standing one. Re-jumping after a jump-in
+  against a crouching guard never makes a combo longer than one hit (every press tick 5-30, every direction).
+- **Uppercut KO** (`review-handoff-20261108/probes/uppercut_ko_output_5d5c316.txt`): with the opponent low on health, the
+  uppercut KOs on its first active frame for both fighters, mid-stage and at the wall; the round goes to the attacker
+  and the next round starts cleanly.
+- **CPU** (`Tests/Core`, informational lines): over 36 CPU matches, Normal knocks 56% of jump-ins out of the air and
+  Hard 62%; neutral-throw escapes: Easy 0 of 17, Normal 1 of 17, Hard 6 of 19; Hard beat Easy 4 of 4.
+- **A player who only jumps in** (last round's probe, unchanged, 24 matches per level): wins against Easy 24/24
+  (unchanged), Normal 6/24 (19/24 on `4cee9c1`), Hard 0/24 (5/24). Normal knocks 50% of those jump-ins out of the air,
+  Hard 66%. Mirrored, with the jumper on the right: Normal 4/24, Hard 0/24. Normal CPU against Hard wins 1/24.
+
+### Animation
+
+- **Clip audit:** all 155 exported clips measured (`Docs/AnimationAudit.md`, from
+  `evidence/combat1108/anim-audit/final/audit.csv`); 146 are clean, and the 9 that trip a threshold each have a
+  written disposition (fast spins and rolls, a captured toe flick, a jump kick below the clip floor that play lifts,
+  and the new uppercuts and clinch-trip fall).
+- **Source to import:** 30 clips (every new clip, the throws and their victims, idles, jumps and representative
+  strikes) sampled per frame in Blender from the exported FBX and in the Unreal editor from the imported assets: every
+  joint matches to 0.001 cm, with identical frame counts (`evidence/combat1108/cooked-compare/compare.txt`). This
+  checks the import, not the cook's compression; the footage below shows the runtime result.
+- **Footage at normal speed** (`evidence/combat1108/pkg73/review-combat`, 60 fps, the same package): crouch, low,
+  uppercut, both throws and combo throws, jump-ins, both fighters. Frame sheets of the takedown and the clinch trip
+  (`csheet_*.jpg`) show the level change, drive and fall, and the clinch, turn and sweep, with the thrower back in
+  stance and no ground control. A phone copy: `review-combat_phone.mp4`.
+
+### Character art
+
+Renders before and after (`evidence/art-1108`: turnarounds, faces, details, feet in nine poses, deformation poses,
+lineups at gameplay distance, in neutral and chapel light; `compare/` has 176 side-by-sides) and in-game shots
+against release `309c87c` (`evidence/combat1108/before-after/art/compare`). The rig is unchanged: every bone's
+name, parent and rest position is identical, so no clip had to change for the new meshes. Ashka's coat reads black
+in the chapel; under a bright neutral key its sheen reads charcoal.
+
+### Not run on this candidate
+
+These need the test machine's monitor and were left for a later session: the frame-time capture at the monitor's
+native borderless resolution (interrupted), a baseline capture of `309c87c` under the same conditions (an earlier one
+ran beside a Blender render and is not used), before/after recordings of the art and jump scripts, and the extended
+simulated-pad scenarios (L2 / LT and D-pad down; pads are read only while the game has a window). A task-local script
+runs the monitor-bound steps in order: `review-handoff-20261108/tools/after_battery.sh`. Also not
+re-run, because the code they cover did not change in this round: the display-mode changes, the monitor standby
+probe and the start-up loops (`060a75f`, below).
+
+## Candidate `4cee9c1` (2026-11-07, creator playtest round; PR #1)
 
 **Result: PASS on every objective check run.** This round answers the creator's playtest of `060a75f` and their later
 request to repurpose Grab's buttons (see [Review](Review.md)). This is the engineer's own verification, not an

@@ -4,8 +4,8 @@ Usage: python3 virtual_pad.py <scenario> [xbox|ds4]
   menu-and-fight  title -> Versus CPU -> fight with every default action, then quits through the menus.
   disconnect      fights, destroys the device mid-match (disconnect), recreates it (reconnect), takes the slot back
                   with Cross / A, fights again, then quits.
-  layout          presses every default button once (with an analog R2 / RT hold) while the game logs what each
-                  produced (pair it with an automation script that runs log_input in Training).
+  layout          presses every default button once (an analog R2 / RT hold, an L2 / LT squeeze, D-pad down) while the
+                  game logs what each produced (pair it with an automation script that runs log_input in Training).
   remap           through Settings > Controls > Controller - Player 1: moves Light attack onto Triangle / Y,
                   answers the conflict with Swap, backs out to the main menu, then quits.
 Pads: "xbox" is a Microsoft Xbox 360 pad (045e:028e); "ds4" is a Sony DualShock 4 (054c:05c4) laid out like the
@@ -158,6 +158,8 @@ def fight_inputs(pad):
     pad.press("l1", gap=0.6)           # L1 / LB: block (second binding beside R2 / RT)
     pad.press("right", gap=0.6)        # Circle / B: dodge
     pad.press("r1", gap=0.8)           # R1 / RB: special
+    pad.hold_trigger("l", 0.1, gap=0.9)  # L2 / LT: throw
+    pad.dpad(y=1, hold=0.4, gap=0.5)   # D-pad down: crouch
 
 
 def quit_from_main(pad):
@@ -183,6 +185,10 @@ def layout(pad):
         pad.press(button, hold=0.1, gap=0.7)
     log("hold R2 / RT")
     pad.hold_trigger("r", 0.6, gap=0.7)
+    log("squeeze L2 / LT (throw)")
+    pad.hold_trigger("l", 0.1, gap=0.9)
+    log("D-pad down (crouch)")
+    pad.dpad(y=1, hold=0.4, gap=0.5)
     log("D-pad right")
     pad.dpad(x=1, hold=0.4, gap=0.5)
     log("D-pad left")
