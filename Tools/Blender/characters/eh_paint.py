@@ -575,7 +575,9 @@ def garments(rs, cfg, ctx, objs, spec):
     K = rs.K
     texel_m = ctx["texel_m"]
     ao = rs.vattr([ctx["ao"].get(o.name) for o in objs])
-    part = np.rint(rs.vattr([G.get_attr(o, "part").astype(np.float32) for o in objs])).astype(int)
+    # nearest vertex, not interpolated: blending neighbouring part ids (1 and 6 at a welded seam) would paint the
+    # ids in between (2..5), parts the garment may not have
+    part = rs.vattr_nearest([G.get_attr(o, "part").astype(np.int64) for o in objs]).astype(int)
     attrs = {}
     for nm in ("edge_d", "edge_s", "lip") + tuple(spec.get("_attrs", ())):
         attrs[nm] = rs.vattr([G.get_attr(o, nm) for o in objs])
@@ -661,6 +663,8 @@ def garments(rs, cfg, ctx, objs, spec):
             st = (stitch_line(np.abs(dist), along, at)) * m
             col = T.mix(col, T.hexrgb(scol), st * 0.8)
             height -= st * 0.0001
+    # custom painters can read the edge distance, the position along the edge and the grain coordinates
+    ctx["_paint"] = {"ed": ed, "es": es, "gu": gu, "gv": gv}
     for fn in spec.get("_height", []):
         height += fn(rs, part, ctx)
     for fn in spec.get("_extra", []):

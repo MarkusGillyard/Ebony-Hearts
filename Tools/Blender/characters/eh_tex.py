@@ -132,6 +132,25 @@ class Raster:
                 out[sel] = (arr[tv[t]] * L[:, :, None]).sum(1)
         return out
 
+    def vattr_nearest(self, per_obj):
+        """Per-vertex labels (list aligned with objs; None -> 0) to texels without blending: each texel takes the
+        label of its triangle's vertex with the largest barycentric weight. For ids such as garment parts, where
+        interpolating (e.g. between parts 1 and 6) would invent the ids in between."""
+        first = next(a for a in per_obj if a is not None)
+        out = np.zeros(self.K, np.asarray(first).dtype)
+        for oi, arr in enumerate(per_obj):
+            if arr is None:
+                continue
+            arr = np.asarray(arr)
+            sel = self.oid == oi
+            if not sel.any():
+                continue
+            tv = self._tri_data[oi][0]
+            t = self.tri[sel]
+            k = np.argmax(self.bary[sel], axis=1)
+            out[sel] = arr[tv[t, k]]
+        return out
+
     def poly(self):
         """Polygon index (within its object) of every texel."""
         out = np.zeros(self.K, np.int64)
