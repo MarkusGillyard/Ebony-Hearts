@@ -2,12 +2,129 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-2c993b0/<run>` and
-`evidence/ashka-1109/`; the previous candidates' under `evidence/rc-32831cc/<run>`, `evidence/rc-1b714fd/<run>`,
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-c6c0de2/<run>` and
+`evidence/ashka-1109v2/`; the previous candidates' under `evidence/rc-2c993b0/<run>` and `evidence/ashka-1109/`,
+`evidence/rc-32831cc/<run>`, `evidence/rc-1b714fd/<run>`,
 `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `2c993b0` (2026-11-09, Ashka Rook to her character sheet of 2026-11-09)
+## Current candidate `c6c0de2` (2026-11-09, Ashka Rook to her character sheet's version 2)
+
+**Result: PASS on every objective check run.** The creator updated Ashka's appearance again the same day; version 2 of
+her sheet is the canon ("I updated Ashka's appearance again"). She now wears a Gothic-Victorian ensemble: a jet-black
+frock coat with split coattails and a crimson lining, an ice-white high-collared blouse, a brocade waistcoat, a crimson
+cravat, high-waisted trousers and ankle boots; her ponytail is tied with a black ribbon, has waves toward the ends and
+slightly parted bangs; her face follows the sheet (heart-shaped, almond eyes, fine brows, fuller lips). When she
+channels her flame, the fire lights the coat. This candidate is `2c993b0` plus that work; her kit, the combat core and
+data, the CPU and Wren are unchanged (`git diff 2c993b0 c6c0de2` is empty for `Source/EbonyHearts/Core`,
+`Content/Data` and `Tests/Core`). This is the implementer's own verification, not an independent review; nobody has
+played this candidate yet.
+
+### Build identity
+
+| Item | Value |
+|---|---|
+| Source | `c6c0de2` on `dev/combat-pass-1108`: five commits on `5ecfb8a` (the character painter's part sampling, the generator, the flame light, the imported content, the public canon); later commits change documentation, one code comment and `Tests/Auto/review_ashka.txt` only |
+| Release archive | `EbonyHearts-Slice-c6c0de2.tar.gz`, 335 632 789 bytes, SHA-256 `65c8d2032985b0f6459812a8e6e7e824d712271cfc548f808c62d2c394eba2cf` |
+| Content hash | `e35e818263cb091b5a388f59a49a624a2204fe4c91ca8a628fa1e25c5cc7334d` |
+| Build | Unreal Engine 5.8.4, Shipping, Linux x86-64, Vulkan SM6 (package `pkg-78-ashka1109v2`). 859 packages (852 cooked, 7 skipped by platform; the coat's material and three textures added back), 0 warnings, 0 errors |
+| Release check | Extracted into a new folder whose path contains a space; all 21 files matched `.files.sha256` and the archive its `SHA256SUMS` line |
+| Test machine | as for `5d5c316` below (32 GB RAM since 2026-11-05) |
+
+### Results on the candidate
+
+Evidence: `evidence/rc-c6c0de2/battery/<run>` unless noted; 28 runs from an empty game profile, each with exit 0, no
+`FAIL` or `WARN` line and its completion marker.
+
+| Suite | Result | Notes |
+|---|---|---|
+| Combat core | **PASS** | Built from this source: 53 cases, 1361 checks, 0 failures (`evidence/rc-c6c0de2/core_tests.txt`) |
+| Packaging safety | **PASS** | 10 tests |
+| Smoke, controls, journey, Lesson, real keyboard | **PASS** | No missing animations or sounds; `bindings_selftest` 101 and `input_selftest` 44 checks; remap (27), persistence (22), Controls UI (6), video settings keep audio (4); 25 journey checks; all 14 Lesson steps; real X11 keyboard events |
+| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts, menu-and-fight, disconnect and reconnect, remapping |
+| Matrix | **PASS** | 12/12 complete matches, no missing assets; memory 1 526 MiB at the end (peak 1 544; `2c993b0` 1 513 / 1 533) |
+| Review scripts, signature, footage | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_playtest`, `review_combat` (64 s at 60 fps), `review_jump`, `review_art`, signature |
+| Start-ups | **PASS** | 20 starts, 2.25 s on average to the first automation line (at most 2.39 s) |
+| Soak | **PASS** | Rendering off-screen (`evidence/rc-c6c0de2/soak-offscreen`): 59 minutes, 36 complete matches with rematches, mirrors, versus and pause, 12/12 settings save-and-reload round trips; 0 failures, warnings or stuck states; no missing assets; clean exit. Game memory 1 485 → 1 503 MiB (first and last tenth, peak 1 546; `2c993b0` 1 485 → 1 504); VRAM at most 1 044 MiB including the desktop |
+
+**Frame times** (fight = 60 s of a Hard bot against the Hard CPU, Wren against Ashka; no recording during these runs;
+`evidence/rc-c6c0de2/battery/<run>`, then the four frame-time runs once more, `evidence/rc-c6c0de2/perf-rerun`):
+
+| Run | Frames | Median | p99 | Max | Over 33 ms | GPU median |
+|---|---|---|---|---|---|---|
+| Fight, 1080p windowed, V-Sync on | 3 602 / 3 602 | 16.66 / 16.67 ms | 16.79 / 16.75 | 17.21 / 16.95 | 0 / 0 | 7.3 / 6.9 ms (`2c993b0` 6.4) |
+| Fight, 1080p windowed, V-Sync off | 7 358 / 7 860 | 8.07 / 7.55 | 9.81 / 8.94 | 13.02 / 10.91 | 0 / 0 | 7.6 / 7.1 (7.0) |
+| Fight, 3440 × 1440 borderless, V-Sync on | 3 601 / 3 602 | 16.66 / 16.67 | 16.78 / 16.78 | **46.91** / 16.88 | **1** / 0 | 10.3 / 9.9 (9.7) |
+| Menus (the three runs, both times; V-Sync on / off) | 1 201-2 657 | 16.66-16.67 / 7.48-7.98 | ≤ 16.79 / ≤ 9.75 | ≤ 17.33 / ≤ 12.85 | 0 | 7.1-10.2 |
+| Training, both auras and none (both times) | 421-602 | 16.67 | ≤ 16.77 | ≤ 16.91 | 0 | 6.9-7.5 |
+| First match from its start, the first run of the new package (`2c993b0`'s run hit the full shader cache described below) | 1 502 | 16.67 | 16.79 | 17.15 | 0 | 7.0 |
+
+The 3440 × 1440 fight of the battery had one frame of 46.9 ms, 20.7 s into the capture, with a normal GPU time
+(9.8 ms): a stall on the processor side, not rendering. Run again, the same fight had none (max 16.88 ms), and no other
+run of either pass had a frame over 33 ms; the cause of the single frame was not found. The new outfit costs GPU time:
+the median GPU frame rises by about 0.3-0.9 ms (the coat's 9 668 triangles and its own material; Ashka has 66 150
+triangles in 5 material slots, against 47 926 in 4), and the uncapped fight runs at 7.55-8.07 ms against 7.33 ms. At
+60 fps the frame budget is 16.67 ms. VRAM peaked at 1 300 MiB including the desktop in the 3440 × 1440 capture.
+
+### Character art
+
+The sheet's look, built by the character generator (`Tools/Blender/characters`):
+
+- **Frock coat:** grown and draped from the body, fitted at the waist, structured shoulders, a high standing collar,
+  the fronts meeting at one waist button and open above it over the waistcoat; split coattails (front opening, side
+  slits, back vent) ending just above the knee, skinned to the coat-tail chains the rig always had (weighted again;
+  every clip spring-bakes them); the tails' crimson lining is its own inner layer, joined to the outside by a turned
+  edge; silver buttons; a small crimson gem brooch on the left breast. Painted: black-on-black embroidery (a trailing
+  vine with leaves and small five-petal flowers along the edges, slits and cuffs), crimson piping on every edge,
+  ice-white trim with a crimson stitch at the cuffs and on the collar.
+- **Under it:** an ice-white blouse with a high stand collar, pleats down the chest and lace at the cuffs; a brocade
+  waistcoat (damask motif) with silver buttons and a slender silver chain; a crimson silk cravat (a rounded knot, a
+  broad puffed front, a dark-silver clasp); high-waisted trousers with a crimson stitch along each outer seam; black
+  ankle boots on the earlier loafers' last with a shaft above the ankle and a crimson stitch along the apron seam
+  over the forefoot.
+- **Hair and face:** waves growing toward the ponytail's ends, a small black ribbon bow with two tails at the tie,
+  slightly parted bangs; a heart-shaped face (wider cheekbones, narrower chin), a slenderer nose, fuller lips,
+  almond eyes lifted a little at the outer corners, finer brows (MakeHuman `eyebrow005`, CC0, without the foreign
+  author metadata that excludes 009-011), the same calm smile.
+- **Skeleton unchanged:** all 88 bones have the same name, parent and rest position as `2c993b0`'s (compared from
+  `bones.json`, to 0.01 mm).
+
+Defects found in the renders and fixed before the import: the tails' thickening step threw nine lining vertices up to a
+metre out (the lining is now built as its own layer); the lining shared texels with the outside (the whole skirt
+painted crimson); a dark band at the waist seam, which the painter caused by blending part ids across triangles (each
+texel now takes its nearest vertex's part; a latent fault of the shared painter, which only a rebuild of a garment
+with such a seam would show); a coat texture atlas half empty (the tails' map is now four panels); cuff wrinkles
+painted onto the tails where the hanging forearm passes them; a necktie-like cravat and a spike off its knot.
+
+Renders (`evidence/ashka-1109v2/art-final`, neutral and chapel light: turnarounds, faces, details, feet and the
+deformation poses) and 29 three-way comparisons, the 2026-11-08 build, sheet version 1 (`2c993b0`) and version 2
+(`evidence/ashka-1109v2/compare`). In game: the art script on `2c993b0` and on this candidate, 60 fps
+(`evidence/ashka-1109v2/footage/art-before`, `art-after`), and a phone copy with the two stacked
+(`.../footage/phone/ashka_v1_v2_before_after.mp4`, 960 × 800, H.264 Main, index first).
+
+### Animation and combat
+
+- **Clips:** all of Ashka's clips (37 keyed, 52 captured or processed) and every throw pair she is part of rebuilt
+  against the new mesh; the clip audit of all 157 clips (`evidence/ashka-1109v2/anim-audit`) has every measured value
+  as in the `2c993b0` audit and none unexplained (`Docs/AnimationAudit.md` changes only in its evidence path). Wren's
+  victim clips of Ashka's throws depend on her skeleton and motion only, both unchanged, and were not reimported.
+- **The flame lights the coat** (`AEHFighterVisual::UpdateFlame`): during the burning frames of a flame move (Flame
+  Elbow, the flying knee, Flame Burst) a shadowless crimson light (0.6 cd at its peak, 1.2 m reach) sits between her
+  hips and the burning limb, flares in a few frames, fades in about a tenth of a second and flickers. In the footage
+  it lights her coat at the hips as the Flame Elbow starts and the opponent as it lands (the Flame Burst's light was
+  not recorded; see below).
+- **In game** (`evidence/ashka-1109v2/footage/review-ashka`, `Tests/Auto/review_ashka.txt`, 60 fps, and a phone copy
+  `.../footage/phone/ashka_v2_moves.mp4`): the front kick throws the coattails open and shows the lining; the front
+  kick, spinning elbow and their combos hit as on `2c993b0`. A Flame Burst step added to the script did not fire (it
+  costs half the gauge, which the script's hits had not built) and was removed from the script.
+- **CPU and balance:** unchanged; the combat code and data are identical to `2c993b0`'s, so its CPU probe stands.
+
+### Not run on this candidate
+
+The off-screen render-cost comparison, the route traces and the source-to-import comparison (as for `2c993b0`), and the
+CPU probe (identical combat code and data). No physical controller and no human player have used this candidate yet.
+
+## Candidate `2c993b0` (2026-11-09, Ashka Rook to her character sheet of 2026-11-09)
 
 **Result: PASS on every objective check run.** The creator's new character sheet for Ashka replaces the earlier one
 (the creator: "the character sheet i gave you is the new canon for everything"). Her usual clothes are now a white
@@ -108,7 +225,7 @@ import); her calm smile is a little stronger, as the sheet describes her.
 The off-screen render-cost comparison, the route traces and the source-to-import comparison (their code and
 Wren's content did not change; Ashka's import uses the same importer). No physical controller and no human player
 have used this candidate yet. The creator updated Ashka's appearance again the same day (a Gothic-Victorian outfit);
-this candidate's look is superseded and is not the one going to PR #1.
+this candidate's look is superseded by `c6c0de2` above.
 
 ## Candidate `32831cc` (2026-11-09, fighting-game control layout)
 

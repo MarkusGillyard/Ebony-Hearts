@@ -2,7 +2,7 @@
 
 This guide is for reviewing branch `dev/combat-pass-1108`, which carries the creator's 2026-11-08 combat, animation and
 character requests on top of the PR #1 head, then the 2026-11-09 fighting-game control layout and Ashka Rook refined to
-her new character sheet. It is the implementer's account, not an independent review. Earlier rounds
+her new character sheet (and then to its version 2, the same day). It is the implementer's account, not an independent review. Earlier rounds
 follow below, unchanged, as history; the 2026-11-08 independent audit (previous round, section 6) applies to its own
 candidate, not to this one.
 
@@ -10,8 +10,8 @@ candidate, not to this one.
 |---|---|
 | Branch | `dev/combat-pass-1108`, added to PR #1 on 2026-11-09 at the creator's request (`release/first-slice` fast-forwarded to it) |
 | Base | `ea3ddc655fdf10666ede89f14df201e43b25daad`, PR #1's head before this round |
-| Candidate source | `2c993b0`: the combat pass `5d5c316`, the fighting-game control layout (`1b714fd`) and its settings write-back (`32831cc`), then Ashka's refinement (`01ce31a`..`2c993b0`); later commits change documentation and a review script only |
-| Package | `EbonyHearts-Slice-2c993b0.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" (the evidence of `32831cc` and `5d5c316` follows it) |
+| Candidate source | `c6c0de2`: the combat pass `5d5c316`, the fighting-game control layout (`1b714fd`) and its settings write-back (`32831cc`), Ashka's refinement to her sheet (`01ce31a`..`2c993b0`), then to its version 2 (`7a1fe65`..`c6c0de2`); later commits change documentation and a review script only |
+| Package | `EbonyHearts-Slice-c6c0de2.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" (the evidence of `2c993b0`, `32831cc` and `5d5c316` follows it) |
 | Not done | nothing merged, tagged or released; `main` is untouched |
 
 ## 1. What changed and where
@@ -33,6 +33,7 @@ candidate, not to this one.
 | Ashka's overhaul | Tailored black coat hanging from the shoulders (notched lapels, collar, double-breasted buttons, belt, cuff straps, four-panel skirt); collared shirt and knotted tie; pressed trousers; loafers on a fitted last; layered bangs and braid flyaways; new brows. Blacks stay near-black (coat #101114) | `eh_ashka.py`, `eh_hair*.py`, `eh_garment.py`, `eh_mesh.py`, `characters.json` | as above; rig unchanged (every bone's rest position identical) |
 | Unreal import | Coat, outfit and clothes use a two-sided master (`M_CharacterTwoSided`) for single-surface openings and hems | `Tools/Unreal/build_characters.py` | packaged build, art shots |
 | Ashka to her character sheet (2026-11-09) | The sheet replaces the earlier one. Outfit: white long-sleeved shirt (now a full shell, draped from the bust, smoothed over small body bumps, tucked into the trousers under a clean waistline), black tie to the waistband, black pants, brown loafers; the coat is no longer built and its tail chains stay in the rig unweighted (skeleton identical). Hair: a loose ponytail (core, layered strand cards, tie, nape gather) on the former braid chain. No chest tattoo. A slightly stronger calm smile. Kit: away + Light front kick (mid, snap kick, special-cancel on hit) and away + Heavy spinning elbow (high, knockdown on counter; Light, Light into it on hit); the CPU uses both. Canon: the public repo carries her look, style, title and friendship with Wren; the rest of the sheet is in a private canon file (the creator's choice) | `Tools/Blender/characters/{eh_ashka,eh_hairstyles,eh_paint,eh_specs,build_characters}.py`, `characters.json`, `Tools/Unreal/build_characters.py` (stale slots), `Content/Data/Fighters/ashka.json`, `presentation.json`, `Core/EHAI.cpp`, `Tools/Blender/anim/moves.py`, `Docs/CombatContract.md` | `ashka_front_kick_and_spinning_elbow`, the move matrix's away columns, clip audit (157), render and in-game before/after, `review_ashka.txt`, the battery, a CPU-vs-CPU probe |
+| Ashka to her sheet's version 2 (2026-11-09) | The creator updated her appearance the same day; version 2 is the canon. Frock coat grown and draped from the body: fitted waist, structured shoulders, high stand collar, fronts meeting at one waist button, split coattails just above the knee on the coat-tail chains (weighted again, spring-baked in every clip), the tails' crimson lining its own inner layer joined by a turned edge; silver buttons, a crimson gem brooch; painted black-on-black vine-and-flower embroidery, crimson piping, ice-white cuff and collar trim. Ice-white blouse with a stand collar, chest pleats and lace cuffs; brocade waistcoat with silver buttons and a chain; crimson cravat (knot, puffed front, dark-silver clasp); high-waisted trousers with crimson side stitching; ankle boots. Hair: waves toward the ends, a small black ribbon bow, slightly parted bangs. Face: heart-shaped, cheekbones, slender nose, fuller lips, almond eyes, finer brows (eyebrow005, CC0). A crimson, shadowless light lights the coat's lining during flame moves. Painter: garment parts now come from the nearest vertex (interpolating ids painted a black band at the waist seam); the tails' map is cut into four panels so the atlas packs fully; sleeve folds stay on the sleeves. Kit, CPU and lore unchanged | `Tools/Blender/characters/{eh_ashka,eh_hairstyles,eh_specs,eh_paint,eh_tex}.py`, `characters.json`, `Source/EbonyHearts/Game/{EHFighterVisual,EHGameDirector}.*`, `Content/Characters/Ashka`, `Docs/CombatContract.md`, `Tests/Auto/review_ashka.txt` | skeleton compared bone by bone (88, identical), clip audit (157, values unchanged), renders three ways (2026-11-08, sheet 1, sheet 2) and deformation poses, in-game footage of the moves and the lining light, the battery, the soak |
 | Default controls (2026-11-09) | The creator chose the usual fighting-game layout (MK-style): up jumps (no jump button), Cross / A Special, L1 / LB Throw, R2 / RT alone Block, R1 / RB and L2 / LT free; W and the Up arrow alone jump on the keyboards. Settings format 5: actions still on their version-4 defaults move, the player's own changes stay, a move that would take a player's button is undone and named; the migrated file is written back once at start-up | `Game/EHSettings.*` (`Defaults`, `DefaultsV4`, `Load`), `EHGameDirector.cpp` (`BeginPlay`), [Controls](Controls.md) | `bindings_selftest` (101), `input_selftest` (44), `controls_remap` / `controls_persist`, simulated pads, the creator's own settings file over two launches |
 
 ## 2. Check it yourself
@@ -103,7 +104,9 @@ and research (`c425f4e`), controls tests (`f11f04e`), the character art (`8677cb
 rebuilt clips (`5d5c316`), then documentation of the results. On 2026-11-09: the fighting-game control layout
 (`1b714fd`) and the settings write-back (`32831cc`), then documentation; then Ashka: the character generator
 (`01ce31a`), the moves, CPU and tests (`31914ba`), the keyed clips and the clip audit (`8c943d5`), the imported
-content (`730a169`) and the docs (`2c993b0`), then documentation of the results.
+content (`730a169`) and the docs (`2c993b0`), then documentation of the results; then Ashka to her sheet's version 2:
+the character painter's part sampling (`7a1fe65`), the generator (`f3dfa92`), the flame lighting her coat's lining
+(`d23854f`), the imported content (`b06b019`) and the public canon (`c6c0de2`), then documentation of the results.
 
 ---
 

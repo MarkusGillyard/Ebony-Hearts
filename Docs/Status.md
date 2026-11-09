@@ -1,8 +1,8 @@
 # Status and handoff
 
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
-refined to her new character sheet: candidate `2c993b0` built and checked by the implementer; ready for independent
-review and the creator's playtest; nothing merged).
+refined to her new character sheet and to its version 2: candidate `c6c0de2` built and checked by the implementer;
+ready for independent review and the creator's playtest; nothing merged).
 
 ## Where things stand
 
@@ -11,11 +11,11 @@ review and the creator's playtest; nothing merged).
   requests (crouching, Wren's takedown, Ashka's clinch trip, throws that work inside combos without grappling, higher
   and more useful jumps, uppercuts, an audit of every animation and move relationship, Wren's feet and materials,
   Ashka's overhaul, and the controls for all of it), the 2026-11-09 fighting-game control layout and Ashka's
-  refinement to her character sheet of 2026-11-09.
-- **Candidate:** `EbonyHearts-Slice-2c993b0.tar.gz` (Shipping, Linux), built from commit `2c993b0`; SHA-256
-  `2510f9573253a7a1367f1fdc612fce46c2fd72a8d699e849b5dfc546b7e47a4c`. It is `32831cc` (the combat pass `5d5c316`, which
-  you played on 2026-11-09, plus the new default controls) with Ashka refined. Local review build in the delivery
-  workspace's `release/` folder; not published.
+  refinement to her character sheet of 2026-11-09 and its version 2 (the same day).
+- **Candidate:** `EbonyHearts-Slice-c6c0de2.tar.gz` (Shipping, Linux), built from commit `c6c0de2`; SHA-256
+  `65c8d2032985b0f6459812a8e6e7e824d712271cfc548f808c62d2c394eba2cf`. It is `32831cc` (the combat pass `5d5c316`, which
+  you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2. Local review
+  build in the delivery workspace's `release/` folder; not published.
 - **Pull request #1** (`release/first-slice` → `main`) now carries this work. Its 2026-11-08 technical audit
   ([Review](Review.md), previous round, section 6) applies to its earlier head `ea3ddc6`, not to this work. Nothing
   has been merged, tagged or released; merging needs the creator's explicit OK.
@@ -47,9 +47,17 @@ review and the creator's playtest; nothing merged).
    L1 / LB Throw; R1 / RB and L2 / LT are free. On the keyboards only W and the Up arrow jump now. Saved controls move
    to the new layout where they were still on the old defaults (your own changes stay); the game says so once, on the
    title screen, and saves the result.
-9. **Ashka Rook to her character sheet of 2026-11-09.** Her usual clothes: a white long-sleeved shirt, black tie,
-   black pants and brown loafers, no coat. Long crimson hair in a loose ponytail, bangs just past the brows and two
-   longer side bangs; crimson eyes; a calm smile. The chest tattoo is gone (not in the new sheet). Her kit gains the
+9. **Ashka Rook to her character sheet (version 2 of 2026-11-09).** A Gothic-Victorian ensemble: a jet-black frock
+   coat (fitted waist, structured shoulders, high standing collar, split coattails just above the knee with a crimson
+   lining, black-on-black floral embroidery, crimson piping, silver buttons, ice-white trim at the cuffs and collar,
+   a small crimson gem brooch), an ice-white high-collared blouse with chest pleats and lace cuffs, a black brocade
+   waistcoat with silver buttons and a chain, a crimson silk cravat with a dark-silver clasp, high-waisted black
+   trousers with crimson side stitching and black ankle boots. Silky crimson hair with waves toward the ends in a
+   loose ponytail tied with a small black ribbon, slightly parted bangs and two framing strands; a heart-shaped face,
+   almond crimson eyes, fine brows, fuller lips and a gentle smile. When she uses a flame move, the fire lights the
+   coat's lining. Where the sheet leaves a choice, the game shows the ribbon (not the clasp), both the chain and the
+   brooch, and a vine-and-flower embroidery; say if you want any of these otherwise. The chest tattoo stays gone, as
+   do version 1's shirt, tie and loafers. Her kit gains the
    sheet's front kick (away + Light, a quick snap kick that cancels into a special on hit) and spinning elbow (away +
    Heavy, at head height; Light, Light into it on hit is a combo). Nothing was removed. The select screen calls her
    style "Muay Thai · Lamplighter Flame". Story details from the sheet are kept in a private canon file in the
@@ -63,11 +71,11 @@ sha256sum -c SHA256SUMS
 ```
 
 ```bash
-tar -xzf EbonyHearts-Slice-2c993b0.tar.gz
+tar -xzf EbonyHearts-Slice-c6c0de2.tar.gz
 ```
 
 ```bash
-EbonyHearts-Slice-2c993b0/EbonyHearts.sh
+EbonyHearts-Slice-c6c0de2/EbonyHearts.sh
 ```
 
 It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHearts/Saved/EbonyHearts/Settings.json`.
@@ -82,8 +90,9 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
    Ashka's clinch trip as a Thai clinch sweep? Does either feel too strong?
 4. **Jumps and uppercuts.** Jump in on a crouching CPU, then let Hard jump at you and uppercut it. Do the higher jumps
    feel better? Is the uppercut's timing fair?
-5. **Ashka and Wren up close.** Training, walk in close on both sides. Does Ashka match her sheet (shirt, tie,
-   pants, loafers, loose ponytail, calm smile)? Do Wren's ankle wraps look right?
+5. **Ashka and Wren up close.** Training, walk in close on both sides. Does Ashka match her sheet (frock coat and its
+   tails, blouse, waistcoat, cravat, trousers, boots, the ribbon in her ponytail, her face)? Do the coattails move
+   well when she kicks, and does the lining's glow during her flame moves read? Do Wren's ankle wraps look right?
 6. **Controller (new layout).** Cross is Special, L1 throws, R2 blocks, up jumps, down crouches. Does it feel like
    the fighting games you know? Is anything you reach for missing (R1 and L2 are free)?
 7. **Ashka's new moves.** Away + Light (front kick) and away + Heavy (spinning elbow); Light, Light, away + Heavy and
@@ -97,21 +106,25 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
   including version 1-4 settings files migrating, menu journey, the full Lesson, real keyboard events, simulated Xbox
   and DualShock 4 pads on the new layout, the CPU match matrix, review scripts); a copy of your own saved settings
   migrating over two launches; frame-time captures at 1080p and at the monitor's native 3440 × 1440; for `5d5c316`,
-  the same against the previous release; a 58-minute off-screen soak on both `5d5c316` and `2c993b0`.
+  the same against the previous release; an hour-long off-screen soak on `5d5c316`, `2c993b0` and `c6c0de2`.
 - **Observed by the implementer** (screenshots and footage): every new move on both fighters, both throws, the new
   character art in the chapel and in neutral light, before and after; before/after recordings of the art and jump
-  scripts against the previous release, with phone copies; Ashka's new look (29 render side-by-sides, an in-game
-  before/after) and her new moves and combos in game, with phone copies.
+  scripts against the previous release, with phone copies; Ashka's new look (29 three-way render comparisons, the
+  2026-11-08 build, sheet version 1 and version 2; an in-game before/after) and her moves, combos and the flame lighting her
+  coat in game, with phone copies.
 - **Physical controller:** the creator played `5d5c316` (the earlier layout) with a Bluetooth DualShock 4 on
   2026-11-09 and reports "The controller works fine" (their observation in play; no per-button log). Two earlier
   attempts logged no press: the pad's battery ran out, then its Bluetooth link went silent. The new layout has not
   been played with a physical controller yet.
 - **Not independently reviewed** and **not accepted by the creator** yet; the creator's playtest feedback is not in.
 - **Not verified:** hardware other than the test machine. One of three native-resolution captures of `5d5c316`
-  had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur.
+  had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur. Likewise one
+  native-resolution capture of `c6c0de2` had a single 46.9 ms frame (a processor-side stall); run again, none.
 - **For you to know:** with the CPU playing both, Ashka beats Wren 60 of 96 times (63 before her new moves); at Hard
   against Hard 22 of 24. Balance between the fighters was not part of this work. The first match after installing or
-  updating a build compiles shaders on first use (small hitches, none over 33 ms here).
+  updating a build compiles shaders on first use (small hitches, none over 33 ms here). Ashka's new outfit costs
+  about 0.3-0.9 ms of GPU time a frame (the coat is a fifth material; she has 66 150 triangles, 47 926 before); the
+  game still holds 60 fps with room to spare on this machine.
 
 ---
 

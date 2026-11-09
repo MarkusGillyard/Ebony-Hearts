@@ -423,6 +423,6 @@ def _pants_seams_crimson(rs, ctx):
 
 
 def _boot_seams(rs, ctx):
-    """The boots' toe-cap seam, stitched in crimson (their discreet accent)."""
+    """The boots' apron seam over the forefoot, stitched in crimson (their discreet accent)."""
     parts, d, along, _ = _loafer_seams(rs, ctx)
     return parts, d, along, {"stitch": [(0.0022, ctx["ashka_pal"]["crimson"])]}

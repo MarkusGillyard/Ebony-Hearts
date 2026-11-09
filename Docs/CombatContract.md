@@ -232,8 +232,8 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
     chain and a small crimson gemstone brooch. When she channels her flame, it briefly lights the coat's lining.
     Muay Thai and Lamplighter Flame Style; her signature techniques are Lamplighter Flame variations, spinning
     elbows, the flying knee, the teep, the front kick and clinch trips. Her Lamplighter Flame is crimson, and she
-    describes it as purifying. No longer canon: the first sheet's trench coat, braid and chest tattoo, and the
-    second's white shirt, black tie, black pants and brown loafers.
+    describes it as purifying. No longer canon: the earliest sheet's trench coat, braid and chest tattoo, and version
+    1's white shirt, black tie, black pants and brown loafers.
   - **Relationship:** Wren and Ashka are best friends.
 - **Gameplay proposals, not canon:**
   - all frame data and damage

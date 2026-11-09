@@ -1,4 +1,5 @@
-# Ashka review (2026-11-09: her canon look, the front kick and the spinning elbow), Training against the standing
+# Ashka review (2026-11-09: her canon look (sheet v2), the front kick, the spinning elbow and the flame lighting her
+# coat's lining), Training against the standing
 # partner, Ashka on the left. For footage: capture.py ... --start-on <evidence>/auto_log.txt:match_start, at most 50 s.
 # Script waits are not frame-exact; the screenshots mark the moments to check.
 wait 5
@@ -62,6 +63,7 @@ wait 2.0
 press kbA Reset
 wait 1.0
 # Her other Muay Thai tools for comparison: teep (toward + Heavy), body roundhouse (Heavy), flying knee (toward + Special).
+# The Flame Elbow above and the flying knee are flame moves: their fire lights the coat for a moment.
 hold kbA Right
 wait 0.6
 press kbA Heavy
@@ -75,7 +77,7 @@ release kbA Right
 wait 2.0
 press kbA Reset
 wait 1.0
-# Walk away and back so the ponytail and the shirt can be seen moving.
+# Walk away and back so the ponytail and the coattails can be seen moving.
 hold kbA Left
 wait 1.0
 release kbA Left
