@@ -2,11 +2,115 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-32831cc/<run>`; the
-previous candidates' under `evidence/rc-1b714fd/<run>`, `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-2c993b0/<run>` and
+`evidence/ashka-1109/`; the previous candidates' under `evidence/rc-32831cc/<run>`, `evidence/rc-1b714fd/<run>`,
+`evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `32831cc` (2026-11-09, fighting-game control layout)
+## Current candidate `2c993b0` (2026-11-09, Ashka Rook to her character sheet of 2026-11-09)
+
+**Result: PASS on every objective check run.** The creator's new character sheet for Ashka replaces the earlier one
+(the creator: "the character sheet i gave you is the new canon for everything"). Her usual clothes are now a white
+long-sleeved shirt, black tie, black pants and brown loafers (no coat), her long crimson hair is normally in a loose
+ponytail, and her kit gains the front kick and spinning elbow the sheet lists (away + Light, away + Heavy; the creator
+chose the inputs). This candidate is `32831cc` plus that work; Wren and the rest of the game are unchanged apart from
+Wren's victim clips of Ashka's throws, rebuilt against the new Ashka. This is the implementer's own verification, not
+an independent review; nobody has played this candidate yet.
+
+### Build identity
+
+| Item | Value |
+|---|---|
+| Source | `2c993b0` on `dev/combat-pass-1108`: five commits on `c8e165b` (the character generator, the moves and their data, CPU and tests, the keyed clips and the clip audit, the imported content, the docs); later commits change documentation and the new review script `Tests/Auto/review_ashka.txt` only |
+| Release archive | `EbonyHearts-Slice-2c993b0.tar.gz`, 331 072 138 bytes, SHA-256 `2510f9573253a7a1367f1fdc612fce46c2fd72a8d699e849b5dfc546b7e47a4c` |
+| Content hash | `a7bd6d87caa64c312169c2e1e67e5f3038661a940ff24b8324c648d5cbc2e460` |
+| Build | Unreal Engine 5.8.4, Shipping, Linux x86-64, Vulkan SM6 (package `pkg-77-ashka1109`). 855 packages cooked (the coat's material and three textures removed, the two new clips added), 0 warnings, 0 errors |
+| Release check | Extracted into a new folder whose path contains a space; all 21 files matched `.files.sha256` and the archive its `SHA256SUMS` line |
+| Test machine | as for `5d5c316` below |
+
+### Results on the candidate
+
+Evidence: `evidence/rc-2c993b0/battery/<run>` unless noted; 28 runs from an empty game profile, each with exit 0, no
+`FAIL` or `WARN` line and its completion marker.
+
+| Suite | Result | Notes |
+|---|---|---|
+| Combat core | **PASS** | 53 cases, 1361 checks, 0 failures; new `ashka_front_kick_and_spinning_elbow`: away + Light / Heavy choose the new moves for Ashka only (Wren's same presses stay her jab and roundhouse), Light, Light into away + Heavy is a 3-hit combo, front kick into Special a 2-hit combo, and a blocked elbow does not cancel into the spinning elbow. CPU lines: Normal anti-airs 59% of jump-ins (56% before), Hard 62% (62%); throw escapes unchanged |
+| Packaging safety, move tables, move matrix | **PASS** | 10 tests; the move tables and the move matrix (which now also tries away + Light / Heavy for a fighter that has them) regenerated with the new rows |
+| Smoke, controls, journey, Lesson, real keyboard | **PASS** | No missing animations or sounds; `bindings_selftest` 101 and `input_selftest` 44 checks; remap (27), persistence (22), Controls UI (6), video settings keep audio (4); 25 journey checks; all 14 Lesson steps; real X11 keyboard events |
+| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts, menu-and-fight, disconnect and reconnect, remapping |
+| Matrix | **PASS** | 12/12 complete matches, no missing assets; memory 1 513 MiB at the end (peak 1 533) |
+| Review scripts, signature, footage | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_playtest`, `review_combat` (64 s at 60 fps), `review_jump`, `review_art`, signature |
+| Start-ups | **PASS** | 20 starts, 2.4 s on average to the first automation line (at most 2.5 s) |
+| Soak | **PASS** | Rendering off-screen (`evidence/rc-2c993b0/soak-offscreen`): 58 minutes, 36 complete matches with rematches, mirrors, versus and pause, 12/12 settings save-and-reload round trips; 0 failures, warnings or stuck states; no missing assets; clean exit. Game memory 1 485 → 1 504 MiB (first and last tenth, peak 1 503); VRAM at most 1 033 MiB including the desktop |
+
+**Frame times** (as for `32831cc`; fight = 60 s of a Hard bot against the Hard CPU; no recording during these runs):
+
+| Run | Frames | Median | p99 | Max | Over 33 ms | GPU median |
+|---|---|---|---|---|---|---|
+| Fight, 1080p windowed, V-Sync on | 3 601 | 16.67 ms | 16.74 | 16.96 | 0 | 6.4 ms |
+| Fight, 1080p windowed, V-Sync off | 8 158 | 7.33 | 8.49 | 9.27 | 0 | 7.0 |
+| Fight, 3440 × 1440 borderless, V-Sync on | 3 601 | 16.67 | 16.75 | 16.96 | 0 | 9.7 |
+| Menus (the three runs) | 1 201-2 751 | 16.67 / 7.25 / 16.67 | ≤ 16.77 | ≤ 16.84 | 0 | 5.9-9.6 |
+| Training, both auras and none | 421-602 | 16.67 | ≤ 16.75 | ≤ 16.87 | 0 | 5.9-6.1 |
+| First match from its start, a fresh driver shader cache (both builds) | 1 502 | 16.67 | 18.0 (`32831cc` 18.4) | 21.0 (21.2) | 0 | 6.2 (6.6) |
+| The same, the cache warm | 1 501 | 16.67 | 16.76 | 16.84 | 0 | 6.6 |
+
+VRAM peaked at 1 304 MiB including the desktop in the 3440 × 1440 capture. The new Ashka has 47 926 triangles (60 670
+with the coat), 4 material slots (5), and her outfit is one material.
+
+**The first match after an update and the test machine's shader cache.** The battery's own first-match capture
+(`perf-cold`, the first run of the new package) hitched badly: 1 049 frames in 25 s, p99 58.9 ms, 267 frames over
+33 ms. The cause was the test sandbox, not the game: its NVIDIA shader disk cache had grown to 149 MB, past the
+driver's default size limit, and had accepted no new pipelines since 2026-11-08, so the driver compiled the new
+build's pipelines on first use with nowhere to keep them. Given a fresh cache with a larger limit, the first match of
+both this build and `32831cc` compiles with only small hitches (rows above, `evidence/ashka-1109/cold-shaders`), and
+the warm second run is clean. The sandbox now uses a new cache folder with a 4 GB limit (the old one is kept). A
+player's first match after installing or updating a build also starts with a cold cache; the hitches above are what
+that costs on this machine.
+
+### Character art
+
+Renders before (the shipped 2026-11-08 build, `sourceart/backup-20261109-ashka`) and after, in neutral and chapel
+light: turnarounds, faces, details (collar, waist, cuffs, fabric) and feet, with 29 side-by-sides
+(`evidence/ashka-1109/art/compare`). In game: the art script on `32831cc` and on this candidate, 60 fps
+(`evidence/ashka-1109/footage/art-before`, `art-after`), and a phone copy with the two stacked
+(`.../footage/phone/ashka_art_before_after.mp4`, 960 × 800, H.264 Main, index first). Her skeleton is unchanged: all 88
+bones have the same name, parent and rest position as the shipped build; the ponytail rides the former braid's chain,
+and the coat-tail chains stay in the rig, unweighted. The shirt is tucked in with a clean waistline (the first build
+showed the trousers' waistband cutting through a bloused shirt and small body bumps through it; both fixed before the
+import); her calm smile is a little stronger, as the sheet describes her.
+
+### Animation and combat
+
+- **Clips:** all of Ashka's clips (37 keyed, 52 captured or processed) and every throw pair she is part of rebuilt
+  against the new mesh; the clip audit covers 157 clips (the two new ones added) with none unexplained
+  (`Docs/AnimationAudit.md`, `evidence/ashka-1109/anim-audit-final`). No rebuilt clip got worse than in the
+  2026-11-08 audit, and none of Ashka's fastest joint steps moved by more than 1 cm: her body motion is unchanged.
+- **The new clips:** the front kick first snapped the foot 79 cm in one frame ("snap" easing), then 55 cm ("out", 70%
+  of its travel in the first frame) and 70 cm (a target past the leg's reach); keyed linear over three frames within
+  reach it peaks at 30 cm/f. The spinning elbow's forearm first swung out from the body and back between keys three
+  frames apart; with Wren's two-frame spacing through the strike and a mid-turn key keeping the forearm folded, the
+  elbow point still peaks at about 36 cm/f as it leads the turn (a written disposition), and frames 11-16 show no flip.
+- **In game** (`evidence/ashka-1109/footage/review-ashka-2`, `Tests/Auto/review_ashka.txt`, 60 fps, and a phone copy
+  `.../footage/phone/ashka_new_moves.mp4`): the front kick hits from its range, the spinning elbow hits up close, Light,
+  Light into the spinning elbow is a 3-hit combo and the front kick into the Flame Elbow a 2-hit combo with a
+  knockdown. (A first recording started the front kicks out of range; the script's walk-ins were lengthened.)
+- **CPU and balance** (a combat-core probe in the delivery workspace, `tmp/combat1108/probe/ashka_vs_wren_cpu.cpp`,
+  run on `c8e165b` and on this candidate): the CPU mixes the front kick into its pokes and the spinning
+  elbow into confirmed strings. Ashka against Wren with the CPU playing both (Normal and Hard pairings, both sides, 12
+  seeds, 96 matches): Ashka won 63 of 96 before these moves and 60 of 96 after; her CPU started 183 front kicks and 8
+  spinning elbows. The pairing favours Ashka's CPU before and after this round (Hard against Hard: 23 of 24 before, 22
+  of 24 after); balance between the two fighters was not part of this round.
+
+### Not run on this candidate
+
+The off-screen render-cost comparison, the route traces and the source-to-import comparison (their code and
+Wren's content did not change; Ashka's import uses the same importer). No physical controller and no human player
+have used this candidate yet. The creator updated Ashka's appearance again the same day (a Gothic-Victorian outfit);
+this candidate's look is superseded and is not the one going to PR #1.
+
+## Candidate `32831cc` (2026-11-09, fighting-game control layout)
 
 **Result: PASS on every objective check run.** The creator chose a default layout closer to what fighting-game
 players expect (MK-style): up jumps, the four face buttons are Light, Heavy, Special and Dodge, R2 / RT blocks and

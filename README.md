@@ -8,14 +8,16 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**Combat, animation and character pass (2026-11-08) and the fighting-game control layout (2026-11-09): candidate
-`32831cc` ready for independent review and the creator's playtest. Not merged.**
+**Combat, animation and character pass (2026-11-08), the fighting-game control layout and Ashka refined to her
+character sheet (2026-11-09): candidate `2c993b0` ready for independent review and the creator's playtest. Not
+merged.**
 - **This round** (made on `dev/combat-pass-1108` from PR #1's earlier head `ea3ddc6`, and added to PR #1 on
   2026-11-09 at the creator's request) adds crouching and hit levels, uppercuts, standalone throws that also finish
   combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit of every clip and every
-  move-to-move relationship, Wren's ankle wraps and materials, Ashka's tailored coat and outfit, the controls, Lesson
-  and CPU for all of it, and the MK-style default controls.
-- **Candidate.** `EbonyHearts-Slice-32831cc.tar.gz` (Shipping, Linux), built from commit `32831cc`. Results on the
+  move-to-move relationship, Wren's ankle wraps and materials, the controls, Lesson and CPU for all of it, the
+  MK-style default controls, and Ashka Rook to her 2026-11-09 character sheet (white shirt, black tie, black pants,
+  brown loafers, a loose crimson ponytail; a front kick and a spinning elbow).
+- **Candidate.** `EbonyHearts-Slice-2c993b0.tar.gz` (Shipping, Linux), built from commit `2c993b0`. Results on the
   test machine are in `Docs/Validation.md` ("Current candidate").
 - **Pull request #1** (`release/first-slice` → `main`) carries this work. Its 2026-11-08 independent technical audit
   applies to its earlier head `ea3ddc6` (`Docs/Review.md`, previous round, section 6).

@@ -1,7 +1,8 @@
-# Review guide: combat, animation and character pass (2026-11-08)
+# Review guide: combat, animation and character pass (2026-11-08), controls and Ashka (2026-11-09)
 
 This guide is for reviewing branch `dev/combat-pass-1108`, which carries the creator's 2026-11-08 combat, animation and
-character requests on top of the PR #1 head. It is the implementer's account, not an independent review. Earlier rounds
+character requests on top of the PR #1 head, then the 2026-11-09 fighting-game control layout and Ashka Rook refined to
+her new character sheet. It is the implementer's account, not an independent review. Earlier rounds
 follow below, unchanged, as history; the 2026-11-08 independent audit (previous round, section 6) applies to its own
 candidate, not to this one.
 
@@ -9,8 +10,8 @@ candidate, not to this one.
 |---|---|
 | Branch | `dev/combat-pass-1108`, added to PR #1 on 2026-11-09 at the creator's request (`release/first-slice` fast-forwarded to it) |
 | Base | `ea3ddc655fdf10666ede89f14df201e43b25daad`, PR #1's head before this round |
-| Candidate source | `32831cc`: the combat pass `5d5c316` plus the fighting-game control layout (`1b714fd`) and its settings write-back (`32831cc`); later commits change documentation only |
-| Package | `EbonyHearts-Slice-32831cc.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" (`5d5c316`'s own evidence follows it) |
+| Candidate source | `2c993b0`: the combat pass `5d5c316`, the fighting-game control layout (`1b714fd`) and its settings write-back (`32831cc`), then Ashka's refinement (`01ce31a`..`2c993b0`); later commits change documentation and a review script only |
+| Package | `EbonyHearts-Slice-2c993b0.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" (the evidence of `32831cc` and `5d5c316` follows it) |
 | Not done | nothing merged, tagged or released; `main` is untouched |
 
 ## 1. What changed and where
@@ -31,6 +32,7 @@ candidate, not to this one.
 | Wren's feet and materials | Layered ankle wraps (under-wrap, five bands, open heel and toes; no spike); scoop-neck top; fabric detail at the right scale (no lattice), with hems and seams | `Tools/Blender/characters/eh_wren.py`, `eh_paint.py`, `eh_specs.py`, `eh_tex.py` | renders before/after; in-game shots (Validation) |
 | Ashka's overhaul | Tailored black coat hanging from the shoulders (notched lapels, collar, double-breasted buttons, belt, cuff straps, four-panel skirt); collared shirt and knotted tie; pressed trousers; loafers on a fitted last; layered bangs and braid flyaways; new brows. Blacks stay near-black (coat #101114) | `eh_ashka.py`, `eh_hair*.py`, `eh_garment.py`, `eh_mesh.py`, `characters.json` | as above; rig unchanged (every bone's rest position identical) |
 | Unreal import | Coat, outfit and clothes use a two-sided master (`M_CharacterTwoSided`) for single-surface openings and hems | `Tools/Unreal/build_characters.py` | packaged build, art shots |
+| Ashka to her character sheet (2026-11-09) | The sheet replaces the earlier one. Outfit: white long-sleeved shirt (now a full shell, draped from the bust, smoothed over small body bumps, tucked into the trousers under a clean waistline), black tie to the waistband, black pants, brown loafers; the coat is no longer built and its tail chains stay in the rig unweighted (skeleton identical). Hair: a loose ponytail (core, layered strand cards, tie, nape gather) on the former braid chain. No chest tattoo. A slightly stronger calm smile. Kit: away + Light front kick (mid, snap kick, special-cancel on hit) and away + Heavy spinning elbow (high, knockdown on counter; Light, Light into it on hit); the CPU uses both. Canon: the public repo carries her look, style, title and friendship with Wren; the rest of the sheet is in a private canon file (the creator's choice) | `Tools/Blender/characters/{eh_ashka,eh_hairstyles,eh_paint,eh_specs,build_characters}.py`, `characters.json`, `Tools/Unreal/build_characters.py` (stale slots), `Content/Data/Fighters/ashka.json`, `presentation.json`, `Core/EHAI.cpp`, `Tools/Blender/anim/moves.py`, `Docs/CombatContract.md` | `ashka_front_kick_and_spinning_elbow`, the move matrix's away columns, clip audit (157), render and in-game before/after, `review_ashka.txt`, the battery, a CPU-vs-CPU probe |
 | Default controls (2026-11-09) | The creator chose the usual fighting-game layout (MK-style): up jumps (no jump button), Cross / A Special, L1 / LB Throw, R2 / RT alone Block, R1 / RB and L2 / LT free; W and the Up arrow alone jump on the keyboards. Settings format 5: actions still on their version-4 defaults move, the player's own changes stay, a move that would take a player's button is undone and named; the migrated file is written back once at start-up | `Game/EHSettings.*` (`Defaults`, `DefaultsV4`, `Load`), `EHGameDirector.cpp` (`BeginPlay`), [Controls](Controls.md) | `bindings_selftest` (101), `input_selftest` (44), `controls_remap` / `controls_persist`, simulated pads, the creator's own settings file over two launches |
 
 ## 2. Check it yourself
@@ -60,12 +62,22 @@ candidate, not to this one.
 - **The uppercut has no invulnerability**; it wins against jump-ins by timing and its low wind-up, and against a jab
   timed into its startup. Blocked, it is a large punish (the Lesson teaches that).
 - **Art limits** the art pass left: Ashka's face is still a MakeHuman head with painted shading (heavy brows, very
-  saturated eyes in neutral light); her bangs look comb-like up close; the braid is woven tubes; the coat still
-  shows some bust shaping and its front panels ride on the thigh in kicks and crouches; under a bright key her
-  blacks read charcoal (in the chapel they read black). Wren's wraps are fixed geometry, not cloth. Triangle counts
+  saturated eyes in neutral light); her bangs look comb-like up close; since 2026-11-09 her ponytail is strand cards
+  over a soft core and her shirt follows the bust (no coat); under a bright key her blacks read charcoal (in the
+  chapel they read black). Wren's wraps are fixed geometry, not cloth. Triangle counts
   rose 16% (Wren) and 26% (Ashka). Two character builds give identical geometry but not byte-identical files
   (Blender's UV island packer varies; textures differ by at most 8/255).
-- **A light wedge under Ashka in her crouch** is a coat panel catching the moonlight; it was there before this pass.
+- **A light wedge under Ashka in her crouch** was a coat panel catching the moonlight; the coat is gone since
+  2026-11-09.
+- **Ashka's away moves take over away + Light / Heavy for her.** Holding away while pressing Light gives the front kick,
+  not the jab (walking back and jabbing is no longer possible for her; Wren is unchanged). Like down + Light, away +
+  Light pressed during a string's cancel window continues the string (the move matrix shows it).
+- **The spinning elbow's audit disposition:** the elbow point leads the turn at about 36 cm/f at contact, which trips
+  the flip test; frames 11-16 were checked (forearm folded, no plane flip). Judge it in the footage
+  (`evidence/ashka-1109/footage`).
+- **The ponytail and the shirt are fixed geometry**: the ponytail is spring-simulated like the braids were; the shirt
+  does not simulate cloth. The ponytail hangs a little off the back at rest because its chain keeps the braid's rest
+  pose (the coat was under it).
 
 ## 4. Open
 
@@ -79,6 +91,8 @@ candidate, not to this one.
   32.8 ms) in one of three candidate captures, cause not found, not repeated (Validation, "Frame times").
 - Before/after footage of the art and jump scripts against release `309c87c`, with phone copies, is listed in
   Validation, "Monitor-bound runs".
+- Ashka's refinement: nobody has played it; with the CPU on both sides Ashka beats Wren 60 of 96 (63 before her new
+  moves; Hard against Hard 22 of 24), a lean that predates this work and that the round did not address.
 
 ## 5. Commit structure
 
@@ -87,7 +101,9 @@ Eleven commits on `ea3ddc6`: combat core and data with tests (`a8cc695`), contro
 step (`61badfc`), the clip audit and its fixes (`c6de32d`), the audit table and production notes (`5dfe4c2`), README
 and research (`c425f4e`), controls tests (`f11f04e`), the character art (`8677cb2`) and the imported meshes and
 rebuilt clips (`5d5c316`), then documentation of the results. On 2026-11-09: the fighting-game control layout
-(`1b714fd`) and the settings write-back (`32831cc`), then documentation.
+(`1b714fd`) and the settings write-back (`32831cc`), then documentation; then Ashka: the character generator
+(`01ce31a`), the moves, CPU and tests (`31914ba`), the keyed clips and the clip audit (`8c943d5`), the imported
+content (`730a169`) and the docs (`2c993b0`), then documentation of the results.
 
 ---
 

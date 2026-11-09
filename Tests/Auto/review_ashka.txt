@@ -1,0 +1,88 @@
+# Ashka review (2026-11-09: her canon look, the front kick and the spinning elbow), Training against the standing
+# partner, Ashka on the left. For footage: capture.py ... --start-on <evidence>/auto_log.txt:match_start, at most 50 s.
+# Script waits are not frame-exact; the screenshots mark the moments to check.
+wait 5
+press kbA Light
+wait 1
+match ashka wren training 0 left
+wait 2.5
+screenshot ra_idle
+# Front kick (away + Light) in its range (contact on its 10th frame).
+hold kbA Right
+wait 1.05
+release kbA Right
+hold kbA Left
+press kbA Light
+wait 0.18
+screenshot ra_front_kick
+release kbA Left
+wait 1.4
+press kbA Reset
+wait 1.0
+# Spinning elbow (away + Heavy) up close.
+hold kbA Right
+wait 1.2
+release kbA Right
+hold kbA Left
+press kbA Heavy
+wait 0.23
+screenshot ra_spinning_elbow
+release kbA Left
+wait 1.6
+press kbA Reset
+wait 1.0
+# Combo: Light, Light (the elbow) into away + Heavy while the lights hit.
+hold kbA Right
+wait 1.3
+release kbA Right
+press kbA Light
+wait 0.22
+press kbA Light
+wait 0.22
+hold kbA Left
+press kbA Heavy
+wait 0.25
+screenshot ra_combo_spinning_elbow
+release kbA Left
+wait 2.0
+press kbA Reset
+wait 1.0
+# Combo: front kick into the Flame Elbow (Special) on hit.
+hold kbA Right
+wait 1.15
+release kbA Right
+hold kbA Left
+press kbA Light
+wait 0.17
+release kbA Left
+press kbA Special
+wait 0.25
+screenshot ra_combo_flame_elbow
+wait 2.0
+press kbA Reset
+wait 1.0
+# Her other Muay Thai tools for comparison: teep (toward + Heavy), body roundhouse (Heavy), flying knee (toward + Special).
+hold kbA Right
+wait 0.6
+press kbA Heavy
+release kbA Right
+wait 1.3
+press kbA Heavy
+wait 1.4
+hold kbA Right
+press kbA Special
+release kbA Right
+wait 2.0
+press kbA Reset
+wait 1.0
+# Walk away and back so the ponytail and the shirt can be seen moving.
+hold kbA Left
+wait 1.0
+release kbA Left
+hold kbA Right
+wait 1.0
+release kbA Right
+wait 0.8
+screenshot ra_end
+goto_main
+quit
