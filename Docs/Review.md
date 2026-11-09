@@ -7,11 +7,11 @@ candidate, not to this one.
 
 | | |
 |---|---|
-| Branch | `dev/combat-pass-1108`, pushed to `origin` as a task branch (no pull request; the repository's CI runs only on `main`, `release/first-slice` and pull requests, so the core tests were run locally) |
-| Base | `release/first-slice` at `ea3ddc655fdf10666ede89f14df201e43b25daad` (PR #1 head, also the merge base) |
-| Candidate source | `5d5c316` (code, data and content of the packaged build); later commits change documentation and one test script (`Tests/Auto/virtual_pad.py`, not packaged) only |
-| Package | `EbonyHearts-Slice-5d5c316.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" |
-| Not done | nothing merged, tagged or released; PR #1 and `release/first-slice` are untouched |
+| Branch | `dev/combat-pass-1108`, added to PR #1 on 2026-11-09 at the creator's request (`release/first-slice` fast-forwarded to it) |
+| Base | `ea3ddc655fdf10666ede89f14df201e43b25daad`, PR #1's head before this round |
+| Candidate source | `32831cc`: the combat pass `5d5c316` plus the fighting-game control layout (`1b714fd`) and its settings write-back (`32831cc`); later commits change documentation only |
+| Package | `EbonyHearts-Slice-32831cc.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" (`5d5c316`'s own evidence follows it) |
+| Not done | nothing merged, tagged or released; `main` is untouched |
 
 ## 1. What changed and where
 
@@ -31,6 +31,7 @@ candidate, not to this one.
 | Wren's feet and materials | Layered ankle wraps (under-wrap, five bands, open heel and toes; no spike); scoop-neck top; fabric detail at the right scale (no lattice), with hems and seams | `Tools/Blender/characters/eh_wren.py`, `eh_paint.py`, `eh_specs.py`, `eh_tex.py` | renders before/after; in-game shots (Validation) |
 | Ashka's overhaul | Tailored black coat hanging from the shoulders (notched lapels, collar, double-breasted buttons, belt, cuff straps, four-panel skirt); collared shirt and knotted tie; pressed trousers; loafers on a fitted last; layered bangs and braid flyaways; new brows. Blacks stay near-black (coat #101114) | `eh_ashka.py`, `eh_hair*.py`, `eh_garment.py`, `eh_mesh.py`, `characters.json` | as above; rig unchanged (every bone's rest position identical) |
 | Unreal import | Coat, outfit and clothes use a two-sided master (`M_CharacterTwoSided`) for single-surface openings and hems | `Tools/Unreal/build_characters.py` | packaged build, art shots |
+| Default controls (2026-11-09) | The creator chose the usual fighting-game layout (MK-style): up jumps (no jump button), Cross / A Special, L1 / LB Throw, R2 / RT alone Block, R1 / RB and L2 / LT free; W and the Up arrow alone jump on the keyboards. Settings format 5: actions still on their version-4 defaults move, the player's own changes stay, a move that would take a player's button is undone and named; the migrated file is written back once at start-up | `Game/EHSettings.*` (`Defaults`, `DefaultsV4`, `Load`), `EHGameDirector.cpp` (`BeginPlay`), [Controls](Controls.md) | `bindings_selftest` (101), `input_selftest` (44), `controls_remap` / `controls_persist`, simulated pads, the creator's own settings file over two launches |
 
 ## 2. Check it yourself
 
@@ -70,9 +71,10 @@ candidate, not to this one.
 
 - Owner playtest of the new mechanics, art and feel (checklist in [Status](Status.md)).
 - Independent review of this candidate.
-- Controllers: automated checks used simulated Xbox and DualShock 4 pads. The creator then played the candidate with
-  a Bluetooth DualShock 4 and reports it works (no per-button log; two earlier attempts logged no press because
-  the pad sent nothing; Validation, "Physical DualShock 4").
+- Controllers: automated checks used simulated Xbox and DualShock 4 pads. The creator then played `5d5c316` (the
+  earlier layout) with a Bluetooth DualShock 4 and reports it works (no per-button log; two earlier attempts logged
+  no press because the pad sent nothing; Validation, "Physical DualShock 4"). The 2026-11-09 layout has not been
+  played with a physical controller.
 - Frame times at the native 3440 × 1440 match the previous release, except one 0.4 s burst of slow frames (worst
   32.8 ms) in one of three candidate captures, cause not found, not repeated (Validation, "Frame times").
 - Before/after footage of the art and jump scripts against release `309c87c`, with phone copies, is listed in
@@ -84,7 +86,8 @@ Eleven commits on `ea3ddc6`: combat core and data with tests (`a8cc695`), contro
 (`4fc8704`), motion for the new moves (`96275a9`), the move matrix and contract prose (`cf675e1`), the Lesson punish
 step (`61badfc`), the clip audit and its fixes (`c6de32d`), the audit table and production notes (`5dfe4c2`), README
 and research (`c425f4e`), controls tests (`f11f04e`), the character art (`8677cb2`) and the imported meshes and
-rebuilt clips (`5d5c316`), then documentation of the results.
+rebuilt clips (`5d5c316`), then documentation of the results. On 2026-11-09: the fighting-game control layout
+(`1b714fd`) and the settings write-back (`32831cc`), then documentation.
 
 ---
 

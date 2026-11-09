@@ -5,6 +5,21 @@ Implementation: `Source/EbonyHearts/Game/EHSettings.*` (actions, layouts, defaul
 `EHInputRouter.*` (devices, menu and gameplay maps, triggers) and `EHDirectorFlow.cpp` / `EHDirectorUI.cpp` (the
 Controls screens and button prompts).
 
+## Fighting-game layout (settings format 5)
+
+On 2026-11-09 the creator chose a default layout closer to what fighting-game players expect, after Mortal Kombat,
+which the game's jumps and block button already follow:
+
+- **Up jumps and down crouches**, on the stick, the D-pad or the movement keys. No button jumps by default: Cross / A,
+  I, Numpad 5 and ; no longer do.
+- **The four face buttons are the four actions:** Square / X Light, Triangle / Y Heavy, Cross / A Special, Circle / B
+  Dodge.
+- **R2 / RT blocks and L1 / LB throws.** R1 / RB and L2 / LT are left free for players to use.
+- The keyboards keep their other keys.
+
+Saved controls move to this layout where they were still on the old defaults; anything a player changed stays (loading
+rules, below).
+
 ## Crouch and Throw (settings format 4)
 
 The combat pass of 2026-11-08 added a held **Crouch** action and gave the standalone **Throw** its own buttons again
@@ -14,45 +29,46 @@ used:
 | Action | Keyboard, left side | Keyboard, right side | Controller |
 |---|---|---|---|
 | Crouch (hold) | S | Down arrow | D-pad down, or left stick down |
-| Throw | U | Numpad 4, or M | L2 / LT |
+| Throw | U | Numpad 4, or M | L2 / LT (L1 / LB since format 5) |
 
 - **Down + Heavy** is the uppercut and **down + Light** the low attack. Down is a direction modifier like toward and
   away, read when the button is pressed (it stays with a press held in the 6-frame buffer); it is not a motion input or
   a chord. Down-toward + Heavy is the uppercut, not toward + Heavy.
-- **Up wins over down.** With both held (or a jump button pressed while crouching) the fighter jumps; letting go of
-  the jump returns to the crouch. Opposite horizontal directions still cancel each other.
+- **Up wins over down.** With both held (or a jump button the player added pressed while crouching) the fighter jumps;
+  letting go of the jump returns to the crouch. Opposite horizontal directions still cancel each other.
 - **The stick.** Each stick axis presses at 55 % and releases below 40 %, so a diagonal must pass that on both axes
   and a resting or slightly drifting stick neither crouches nor jumps. A stick pushed half way down does not crouch.
-- **L2 / LT** reads the analog trigger with the same thresholds as R2 / RT (pressed at 30 %, released below 20 %).
+- **Both triggers** read the analog value with the same thresholds (pressed at 30 %, released below 20 %), whatever
+  action they are given.
 - The crouch keys are also the menus' down (S, Down arrow, D-pad down), as the jump keys are the menus' up.
-- Cross / A and up still jump; R2 / RT and L1 / LB still block. The buttons that left the old Grab in format 3 keep
-  their jobs (Cross / A, I, Numpad 5 and ; jump; L1 / LB blocks).
+- In format 4, Cross / A, I, Numpad 5 and ; also jumped and L1 / LB also blocked (the buttons the old Grab left in
+  format 3). Format 5 took those extra jobs away (above).
 
 ## Default controller layout
 
-The creator specified the face buttons, Block and Dodge. Special sits on R1 / RB because combat needs a dedicated
-Special input; Throw takes the free left trigger. PlayStation and Xbox controllers share one layout by **button
-position**: the left face button is Square on PlayStation and X on Xbox, and so on. Controllers of unknown make use the
-same positions, and their prompts name buttons by position.
+The creator chose this layout (MK-style, settings format 5). PlayStation and Xbox controllers share one layout by
+**button position**: the left face button is Square on PlayStation and X on Xbox, and so on. Controllers of unknown
+make use the same positions, and their prompts name buttons by position.
 
 | Action | PlayStation | Xbox | Position |
 |---|---|---|---|
 | Light attack | Square | X | left face button |
 | Heavy attack | Triangle | Y | top face button |
+| Special | Cross | A | bottom face button |
 | Dodge / Roll | Circle | B | right face button |
-| Block (hold) | R2, or L1 | RT, or LB | right trigger, or left bumper |
-| Special | R1 | RB | right bumper |
-| Throw | L2 | LT | left trigger |
+| Block (hold) | R2 | RT | right trigger |
+| Throw | L1 | LB | left bumper |
 | Move | Left stick / D-pad | Left stick / D-pad | |
-| Jump | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up | bottom face button; hold toward or away to jump that way |
+| Jump | Left stick up / D-pad up | Left stick up / D-pad up | hold toward or away to jump that way |
 | Crouch (hold) | Left stick down / D-pad down | Left stick down / D-pad down | |
 | Pause | Options | Menu | |
 | Training reset | Share | View | |
+| (free) | R1, L2 | RB, LT | right bumper, left trigger |
 
 Notes:
-- **Jump and Block have two buttons each.** Cross / A and D-pad up (and the left stick's up) all jump; R2 / RT and
-  L1 / LB both block. They are separate bindings for the same action, not a combination: pressing two counts as one, and
-  the action stays held until all are released.
+- **One button per action by default.** An action can hold up to three. Extra buttons are separate bindings for the
+  same action, not a combination: pressing two counts as one, and the action stays held until all are released. A
+  button added to Jump jumps the way the stick points, like up does.
 - **Block follows the trigger.** R2 / RT blocks while held and stops on release. It reads the analog trigger with fixed
   thresholds: pressed at 30 % travel, released below 20 %. The engine's own digital trigger press is ignored, so one
   squeeze is exactly one press. A controller that never reports an analog trigger falls back to digital presses after its
@@ -69,7 +85,7 @@ Both sides can be remapped separately.
 | Action | Player 1 (left side) | Player 2 (right side) |
 |---|---|---|
 | Move | A / D | Left / Right arrows |
-| Jump | W, or I | Up arrow, Numpad 5, or ; |
+| Jump | W | Up arrow |
 | Crouch (hold) | S | Down arrow |
 | Light attack | J, or Enter | Numpad 1, or , |
 | Heavy attack | K, or Backspace | Numpad 2, or . |
@@ -82,8 +98,8 @@ Both sides can be remapped separately.
 
 ## Menu controls (fixed)
 
-Menus use their own fixed controls, separate from the gameplay layouts. Cross / A confirms in menus and jumps in a
-match under the shipped layout.
+Menus use their own fixed controls, separate from the gameplay layouts. Cross / A confirms in menus and is Special in
+a match under the shipped layout.
 
 | Command | Controller | Keyboard, left side | Keyboard, right side |
 |---|---|---|---|
@@ -140,7 +156,7 @@ Each layout lists every action with its buttons: up to three (primary, secondary
 - **Missing buttons.** An action may be left without a button. The list then shows **Unbound**, and leaving the layout
   warns about it.
 
-Changes save immediately to `Settings.json` in the game's Saved folder, under format version 4. Each layout is stored by
+Changes save immediately to `Settings.json` in the game's Saved folder, under format version 5. Each layout is stored by
 its id (`controller1`, `controller2`, `keyboard1`, `keyboard2`), and each action by a stable id:
 - `MoveLeft`, `MoveRight`, `Jump`, `Crouch`
 - `LightAttack`, `HeavyAttack`
@@ -148,8 +164,10 @@ its id (`controller1`, `controller2`, `keyboard1`, `keyboard2`), and each action
 - `TrainingReset`
 
 Loading rules:
-- **Version 1 files** from the first slice keep their keyboard layouts. Their controller layout moves to the new default,
-  with a notice.
+- **Version 1 files** from the first slice keep their keyboard layouts. Their controller layout moves to the current
+  default, with a notice.
+- **Files before version 5** are read against the version-4 layout (what the file leaves out is that layout's), go
+  through the steps below in order, and then move to the current one.
 - **Version 1 and 2 files** (before grappling was switched off): Grab's former default buttons leave Grab and take their
   new jobs (jump; L1 / LB block) wherever that slot is free and the button is not used elsewhere, with a notice. A
   button the player had given Grab themselves stays with Grab. This is also how the right keyboard's ; reaches Jump's
@@ -159,6 +177,11 @@ Loading rules:
   left without it and the notice names it ("S (Crouch (hold)) is used by Special ... Choose one in Settings >
   Controls"). Throw keys the player had chosen themselves stay. Nothing else changes, including video, audio and
   accessibility settings.
+- **Version 1-4 files** (before the fighting-game layout): every action still on its version-4 default moves to the
+  current layout. An action the player changed stays as they made it. A move that would take a button the player kept
+  on another action is undone, and the notice names it ("Kept as you had them, because the new button is one of
+  yours: Special on Controller - Player 1"). For example, a player who put Light on Cross / A keeps Special on
+  R1 / RB.
 - **Broken layouts.** A layout with a duplicate or reserved key resets to its defaults on load, and the other layouts are
   kept.
 
@@ -166,12 +189,13 @@ Loading rules:
 
 | Test | What it covers | Kind |
 |---|---|---|
-| `Tests/Auto/controls_selftest.txt` (`bindings_selftest`, `input_selftest`) | The default layouts (Crouch and Throw included) and their PlayStation / Xbox names. Menu vs gameplay roles. Conflict detection, swap, replace, trading slots, clear, reset, independent layouts, bindable keys. Save / load round trip; version-1, 2 and 3 migration (a player's own keys kept, the new action left unbound with a notice); a migrated file reloading without migrating again; conflicting files. Every default button through the router, L2 / LT throw, D-pad and stick crouch with hysteresis, up winning over down, diagonals, trigger thresholds and the early digital press, player 2's layout, live remapping. | Packaged game, injected input |
+| `Tests/Auto/controls_selftest.txt` (`bindings_selftest`, `input_selftest`) | The default layouts (the format-5 layout, with R1 / RB and L2 / LT free, and the version-4 layout kept for migration) and their PlayStation / Xbox names. Menu vs gameplay roles. Conflict detection, swap, replace, trading slots, clear, reset, independent layouts, bindable keys. Save / load round trip; version-1, 2, 3 and 4 migration (a player's own keys kept; the new action left unbound, or an old default left in place, with a notice); a migrated file reloading without migrating again; conflicting files. Every default button through the router (Cross / A Special, L1 / LB throw once per press, R1 / RB and L2 / LT doing nothing), D-pad up jumping, D-pad and stick crouch with hysteresis, up winning over down with an added jump button, diagonals, trigger thresholds and the early digital press, player 2's layout, live remapping. | Packaged game, injected input |
 | `controls_remap.txt`, then `controls_persist.txt` | Remapping through the Controls screen's code, conflict choices, clear and reset, player 2 and keyboard layouts. The results survive a restart and drive gameplay. | Packaged game, injected input |
 | `controls_ui.txt` | The real Controls menus: capture, conflict page, Swap, Escape cancel, 6-second timeout, restore-all confirmation. Screenshots of every screen and of the prompts in the move list, Training, Lesson, pause and select screens, in PlayStation and Xbox styles. | Packaged game, injected input |
 | `virtual_pad.py layout xbox / ds4` with `controls_pad_layout.txt` | Every default button on a simulated Xbox 360 pad and a simulated DualShock 4, through Linux uinput, SDL and Unreal. The game logs each action, the R2 / RT hold and release, and the detected device kind. | Simulated controller |
 | `virtual_pad.py menu-and-fight`, `disconnect`, `remap` | Menus, a full fight with every action, pause and quit. Disconnect and reconnect mid-match. Rebinding entirely with the pad through Settings > Controls. | Simulated controller |
 
-The creator checked a physical PS4 controller on the earlier `060a75f` candidate. A physical button-by-button check
-of the revised `4cee9c1` bindings remains unrecorded (see `Docs/Status.md`). Simulated devices go through the same
-system path as real ones, but they are not physical hardware.
+The creator checked a physical PS4 controller on the earlier `060a75f` candidate and played the `5d5c316` candidate
+(format-4 layout) with a Bluetooth DualShock 4, reporting that it works. The format-5 layout has not yet been played
+with a physical controller. Simulated devices go through the same system path as real ones, but they are not physical
+hardware.

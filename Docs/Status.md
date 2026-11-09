@@ -1,21 +1,23 @@
 # Status and handoff
 
-Updated 2026-11-08 (combat, animation and character pass: candidate `5d5c316` built and checked by the implementer;
-ready for independent review and the creator's playtest; nothing merged).
+Updated 2026-11-09 (combat, animation and character pass, then the creator's fighting-game control layout: candidate
+`32831cc` built and checked by the implementer; ready for independent review and the creator's playtest; nothing
+merged).
 
 ## Where things stand
 
-- **This round's work** is on branch `dev/combat-pass-1108` (pushed to GitHub as a task branch, no pull request),
-  eleven commits on the PR #1 head `ea3ddc6` plus documentation. It answers the creator's 2026-11-08 requests: crouching, Wren's takedown, Ashka's clinch trip, throws
-  that work inside combos without grappling, higher and more useful jumps, uppercuts, an audit of every animation and
-  move relationship, Wren's feet and materials, Ashka's overhaul, and the controls for all of it.
-- **Candidate:** `EbonyHearts-Slice-5d5c316.tar.gz` (Shipping, Linux), built from commit `5d5c316`; SHA-256
-  `25c7054055fa10a40d45443bef6b98c677e73b9e08c14b1a1b009f12b3534ef0`. Local review build in the delivery workspace's
-  `release/` folder; not published.
-- **Pull request #1** (`release/first-slice` → `main`) is unchanged at `ea3ddc6`; its 2026-11-08 technical audit
-  ([Review](Review.md), previous round, section 6) applies to that head, not to this work. Nothing has been merged,
-  tagged or released. The new branch is a fast-forward of `release/first-slice`; whether it joins PR #1 or goes up as
-  its own pull request is the creator's decision.
+- **This round's work** was made on branch `dev/combat-pass-1108` from the PR #1 head `ea3ddc6` and, at the creator's
+  request on 2026-11-09, added to PR #1 (`release/first-slice`, a fast-forward). It answers the creator's 2026-11-08
+  requests (crouching, Wren's takedown, Ashka's clinch trip, throws that work inside combos without grappling, higher
+  and more useful jumps, uppercuts, an audit of every animation and move relationship, Wren's feet and materials,
+  Ashka's overhaul, and the controls for all of it) and the 2026-11-09 fighting-game control layout.
+- **Candidate:** `EbonyHearts-Slice-32831cc.tar.gz` (Shipping, Linux), built from commit `32831cc`; SHA-256
+  `bcaca78299ea92cee010aa1ed2fc7780269deba83825b0b7c60338a5020da5af`. It is the combat pass's `5d5c316` (which the
+  creator played on 2026-11-09) plus the new default controls; game content is identical. Local review build in the
+  delivery workspace's `release/` folder; not published.
+- **Pull request #1** (`release/first-slice` → `main`) now carries this work. Its 2026-11-08 technical audit
+  ([Review](Review.md), previous round, section 6) applies to its earlier head `ea3ddc6`, not to this work. Nothing
+  has been merged, tagged or released; merging needs the creator's explicit OK.
 - **Results:** [Validation](Validation.md), "Current candidate". **What to check and where:** [Review](Review.md).
 
 ## What changed in this round
@@ -37,9 +39,13 @@ ready for independent review and the creator's playtest; nothing merged).
 6. **Animation.** New crouch, low, uppercut, launch, takedown and clinch-trip motion; every clip in the game measured
    and listed with what uses it ([AnimationAudit](AnimationAudit.md)); every move-to-move transition tabulated
    ([MoveMatrix](MoveMatrix.md)).
-7. **Controls, Lesson and CPU.** Crouch and Throw are in Controls (remappable; your saved controls gain them where
-   the buttons are free). The Lesson has 14 steps covering all of it. The CPU crouch-blocks lows, throws, uppercuts
-   jump-ins and escapes throws on reaction.
+7. **Controls, Lesson and CPU.** Crouch and Throw are in Controls (remappable). The Lesson has 14 steps covering all
+   of it. The CPU crouch-blocks lows, throws, uppercuts jump-ins and escapes throws on reaction.
+8. **The usual fighting-game layout (2026-11-09, your choice).** Up jumps and down crouches; no button jumps. On a
+   controller: Square / X Light, Triangle / Y Heavy, Cross / A Special, Circle / B Dodge, R2 / RT Block (hold),
+   L1 / LB Throw; R1 / RB and L2 / LT are free. On the keyboards only W and the Up arrow jump now. Saved controls move
+   to the new layout where they were still on the old defaults (your own changes stay); the game says so once, on the
+   title screen, and saves the result.
 
 ## How to test the candidate
 
@@ -48,11 +54,11 @@ sha256sum -c SHA256SUMS
 ```
 
 ```bash
-tar -xzf EbonyHearts-Slice-5d5c316.tar.gz
+tar -xzf EbonyHearts-Slice-32831cc.tar.gz
 ```
 
 ```bash
-EbonyHearts-Slice-5d5c316/EbonyHearts.sh
+EbonyHearts-Slice-32831cc/EbonyHearts.sh
 ```
 
 It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHearts/Saved/EbonyHearts/Settings.json`.
@@ -69,22 +75,24 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
    feel better? Is the uppercut's timing fair?
 5. **Ashka and Wren up close.** Training, walk in close on both sides. Does Ashka's coat read black and tailored? Do
    Wren's ankle wraps look right?
-6. **Controller.** The left trigger throws and the D-pad down crouches. Comfortable?
+6. **Controller (new layout).** Cross is Special, L1 throws, R2 blocks, up jumps, down crouches. Does it feel like
+   the fighting games you know? Is anything you reach for missing (R1 and L2 are free)?
 
 ## Implemented, tested, observed and not verified
 
-- **Implemented and tested by automation on the candidate** (Validation, "Current candidate"): combat core (52 cases,
-  1341 checks); packaging tests; the packaged battery (smoke, controls including a version-3 settings file migrating,
-  menu journey, the full Lesson, real keyboard events, simulated Xbox and DualShock 4 pads, the CPU match matrix,
-  review scripts, the simulated pads' left trigger and D-pad down); frame-time captures at 1080p and at the monitor's
-  native 3440 × 1440, each against the previous release under the same conditions; a 58-minute soak (rendered
-  off-screen).
+- **Implemented and tested by automation on the candidate** (Validation, "Current candidate" and "Candidate
+  `5d5c316`"): combat core (52 cases, 1341 checks); packaging tests; the packaged battery, 28 runs (smoke, controls
+  including version 1-4 settings files migrating, menu journey, the full Lesson, real keyboard events, simulated Xbox
+  and DualShock 4 pads on the new layout, the CPU match matrix, review scripts); a copy of your own saved settings
+  migrating over two launches; frame-time captures at 1080p and at the monitor's native 3440 × 1440; for `5d5c316`,
+  the same against the previous release and a 58-minute soak (rendered off-screen).
 - **Observed by the implementer** (screenshots and footage): every new move on both fighters, both throws, the new
   character art in the chapel and in neutral light, before and after; before/after recordings of the art and jump
   scripts against the previous release, with phone copies.
-- **Physical controller:** the creator played the candidate with a Bluetooth DualShock 4 on 2026-11-09 and reports
-  "The controller works fine" (their observation in play; no per-button log). Two earlier attempts logged no press:
-  the pad's battery ran out, then its Bluetooth link went silent.
+- **Physical controller:** the creator played `5d5c316` (the earlier layout) with a Bluetooth DualShock 4 on
+  2026-11-09 and reports "The controller works fine" (their observation in play; no per-button log). Two earlier
+  attempts logged no press: the pad's battery ran out, then its Bluetooth link went silent. The new layout has not
+  been played with a physical controller yet.
 - **Not independently reviewed** and **not accepted by the creator** yet; the creator's playtest feedback is not in.
 - **Not verified:** hardware other than the test machine. One of three native-resolution captures of the candidate
   had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur.

@@ -8,16 +8,17 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**Combat, animation and character pass (2026-11-08): candidate `5d5c316` ready for independent review and the
-creator's playtest. Not merged.**
-- **This branch** (`dev/combat-pass-1108`, on PR #1's head `ea3ddc6`) adds crouching and hit levels, uppercuts,
-  standalone throws that also finish combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit
-  of every clip and every move-to-move relationship, Wren's ankle wraps and materials, Ashka's tailored coat and
-  outfit, and the controls, Lesson and CPU for all of it.
-- **Candidate.** `EbonyHearts-Slice-5d5c316.tar.gz` (Shipping, Linux), built from commit `5d5c316`. Results on the
+**Combat, animation and character pass (2026-11-08) and the fighting-game control layout (2026-11-09): candidate
+`32831cc` ready for independent review and the creator's playtest. Not merged.**
+- **This round** (made on `dev/combat-pass-1108` from PR #1's earlier head `ea3ddc6`, and added to PR #1 on
+  2026-11-09 at the creator's request) adds crouching and hit levels, uppercuts, standalone throws that also finish
+  combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit of every clip and every
+  move-to-move relationship, Wren's ankle wraps and materials, Ashka's tailored coat and outfit, the controls, Lesson
+  and CPU for all of it, and the MK-style default controls.
+- **Candidate.** `EbonyHearts-Slice-32831cc.tar.gz` (Shipping, Linux), built from commit `32831cc`. Results on the
   test machine are in `Docs/Validation.md` ("Current candidate").
-- **Pull request #1** (`release/first-slice` → `main`) is unchanged; its 2026-11-08 independent technical audit
-  applies to its own head (`Docs/Review.md`, previous round, section 6).
+- **Pull request #1** (`release/first-slice` → `main`) carries this work. Its 2026-11-08 independent technical audit
+  applies to its earlier head `ea3ddc6` (`Docs/Review.md`, previous round, section 6).
 - **Still open.** An independent review of this candidate, the creator's playtest and the merge decision.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   The packaged game has no crash reporter.
@@ -68,23 +69,23 @@ can take over that side.
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
 | Move | A / D | Left / Right arrows | Left stick / D-pad | Left stick / D-pad |
-| Jump | W, or I | Up arrow, Numpad 5, or ; | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up |
+| Jump | W | Up arrow | Left stick up / D-pad up | Left stick up / D-pad up |
 | Crouch (hold) | S | Down arrow | Left stick down / D-pad down | Left stick down / D-pad down |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
-| Special | L | Numpad 3, or / | R1 | RB |
-| Throw | U | Numpad 4, or M | L2 | LT |
+| Special | L | Numpad 3, or / | Cross | A |
+| Throw | U | Numpad 4, or M | L1 | LB |
 | Dodge | O | Numpad 6, or ' | Circle | B |
-| Block (hold) | Space | Numpad 0, or Right Shift | R2, or L1 | RT, or LB |
+| Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
-PlayStation and Xbox share one layout by button position. Menus have their own fixed controls: Cross / A or Enter
-confirms, Circle / B or Escape goes back, and Options / Menu pauses. Down + Heavy is the uppercut and down + Light the
-low attack; up wins over down when both are held. Every gameplay action can be remapped under Settings > Controls,
-with separate controller layouts for players 1 and 2 and for each keyboard side. Saved controls from earlier builds
-keep the player's own keys; Crouch and Throw take their new defaults only where those keys are free. Details:
-[Docs/Controls.md](Docs/Controls.md).
+PlayStation and Xbox share one layout by button position; it follows Mortal Kombat's (R1 / RB and L2 / LT are left
+free). Menus have their own fixed controls: Cross / A or Enter confirms, Circle / B or Escape goes back, and Options /
+Menu pauses. Down + Heavy is the uppercut and down + Light the low attack; up wins over down when both are held. Every
+gameplay action can be remapped under Settings > Controls, with separate controller layouts for players 1 and 2 and for
+each keyboard side. Saved controls from earlier builds move to this layout where they were still on the old defaults;
+anything the player changed stays. Details: [Docs/Controls.md](Docs/Controls.md).
 
 ## Running the packaged build
 

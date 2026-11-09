@@ -2,10 +2,69 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`, the
-previous candidates' under `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>` and the original release's under `evidence/rc-f3ae5ab/<run>`.
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-32831cc/<run>`; the
+previous candidates' under `evidence/rc-1b714fd/<run>`, `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
+`evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `5d5c316` (2026-11-08, combat, animation and character pass)
+## Current candidate `32831cc` (2026-11-09, fighting-game control layout)
+
+**Result: PASS on every objective check run.** The creator chose a default layout closer to what fighting-game
+players expect (MK-style): up jumps, the four face buttons are Light, Heavy, Special and Dodge, R2 / RT blocks and
+L1 / LB throws ([Controls](Controls.md)). This candidate is `5d5c316` plus that change; its combat core, data and
+game content are identical (same content hash), so the combat, animation and art evidence of `5d5c316` below still
+applies. This is the implementer's own verification, not an independent review; the new layout has not been played
+with a physical controller yet.
+
+### Build identity
+
+| Item | Value |
+|---|---|
+| Source | `32831cc` on `dev/combat-pass-1108`: `5d5c316`, its documentation commits, then `1b714fd` (the layout and settings format 5) and `32831cc` (a migrated settings file is written back once at start-up). Only `Source/EbonyHearts/Game` (settings, input router comment, automation self-tests) and three test scripts changed |
+| Release archive | `EbonyHearts-Slice-32831cc.tar.gz`, 333 501 765 bytes, SHA-256 `bcaca78299ea92cee010aa1ed2fc7780269deba83825b0b7c60338a5020da5af` |
+| Content hash | `e5a604c4fd07c1135fb598b8e6e40b4e44baa783788ef074d5ef0895d5a3d7c1`, identical to `5d5c316` |
+| Build | Unreal Engine 5.8.4, Shipping, Linux x86-64, Vulkan SM6 (package `pkg-75-controls1109b`). 857 packages cooked, 0 warnings, 0 errors |
+| Release check | Extracted into a new folder whose path contains a space; all 21 files matched `.files.sha256` and the archive its `SHA256SUMS` line |
+| Intermediate build | `1b714fd` (package `pkg-74-controls1109`) passed the same 28-run battery (`evidence/rc-1b714fd`); checking it found that a migrated settings file was only written when the player changed a setting, so the notice and migration repeated on every launch until then. `32831cc` fixes that |
+| Test machine | as for `5d5c316` below |
+
+### Results on the candidate
+
+Evidence: `evidence/rc-32831cc/battery/<run>`. The battery started from an empty game profile; 28 runs, each with
+exit 0, no `FAIL` or `WARN` line and its completion marker.
+
+| Suite | Result | Notes |
+|---|---|---|
+| Combat core | **PASS** | 52 cases, 1341 checks, 0 failures (unchanged code, re-run on the head) |
+| Packaging safety, move tables | **PASS** | 10 tests; `move_tables.py` regenerates `CombatContract.md` unchanged |
+| Controls self-tests | **PASS** | `bindings_selftest` 101 checks: the format-5 layout on both controller layouts (one button per action, R1 / RB and L2 / LT free), the version-4 layout kept for migration, PlayStation / Xbox names, keyboards jumping on W and the Up arrow only, conflicts, and migration of version 1, 2, 3 and 4 files (a version-4 file whose player put Light on Cross / A keeps Special on R1 / RB and the notice names it). `input_selftest` 44 checks: every default button through the router, L1 / LB throwing once per press, R1 / RB and L2 / LT doing nothing, D-pad up jumping, an added jump button still beating down |
+| Remap, persistence, Controls UI | **PASS** | `controls_remap` then `controls_persist` in a new process (rewritten for the new layout), `controls_ui` with screenshots: the Controls list shows Special on ✕, Throw on L1 and Jump on D-pad up; the move list shows the specials on ✕ and the throw on L1 |
+| Settings, journey, Lesson, real keyboard | **PASS** | Video settings keep audio (4); 25 journey checks; all 14 Lesson steps; real X11 keyboard events |
+| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts: Square / X Light, Triangle / Y Heavy, Circle / B Dodge, Cross / A Special, L1 / LB Throw, R2 / RT Block, D-pad up Jump, D-pad down Down; R1 / RB and L2 / LT produce nothing. Menu-and-fight, disconnect and reconnect, remapping with the pad |
+| Matrix | **PASS** | 12/12 complete matches, no missing assets; memory 1 516 MiB at the end (peak 1 535) |
+| Review scripts, signature, footage | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_playtest`, `review_combat` (64 s at 60 fps), `review_jump`, `review_art`, signature |
+| Start-ups | **PASS** | 20 starts, 2.3 s on average to the first automation line (at most 2.6 s) |
+| The creator's settings | **PASS** | A copy of the creator's own version-4 `Settings.json` (every layout on the version-4 defaults) in the test profile (`evidence/rc-32831cc/creator-v4-migration`). First launch: the title shows "Controls now use the usual fighting-game layout: ..."; all 12 binding checks pass (Cross / A Special, L1 / LB Throw, R2 / RT alone Block, D-pad up alone Jump, W and the Up arrow alone jump, U still throws); the file is written as version 5 with no other field changed, although that run was launched windowed. Second launch: no notice, the same 12 checks pass, the file is not changed |
+
+**Frame times** (fight = 60 s of a Hard bot against the Hard CPU; no recording during these runs):
+
+| Run | Frames | Median | p99 | Max | Over 33 ms | GPU median |
+|---|---|---|---|---|---|---|
+| Fight, 1080p windowed, V-Sync on | 3 601 | 16.67 ms | 16.72 | 16.89 | 0 | 6.3 ms |
+| Fight, 1080p windowed, V-Sync off | 8 344 | 7.14 | 8.35 | 8.82 | 0 | 6.8 |
+| Fight, 3440 × 1440 borderless, V-Sync on | 3 602 | 16.67 | 16.76 | 17.30 | 0 | 9.6 |
+| Menus (the three runs) | 1 201-2 813 | 16.67 / 7.09 / 16.67 | ≤ 16.74 | ≤ 16.94 | 0 | 6.2-9.4 |
+| First match from its start (cold) | 1 502 | 16.67 | 16.75 | 17.14 | 0 | 6.6 |
+| Training, both auras and none | 421-602 | 16.67 | ≤ 16.73 | ≤ 16.80 | 0 | 5.8-5.9 |
+
+The same as `5d5c316` within run-to-run spread, as expected for an input-only change.
+
+### Not run on this candidate
+
+The soak, the off-screen render-cost comparison, the route traces and probes, the clip audit and the source-to-import
+comparison: none of the code or content they cover changed (they are recorded for `5d5c316` below). No physical
+controller has been used with the new layout.
+
+## Candidate `5d5c316` (2026-11-08, combat, animation and character pass)
 
 **Result: PASS on every objective check run; ready for independent review and the creator's playtest.** This is the
 implementer's own verification on branch `dev/combat-pass-1108`, not an independent review. The creator began playing
