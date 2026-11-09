@@ -57,6 +57,22 @@ Hard bot against the Hard CPU, which now crouches, throws and uppercuts; no vide
 | Training, both auras and none | 422-601 | 16.67 | 16.72-16.75 | 16.82 | 0 | 6.6-6.7 | |
 | First match from its start (cold) | 1 501 | 16.67 | 16.76 | 16.91 | 0 | 6.7 | 16.67 / 16.78 / 16.87 |
 
+**Render cost against release `309c87c` (before this pass).** Both builds rendering off-screen (`-RenderOffScreen`,
+V-Sync off, so the monitor stayed free; the desktop was in use, load average under 1.2), the same fight and menu
+script, run back to back (`evidence/combat1108/offscreen-cost`). These measure what each frame costs, not how frames
+reach a display:
+
+| Fight, 60 s | Frames | Median | p99 | Max | GPU median |
+|---|---|---|---|---|---|
+| 1920 × 1080, `309c87c` | 6 702 | 8.93 ms | 10.56 | 12.84 | 8.56 ms |
+| 1920 × 1080, candidate | 6 650 | 8.99 | 10.52 | 12.49 | 8.59 |
+| 3440 × 1440, `309c87c` (two runs) | 4 090 / 4 148 | 14.61 / 14.44 | 16.30 / 15.59 | 17.68 / 16.96 | 14.17 / 13.95 |
+| 3440 × 1440, candidate (two runs) | 4 136 / 4 155 | 14.49 / 14.45 | 15.57 / 16.51 | 16.71 / 27.64 | 13.99 / 13.94 |
+
+The new meshes and materials cost nothing measurable: medians and GPU times agree within run-to-run spread. One
+candidate run had a single 27.6 ms frame (the others stayed under 17.7 ms); at the monitor's native resolution
+frames take about 14.5 ms, inside a 60 Hz frame.
+
 VRAM peaked at 1 048 MiB including the desktop (1 071 for `4cee9c1`). The clock's dropped-tick counter reads 15-16
 in every capture, as it did on `4cee9c1`: it counts from launch and includes loading, not the measured windows. The
 new meshes have 16% (Wren) and 26% (Ashka) more triangles; at 1080p the GPU stays near 6-7 ms a frame.
@@ -104,8 +120,9 @@ in the chapel; under a bright neutral key its sheen reads charcoal.
 ### Not run on this candidate
 
 These need the test machine's monitor and were left for a later session: the frame-time capture at the monitor's
-native borderless resolution (interrupted), a baseline capture of `309c87c` under the same conditions (an earlier one
-ran beside a Blender render and is not used), before/after recordings of the art and jump scripts, and the extended
+native borderless resolution with V-Sync (interrupted; the off-screen render cost at that resolution is above), the
+windowed V-Sync captures of `309c87c` under the same conditions (an earlier one ran beside a Blender render and is not
+used; the off-screen comparison above covers render cost), before/after recordings of the art and jump scripts, and the extended
 simulated-pad scenarios (L2 / LT and D-pad down; pads are read only while the game has a window). A task-local script
 runs the monitor-bound steps in order: `review-handoff-20261108/tools/after_battery.sh`. Also not
 re-run, because the code they cover did not change in this round: the display-mode changes, the monitor standby
