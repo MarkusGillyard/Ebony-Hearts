@@ -502,7 +502,7 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 		const float T = static_cast<float>(c) / (Cols - 1);
 		const float X0 = P.VirtualMin.X + (1180.0f - P.VirtualMin.X) * c / Cols;
 		const float X1 = P.VirtualMin.X + (1180.0f - P.VirtualMin.X) * (c + 1) / Cols;
-		P.Rect(FVector2f(X0, P.VirtualMin.Y), FVector2f(X1 - X0 + 1.0f, Tall), St::Alpha(St::Abyss, 0.94f * (1.0f - T * T)));
+		P.Rect(FVector2f(X0, P.VirtualMin.Y), FVector2f(X1 - X0, Tall), St::Alpha(St::Abyss, 0.94f * (1.0f - T * T)));
 	}
 	if (LogoSmallTexture || TitleTexture)
 	{
@@ -525,11 +525,13 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 		const bool bSel = i == MenuIndex;
 		if (bSel)
 		{
-			const int32 Steps = 16;
+			const int32 Steps = 32;
 			for (int32 k = 0; k < Steps; ++k)
 			{
 				const float T = static_cast<float>(k) / Steps;
-				P.Rect(FVector2f(X - 30 + 620.0f * k / Steps, Y - 4), FVector2f(620.0f / Steps + 1.0f, 54), St::Alpha(St::Focus, 0.62f * (1.0f - T)));
+				const float X0 = FMath::RoundToFloat(X - 30 + 620.0f * k / Steps);
+				const float X1 = FMath::RoundToFloat(X - 30 + 620.0f * (k + 1) / Steps);
+				P.Rect(FVector2f(X0, Y - 4), FVector2f(X1 - X0, 54), St::Alpha(St::Focus, 0.62f * (1.0f - T)));
 			}
 			EHUIShapes::Crescent(P, FVector2f(X - 52, Y + 18), 14.0f, St::Silver, true);
 		}
@@ -592,11 +594,14 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 		if (bSel)
 		{
 			// Focus: a violet band fading to the right, the crescent marking the row (shape), bold primary text.
-			const int32 Steps = 12;
+			// Steps abut exactly: overlapping translucent steps would double their alpha in thin seams.
+			const int32 Steps = 32;
 			for (int32 k = 0; k < Steps; ++k)
 			{
 				const float T = static_cast<float>(k) / Steps;
-				P.Rect(Row + FVector2f(16 + (W - 32) * k / Steps, 6), FVector2f((W - 32) / Steps + 1.0f, RowH - 12), EHStyle::Alpha(EHStyle::Focus, 0.62f - 0.42f * T));
+				const float X0 = FMath::RoundToFloat(16 + (W - 32) * k / Steps);
+				const float X1 = FMath::RoundToFloat(16 + (W - 32) * (k + 1) / Steps);
+				P.Rect(Row + FVector2f(X0, 6), FVector2f(X1 - X0, RowH - 12), EHStyle::Alpha(EHStyle::Focus, 0.62f - 0.42f * T));
 			}
 			// Outside the veil, as on the main menu: beside the label a small crescent reads like a tick.
 			EHUIShapes::Crescent(P, Row + FVector2f(-20, RowH * 0.5f - 5), 10.0f, EHStyle::Silver, true);
