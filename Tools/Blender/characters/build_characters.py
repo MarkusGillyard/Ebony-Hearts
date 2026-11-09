@@ -121,7 +121,7 @@ def build(cid):
         ctx["ashka"] = garments.pop("_info")
         ctx["ashka_pal"] = cfg["palette"]
         ctx["ashka_cfg"] = cfg
-        hair, hair_info = HS.ashka(body, rig, parts, [garments["shirt"]], cfg)
+        hair, hair_info = HS.ashka(body, rig, parts, [garments["coat"], garments["waistcoat"], garments["shirt"]], cfg)
         if cfg.get("tattoo"):
             zc = rig.data.bones["clavicle_l"].head_local[2]
             Vb = M.co(body)
@@ -132,10 +132,14 @@ def build(cid):
         ctx["ankles"] = {s: np.array(rig.data.bones["foot_" + s].head_local) for s in "lr"}
         ctx["sole"] = cfg["sole_m"]
         ctx["loafer_dark"] = cfg["palette"]["loafer_dark"]
-        # no coat since the 2026-11-09 canon: its tail chains are kept, unweighted, from the shipped rest pose
+        # the frock coat's tails ride the coat chains (their shipped rest pose is kept); without a coat they would
+        # stay in the rig unweighted (coat_chains_from_rest)
         A.coat_rig(rig, skirt_info or A.coat_chains_from_rest(cfg.get("rest_chains")), cfg.get("rest_chains"))
-        clothes = M.join([garments["shirt"], garments["tie"], garments["pants"], garments["loafers"]], name + "_Clothes")
-        mats = {"Skin": [body], "Hair": [hair], "Eyes": [parts["eyes"]], "Clothes": [clothes]}
+        coat = garments["coat"]
+        coat.name = coat.data.name = name + "_Coat"
+        clothes = M.join([garments["shirt"], garments["tie"], garments["waistcoat"], garments["pants"],
+                          garments["loafers"]], name + "_Clothes")
+        mats = {"Skin": [body], "Hair": [hair], "Coat": [coat], "Eyes": [parts["eyes"]], "Clothes": [clothes]}
     report["hair"] = hair_info
     M.delete_faces(body, hide)
     R.twist_constraints(rig)
@@ -217,10 +221,10 @@ def build(cid):
         jobs = {"Skin": ("skin", None), "Hair": ("hair", None), "Eyes": ("eyes", None),
                 "Outfit": ("outfit", outfit_spec), "Gloves": ("accessory", acc_spec)}
     else:
-        _, clothes_spec = SP.ashka(cfg)
-        # the whole outfit (shirt, tie, trousers, loafers) is one material at the outfit size
+        coat_spec, clothes_spec = SP.ashka(cfg)
+        # the frock coat, and everything under it (blouse, cravat, waistcoat, trousers, boots), each at the outfit size
         jobs = {"Skin": ("skin", None), "Hair": ("hair", None), "Eyes": ("eyes", None),
-                "Clothes": ("outfit", clothes_spec)}
+                "Coat": ("outfit", coat_spec), "Clothes": ("outfit", clothes_spec)}
     report["materials"] = {}
     for mat_key, (kind, spec) in jobs.items():
         res = sizes[kind]

@@ -2,10 +2,10 @@
 
 Wren: long brown hair, centre part, two neat braids from behind the ears down the upper back
       (chains braid_l_01..04, braid_r_01..04 under head).
-Ashka: long crimson hair swept back into one loose ponytail tied at the nape (2026-11-09 canon; it rides
-      the former braid's chain, braid_01..05 under head, so the skeleton is unchanged),
-      bangs ending just past the eyebrows, two longer face-framing strands (strand_l_01..02,
-      strand_r_01..02 under head)."""
+Ashka: long, silky crimson hair with waves toward the ends, swept back into one loose ponytail tied with a small
+      black ribbon at the nape (sheet v2 of 2026-11-09; it rides the former braid's chain, braid_01..05 under head,
+      so the skeleton is unchanged), soft, slightly parted bangs ending just past the eyebrows, two longer
+      face-framing strands (strand_l_01..02, strand_r_01..02 under head)."""
 import math
 
 import numpy as np
@@ -181,6 +181,9 @@ def ashka(body, rig, parts, garments, cfg):
         for i in range(n):
             fpos = (i + (0.5 if row == 1 else (0.25 if row == 2 else 0.0))) / (h["bang_count"] - 1)
             x = -span + 2 * span * fpos + (rng.random() - 0.5) * 0.006
+            # sheet v2: slightly parted at the centre (the middle cards step aside, sweeping away from the part)
+            near_c = max(0.0, 1 - abs(x) / span)
+            x += math.copysign(0.5 * h.get("bang_part", 0.0) * near_c, x)
             curve = (x / span) ** 2
             near = capV[np.abs(capV[:, 0] - x) < 0.008]
             z_edge = near[near[:, 1] < hi["center"][1] - 0.04][:, 2].min() if len(near) else hi["brow_top"] + 0.05
@@ -188,7 +191,7 @@ def ashka(body, rig, parts, garments, cfg):
             z_mid = hi["brow_top"] + 0.01 + rng.random() * 0.006
             tip_z = hi["brow_z"] - h["bang_past_brow"] + 0.012 * curve - rng.random() * 0.012 + 0.005 * row
             out = h["bang_clear"] + out_add
-            sweep = (rng.random() - 0.5) * 0.016 + 0.01 * np.sign(x) * curve
+            sweep = (rng.random() - 0.5) * 0.016 + 0.01 * np.sign(x) * curve + 0.008 * np.sign(x) * near_c ** 2
             root, n0 = _face_pt(capc, x * 0.9, z_root + 0.012, 0.002)
             mid, n1 = _face_pt(col_body, x * 1.0 + sweep * 0.4, z_mid, out + 0.003)
             tip, n2 = _face_pt(col_body, x * (1.03 + 0.05 * curve) + sweep, tip_z, out + 0.001 + 0.002 * rng.random())
@@ -262,7 +265,11 @@ def ashka(body, rig, parts, garments, cfg):
     w = w * (1 - (1 - pt["width_tip"] / pt["width_max"]) * M.smoothstep(0.3 * L, L, sp))
     rng_p = np.random.default_rng(11)
     sway = (np.sin(sp * 19.0 + 1.3) * 0.25 + np.sin(sp * 37.0) * 0.12) * w * 0.25      # a loose, uneven fall
-    core_path = path + Lv * sway[:, None]
+    # sheet v2: silky waves toward the ends (soft S-bends that grow from wave_start of the length to the tip)
+    wave_ramp = M.smoothstep(pt.get("wave_start", 1.0) * L, L, sp)
+    wph = sp * (2 * math.pi / pt.get("wave_period", 0.075))
+    wave = pt.get("wave_amp", 0.0) * wave_ramp
+    core_path = path + Lv * (sway + wave * np.sin(wph + 0.6))[:, None] + Dv * (0.35 * wave * np.cos(wph + 0.6))[:, None]
     verts, faces, uvs = M.tube(core_path, w * 0.82, w * pt["depth"] * 0.82, 10, Lv, Dv, cap_start=False, cap_end=True)
     uvs = [[tuple(H.rect_map(np.array([uv]), H.BRAID)[0]) for uv in f] for f in uvs]
     core = M.make_object("ponytail_core", *M.merge_parts([(verts, faces, uvs)])[:3])
@@ -284,8 +291,10 @@ def ashka(body, rig, parts, garments, cfg):
         spread = 1.0 + 0.22 * tt + 0.08 * rng_p.random()
         off = (Lv[idx] * (lat_c * w[idx] * spread)[:, None]
                + Dv[idx] * (dep_c * w[idx] * pt["depth"] * spread + 0.0015)[:, None])
+        # each strand clump waves a little out of step with the others
+        off += Lv[idx] * (0.3 * wave[idx] * np.sin(wph[idx] * 1.3 + ang * 2.0))[:, None]
         cp = core_path[idx] + off
-        cp = cp[::max(1, len(cp) // 14)].tolist() + [cp[-1].tolist()]
+        cp = cp[::max(1, len(cp) // 28)].tolist() + [cp[-1].tolist()]
         cpath, _ = M.catmull_rom(cp, max(10, len(cp)))
         nrm = Lv[idx[len(idx) // 2]] * lat_c + Dv[idx[len(idx) // 2]] * dep_c
         u0 = 0.5 * (rng_p.random() > 0.5)
@@ -311,7 +320,9 @@ def ashka(body, rig, parts, garments, cfg):
     R.add_chain(rig, names, pts, "head", roll_up=(1, 0, 0), rest=rest)
     M.set_weights(core, M.normalize_limit(R.chain_weights(core_arc, bounds, names, "head", 0.04), 8))
     M.set_weights(tie_ob, M.normalize_limit(R.chain_weights(np.full(len(tie_ob.data.vertices), tie_s), bounds, names, "head", 0.04), 8))
-    pieces += [core, tie_ob]
+    bow = _ribbon_bow(core_path, Lv, Dv, Tv, i_t, pt)
+    M.set_weights(bow, M.normalize_limit(R.chain_weights(np.full(len(bow.data.vertices), tie_s), bounds, names, "head", 0.04), 8))
+    pieces += [core, tie_ob, bow]
     # nape gather: cards from the occipital hair into the tie
     for k in range(9):
         ang = (k - 4) / 4.0
@@ -328,6 +339,48 @@ def ashka(body, rig, parts, garments, cfg):
     pieces.append(flo)
     info["ponytail"] = {"length_m": round(float(L), 3), "cards": len(carc), "tie_at_m": tie_s}
     return _finish(pieces, parts, cfg), info
+
+
+def _ribbon_strip(path, width_dir, widths, thick=0.0007):
+    """A flat ribbon (a thin elliptical tube) along path; width_dir is per point, in the ribbon's plane."""
+    Tg = np.gradient(path, axis=0)
+    Tg /= np.linalg.norm(Tg, axis=1, keepdims=True)
+    Wd = width_dir - Tg * (width_dir * Tg).sum(1, keepdims=True)
+    Wd /= np.linalg.norm(Wd, axis=1, keepdims=True)
+    Nd = np.cross(Tg, Wd)
+    v, f, uv = M.tube(path, 0.5 * np.asarray(widths), np.full(len(path), thick), 8, Wd, Nd, cap_start=True, cap_end=True)
+    uv = [[tuple(H.rect_map(np.array([q]), H.TIE)[0]) for q in face] for face in uv]
+    return v, f, uv
+
+
+def _ribbon_bow(core_path, Lv, Dv, Tv, i_t, pt):
+    """Sheet v2: the ponytail is tied with a black ribbon; a small bow on the back of the gather, two flat
+    loops out to the sides and two tails hanging down over the ponytail (the hair tie's black, part P_TIE)."""
+    K = core_path[i_t] + Dv[i_t] * (pt["width_tie"] * pt["depth"] * 1.25 + 0.002)
+    L, D, T = Lv[i_t], Dv[i_t], Tv[i_t]          # sideways, away from the back, down the tail
+    rw, loop, tail = pt["ribbon_width"], pt["ribbon_loop"], pt["ribbon_tail"]
+    parts = []
+    for sg in (1.0, -1.0):
+        # a flattened loop: out along the front layer, round the fold, back along the rear layer
+        t = np.linspace(0, 1, 24)
+        a = np.sin(math.pi * t) * loop * (0.55 + 0.45 * np.sin(0.5 * math.pi * t))
+        lift = -0.25 * loop * np.sin(math.pi * t)
+        sep = 0.0045 * np.sin(math.pi * t) * np.cos(math.pi * t)
+        path = K + np.outer(sg * a, L) + np.outer(lift, T) + np.outer(sep + 0.0015, D)
+        widths = rw * (0.75 + 0.6 * np.sin(math.pi * t))
+        wdir = np.tile(T - 0.3 * D, (len(path), 1))
+        parts.append(_ribbon_strip(path, wdir, widths))
+        # a tail, slightly splayed, with a little wave and a tapered end
+        s = np.linspace(0, 1, 16)
+        tpath = (K + np.outer(sg * (0.004 + 0.016 * s), L) + np.outer(0.004 + tail * s, T)
+                 + np.outer(0.002 + 0.004 * np.sin(math.pi * s) + 0.002 * np.sin(5 * s + sg), D))
+        parts.append(_ribbon_strip(tpath, np.tile(L + 0.2 * sg * T, (len(tpath), 1)), rw * (1 - 0.45 * s ** 2)))
+    # the knot: a short wrapped band across the middle of the bow
+    kpath = K + np.outer(np.linspace(-1, 1, 6) * rw * 0.45, L) + np.outer(np.full(6, 0.0025), D)
+    parts.append(_ribbon_strip(kpath, np.tile(T, (6, 1)), np.full(6, rw * 0.9), thick=0.0022))
+    bow = M.make_object("ponytail_ribbon", *M.merge_parts(parts)[:3])
+    G.set_part_attr(bow, "part", np.full(len(bow.data.vertices), H.P_TIE, np.int32))
+    return bow
 
 
 def _finish(pieces, parts, cfg):

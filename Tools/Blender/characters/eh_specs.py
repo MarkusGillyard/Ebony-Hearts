@@ -60,56 +60,58 @@ def wren(cfg):
 
 
 def ashka(cfg):
-    """Coat: black cotton gabardine (twill), top-stitched edges, real seams (shoulder, side, centre
-    back, storm-flap yoke, armholes, pocket flaps), horn buttons. Clothes: white poplin shirt with
-    placket, black silk tie (fine twill, self-stripe in the roughness), black wool trousers with a
-    pressed crease, brown leather loafers (burnished toe/heel, moc-toe apron, saddle strap, welt,
-    stacked sole). Tonal steps keep the blacks apart: coat charcoal-black, trousers deeper, tie
-    deepest but glossiest."""
+    """Ashka's sheet v2 (2026-11-09): a Gothic-Victorian ensemble. Coat: jet-black wool with black-on-black
+    floral embroidery along its edges and cuffs, subtle crimson piping on every edge, ice-white trim on the cuffs
+    and the standing collar, a deep crimson satin lining, polished silver buttons and a crimson gemstone brooch.
+    Clothes: an ice-white blouse with pleats down the chest and lace at the cuffs, a crimson silk cravat with a
+    dark-silver clasp, a jet-black brocade waistcoat with silver buttons and chain, high-waisted black trousers with
+    crimson stitching down the outer seams, and polished black ankle boots with crimson stitching."""
     p = cfg["palette"]
     gab = ("Fabric066", 0.3, 0.05, 0.7)
-    coat_st = [(0.0065, p["coat_stitch"])]
+    piping = dict(w=0.0035, color=p["crimson"], amount=0.85, rough=0.45, stitch=[(0.007, p["coat_stitch"])])
     coat = {
-        A.COAT_MAIN: dict(color=p["coat"], rough=0.74, rough_var=0.03, detail=gab, weave=("twill", 0.0042, 0.00005),
-                          mottle=0.035, hem=dict(w=0.012, stitch=coat_st), edge_wear=0.12),
-        A.COAT_SKIRT: dict(color=p["coat"], rough=0.74, rough_var=0.03, detail=gab, weave=("twill", 0.0042, 0.00005),
-                           mottle=0.035, hem=dict(w=0.028, stitch=[(0.022, p["coat_stitch"])], ridge=1.5),
-                           edge_wear=0.15),
-        A.COAT_CUFF: dict(color=p["coat"], rough=0.72, detail=gab, weave=("twill", 0.0042, 0.00005),
-                          hem=dict(w=0.012, stitch=coat_st), edge_wear=0.15),
-        A.COAT_LAPEL: dict(color=p["coat"], rough=0.72, detail=gab, weave=("twill", 0.0042, 0.00005),
-                           stitch=coat_st, edge_wear=0.18, roll=0.0016),
-        A.COAT_COLLAR: dict(color=p["coat"], rough=0.72, detail=gab, weave=("twill", 0.0042, 0.00005),
-                            stitch=coat_st, edge_wear=0.18, roll=0.0016),
-        A.COAT_BELT: dict(color=p["coat_dark"], rough=0.7, detail=gab, weave=("twill", 0.0042, 0.00005),
-                          stitch=[(0.004, p["coat_stitch"])], edge_wear=0.2),
-        A.COAT_BUTTON: dict(color=p["button"], rough=0.42, mottle=0.25, roll=0.0),
+        A.COAT_MAIN: dict(color=p["coat"], rough=0.66, rough_var=0.03, detail=gab, weave=("twill", 0.0038, 0.00004),
+                          mottle=0.03, hem=piping, edge_wear=0.06),
+        A.COAT_SKIRT: dict(color=p["coat"], rough=0.66, rough_var=0.03, detail=gab, weave=("twill", 0.0038, 0.00004),
+                           mottle=0.03, hem=dict(piping, ridge=1.4), edge_wear=0.08),
+        A.COAT_CUFF: dict(color=p["coat"], rough=0.64, detail=gab, weave=("twill", 0.0038, 0.00004),
+                          hem=dict(w=0.007, color=p["ice"], amount=0.95, rough=0.5, stitch=[(0.0105, p["crimson"])])),
+        A.COAT_COLLAR: dict(color=p["coat"], rough=0.64, detail=gab, weave=("twill", 0.0038, 0.00004),
+                            hem=dict(w=0.006, color=p["ice"], amount=0.95, rough=0.5), roll=0.0014),
+        A.COAT_LINING: dict(color=p["lining"], rough=0.42, rough_var=0.02, detail=("Fabric040", 0.1, 0.02, 0.2),
+                            weave=("plain", 0.0012, 0.00002), mottle=0.02, roll=0.0),
+        A.COAT_BUTTON: dict(color=p["silver"], rough=0.24, metal=1.0, roll=0.0),
+        A.GEM_SETTING: dict(color=p["silver"], rough=0.28, metal=1.0, roll=0.0),
+        A.GEM: dict(color=p["gem"], rough=0.06, roll=0.0),
         "_zones": _ashka_zones,
-        "_seams": [_coat_seams],
-        "_height": [_coat_flaps, _coat_folds],
-        "_extra": [_button_holes],
+        "_seams": [],
+        "_height": [_coat_folds, _embroidery_height],
+        "_extra": [_embroidery],
     }
     wool = ("Fabric066", 0.25, 0.05, 0.7)
     clothes = {
-        A.SHIRT: dict(color=p["shirt"], rough=0.68, detail=("Fabric040", 0.12, 0.02, 0.3), mottle=0.01),
-        A.SHIRT_COLLAR: dict(color=p["shirt"], rough=0.66, detail=("Fabric040", 0.12, 0.02, 0.3),
-                             stitch=[(0.004, p["shirt_stitch"])], roll=0.0012),
-        A.SHIRT_CUFF: dict(color=p["shirt"], rough=0.66, detail=("Fabric040", 0.12, 0.02, 0.3),
-                           hem=dict(w=0.006, stitch=[(0.004, p["shirt_stitch"])])),
-        A.TIE: dict(color=p["tie"], rough=0.4, rough_var=0.02, detail=("Fabric040", 0.08, 0.015, 0.2), roll=0.0015),
-        A.TIE_KNOT: dict(color=p["tie"], rough=0.38, detail=("Fabric040", 0.08, 0.015, 0.2), roll=0.0),
-        A.PANTS: dict(color=p["pants"], rough=0.76, rough_var=0.03, detail=wool, weave=("twill", 0.0042, 0.00005),
+        A.SHIRT: dict(color=p["shirt"], rough=0.6, detail=("Fabric040", 0.12, 0.02, 0.3), mottle=0.01),
+        A.SHIRT_COLLAR: dict(color=p["shirt"], rough=0.58, detail=("Fabric040", 0.12, 0.02, 0.3),
+                             stitch=[(0.003, p["shirt_stitch"])], roll=0.0012),
+        A.SHIRT_CUFF: dict(color=p["shirt"], rough=0.58, detail=("Fabric040", 0.12, 0.02, 0.3)),
+        A.TIE: dict(color=p["cravat"], rough=0.42, rough_var=0.04, detail=("Fabric040", 0.08, 0.015, 0.2), roll=0.0015),
+        A.TIE_KNOT: dict(color=p["cravat"], rough=0.4, detail=("Fabric040", 0.08, 0.015, 0.2), roll=0.0),
+        A.CRAVAT_CLASP: dict(color=p["dark_silver"], rough=0.32, metal=1.0, roll=0.0),
+        A.WAISTCOAT: dict(color=p["waistcoat"], rough=0.55, rough_var=0.03, detail=wool, mottle=0.02,
+                          hem=dict(w=0.003, color=p["coat_dark"], stitch=[(0.006, p["coat_stitch"])])),
+        A.WAISTCOAT_BUTTON: dict(color=p["silver"], rough=0.18, metal=1.0, roll=0.0),
+        A.CHAIN: dict(color=p["silver"], rough=0.22, metal=1.0, roll=0.0),
+        A.PANTS: dict(color=p["pants"], rough=0.74, rough_var=0.03, detail=wool, weave=("twill", 0.0042, 0.00005),
                       mottle=0.03, hem=dict(w=0.008)),
-        A.LOAFER: dict(color=p["loafer"], rough=0.46, rough_var=0.06, detail=("Leather021", 0.14, 0.08, 0.5),
-                       mottle=0.08, edge_wear=0.25, roll=0.0015),
-        A.LOAFER_STRAP: dict(color=p["loafer"], rough=0.42, detail=("Leather021", 0.14, 0.08, 0.5),
-                             stitch=[(0.0025, p["loafer_dark"])], edge_wear=0.2, roll=0.001),
-        A.LOAFER_WELT: dict(color=p["welt"], rough=0.5, detail=("Leather021", 0.14, 0.05, 0.4)),
-        A.LOAFER_SOLE: dict(color=p["sole"], rough=0.62, detail=("Leather021", 0.14, 0.05, 0.6)),
+        A.LOAFER: dict(color=p["loafer"], rough=0.26, rough_var=0.04, detail=("Leather021", 0.14, 0.06, 0.4),
+                       mottle=0.04, edge_wear=0.1, roll=0.0015),
+        A.LOAFER_WELT: dict(color=p["welt"], rough=0.4, detail=("Leather021", 0.14, 0.05, 0.4),
+                            stitch=[(0.0015, p["crimson"])]),
+        A.LOAFER_SOLE: dict(color=p["sole"], rough=0.55, detail=("Leather021", 0.14, 0.05, 0.6)),
         "_zones": _ashka_zones,
-        "_seams": [_pants_seams, _shirt_placket, _loafer_seams],
-        "_height": [_pants_crease],
-        "_extra": [_loafer_burnish, _tie_stripe, _shirt_buttons],
+        "_seams": [_pants_seams_crimson, _boot_seams],
+        "_height": [_pants_crease, _blouse_pleats, _brocade_height],
+        "_extra": [_loafer_burnish, _lace_cuffs, _brocade],
     }
     return coat, clothes
 
@@ -165,39 +167,6 @@ def _ashka_zones(part, rs, ctx, attrs):
     return part
 
 
-def _coat_seams(rs, ctx):
-    """Coat seams in 3D: centre back, side seams, shoulder seams, the storm-flap yoke edge at the back
-    and the armhole rings."""
-    P, rig, f = rs.P, ctx["rig"], ctx["ashka"]["landmarks"]
-    x, y, z = P[:, 0], P[:, 1], P[:, 2]
-    sy = G.spine_y(rig, z)
-    back = y > sy
-    torso = np.abs(x) < 0.2
-    d = np.full(rs.K, 1.0, np.float32)
-    along = z.astype(np.float32).copy()
-    cb = np.where(back & (z < f["zc"] + 0.02), np.abs(x), 1.0)
-    d = np.minimum(d, cb)
-    side = np.where(torso & (z < f["zc"] - 0.05), np.abs(y - (sy - 0.035)) + (np.abs(x) < 0.08), 1.0)
-    d = np.minimum(d, side)
-    sh = np.where((z > f["zc"] - 0.04) & (np.abs(x) > 0.05) & (np.abs(x) < 0.17), np.abs(y - sy + 0.005), 1.0)
-    d = np.minimum(d, sh)
-    yoke = np.where(back & (np.abs(x) < 0.17), np.abs(z - (f["zc"] - 0.14)), 1.0)
-    along = np.where(yoke < d, x, along)
-    d = np.minimum(d, yoke)
-    for s_ in "lr":
-        b = rig.data.bones["upperarm_" + s_]
-        h, t = np.array(b.head_local), np.array(b.tail_local)
-        dd = (t - h) / np.linalg.norm(t - h)
-        ring = np.abs((P - h) @ dd - 0.025)
-        mine = (x > 0.08) if s_ == "l" else (x < -0.08)
-        ring = np.where(mine, ring, 1.0)
-        along = np.where(ring < d, np.arctan2(P[:, 1] - h[1], P[:, 2] - h[2]) * 0.05, along)
-        d = np.minimum(d, ring)
-    pal = ctx["ashka_pal"]
-    return [A.COAT_MAIN, A.COAT_SKIRT, A.COAT_CUFF], d.astype(np.float32), along.astype(np.float32), \
-        {"stitch": [(0.004, pal["coat_stitch"])]}
-
-
 def _flap_sdf(P, f):
     """Signed distance (m) to the two slanted pocket flaps on the skirt front (negative inside)."""
     best = np.full(len(P), 1.0, np.float32)
@@ -213,29 +182,14 @@ def _flap_sdf(P, f):
     return best
 
 
-def _coat_flaps(rs, part, ctx):
-    f = ctx["ashka"]["landmarks"]
-    sd = _flap_sdf(rs.P, f)
-    m = np.isin(part, [A.COAT_SKIRT, A.COAT_MAIN])
-    h = (1 - M.smoothstep(-0.0015, 0.0005, sd)) * 0.0009 * m
-    # storm-flap yoke: the back panel above the yoke edge stands a little proud
-    sy = G.spine_y(ctx["rig"], rs.P[:, 2])
-    yoke = (rs.P[:, 1] > sy) & (np.abs(rs.P[:, 0]) < 0.17) & m
-    h += yoke * M.smoothstep(f["zc"] - 0.142, f["zc"] - 0.136, rs.P[:, 2]) * 0.0008
-    return h.astype(np.float32)
-
-
 def _coat_folds(rs, part, ctx):
-    """Cloth folds in the normal map: gathers above and below the belt, compression folds in the
-    inner elbow, bunching above the cuffs, drag lines from the armpits."""
+    """Cloth folds in the normal map: compression folds in the inner elbow, bunching above the cuffs, drag
+    lines from the armpits. (Sheet v2's frock coat has no belt, so the old belt gathers are gone.)"""
     P, rig, f = rs.P, ctx["rig"], ctx["ashka"]["landmarks"]
     o = ctx["ashka_cfg"]["outfit"]
     m = np.isin(part, [A.COAT_MAIN, A.COAT_SKIRT, A.COAT_CUFF]).astype(np.float32)
+    sleeve = np.isin(part, [A.COAT_MAIN, A.COAT_CUFF])
     h = np.zeros(rs.K, np.float32)
-    ang = np.arctan2(P[:, 0], -(P[:, 1] - G.spine_y(rig, P[:, 2])))
-    dzb = P[:, 2] - f["zb"]
-    near = np.exp(-((np.abs(dzb) - o["belt_height"] * 0.5 - 0.02) / 0.022) ** 2) * (np.abs(P[:, 0]) < 0.25)
-    h += 0.0005 * near * np.sin(ang * 30.0 + 2.5 * np.sin(ang * 5.0)) * (0.5 + 0.5 * T.vnoise3(P, 30.0, 9))
     for s_ in "lr":
         side = (P[:, 0] > 0.12) if s_ == "l" else (P[:, 0] < -0.12)
         b = rig.data.bones["lowerarm_" + s_]
@@ -249,33 +203,19 @@ def _coat_folds(rs, part, ctx):
         up -= d * (up @ d)
         up /= np.linalg.norm(up)
         inner = M.smoothstep(0.0, 0.7, -(rad @ up) / np.maximum(np.linalg.norm(rad, axis=1), 1e-6))
+        # only on the sleeve itself: in the rest pose the forearm hangs beside the coattails
+        on_arm = sleeve * (1 - M.smoothstep(0.07, 0.09, np.linalg.norm(rad, axis=1)))
+        side = side * on_arm
         elbow = np.exp(-(along / 0.05) ** 2) * inner * side
-        h += 0.0009 * elbow * np.sin(along / 0.011 * 2 * math.pi + 1.5 * np.sin(np.arctan2(rad[:, 2], rad[:, 1]) * 2))
+        h += 0.0006 * elbow * np.sin(along / 0.011 * 2 * math.pi + 1.5 * np.sin(np.arctan2(rad[:, 2], rad[:, 1]) * 2))
         t = along / L
         cuff = M.smoothstep(0.55, 0.75, t) * (1 - M.smoothstep(0.86, 0.9, t)) * side
-        h += 0.0006 * cuff * np.sin(along / 0.017 * 2 * math.pi + 2.0 * np.sin(np.arctan2(rad[:, 2], rad[:, 0]) * 3))
+        h += 0.00035 * cuff * np.sin(along / 0.017 * 2 * math.pi + 2.0 * np.sin(np.arctan2(rad[:, 2], rad[:, 0]) * 3))
         sh = np.array(rig.data.bones["upperarm_" + s_].head_local)
         dd = P - (sh + np.array([0, 0, -0.06]))
         drag = np.exp(-((np.linalg.norm(dd, axis=1) - 0.08) / 0.03) ** 2) * (np.abs(P[:, 0]) < np.abs(sh[0]) - 0.02)
-        h += 0.0005 * drag * np.sin((dd[:, 1] * 0.8 + dd[:, 2]) / 0.02 * 2 * math.pi)
+        h += 0.0003 * drag * np.sin((dd[:, 1] * 0.8 + dd[:, 2]) / 0.02 * 2 * math.pi)
     return (h * m).astype(np.float32)
-
-
-def _button_holes(rs, part, col, dn, rough, metal, ctx):
-    """Four holes and a raised rim on each button; flap outlines get stitched (seam set handles the
-    groove)."""
-    m = part == A.COAT_BUTTON
-    f = ctx["ashka"]["landmarks"]
-    sd = _flap_sdf(rs.P, f)
-    fl = np.exp(-((sd - 0.0) / 0.0009) ** 2) * np.isin(part, [A.COAT_SKIRT, A.COAT_MAIN])
-    col = col * (1 - 0.25 * fl)[:, None]
-    st = np.exp(-((sd + 0.005) / 0.0005) ** 2) * (np.mod((rs.P[:, 0] + rs.P[:, 2]) / 0.0035, 1) < 0.62) \
-        * np.isin(part, [A.COAT_SKIRT, A.COAT_MAIN])
-    col = T.mix(col, T.hexrgb(ctx["ashka_pal"]["coat_stitch"]), st * 0.7)
-    if m.any():
-        # tone variation in horn
-        col[m] = col[m] * (1 + 0.18 * T.fbm(rs.P[m], 260.0, 3, seed=5)[:, None])
-    return col, dn, rough, metal
 
 
 def _pants_seams(rs, ctx):
@@ -323,38 +263,6 @@ def _pants_crease(rs, part, ctx):
             * (P[:, 0] * sg > 0.02) * m
         h += 0.0005 * bk_knee * np.sin((P[:, 2] - kn[2]) / 0.02 * 2 * math.pi + 2 * np.sin(P[:, 0] * 60))
     return h
-
-
-def _shirt_placket(rs, ctx):
-    P = rs.P
-    d = np.abs(np.abs(P[:, 0]) - 0.016).astype(np.float32)
-    d = np.where(P[:, 1] < -0.02, d, 1.0).astype(np.float32)
-    return [A.SHIRT], d, P[:, 2].astype(np.float32), {"stitch": [(0.0035, ctx["ashka_pal"]["shirt_stitch"])]}
-
-
-def _shirt_buttons(rs, part, col, dn, rough, metal, ctx):
-    m = part == A.SHIRT
-    f = ctx["ashka"]["landmarks"]
-    P = rs.P
-    acc = np.zeros(rs.K, np.float32)
-    for z in np.arange(f["zp"] + 0.07, f["zn"], 0.075):         # waistband to collar
-        dd = np.hypot(P[:, 0], P[:, 2] - z)
-        acc = np.maximum(acc, 1 - M.smoothstep(0.0045, 0.0055, dd))
-    acc *= m & (P[:, 1] < -0.02)
-    col = T.mix(col, np.array([0.86, 0.85, 0.82], np.float32), acc * 0.8)
-    rough = rough * (1 - acc) + 0.3 * acc
-    return col, dn, rough, metal
-
-
-def _tie_stripe(rs, part, col, dn, rough, metal, ctx):
-    """Black-on-black self stripe: diagonal bands of slightly different sheen."""
-    m = (part == A.TIE) | (part == A.TIE_KNOT)
-    P = rs.P[m]
-    ph = np.mod((P[:, 0] + P[:, 2]) / 0.022, 1.0)
-    st = M.smoothstep(0.0, 0.05, ph) * (1 - M.smoothstep(0.2, 0.25, ph))
-    rough[m] = rough[m] + 0.08 * st
-    col[m] = col[m] * (1 + 0.1 * st[:, None])
-    return col, dn, rough, metal
 
 
 def _loafer_frame(P, ctx):
@@ -412,3 +320,109 @@ def _loafer_burnish(rs, part, col, dn, rough, metal, ctx):
     return col, dn, rough, metal
 
 
+
+
+# ----------------------------------------------------------------------------- sheet v2 painters (2026-11-09)
+
+def _floral_border(ed, es):
+    """A trailing vine with leaves and five-petal flowers running parallel to an edge, inside the piping:
+    0..1 per texel from the distance to the edge (ed) and the position along it (es), in metres."""
+    c = 0.028 + 0.009 * np.sin(es * (2 * math.pi / 0.09))
+    vine = np.exp(-((ed - c) / 0.0012) ** 2)
+    m = vine
+    for k, side in ((0.0, 1.0), (0.5, -1.0)):
+        ph = np.mod(es / 0.09 + k, 1.0) - 0.5                     # one leaf a period on each side
+        along = ph * 0.09
+        perp = ed - (c + side * 0.009)
+        leaf = np.clip(1 - (along / 0.0105) ** 2 - (perp / 0.0042) ** 2, 0, 1) ** 0.6
+        m = np.maximum(m, leaf)
+    ph = np.mod(es / 0.09 + 0.25, 1.0) - 0.5
+    fa = ph * 0.09
+    fp = ed - c
+    r = np.hypot(fa, fp)
+    th = np.arctan2(fp, fa)
+    petal = 0.0085 * (0.55 + 0.45 * np.abs(np.cos(2.5 * th)))
+    flower = np.clip((petal - r) / 0.0012, 0, 1) * (r > 0.0018)
+    m = np.maximum(m, flower)
+    return np.clip(m, 0, 1) * M.smoothstep(0.012, 0.016, ed) * (1 - M.smoothstep(0.05, 0.056, ed))
+
+
+def _embroidery_mask(rs, part, ctx):
+    pa = ctx["_paint"]
+    on = (part == A.COAT_MAIN) | (part == A.COAT_SKIRT) | (part == A.COAT_CUFF)
+    return _floral_border(pa["ed"], pa["es"]) * on
+
+
+def _embroidery_height(rs, part, ctx):
+    return (0.00022 * _embroidery_mask(rs, part, ctx)).astype(np.float32)
+
+
+def _embroidery(rs, part, col, dn, rough, metal, ctx):
+    """Black-on-black floral embroidery: silk thread a shade lighter and glossier than the wool."""
+    m = _embroidery_mask(rs, part, ctx)
+    col = col * (1 + 0.4 * m)[:, None]
+    rough = rough - 0.2 * m
+    return col, dn, rough, metal
+
+
+def _damask(gu, gv, tile=0.045):
+    """A brocade motif in grain space: rosettes on a half-drop grid joined by diagonal vines."""
+    row = np.floor(gv / tile)
+    cu = np.mod(gu / tile + 0.5 * np.mod(row, 2), 1.0) - 0.5
+    cv = np.mod(gv / tile, 1.0) - 0.5
+    r = np.hypot(cu, cv)
+    th = np.arctan2(cv, cu)
+    ros = np.clip((0.2 * (0.62 + 0.38 * np.cos(6 * th)) - r) / 0.03, 0, 1)
+    dot = np.clip((0.05 - r) / 0.02, 0, 1)
+    vines = np.exp(-((np.mod((gu + gv) / tile, 1.0) - 0.5) / 0.035) ** 2) * (r > 0.24)
+    return np.clip(np.maximum.reduce([ros * (r > 0.07), dot, 0.6 * vines]), 0, 1)
+
+
+def _brocade_height(rs, part, ctx):
+    pa = ctx["_paint"]
+    return (0.00012 * _damask(pa["gu"], pa["gv"]) * (part == A.WAISTCOAT)).astype(np.float32)
+
+
+def _brocade(rs, part, col, dn, rough, metal, ctx):
+    pa = ctx["_paint"]
+    m = _damask(pa["gu"], pa["gv"]) * (part == A.WAISTCOAT)
+    col = T.mix(col, T.hexrgb(ctx["ashka_pal"]["brocade"]), m * 0.75)
+    rough = rough - 0.16 * m
+    return col, dn, rough, metal
+
+
+def _blouse_pleats(rs, part, ctx):
+    """Narrow vertical pleats down the blouse's chest, either side of the centre, above the waistcoat's V."""
+    P = rs.P
+    f = ctx["ashka"]["landmarks"]
+    on = (part == A.SHIRT) & (P[:, 1] < -0.02) & (np.abs(P[:, 0]) > 0.012) & (np.abs(P[:, 0]) < 0.075) \
+        & (P[:, 2] > f["zc"] - 0.24) & (P[:, 2] < f["zc"] + 0.03)
+    pl = 0.5 + 0.5 * np.cos(P[:, 0] * (2 * math.pi / 0.009))
+    fade = M.smoothstep(0.075, 0.06, np.abs(P[:, 0]))
+    return (0.00055 * pl * fade * on).astype(np.float32)
+
+
+def _lace_cuffs(rs, part, col, dn, rough, metal, ctx):
+    """Narrow lace at the blouse's cuffs: a scalloped band of openwork (shaded holes) at the cuff edges."""
+    pa = ctx["_paint"]
+    ed, es = pa["ed"], pa["es"]
+    on = (part == A.SHIRT_CUFF) & (ed < 0.016)
+    holes = (np.sin(es * (2 * math.pi / 0.0055)) * np.sin(ed * (2 * math.pi / 0.004))) > 0.55
+    scallop = ed < 0.0025 + 0.0018 * np.abs(np.sin(es * (math.pi / 0.006)))
+    m = on & holes & ~scallop
+    col = np.where(m[:, None], col * 0.55, col)
+    rough = np.where(on, rough - 0.08, rough)
+    return col, dn, rough, metal
+
+
+def _pants_seams_crimson(rs, ctx):
+    """The trousers' outer side seams, stitched in crimson either side."""
+    parts, d, along, _ = _pants_seams(rs, ctx)
+    c = ctx["ashka_pal"]["crimson"]
+    return parts, d, along, {"stitch": [(0.0016, c)]}
+
+
+def _boot_seams(rs, ctx):
+    """The boots' toe-cap seam, stitched in crimson (their discreet accent)."""
+    parts, d, along, _ = _loafer_seams(rs, ctx)
+    return parts, d, along, {"stitch": [(0.0022, ctx["ashka_pal"]["crimson"])]}
