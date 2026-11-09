@@ -34,6 +34,12 @@ const FLinearColor& AccentText(int32 Char) { return Char == 0 ? EHStyle::WrenAcc
 }
 using namespace EHUIPalette;
 
+namespace EHUIShapes
+{
+void Crescent(FEHPainter& P, FVector2f C, float R, const FLinearColor& Col, bool bFilled);
+float Chip(FEHPainter& P, const FEHFonts& Fonts, FVector2f Pos, const FString& Text, const FLinearColor& Col, bool bFilled, bool bAlignRight);
+}
+
 namespace EHUIText
 {
 FString CharId(int32 Index) { return Index == 0 ? TEXT("wren") : TEXT("ashka"); }
@@ -358,12 +364,7 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 		PaintTitle(P);
 		break;
 	case EEHScreen::Main:
-		if (LogoSmallTexture || TitleTexture)
-		{
-			const FSlateBrush& Logo = LogoSmallTexture ? LogoSmallBrush : TitleBrush;
-			P.Image(Logo, FVector2f(96, 56), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 0.95f));
-		}
-		PaintMenu(P, FString(), false);
+		PaintMainMenuA(P);
 		break;
 	case EEHScreen::Select:
 		PaintSelect(P);
@@ -437,16 +438,25 @@ void AEHGameDirector::PaintError(FEHPainter& P)
 
 void AEHGameDirector::PaintTitle(FEHPainter& P)
 {
+	namespace St = EHStyle;
 	const float In = FMath::Clamp(ScreenAge / 1.2f, 0.0f, 1.0f);
-	if (TitleTexture)
+	if (KeyArtTexture)
+	{
+		// Still Water: the key art fills the screen (cover: wider screens crop top and bottom), its wordmark is part of
+		// the painting, and only the prompt and the credit sit over it.
+		const float Wide = P.VirtualMax.X - P.VirtualMin.X;
+		const float Tall = P.VirtualMax.Y - P.VirtualMin.Y;
+		const float Aspect = KeyArtBrush.ImageSize.X / FMath::Max(1.0, KeyArtBrush.ImageSize.Y);
+		const float DrawW = FMath::Max(Wide, Tall * Aspect);
+		const float DrawH = DrawW / Aspect;
+		P.Fill(St::Abyss);
+		P.Image(KeyArtBrush, FVector2f(960 - DrawW * 0.5f, 540 - DrawH * 0.5f), FVector2f(DrawW, DrawH), FLinearColor(1, 1, 1, In));
+		P.Gradient(FVector2f(P.VirtualMin.X, 820), FVector2f(Wide, P.VirtualMax.Y - 820), St::Alpha(St::Abyss, 0.0f), St::Alpha(St::Abyss, 0.9f * In));
+	}
+	else if (TitleTexture)
 	{
 		const float W = 1280.0f;
 		const float H = W * TitleBrush.ImageSize.Y / FMath::Max(1.0, TitleBrush.ImageSize.X);
-		// A soft dark band keeps the lettering readable over the lit rose window behind it.
-		const float BandTop = 250 - H * 0.5f - 60.0f;
-		const float BandHalf = H * 0.5f + 60.0f;
-		P.Gradient(FVector2f(P.VirtualMin.X, BandTop), FVector2f(P.VirtualMax.X - P.VirtualMin.X, BandHalf), FLinearColor(0, 0, 0, 0), FLinearColor(0, 0, 0, 0.55f * In));
-		P.Gradient(FVector2f(P.VirtualMin.X, BandTop + BandHalf), FVector2f(P.VirtualMax.X - P.VirtualMin.X, BandHalf), FLinearColor(0, 0, 0, 0.55f * In), FLinearColor(0, 0, 0, 0));
 		P.Image(TitleBrush, FVector2f(960 - W * 0.5f, 250 - H * 0.5f + (1.0f - In) * 20.0f), FVector2f(W, H), FLinearColor(1, 1, 1, In));
 	}
 	else
@@ -468,8 +478,66 @@ void AEHGameDirector::PaintTitle(FEHPainter& P)
 	}
 	// The prompt breathes for its first seconds, then holds still (nothing blinks on its own for more than 5 s).
 	const float Pulse = ScreenAge < 4.0f ? 0.55f + 0.45f * FMath::Sin(static_cast<float>(RenderTime) * 2.4f) : 1.0f;
-	P.Text(TEXT("Press any button"), FVector2f(960, 820), Fonts.Sized(Fonts.DisplayLight, 30), A(Bone, In * Pulse), 0.5f, 0.5f);
-	P.Text(TEXT("© 2026 Markus Gillyard  ·  Cinqic"), FVector2f(960, 1030), Fonts.Sized(Fonts.BodyMedium, EHStyle::Type::Label), A(Muted, In), 0.5f, 0.5f);
+	FSlateFontInfo PromptF = Fonts.Sized(Fonts.Display, 26.0f);
+	PromptF.LetterSpacing = 300;
+	P.Text(TEXT("PRESS ANY BUTTON"), FVector2f(960, 952), PromptF, A(St::Silver, In * Pulse), 0.5f, 0.5f);
+	P.Text(TEXT("© 2026 Markus Gillyard  ·  Cinqic"), FVector2f(960, 1032), Fonts.Sized(Fonts.BodyMedium, St::Type::Label), A(Muted, In), 0.5f, 0.5f);
+}
+
+// Still Water's main menu: a plain list over the darkened chapel, a violet band fading to the right, and the crescent
+// marking the focused row.
+void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
+{
+	namespace St = EHStyle;
+	const float Tall = P.VirtualMax.Y - P.VirtualMin.Y;
+	// Left-to-right darkening (the painter's gradient is vertical, so draw it as columns).
+	const int32 Cols = 24;
+	for (int32 c = 0; c < Cols; ++c)
+	{
+		const float T = static_cast<float>(c) / (Cols - 1);
+		const float X0 = P.VirtualMin.X + (1180.0f - P.VirtualMin.X) * c / Cols;
+		const float X1 = P.VirtualMin.X + (1180.0f - P.VirtualMin.X) * (c + 1) / Cols;
+		P.Rect(FVector2f(X0, P.VirtualMin.Y), FVector2f(X1 - X0 + 1.0f, Tall), St::Alpha(St::Abyss, 0.94f * (1.0f - T * T)));
+	}
+	if (LogoSmallTexture || TitleTexture)
+	{
+		const FSlateBrush& Logo = LogoSmallTexture ? LogoSmallBrush : TitleBrush;
+		P.Image(Logo, FVector2f(96, 56), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 1));
+	}
+	P.NextLayer();
+	const float X = 150.0f;
+	float Y = 392.0f;
+	const float RowH = 62.0f;
+	for (int32 i = 0; i < Menu.Num(); ++i)
+	{
+		const FEHMenuItem& It = Menu[i];
+		if (It.bHeader)
+		{
+			P.Rect(FVector2f(X, Y + 14), FVector2f(360, 1), St::Alpha(St::Silver, 0.35f));
+			Y += 30.0f;
+			continue;
+		}
+		const bool bSel = i == MenuIndex;
+		if (bSel)
+		{
+			const int32 Steps = 16;
+			for (int32 k = 0; k < Steps; ++k)
+			{
+				const float T = static_cast<float>(k) / Steps;
+				P.Rect(FVector2f(X - 30 + 620.0f * k / Steps, Y - 4), FVector2f(620.0f / Steps + 1.0f, 54), St::Alpha(St::Focus, 0.62f * (1.0f - T)));
+			}
+			EHUIShapes::Crescent(P, FVector2f(X - 52, Y + 18), 14.0f, St::Silver, true);
+		}
+		P.Text(It.Label, FVector2f(X, Y + 23), Fonts.Sized(bSel ? Fonts.BodyBold : Fonts.BodyMedium, St::Type::Menu + 2.0f), bSel ? St::TextPrimary : St::Alpha(St::Silver, 0.82f), 0.0f, 0.5f);
+		Y += RowH;
+	}
+	const FEHMenuItem* Sel = Menu.IsValidIndex(MenuIndex) ? &Menu[MenuIndex] : nullptr;
+	if (Sel && !Sel->Hint.IsEmpty())
+	{
+		P.Text(Sel->Hint, FVector2f(X - 2, Y + 36), Fonts.Sized(Fonts.Body, St::Type::Body), St::TextSecondary, 0.0f, 0.5f);
+	}
+	const int32 Owner = MenuOwner != EHDeviceNone ? MenuOwner : RouterPtr->MostRecentDevice();
+	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Confirm, TEXT("Select")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Owner);
 }
 
 void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact, float TopY)

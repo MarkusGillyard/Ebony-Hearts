@@ -81,10 +81,11 @@ void AEHGameDirector::BuildMenu()
 	{
 	case EEHScreen::Main:
 		MenuTitle = TEXT("");
-		Menu.Add(Button(TEXT("Versus CPU"), [this] { BeginSelect(EEHMode::VersusCpu); }, TEXT("Fight a computer opponent.")));
+		Menu.Add(Button(TEXT("Versus CPU"), [this] { BeginSelect(EEHMode::VersusCpu); }, TEXT("Fight the computer: choose your fighter, its level and your side.")));
 		Menu.Add(Button(TEXT("Local Versus"), [this] { BeginSelect(EEHMode::Versus); }, TEXT("Two players on one machine.")));
 		Menu.Add(Button(TEXT("Training"), [this] { BeginSelect(EEHMode::Training); }, TEXT("Practice with frame data, hitboxes and input history.")));
 		Menu.Add(Button(TEXT("Lesson"), [this] { BeginSelect(EEHMode::Tutorial); }, TEXT("Learn the actions and how they counter each other.")));
+		Menu.Add(Header(FString()));   // a divider between the fight modes and the rest (skipped by navigation)
 		Menu.Add(Button(TEXT("Move List"), [this] { SettingsReturn = EEHScreen::Main; GoTo(EEHScreen::MoveList); }, TEXT("Both fighters' techniques.")));
 		Menu.Add(Button(TEXT("Settings"), [this] { SettingsReturn = EEHScreen::Main; SettingsPage = 0; GoTo(EEHScreen::Settings); }, TEXT("Controls, video, audio and accessibility.")));
 		Menu.Add(Button(TEXT("Credits"), [this] { GoTo(EEHScreen::Credits); }));

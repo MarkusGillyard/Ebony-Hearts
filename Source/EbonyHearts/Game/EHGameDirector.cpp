@@ -130,6 +130,7 @@ void AEHGameDirector::BeginPlay()
 	};
 	LoadBrush(TEXT("/Game/UI/T_Logo.T_Logo"), TitleTexture, TitleBrush);
 	LoadBrush(TEXT("/Game/UI/T_LogoSmall.T_LogoSmall"), LogoSmallTexture, LogoSmallBrush);
+	LoadBrush(TEXT("/Game/UI/T_KeyArt.T_KeyArt"), KeyArtTexture, KeyArtBrush);
 	Audio.Init(GetWorld());
 	SpawnWorldActors();
 	ApplySettings(true);

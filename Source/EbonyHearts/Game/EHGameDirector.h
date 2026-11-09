@@ -261,6 +261,10 @@ private:
 	UPROPERTY()
 	TObjectPtr<UTexture2D> LogoSmallTexture;
 	FSlateBrush LogoSmallBrush;
+	// The creator's key art (direction A preview): the title screen, its wordmark painted in.
+	UPROPERTY()
+	TObjectPtr<UTexture2D> KeyArtTexture;
+	FSlateBrush KeyArtBrush;
 	FVector CamPos = FVector(0, 600, 140);
 	float CamShake = 0.0f;
 	float CamPunch = 0.0f;
@@ -381,6 +385,7 @@ private:
 	void PaintTitle(FEHPainter& P);
 	// TopY >= 0 places a compact (centred) menu's top edge there instead of centring it vertically.
 	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact, float TopY = -1.0f);
+	void PaintMainMenuA(FEHPainter& P);
 	void PaintSelect(FEHPainter& P);
 	void PaintHUD(FEHPainter& P);
 	void PaintTraining(FEHPainter& P);

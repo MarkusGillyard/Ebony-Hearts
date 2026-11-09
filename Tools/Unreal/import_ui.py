@@ -21,8 +21,8 @@ def log(msg):
     unreal.log("EHUI " + msg)
 
 
-def import_ui_texture(name):
-    path = os.path.join(SRC_UI, f"{name}.png")
+def import_ui_texture(name, ext="png", compression=None):
+    path = os.path.join(SRC_UI, f"{name}.{ext}")
     if not os.path.exists(path):
         raise RuntimeError(f"missing {path}")
     task = unreal.AssetImportTask()
@@ -37,7 +37,7 @@ def import_ui_texture(name):
     if tex is None:
         raise RuntimeError(f"import failed: {path}")
     tex.set_editor_property("srgb", True)
-    tex.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_BC7)
+    tex.set_editor_property("compression_settings", compression or unreal.TextureCompressionSettings.TC_BC7)
     tex.set_editor_property("mip_gen_settings", unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS)
     tex.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_UI)
     eal.save_asset(tex.get_path_name(), only_if_is_dirty=False)
@@ -47,6 +47,9 @@ def import_ui_texture(name):
 def main():
     for name in ("T_Logo", "T_LogoSmall"):
         import_ui_texture(name)
+    # Direction A preview (not approved yet): the key art as the title screen; opaque, so the default (BC1) format.
+    if os.path.exists(os.path.join(SRC_UI, "T_KeyArt.jpg")):
+        import_ui_texture("T_KeyArt", "jpg", unreal.TextureCompressionSettings.TC_DEFAULT)
     log("DONE")
 
 
