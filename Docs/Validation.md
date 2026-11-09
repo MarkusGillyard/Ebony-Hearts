@@ -165,8 +165,15 @@ The creator connected a DualShock 4 (Sony `054c:09cc`, Bluetooth) during the mon
 Training check that logs every press (`evidence/rc-5d5c316/physical-ds4`), the game recognised it as "PS4
 Controller" with the PlayStation layout. About 19 s into Training, before any press reached the game, the
 controller left the system (Linux removed its input devices while Bluetooth still reported a link). The game logged
-the disconnect, kept running and exited cleanly. No button presses were recorded, so the candidate's bindings still
-have no physical button-by-button check.
+the disconnect, kept running and exited cleanly. The pad's battery had run out.
+
+A second attempt after the pad came back (`evidence/rc-5d5c316/physical-ds4-2`, `diagnosis.txt`) logged no pad press
+either; the creator quit with the keyboard. The pad stayed listed by Linux and Bluetooth throughout, but it was not
+sending anything. Its input node had no events, and its raw HID node delivered no input reports in 5.5 s, a period
+in which a connected DualShock 4 streams reports continuously. That held even while a small probe built against the
+engine's own SDL 3.4.4 had it open, and the probe did find it ("PS4 Controller", wireless, `/dev/hidraw5`). So no
+press could reach the game. No button presses were recorded, so the candidate's bindings still have no physical
+button-by-button check; a wired (USB) connection is the next thing to try.
 
 ## Candidate `4cee9c1` (2026-11-07, creator playtest round; PR #1)
 
