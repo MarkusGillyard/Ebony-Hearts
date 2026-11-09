@@ -9,7 +9,7 @@ candidate, not to this one.
 |---|---|
 | Branch | `dev/combat-pass-1108` (local task branch; see [Status](Status.md) for where it is pushed) |
 | Base | `release/first-slice` at `ea3ddc655fdf10666ede89f14df201e43b25daad` (PR #1 head, also the merge base) |
-| Candidate source | `5d5c316` (code, data and content of the packaged build); later commits change documentation only |
+| Candidate source | `5d5c316` (code, data and content of the packaged build); later commits change documentation and one test script (`Tests/Auto/virtual_pad.py`, not packaged) only |
 | Package | `EbonyHearts-Slice-5d5c316.tar.gz`, Shipping, Linux; identity and checksums in [Validation](Validation.md), "Current candidate" |
 | Not done | nothing merged, tagged or released; PR #1 and `release/first-slice` are untouched |
 

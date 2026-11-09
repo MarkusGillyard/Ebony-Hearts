@@ -16,7 +16,7 @@ this session are listed at the end of this section.
 
 | Item | Value |
 |---|---|
-| Source | `5d5c316` on `dev/combat-pass-1108`: eleven commits on `ea3ddc6` (the PR #1 head, also the merge base with `release/first-slice`). Packaged from a working tree with no uncommitted code, data or content. Later commits change documentation only. The commits were rebuilt once before they were first pushed, only to drop attribution trailers from their messages; the trees are identical and the package was built from the same tree under its earlier id `6b65343` |
+| Source | `5d5c316` on `dev/combat-pass-1108`: eleven commits on `ea3ddc6` (the PR #1 head, also the merge base with `release/first-slice`). Packaged from a working tree with no uncommitted code, data or content. Later commits change documentation and one test script (`Tests/Auto/virtual_pad.py`, not packaged) only. The commits were rebuilt once before they were first pushed, only to drop attribution trailers from their messages; the trees are identical and the package was built from the same tree under its earlier id `6b65343` |
 | Release archive | `EbonyHearts-Slice-5d5c316.tar.gz`, 333 499 654 bytes, SHA-256 `25c7054055fa10a40d45443bef6b98c677e73b9e08c14b1a1b009f12b3534ef0` |
 | Content hash | `e5a604c4fd07c1135fb598b8e6e40b4e44baa783788ef074d5ef0895d5a3d7c1` (SHA-256 over the pak files, in `VERSION.txt`) |
 | Same package, staged first | `EbonyHearts-Slice-6b65343.tar.gz` (SHA-256 `39f15dc14100e385588210f724a8b6d7f0392f01a7a76230ecc699cf256dff9d`): every file identical except `VERSION.txt` (the source id). The battery ran on that staging (`evidence/rc-6b65343`); the off-screen launch check and the soak ran on `5d5c316` (`evidence/rc-5d5c316`) |
