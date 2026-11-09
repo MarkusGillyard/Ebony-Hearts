@@ -235,6 +235,7 @@ private:
 	bool bInfiniteMeter = false;
 	// The video settings as saved when the Video page opened; values that differ are shown as unapplied.
 	FEHSettings VideoSaved;
+	void RestoreVideoSaved();
 	// Automation only (`ui_hidden 1`): paint nothing, for clean captures of the stage and fighters (UI mockups, art review).
 	bool bAutoHideUI = false;
 	TArray<FEHInputLogEntry> InputLog[2];

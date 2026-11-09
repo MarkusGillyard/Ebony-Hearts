@@ -30,6 +30,26 @@ keyboard and pad identical navigation. Changes are made in place, screen by scre
 | Direction A: sounds | `Tools/Audio/eh_audio/ui.py`, `Content/Audio/UI/S_Ui{Lock,Denied,Apply,Warn}`, `EHDirectorFlow.cpp`, `EHGameDirector.*` (`FEHMenuItem::ConfirmSound`), `Tools/Unreal/build_audio.py` (`EH_AUDIO_NAMES`) | Four new cues; one sound per press | None |
 | Menus | `EHDirectorFlow.cpp` (`Header`), `EHDirectorUI.cpp` (`PaintMenu`) | Section headers in the training pause (Partner, Positions, Practice aids, More). Navigation skips headers, so every item is the same number of presses away | None |
 
+## Independent code review (2026-11-09)
+
+A reviewer working from the diff alone (not from the implementer's notes) found two bugs and several smaller risks;
+all are fixed:
+1. **Video settings Back:** Back reloaded the file instead of restoring what was on screen, so under launch-flag
+   displays the page showed the wrong values and marked nothing unapplied. Fixed with `RestoreVideoSaved`.
+2. **Lesson panel:** its two-line text overlapped the larger prompt glyphs. The panel is now laid out as title, text,
+   prompts, then the progress strip.
+3. **Interface scale at 140%:** the grouped training pause no longer fit on screen. Tall menus now tighten their
+   spacing (never their text) to fit.
+4. **Timer digits:** the timer used a size the title does not pre-render (50). It is back to 48.
+5. **Move-list notes:** they wrapped to at most two lines; they now wrap to as many as needed.
+6. **Smaller:**
+   - a focused unapplied value is primary text, with its dot above the band;
+   - the title prompt eases out of its pulse;
+   - the Damage and Notes headers have room;
+   - the confirm that starts a match says "Fight".
+
+Re-checking also found callouts colliding with the Lesson panel; in the Lesson they now sit below it.
+
 ## Risks and checks
 
 - **Scripts count presses.** Headers are skipped, so counts are unchanged, and the journey script passes.

@@ -185,6 +185,18 @@ void AEHGameDirector::BuildPauseMenu()
 	Menu.Add(Button(TEXT("Main Menu"), [this] { LeaveMatch(EEHScreen::Main); }));
 }
 
+// Discards unapplied video changes: back to the values the Video page opened with (what is on screen). Reloading the
+// file instead would show the saved display while a launch flag (-safedisplay, -windowed, -ResX) overrides it.
+void AEHGameDirector::RestoreVideoSaved()
+{
+	Settings.WindowMode = VideoSaved.WindowMode;
+	Settings.Resolution = VideoSaved.Resolution;
+	Settings.Quality = VideoSaved.Quality;
+	Settings.RenderScale = VideoSaved.RenderScale;
+	Settings.FrameCap = VideoSaved.FrameCap;
+	Settings.bVSync = VideoSaved.bVSync;
+}
+
 void AEHGameDirector::BuildSettingsMenu(int32 Page)
 {
 	Menu.Reset();
@@ -292,7 +304,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			}
 			return N == 0 ? FString() : FString::Printf(TEXT("%d unapplied"), N);
 		};
-		Menu.Add(Button(TEXT("Back"), [this] { Settings = FEHSettings::Load(); BuildSettingsMenu(0); }, TEXT("Discards unapplied video changes.")));
+		Menu.Add(Button(TEXT("Back"), [this] { RestoreVideoSaved(); BuildSettingsMenu(0); }, TEXT("Discards unapplied video changes.")));
 		break;
 	case 3:
 		MenuTitle = TEXT("Audio");
@@ -775,7 +787,7 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 			{
 				if (SettingsPage == 2)
 				{
-					Settings = FEHSettings::Load();
+					RestoreVideoSaved();
 				}
 				SaveSettings();
 				BuildSettingsMenu(0);

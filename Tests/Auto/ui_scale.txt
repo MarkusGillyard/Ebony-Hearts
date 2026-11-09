@@ -1,0 +1,36 @@
+# Interface scale review (2026-11-09): set Accessibility > Interface scale to 140%, then open the longest menu (the
+# training pause) and check it stays inside the visible area.
+wait 5
+press kbA Light
+wait 1
+# Main item 6: Settings; then Accessibility (page item 4); Interface scale is its first row.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.4
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.4
+press kbA Right
+press kbA Right
+press kbA Right
+press kbA Right
+wait 0.4
+screenshot usc_accessibility_140
+goto_main
+wait 0.6
+match wren ashka training 0 left
+wait 2
+press kbA Pause
+wait 0.5
+screenshot usc_training_pause_140
+press kbA Heavy
+wait 0.5
+goto_main
+wait 0.5
+quit

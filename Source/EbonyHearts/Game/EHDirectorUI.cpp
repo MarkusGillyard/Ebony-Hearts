@@ -482,7 +482,8 @@ void AEHGameDirector::PaintTitle(FEHPainter& P)
 		P.Text(Glyphs, FVector2f(960, 940), Fonts.Sized(Fonts.DisplayLight, 36), Ghost, 0.5f, 0.5f, false);
 	}
 	// The prompt breathes for its first seconds, then holds still (nothing blinks on its own for more than 5 s).
-	const float Pulse = ScreenAge < 4.0f ? 0.55f + 0.45f * FMath::Sin(static_cast<float>(RenderTime) * 2.4f) : 1.0f;
+	const float Breath = 0.55f + 0.45f * FMath::Sin(static_cast<float>(RenderTime) * 2.4f);
+	const float Pulse = FMath::Lerp(Breath, 1.0f, FMath::SmoothStep(2.5f, 4.0f, ScreenAge));
 	FSlateFontInfo PromptF = Fonts.Sized(Fonts.Display, 26.0f);
 	PromptF.LetterSpacing = 300;
 	P.Text(TEXT("PRESS ANY BUTTON"), FVector2f(960, 952), PromptF, A(St::Silver, In * Pulse), 0.5f, 0.5f);
@@ -557,11 +558,22 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 	{
 		Headers += It.bHeader ? 1 : 0;
 	}
-	const float RowH = Menu.Num() - Headers > 10 ? 46.0f : 56.0f;
-	const float HeaderH = 34.0f;
+	float RowH = Menu.Num() - Headers > 10 ? 46.0f : 56.0f;
+	float HeaderH = 34.0f;
 	const float HeadH = Heading.IsEmpty() ? 0.0f : 80.0f;
-	const float H = HeadH + (Menu.Num() - Headers) * RowH + Headers * HeaderH + 40.0f;
-	const FVector2f Pos = bCentered ? FVector2f(960 - W * 0.5f, TopY >= 0.0f ? TopY : FMath::Max(80.0f, 540 - H * 0.5f)) : FVector2f(96, 380);
+	float H = HeadH + (Menu.Num() - Headers) * RowH + Headers * HeaderH + 40.0f;
+	// The interface scale enlarges everything around the centre: a tall menu tightens its spacing (never its text) to
+	// stay inside the visible area.
+	const float Room = (P.VirtualMax.Y - P.VirtualMin.Y) - 60.0f;
+	if (bCentered && TopY < 0.0f && H > Room)
+	{
+		const float Fixed = HeadH + 40.0f;
+		const float K = FMath::Max(0.0f, Room - Fixed) / FMath::Max(1.0f, H - Fixed);
+		RowH = FMath::Max(36.0f, RowH * K);
+		HeaderH = FMath::Max(26.0f, HeaderH * K);
+		H = HeadH + (Menu.Num() - Headers) * RowH + Headers * HeaderH + 40.0f;
+	}
+	const FVector2f Pos = bCentered ? FVector2f(960 - W * 0.5f, TopY >= 0.0f ? TopY : FMath::Max(P.VirtualMin.Y + 30.0f, 540 - H * 0.5f)) : FVector2f(96, 380);
 	// Still Water: a square dark veil between two silver rules, the crescent set into the top one.
 	P.Rect(Pos, FVector2f(W, H), EHStyle::Alpha(EHStyle::Abyss, 0.86f));
 	P.NextLayer();
@@ -617,9 +629,10 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 			const FString Shown = It.Change ? FString::Printf(TEXT("‹  %s  ›"), *V) : V;
 			// An unapplied value: light violet plus a dot (not colour alone); the Apply row counts them.
 			const bool bPending = It.Pending && It.Pending();
-			const float TW = P.Text(Shown, Row + FVector2f(W - 40, RowH * 0.5f), Fonts.Sized(Fonts.BodyMedium, 24), bPending ? EHStyle::FocusText : (bSel ? Bone : Muted), 1.0f, 0.5f).X;
+			const float TW = P.Text(Shown, Row + FVector2f(W - 40, RowH * 0.5f), Fonts.Sized(Fonts.BodyMedium, 24), bSel ? Bone : (bPending ? EHStyle::FocusText : Muted), 1.0f, 0.5f).X;
 			if (bPending)
 			{
+				P.NextLayer();
 				P.Round(Row + FVector2f(W - 40 - TW - 24, RowH * 0.5f - 6), FVector2f(12, 12), EHStyle::FocusText, 6);
 			}
 		}
@@ -799,7 +812,9 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 			P.Text(TEXT("Both ready  ·  press Confirm to fight"), FVector2f(960, 900), Fonts.Sized(Fonts.Display, St::Type::Heading), St::FocusText, 0.5f, 0.5f);
 		}
 	}
-	PaintPromptRow(P, FVector2f(700, 1012), {FEHHint::Menu(EEHNav::Left, TEXT("Choose")), FEHHint::Menu(EEHNav::Confirm, TEXT("Lock in")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Mode == EEHMode::Versus ? EHDeviceNone : SelectDevice[0]);
+	// The confirm that starts the match says so.
+	const bool bStarts = (Mode == EEHMode::VersusCpu && SelectStage == 2) || (Mode == EEHMode::Training && SelectStage == 1) || (Mode == EEHMode::Tutorial && SelectStage == 0) || (Mode == EEHMode::Versus && SelectLocked[0] && SelectLocked[1]);
+	PaintPromptRow(P, FVector2f(700, 1012), {FEHHint::Menu(EEHNav::Left, TEXT("Choose")), FEHHint::Menu(EEHNav::Confirm, bStarts ? TEXT("Fight") : TEXT("Lock in")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Mode == EEHMode::Versus ? EHDeviceNone : SelectDevice[0]);
 }
 
 void AEHGameDirector::PaintHUD(FEHPainter& P)
@@ -901,13 +916,15 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		P.Round(FVector2f(902, 30), FVector2f(116, 92), St::Plate, 10);
 		P.NextLayer();
 		P.Frame(FVector2f(902, 30), FVector2f(116, 92), St::Alpha(St::Silver, 0.6f), 2.0f);
-		P.Text(FString::Printf(TEXT("%d"), Seconds), FVector2f(960, 76), Fonts.Sized(Fonts.Display, 50), Seconds <= 10 ? St::Warning : St::TextPrimary, 0.5f, 0.5f);
+		P.Text(FString::Printf(TEXT("%d"), Seconds), FVector2f(960, 76), Fonts.Sized(Fonts.Display, 48), Seconds <= 10 ? St::Warning : St::TextPrimary, 0.5f, 0.5f);   // 48: pre-rendered on the title
 	}
 	for (const FEHCallout& Co : Callouts)
 	{
 		const float Fade = FMath::Clamp((Co.Life - Co.Age) / 0.25f, 0.0f, 1.0f);
 		const float Rise = Co.Age * 18.0f;
-		P.Text(Co.Text, FVector2f(Co.Side == 0 ? 110.0f : 1810.0f, 270.0f - Rise), Fonts.Sized(Fonts.Display, 34), A(Co.Color, Fade), Co.Side == 0 ? 0.0f : 1.0f, 0.5f);
+		// In the Lesson its panel (y 204-406) is where callouts would rise, so they sit below it.
+		const float BaseY = Mode == EEHMode::Tutorial ? 460.0f : 270.0f;
+		P.Text(Co.Text, FVector2f(Co.Side == 0 ? 110.0f : 1810.0f, BaseY - Rise), Fonts.Sized(Fonts.Display, 34), A(Co.Color, Fade), Co.Side == 0 ? 0.0f : 1.0f, 0.5f);
 	}
 	for (const FEHBanner& B : Banners)
 	{
@@ -1061,7 +1078,7 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 	const FEHTutorialStep& Step = Lesson[LessonStep];
 	// Below the HUD's name and gauge rows (which end at about y = 172).
 	const FVector2f Pos(460, 204);
-	P.Round(Pos, FVector2f(1000, 172), FLinearColor(0, 0, 0, 0.62f), 8);
+	P.Round(Pos, FVector2f(1000, 202), FLinearColor(0, 0, 0, 0.62f), 8);
 	P.NextLayer();
 	P.Rect(Pos, FVector2f(1000, 3), Violet);
 	P.Text(FString::Printf(TEXT("%d / %d   %s"), LessonStep + 1, Lesson.Num(), *Step.Title), Pos + FVector2f(32, 36), Fonts.Sized(Fonts.Display, 28), Bone, 0.0f, 0.5f);
@@ -1073,7 +1090,7 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 		const float SegW = (1000.0f - 64.0f - Gap * (N - 1)) / FMath::Max(1, N);
 		for (int32 k = 0; k < N; ++k)
 		{
-			const FVector2f SP = Pos + FVector2f(32 + k * (SegW + Gap), 156);
+			const FVector2f SP = Pos + FVector2f(32 + k * (SegW + Gap), 184);
 			if (k < LessonStep || (k == LessonStep && LessonDoneAge >= 0.0f))
 			{
 				P.Rect(SP, FVector2f(SegW, 6), EHStyle::Success);
@@ -1088,7 +1105,7 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 			}
 		}
 	}
-	P.Text(Step.Body, Pos + FVector2f(32, 82), Fonts.Sized(Fonts.Body, 22), Bone, 0.0f, 0.5f);
+	P.Text(Step.Body, Pos + FVector2f(32, 64), Fonts.Sized(Fonts.Body, 22), Bone, 0.0f, 0.0f);
 	if (LessonStep < Lesson.Num() - 1)
 	{
 		const bool bDone = LessonDoneAge >= 0.0f;
@@ -1113,14 +1130,14 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 		}
 		const bool bSaved = Settings.bInputHints;
 		Settings.bInputHints = true;
-		PaintPromptRow(P, Pos + FVector2f(32, 108), Hints, SlotDevice[0]);
+		PaintPromptRow(P, Pos + FVector2f(32, 138), Hints, SlotDevice[0]);
 		Settings.bInputHints = bSaved;
 	}
 	else
 	{
 		const bool bSaved = Settings.bInputHints;
 		Settings.bInputHints = true;
-		PaintPromptRow(P, Pos + FVector2f(32, 108), {FEHHint::Menu(EEHNav::Confirm, TEXT("Return to the menu, or keep practising"))}, SlotDevice[0]);
+		PaintPromptRow(P, Pos + FVector2f(32, 138), {FEHHint::Menu(EEHNav::Confirm, TEXT("Return to the menu, or keep practising"))}, SlotDevice[0]);
 		Settings.bInputHints = bSaved;
 	}
 }
@@ -1196,7 +1213,7 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	const FSlateFontInfo Head = Fonts.Sized(Fonts.BodyBold, St::Type::Label);
 	const FSlateFontInfo RowF = Fonts.Sized(Fonts.Body, St::Type::Body);
 	const FSlateFontInfo NoteF = Fonts.Sized(Fonts.Body, St::Type::Label);
-	const float Cols[] = {140, 440, 712, 812, 912};
+	const float Cols[] = {140, 440, 712, 812, 936};
 	const float NoteW = Right - Cols[4] - 24.0f;
 	P.Text(TEXT("Technique"), FVector2f(Cols[0], 196), Head, St::TextSecondary, 0.0f, 0.5f);
 	P.Text(TEXT("Input"), FVector2f(Cols[1], 196), Head, St::TextSecondary, 0.0f, 0.5f);
@@ -1229,7 +1246,7 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 		for (const FString& Word : Words)
 		{
 			const FString Try = LineText.IsEmpty() ? Word : LineText + TEXT(" ") + Word;
-			if (!LineText.IsEmpty() && P.Measure(Try, NoteF).X > NoteW && R.Note.Num() == 0)
+			if (!LineText.IsEmpty() && P.Measure(Try, NoteF).X > NoteW)
 			{
 				R.Note.Add(LineText);
 				LineText = Word;
@@ -1254,7 +1271,7 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	for (const FRow& R : Rows)
 	{
 		const eh::MoveDef& M = *R.Move;
-		const float Extra = R.Note.Num() > 1 ? ExtraH : 0.0f;
+		const float Extra = FMath::Max(0, R.Note.Num() - 1) * ExtraH;
 		const float Mid = Y + Extra * 0.5f;
 		// Inputs are drawn with the viewer's own buttons: direction words, then the action's button glyph.
 		const FString DirText = M.air ? TEXT("In a jump: ") : (M.down ? TEXT("Down + ") : (M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""))));
