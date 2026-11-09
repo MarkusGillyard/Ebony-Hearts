@@ -28,7 +28,8 @@ Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Stat
 ## What is in the slice
 
 - **Fighters.** Wren Ku (MMA, bouncy all-rounder; signature 720 Hook Kick; Spirit Enhanced Strikes, a golden lightning
-  aura) and Ashka Rook (Muay Thai, long upright guard; Lamplighter Flame, crimson).
+  aura) and Ashka Rook, The Last Lamplighter (Muay Thai, long upright guard; front kick, spinning elbow, flying knee,
+  teep, clinch trip; Lamplighter Flame, crimson).
 - **Stage.** The Drowned Chapel: a flooded chapel nave lit by moonlight through a rose window, candles and water.
 - **Six actions:** light, heavy, special, throw, dodge/roll and block. Movement is left/right; up jumps (straight up,
   toward or away) and down crouches. Directions modify buttons, judged when the button is pressed: toward / away pick
@@ -167,8 +168,8 @@ Tests/Core/run_core_tests.sh
   a Bluetooth DualShock 4 and reported that it works; that session has no per-button log.
 - **Art.**
   - The fighters are built by script from a MakeHuman base. They read well at gameplay distance; close-up detail is
-    modest: Ashka's face is a MakeHuman head with painted shading, her bangs are hair cards, and her braid, her coat's
-    drape and Wren's ankle wraps are fixed geometry rather than simulated cloth.
+    modest: Ashka's face is a MakeHuman head with painted shading, her bangs and ponytail are hair cards, and her
+    shirt and Wren's ankle wraps are fixed geometry rather than simulated cloth.
   - Both fighters stand in researched stances (Wren MMA, Ashka Muay Thai; see `Docs/Research.md`). Most motion comes
     from motion capture (ACCAD and Mixamo):
     - the idles, walks and held guards;
@@ -179,11 +180,12 @@ Tests/Core/run_core_tests.sh
     - both fighters' intros, wins and defeated poses;
     - both fighters' hit reactions (by where each hit lands), block, knockdown, KO and get-ups.
 
-    The remaining moves are keyed by script on the same stances: Wren's spinning elbow, both uppercuts and low kicks,
-    the crouches and their reactions, the uppercut's launch, Ashka's Flame Burst and clinch trip (with its fall), the
+    The remaining moves are keyed by script on the same stances: both spinning elbows, Ashka's front kick, both
+    uppercuts and low kicks, the crouches and their reactions, the uppercut's launch, Ashka's Flame Burst and clinch
+    trip (with its fall), the
     back rolls, the older grabs (kept for when grappling returns) and the light jump attacks. Moves blend into each other with inertial transitions,
-    the legs settling over their own time so a strike from a walk finishes the step. Coat panels
-    and braids are spring-simulated, and they can clip in the most extreme spins.
+    the legs settling over their own time so a strike from a walk finishes the step. Braids and Ashka's ponytail are
+    spring-simulated, and they can clip in the most extreme spins.
   - Only Wren's primary outfit is in the slice.
 - **Audio.** Music, ambience and most effects are synthesized for the slice, with CC0 layers. There are no voices.
 - **Determinism and online.** Replays are deterministic for one binary on one machine. There is no rollback, online

@@ -36,8 +36,9 @@ Files deliberately excluded:
 
 ## Original work (created for this slice)
 
-- **Characters.** Garments, hair and braids, secondary chains, procedural skin/eye/hair/garment textures, and Ashka's
-  crimson cross-shaped lamp tattoo emblem. Source: `Tools/Blender/characters`.
+- **Characters.** Garments, hair, braids and Ashka's ponytail, secondary chains, and procedural skin/eye/hair/garment
+  textures. Until 2026-11-09 this also painted Ashka's crimson cross-shaped lamp tattoo emblem, which her new
+  character sheet drops (the painter keeps it, unused). Source: `Tools/Blender/characters`.
 - **Chapel.** All stage geometry, the rose-window and lancet stained glass, candle flame, water ripple normal and decal
   atlas. Source: `Tools/Blender/chapel`.
 - **Animation.** Both fighters' idle stances are built from ACCAD motion capture placed on stances designed from coaching sources (`Docs/Research.md`, "Fighting stances"; values in `Tools/Blender/anim/stances.json`). Wren's 720 hook kick and tornado kick come

@@ -94,6 +94,12 @@ The Evolve "knee bump dump" (single-collar tie, inside trip, swing) was the seco
 - **Ashka's Muay Thai.** She keeps a tall, square guard and a rhythmic idle. Her teep (push kick) and body kick make
   contact with the ball of the foot and the shin respectively. Her throw is the clinch trip (above); her uppercut is the
   rising elbow (sok ngat) and her low is a teep to the lead shin.
+- **Ashka's front kick and spinning elbow (2026-11-09).** Her character sheet lists both beside the teep. In Muay Thai
+  the teep is a push: the knee chambers and the sole drives straight through to move the opponent away. The front kick
+  is kept distinct as a snap: the lead knee lifts and the ball of the foot snaps up into the body and comes straight
+  back, quicker and shorter than the teep. The spinning elbow is sok klap (the spinning back elbow): the
+  lead foot steps across, the back turns through, and the rear elbow slashes round horizontally at head height, the
+  other hand guarding the face. Both are keyed by script on her stance (no capture was available for them).
 
 ## Fighting stances
 
