@@ -136,8 +136,10 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
   had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur. Likewise one
   native-resolution capture of `c6c0de2` had a single 46.9 ms frame (a processor-side stall); run again, none. It is
   not the flame light: frame times across eight flame moves are the same with and without it, even with an empty
-  shader cache. In Ashka's crouch a dark area shows at the top of her rear thigh only with the brightness boosted; it
-  reads as the trousers in the coat's shadow through the side slit.
+  shader cache; nothing in the logs or the resource sampler marks that second.
+- **Known limitation:** in deep leg poses (the crouch, the knee strike, the front kick) Ashka's thighs pass through
+  the coat's tails by up to about 7 cm; in the crouch it shows as a dark area at the top of her rear thigh, hard to
+  see at the game's brightness. Fixing it needs the coat's weights reworked or cloth simulation.
 - **For you to know:** with the CPU playing both, Ashka beats Wren 60 of 96 times (63 before her new moves); at Hard
   against Hard 22 of 24. Balance between the fighters was not part of this work. The first match after installing or
   updating a build compiles shaders on first use (small hitches, none over 33 ms here).

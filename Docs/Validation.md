@@ -46,17 +46,24 @@ own verification, not an independent review; nobody has played it yet.
 | Frame times | **PASS** | Every V-Sync run at a median of 16.67 ms, p99 ≤ 16.77 ms, max ≤ 17.35 ms, no frame over 33 ms (fight, menus, Training with and without auras, 1080p and 3440 × 1440, the first match of the new package); uncapped fight median 7.65 ms; GPU 6.8-10.0 ms |
 | The Flame Burst's light, in game | **seen** | `Tests/Auto/review_flame.txt` keeps the gauge full (`evidence/blocking-1109/footage/flame-108455a`, `evidence/ashka-1109v2/footage/review-flame`): the Flame Burst fires from both sides; with its fire, the light colours her coat and the floor around her crimson, the red on her coat peaking about 0.1 s in and gone within about 0.2 s |
 | Flame moves' frame cost | **PASS** | `Tests/Auto/perf_flame.txt`: one capture across three Flame Bursts, three Flame Elbows and two Flying Knees, on `2c993b0` (no light) and `0c8a9f5` (the light): no frame over 20 ms on either (max 16.86 / 16.78 ms). Again with an empty driver shader cache each, so every effect compiles on first use: max 19.56 / 19.47 ms, p99 18.52 / 18.72 ms, the same on both. The light adds no hitch |
-| The one slow frame of `c6c0de2` | **not repeated** | The 3440 × 1440 fight that had one 46.9 ms frame on `c6c0de2` has since run six times without a frame over 18 ms: once more on `c6c0de2`, in the batteries of `0c8a9f5` and `108455a`, and three times more on `108455a` (`evidence/rc-108455a/perf-native-repeat`, max ≤ 16.86 ms). Its cause is still not known; it is not the flame light (above) |
+| The one slow frame of `c6c0de2` | **not repeated** | The 3440 × 1440 fight that had one 46.9 ms frame on `c6c0de2` has since run six times without a frame over 18 ms: once more on `c6c0de2`, in the batteries of `0c8a9f5` and `108455a`, and three times more on `108455a` (`evidence/rc-108455a/perf-native-repeat`, max ≤ 16.86 ms). Its cause is still not known. It is not the flame light (above); the resource sampler shows nothing at that second (GPU load, clocks, VRAM and game memory steady) and the system journal has no event then. The only recurring desktop activity in the journal is the screensaver service being restarted about every 50 s at the request of a `dbus-send` outside the game, all day, during the clean runs too |
 
 **What the checks found and did not fix**
 
 - **Frozen frames in the review recordings are the screenshots.** The flame review's video froze for 3-8 frames right
   after some screenshots; the same moves without screenshots (the perf capture above) never drop a frame. A screenshot
   stalls the frame it is taken on; the review scripts mark moments with them by design.
-- **A dark area at the top of Ashka's rear thigh in the crouch.** At the brightness of the game it is black on black;
-  boosted 2.5 times it shows as a near-black patch beside the side slit's piping, the same on both sides of the screen,
-  in every crouch. Rendered with back faces culled (as the game draws), the tail lies on the thigh and no hole is
-  open, so this reads as the black trousers in the coat's shadow seen through the slit; it is not proven otherwise.
+- **Ashka's thighs pass through her coat's tails in deep leg poses.** In the crouch a dark area shows at the top of her
+  rear thigh, beside the side slit's piping (black on black at the game's brightness; plain when boosted 2.5 times, the
+  same on both sides of the screen). Measured with the posed meshes (`evidence/blocking-1109`, each tail vertex tested
+  against the trousers): in the crouch 115 vertices of the outer tails lie more than 1 cm inside the trousers, up to
+  7 cm, mostly the front tails over the raised thighs; the knee strike and the front kick show the same at contact;
+  standing, a few (up to a few cm, partly false hits of the test between the legs). The dark area is the trousers
+  showing through the tail. The leg capsules fix the black wedge the renders showed but cannot fix this: the tails'
+  skinning blends each panel between the pelvis and its tail bones, and the simulated points steer only four places
+  per tail. Larger capsules (13 and 15.5 cm) and letting the tails swing further over raised thighs (85° instead of
+  50°) each removed only a fifth of it. A fix needs the coat's weights reworked (the upper front panels partly
+  following the thighs) or cloth simulation; neither is in this candidate.
 
 ## Candidate `0c8a9f5` (2026-11-09, blocking animation refinement)
 
