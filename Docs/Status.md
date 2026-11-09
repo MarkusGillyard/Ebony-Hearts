@@ -2,7 +2,7 @@
 
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
 refined to her new character sheet and to its version 2, then the blocking animations and Ashka's coat tails:
-candidate `108455a` built and checked by the implementer; ready for independent review and the creator's playtest;
+candidate `8c22521` built and checked by the implementer; ready for independent review and the creator's playtest;
 nothing merged).
 
 ## Where things stand
@@ -14,10 +14,10 @@ nothing merged).
   Ashka's overhaul, and the controls for all of it), the 2026-11-09 fighting-game control layout and Ashka's
   refinement to her character sheet of 2026-11-09 and its version 2 (the same day), then the blocking-animation
   refinement you asked for the same day.
-- **Candidate:** `EbonyHearts-Slice-108455a.tar.gz` (Shipping, Linux), built from commit `108455a`; SHA-256
-  `ddecfd0b0e0357d2c8b26c4e8611e311e36f413a82b51af0fcbd571feaaa10f8`. It is `32831cc` (the combat pass `5d5c316`, which
+- **Candidate:** `EbonyHearts-Slice-8c22521.tar.gz` (Shipping, Linux), built from commit `8c22521`; SHA-256
+  `8bbeffb7a4e50bfad8794a398b54e857e6a82518393bebbb826cb2d355f4da15`. It is `32831cc` (the combat pass `5d5c316`, which
   you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2, the guard,
-  block and crouch animations rebuilt, and Ashka's coat tails kept off her legs. Local review build in the delivery
+  block and crouch animations rebuilt, and Ashka's coat kept over her legs. Local review build in the delivery
   workspace's `release/` folder; not published.
 - **Pull request #1** (`release/first-slice` → `main`) now carries this work. Its 2026-11-08 technical audit
   ([Review](Review.md), previous round, section 6) applies to its earlier head `ea3ddc6`, not to this work. Nothing
@@ -73,8 +73,8 @@ nothing merged).
     at the temples, elbows on the ribs), Ashka an upright Muay Thai high guard (gloves at the brow, elbows forward). A
     blocked hit pushes the guard back a little and it settles. Crouching keeps its depth (it matches what can be hit)
     with the hands in front of the face, lower when not blocking and up over the face when blocking. No combat rule,
-    timing or hitbox changed. Ashka's coat tails no longer pass into her legs (in the crouch the rear thigh had swung
-    into the side tail).
+    timing or hitbox changed. Ashka's coat now stays over her legs: its tails stay outside them, and the cloth in front
+    of each thigh partly follows the thigh, so in the crouch and in kicks the thighs no longer show through it.
 
 ## How to test the candidate
 
@@ -137,9 +137,9 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
   native-resolution capture of `c6c0de2` had a single 46.9 ms frame (a processor-side stall); run again, none. It is
   not the flame light: frame times across eight flame moves are the same with and without it, even with an empty
   shader cache; nothing in the logs or the resource sampler marks that second.
-- **Known limitation:** in deep leg poses (the crouch, the knee strike, the front kick) Ashka's thighs pass through
-  the coat's tails by up to about 7 cm; in the crouch it shows as a dark area at the top of her rear thigh, hard to
-  see at the game's brightness. Fixing it needs the coat's weights reworked or cloth simulation.
+- **Ashka's coat and her legs:** in the crouch her rear thigh used to show through the coat (a dark area beside the
+  side slit); `8c22521` fixes it in the crouching guard. A small notch remains in the open crouch, and in the most
+  extreme poses some cloth still crosses the far side of a raised thigh; closing those needs cloth simulation.
 - **For you to know:** with the CPU playing both, Ashka beats Wren 60 of 96 times (63 before her new moves); at Hard
   against Hard 22 of 24. Balance between the fighters was not part of this work. The first match after installing or
   updating a build compiles shaders on first use (small hitches, none over 33 ms here).

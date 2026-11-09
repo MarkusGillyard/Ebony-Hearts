@@ -2,15 +2,51 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-108455a/<run>` and
-`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-0c8a9f5/<run>`, `evidence/rc-c6c0de2/<run>` and
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-8c22521/<run>` and
+`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-108455a/<run>`, `evidence/rc-0c8a9f5/<run>`,
+`evidence/rc-c6c0de2/<run>` and
 `evidence/ashka-1109v2/`,
 `evidence/rc-2c993b0/<run>` and `evidence/ashka-1109/`,
 `evidence/rc-32831cc/<run>`, `evidence/rc-1b714fd/<run>`,
 `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `108455a` (2026-11-09, coat tails off the legs; the open items of `0c8a9f5` and `c6c0de2`)
+## Current candidate `8c22521` (2026-11-09, Ashka's coat follows her thighs)
+
+**Result: PASS on every objective check run.** This candidate is `108455a` (below) with one change: Ashka's coat
+mesh is weighted so the cloth in front of and beside each thigh partly follows that thigh. Skeleton, animations,
+combat code and data are those of `108455a`. This is the implementer's own verification, not an independent review;
+nobody has played it yet.
+
+| Item | Value |
+|---|---|
+| Source | `8c22521` (the generator change and the reimported mesh `SK_Ashka`); the commit after it changes documentation only |
+| Release archive | `EbonyHearts-Slice-8c22521.tar.gz`, 335 607 099 bytes, SHA-256 `8bbeffb7a4e50bfad8794a398b54e857e6a82518393bebbb826cb2d355f4da15` |
+| Content hash | `bff021181887c1054ad2a65580c01c50417522e98d80c8840dc2ae0b2237abb6` |
+| Build | Shipping, package `pkg-81-thighfollow1109`: 859 packages (852 cooked, 7 skipped by platform), 0 warnings, 0 errors; all 21 files verified after extraction into a path with a space |
+
+**What changed and why.** Ashka's thighs passed through her coat's tails in deep leg poses (see `108455a`): the tails
+were skinned to the pelvis and their own tail bones only, so a raised thigh cut through the panel between the
+simulated points, and in the crouch the upper rear thigh showed through beside the side slit as a dark area. The
+cloth within 25 cm of each thigh's axis, on the front half of the coat, now follows that thigh by up to 70%, most in
+the upper half of the tails and fading toward the hem, so the hems keep their swing (`tail_thigh_follow`,
+`tail_thigh_reach` in `characters.json`; the lining copies the outer layer's weights). All 88 bones are unchanged
+(`bones.json`, compared bone by bone); only `SK_Ashka` was reimported, and the importer's re-saves of her clips,
+textures and materials were set aside and the committed versions kept.
+
+| Check | Result | Notes |
+|---|---|---|
+| Coat over the thighs, in renders | **better** | The coat and trousers drawn in contrasting colours, back faces culled (`tmp/blocking-1109/tint*` in the workspace): in the crouch, seen from the game camera's side and from the front, the tails now lie over the upper thighs (seen from her other side the lead thigh still comes out past the front tail's edge); in the front kick the standing thigh no longer shows through the coat; the knee, the body roundhouse and the flying knee show no stretched or torn cloth at contact |
+| Coat over the thighs, in game | **fixed in the crouching guard** | Same inputs on both sides of the screen, before (`108455a`) and after (`evidence/blocking-1109/crouch-sides-8c22521`), brightness boosted 2.5 times: the dark area at the top of the rear thigh is gone in the crouching guard; in the open crouch a small notch remains of it |
+| Blocking review | **PASS** | `Tests/Auto/review_blocking.txt` on this candidate (`evidence/blocking-1109/footage/after-8c22521`); the phone copy with the original before stacked over it is `.../footage/phone/blocking_before_after_final.mp4` |
+| Packaged battery | **PASS** | `evidence/rc-8c22521/battery/<run>`: 28 runs from an empty game profile, each with exit 0, no `FAIL` or `WARN` line and its completion marker; 12/12 matrix matches (memory 1 507 MiB at the end, peak 1 525); 20 starts, 2.27 s on average (at most 2.41 s); every frame-time run without a frame over 33 ms (max 17.5 ms), uncapped fight median 7.68 ms |
+
+The penetration count (coat vertices behind the nearest trouser surface) did not fall with this change; it counts
+cloth lying on the leg and points between the legs as inside, so the contrasting-colour renders and the game are the
+measure used here. Some cloth still crosses the leg in the most extreme poses (the open crouch's notch, the far side
+of a raised thigh); closing those needs cloth simulation.
+
+## Candidate `108455a` (2026-11-09, coat tails off the legs; the open items of `0c8a9f5` and `c6c0de2`)
 
 **Result: PASS on every objective check run.** This candidate is `0c8a9f5` (the simple guards, below) plus the follow-up
 work on what that round and the Ashka round had left open; no combat code or data changed. This is the implementer's
@@ -63,7 +99,7 @@ own verification, not an independent review; nobody has played it yet.
   skinning blends each panel between the pelvis and its tail bones, and the simulated points steer only four places
   per tail. Larger capsules (13 and 15.5 cm) and letting the tails swing further over raised thighs (85° instead of
   50°) each removed only a fifth of it. A fix needs the coat's weights reworked (the upper front panels partly
-  following the thighs) or cloth simulation; neither is in this candidate.
+  following the thighs) or cloth simulation; the next candidate, `8c22521`, reworks the weights.
 
 ## Candidate `0c8a9f5` (2026-11-09, blocking animation refinement)
 
