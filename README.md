@@ -158,8 +158,9 @@ Tests/Core/run_core_tests.sh
   (`Source/EbonyHeartsLinux`, see `Docs/Production.md`); Wayland sessions were not tested.
 - **Evaluation.** The creator played the `4cee9c1` candidate on 2026-11-07 and reported that combat smoothness and
   jumping need refinement and the character models need work; this pass answers that. The creator began playing its
-  candidate on 2026-11-09; their feedback is not in yet. Automated checks do not settle gameplay feel, balance, or acceptance of the tuning values (see the combat contract). The creator verified TV audio
-  on the earlier `060a75f` candidate; an independent listening check of this candidate has not been recorded.
+  candidate on 2026-11-09; their feedback is not in yet. Automated checks do not settle gameplay feel, balance, or
+  acceptance of the tuning values (see the combat contract). The creator verified TV audio on the earlier `060a75f`
+  candidate; an independent listening check of this candidate has not been recorded.
 - **Controllers.** Gamepads were verified with simulated Xbox 360 and DualShock 4 pads, including disconnect, reconnect
   and remapping. The creator physically checked a PS4 controller on `060a75f`, and played the `5d5c316` candidate with
   a Bluetooth DualShock 4 and reported that it works; that session has no per-button log.
