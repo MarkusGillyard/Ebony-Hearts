@@ -375,7 +375,8 @@ private:
 	// UI painting
 	void PaintBackdrop(FEHPainter& P, float Dim);
 	void PaintTitle(FEHPainter& P);
-	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact);
+	// TopY >= 0 places a compact (centred) menu's top edge there instead of centring it vertically.
+	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact, float TopY = -1.0f);
 	void PaintSelect(FEHPainter& P);
 	void PaintHUD(FEHPainter& P);
 	void PaintTraining(FEHPainter& P);

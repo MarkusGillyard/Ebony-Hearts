@@ -1,0 +1,24 @@
+# Results screens for interface review (2026-11-09): one CPU match won by player one's bot (left side), then a
+# local-versus match on one keyboard; a screenshot of each results screen and of the focus moving off Rematch.
+wait 5
+press kbA Light
+wait 1
+match wren ashka cpu 0 left
+bots 2 none
+wait_results 480
+wait 1.5
+screenshot ur_results_cpu
+bots none none
+press kbA Down
+wait 0.3
+screenshot ur_results_focus
+results_pick 2
+wait 1
+match ashka wren versus 0 left
+bots 2 1
+wait_results 480
+wait 1.5
+screenshot ur_results_versus
+results_pick 2
+wait 1
+quit

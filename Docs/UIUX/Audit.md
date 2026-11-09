@@ -74,6 +74,8 @@ P0 broken, P1 major friction, P2 inconsistency, P3 polish. No P0 was found: the 
 | A11 | P2 | **Pending vs saved values look the same** on the Video page until Apply; only the hint says so | Settings ▶ Video, change a value | `j13_video` |
 | A12 | P3 | **No transitions.** Screens cut instantly (only the title fades in), so moving between menus has no sense of place | Navigate any menus | — |
 | A13 | P3 | **The title prompt pulses forever** (sine on alpha) and is small against the art | Launch, wait | `j01_title` |
+| A15 | P1 | **The results menu overprints the stats table.** The menu is centred on the screen and the table sits at y = 290–540, so "Rematch" is drawn across the rows of numbers | Finish any match | `rc-84acb66/battery/matrix/m01_results.png` |
+| A16 | P2 | **The focus band was mostly hidden.** The menu panel (a rounded box) and the selection band (a plain box) shared a draw layer, and Slate may batch them in either order: the 90% panel was drawn over the band, leaving a faint stripe | Any menu | `j02_main` (the band barely shows) |
 | A14 | P3 | **Results lead with stats, not the decision.** The stats table sits above the Rematch / Change Fighters / Main Menu menu | Finish a match | `PaintResults` |
 
 ## Preserve, improve, replace, remove
