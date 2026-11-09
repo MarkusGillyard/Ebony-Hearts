@@ -104,9 +104,10 @@ workspace, not this repository.
   The grab move's pose on its first active frame is where the throw starts, so a throw's entry (the double-leg's
   level change, the clinch's reach) belongs on the grab's active frames.
 - **Character skeletons.** These use MPFB's game_engine skeleton (`root`, `pelvis`, `spine_01-03`, ... ) plus twist
-  bones and secondary chains (braids, Ashka's ponytail on the former braid chain, face strands, and coat-tail chains
-  kept unweighted since her coat was dropped on 2026-11-09). The chains are spring-simulated and baked into every
-  clip.
+  bones and secondary chains (braids, Ashka's ponytail on the former braid chain, face strands, and Ashka's coat
+  tails: 12 cloth columns `coat_c01`..`coat_c12` simulated together as one cloth against the legs, `_step_coat_grid`
+  in `Tools/Blender/anim/animlib.py`; the four older coat-tail chains stay in the rig unweighted). The chains are
+  simulated and baked into every clip.
 - **Character rebuilds.** The generator keeps the shipped rig: secondary-chain rest positions are stored in
   `Tools/Blender/characters/characters.json` and reused, so a garment or hair change does not move a bone (compare
   the new `bones.json` with the old one before importing). `EH_CHAR_OUT=<folder>` builds into a separate folder for
@@ -115,6 +116,11 @@ workspace, not this repository.
   Cloth with single-surface openings and hems (Ashka's clothes, Wren's outfit) imports onto the two-sided
   master `M_CharacterTwoSided`. After any character rebuild, rebuild every clip against the new `.blend` (keyed moves,
   captured clips, then each throw pair against both victims, in that order) and reimport meshes and clips.
+- **A mesh and its textures come from one build.** Blender's island packer does not lay out the garment atlases
+  (Ashka's coat and clothes) the same way twice, so a rebuilt mesh only fits the textures of the same build. When
+  the Unreal import re-saves assets whose content did not change (materials, the shared masters, textures whose
+  `.png` is byte-identical to the committed source), those may be set aside and the committed versions kept; the
+  textures of any garment whose mesh is reimported must ship with it.
 - **Naming.**
   - `SK_<Fighter>`, `A_<Fighter>_<Key>`, `MI_<Fighter>_<Material>`, `T_<Fighter>_<Material>_{D,N,ORM}`
   - Chapel: `SM_<Piece>`, `MI_<Material>`
