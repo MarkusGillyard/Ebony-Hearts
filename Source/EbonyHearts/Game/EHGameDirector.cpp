@@ -1,4 +1,5 @@
 #include "EHGameDirector.h"
+#include "EHUIStyle.h"
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -527,12 +528,12 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::RoundIntro:
 		{
 			const bool bFinal = S.f[0].roundWins == Rules.roundsToWin - 1 && S.f[1].roundWins == Rules.roundsToWin - 1;
-			Banners.Add(FEHBanner{bFinal ? TEXT("FINAL ROUND") : FString::Printf(TEXT("ROUND %d"), E.value), FString(), 0.0f, 1.6f, FLinearColor(0.92f, 0.86f, 0.74f)});
+			Banners.Add(FEHBanner{bFinal ? TEXT("FINAL ROUND") : FString::Printf(TEXT("ROUND %d"), E.value), FString(), 0.0f, 1.6f, EHStyle::TextPrimary});
 			Audio.Play(TEXT("RoundBell"), EEHSoundCat::Effects, 0.9f);
 			break;
 		}
 		case eh::EventType::Fight:
-			Banners.Add(FEHBanner{TEXT("FIGHT"), FString(), 0.0f, 0.9f, FLinearColor(1.0f, 0.82f, 0.45f)});
+			Banners.Add(FEHBanner{TEXT("FIGHT"), FString(), 0.0f, 0.9f, EHStyle::FocusText});
 			Audio.Play(TEXT("FightStinger"), EEHSoundCat::Effects, 0.9f);
 			break;
 		case eh::EventType::MoveStart:
@@ -569,15 +570,15 @@ void AEHGameDirector::ProcessEvents()
 			LastHitAge[D] = 0.0f;
 			if (bCounter)
 			{
-				Callouts.Add(FEHCallout{TEXT("COUNTER"), A, 0.0f, 0.9f, FLinearColor(1.0f, 0.78f, 0.30f)});
+				Callouts.Add(FEHCallout{TEXT("COUNTER"), A, 0.0f, 0.9f, EHStyle::HealthLow});
 			}
 			else if (E.flags & eh::EvPunish)
 			{
-				Callouts.Add(FEHCallout{TEXT("PUNISH"), A, 0.0f, 0.9f, FLinearColor(0.95f, 0.35f, 0.30f)});
+				Callouts.Add(FEHCallout{TEXT("PUNISH"), A, 0.0f, 0.9f, EHStyle::Warning});
 			}
 			if (E.flags & eh::EvTrade)
 			{
-				Callouts.Add(FEHCallout{TEXT("TRADE"), A, 0.0f, 0.7f, FLinearColor(0.8f, 0.8f, 0.8f)});
+				Callouts.Add(FEHCallout{TEXT("TRADE"), A, 0.0f, 0.7f, EHStyle::TextSecondary});
 			}
 			break;
 		}
@@ -588,7 +589,7 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::Deflect:
 			Vfx->Block(At, S.f[A].facing, true);
 			Audio.Play(TEXT("Deflect"), EEHSoundCat::Effects, 0.9f);
-			Callouts.Add(FEHCallout{TEXT("DEFLECT"), 1 - A, 0.0f, 0.9f, FLinearColor(0.95f, 0.92f, 0.70f)});
+			Callouts.Add(FEHCallout{TEXT("DEFLECT"), 1 - A, 0.0f, 0.9f, EHStyle::Silver});
 			Stats.Deflects[1 - A] += 1;
 			break;
 		case eh::EventType::ThrowConnect:
@@ -604,23 +605,23 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::ThrowTech:
 			Vfx->Tech(At);
 			Audio.Play(TEXT("Tech"), EEHSoundCat::Effects, 0.85f);
-			Callouts.Add(FEHCallout{TEXT("ESCAPE"), 1 - A, 0.0f, 0.9f, FLinearColor(0.70f, 0.85f, 1.0f)});
+			Callouts.Add(FEHCallout{TEXT("ESCAPE"), 1 - A, 0.0f, 0.9f, EHStyle::FocusText});
 			break;
 		case eh::EventType::AuraStart:
 			Vfx->AuraFlash(SimToWorld(S.f[A].x, 110 * eh::kUnitsPerCm));
 			Audio.Play(TEXT("AuraIgnite"), EEHSoundCat::Effects, 0.9f);
-			Callouts.Add(FEHCallout{TEXT("SPIRIT ENHANCED"), A, 0.0f, 1.2f, FLinearColor(1.0f, 0.80f, 0.35f)});
+			Callouts.Add(FEHCallout{TEXT("SPIRIT ENHANCED"), A, 0.0f, 1.2f, EHStyle::WrenAccent});
 			break;
 		case eh::EventType::AuraEnd:
 			Audio.Play(TEXT("AuraFade"), EEHSoundCat::Effects, 0.5f);
 			break;
 		case eh::EventType::KO:
-			Banners.Add(FEHBanner{S.doubleKO ? TEXT("DOUBLE K.O.") : TEXT("K.O."), FString(), 0.0f, 1.8f, FLinearColor(0.85f, 0.12f, 0.10f)});
+			Banners.Add(FEHBanner{S.doubleKO ? TEXT("DOUBLE K.O.") : TEXT("K.O."), FString(), 0.0f, 1.8f, EHStyle::Warning});
 			Audio.Play(TEXT("KO"), EEHSoundCat::Effects, 1.0f);
 			CamShake = FMath::Max(CamShake, bReduceShake ? 0.4f : 1.4f);
 			break;
 		case eh::EventType::Timeout:
-			Banners.Add(FEHBanner{TEXT("TIME"), FString(), 0.0f, 1.6f, FLinearColor(0.9f, 0.85f, 0.75f)});
+			Banners.Add(FEHBanner{TEXT("TIME"), FString(), 0.0f, 1.6f, EHStyle::TextPrimary});
 			Audio.Play(TEXT("KO"), EEHSoundCat::Effects, 0.6f);
 			break;
 		case eh::EventType::RoundEnd:

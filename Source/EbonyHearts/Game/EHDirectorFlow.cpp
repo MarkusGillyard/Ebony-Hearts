@@ -28,6 +28,16 @@ FEHMenuItem Choice(const FString& Label, TFunction<FString()> Value, TFunction<v
 	return I;
 }
 
+// A section label inside a menu: drawn smaller, never focused (navigation skips it), so adding one does not change
+// how many presses reach the items after it.
+FEHMenuItem Header(const FString& Label)
+{
+	FEHMenuItem I;
+	I.Label = Label;
+	I.bHeader = true;
+	return I;
+}
+
 FString OnOff(bool b) { return b ? TEXT("On") : TEXT("Off"); }
 
 const TArray<FIntPoint>& Resolutions()
@@ -127,6 +137,7 @@ void AEHGameDirector::BuildPauseMenu()
 	Menu.Add(Button(TEXT("Resume"), [this] { SetPaused(false, EHDeviceNone); }));
 	if (Mode == EEHMode::Training)
 	{
+		Menu.Add(Header(TEXT("Partner")));
 		Menu.Add(Choice(TEXT("Dummy"), [this] { return FString(DummyName(Dummy)); }, [this](int32 D) {
 			constexpr int32 Modes = static_cast<int32>(eh::DummyMode::Crouch) + 1;
 			int32 Next = (static_cast<int32>(Dummy) + D + Modes) % Modes;
@@ -144,8 +155,10 @@ void AEHGameDirector::BuildPauseMenu()
 			Cpu[DummySlot].Setup(DummySlot, static_cast<eh::CpuLevel>(CpuLevel), static_cast<uint32>(FPlatformTime::Cycles()));
 			Cpu[DummySlot].SetDummy(Dummy);
 		}, TEXT("Used when the dummy is set to CPU.")));
+		Menu.Add(Header(TEXT("Positions")));
 		Menu.Add(Choice(TEXT("Start position"), [this] { return FString(TrainingLayout == 0 ? TEXT("Centre") : (TrainingLayout == 1 ? TEXT("Opponent cornered") : TEXT("You cornered"))); }, [this](int32 D) { TrainingLayout = (TrainingLayout + D + 3) % 3; }, TEXT("Applied on reset.")));
 		Menu.Add(Button(TEXT("Reset positions"), [this] { Match->TrainingResetPositions(TrainingLayout); SetPaused(false, EHDeviceNone); }, TEXT("Also on the Reset button during play.")));
+		Menu.Add(Header(TEXT("Practice aids")));
 		Menu.Add(Choice(TEXT("Hitboxes"), [this] { return OnOff(bShowHitboxes); }, [this](int32) { bShowHitboxes = !bShowHitboxes; }));
 		Menu.Add(Choice(TEXT("Frame data"), [this] { return OnOff(bShowFrameData); }, [this](int32) { bShowFrameData = !bShowFrameData; }));
 		Menu.Add(Choice(TEXT("Input history"), [this] { return OnOff(bShowInputs); }, [this](int32) { bShowInputs = !bShowInputs; }));
@@ -159,6 +172,10 @@ void AEHGameDirector::BuildPauseMenu()
 	else
 	{
 		Menu.Add(Button(TEXT("Restart match"), [this] { Rematch(); }));
+	}
+	if (Mode == EEHMode::Training)
+	{
+		Menu.Add(Header(TEXT("More")));
 	}
 	Menu.Add(Button(TEXT("Move List"), [this] { SettingsReturn = EEHScreen::Match; GoTo(EEHScreen::MoveList); }));
 	Menu.Add(Button(TEXT("Settings"), [this] { SettingsReturn = EEHScreen::Match; SettingsPage = 0; GoTo(EEHScreen::Settings); }));
