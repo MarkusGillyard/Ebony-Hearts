@@ -218,14 +218,22 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
   - **Wren:** name, alias, height and build, two braids, eye colour, her black and ocean-blue motif, MMA and Look See
     Do, and her listed techniques, including the 720 Hook Kick. Spirit Enhanced Strikes is a golden lightning aura that
     raises strike damage and defence against energy and magical attacks.
-  - **Ashka** (her character sheet of 2026-11-09, which replaces the earlier one): Ashka Rook, The Last Lamplighter; a
-    former Muay Thai fighter and Lamplighter; 5'7", lean and slim; long crimson hair, normally in a loose ponytail,
-    with bangs just past her eyebrows and two longer side bangs framing her face; crimson red eyes; usually a calm
-    expression, most often calmly smiling. Her usual clothes are a white long-sleeved shirt, a black tie, black pants
-    and brown loafers. Muay Thai and Lamplighter Flame Style; her signature techniques are Lamplighter Flame
-    variations, spinning elbows, the flying knee, the teep, the front kick and clinch trips. Her Lamplighter Flame is
-    crimson, and she describes it as purifying. The earlier sheet's trench coat, braid and chest tattoo are no longer
-    canon.
+  - **Ashka** (her character sheet, version 2 of 2026-11-09, which replaces the earlier ones): Ashka Rook, The Last
+    Lamplighter; a former Muay Thai fighter and Lamplighter; 5'7" (170 cm), lean, slender and athletic. Long, silky
+    crimson hair with subtle waves toward the ends, in a loosely gathered ponytail secured with a small black ribbon
+    or an elegant clasp; soft, slightly parted bangs just past her eyebrows and two longer strands framing her face.
+    A heart-shaped face, deep crimson almond-shaped eyes with long dark lashes, fine brows, full lips and a gentle,
+    calm smile. A Gothic-Victorian ensemble: a jet-black frock coat (fitted waist, structured shoulders, high
+    standing collar, split coattails just above the knee, black-on-black floral embroidery, subtle crimson piping,
+    silver buttons, ice-white detail at the inner cuffs and collar, crimson lining); an ice-white high-collared
+    blouse with pleats down the chest and lace at the cuffs; a jet-black brocade waistcoat with silver buttons; a
+    crimson silk cravat with a small dark-silver clasp; high-waisted black trousers with crimson stitching down the
+    outer seams; polished black Victorian ankle boots with low heels and crimson accents; optionally a slender silver
+    chain and a small crimson gemstone brooch. When she channels her flame, it briefly lights the coat's lining.
+    Muay Thai and Lamplighter Flame Style; her signature techniques are Lamplighter Flame variations, spinning
+    elbows, the flying knee, the teep, the front kick and clinch trips. Her Lamplighter Flame is crimson, and she
+    describes it as purifying. No longer canon: the first sheet's trench coat, braid and chest tattoo, and the
+    second's white shirt, black tie, black pants and brown loafers.
   - **Relationship:** Wren and Ashka are best friends.
 - **Gameplay proposals, not canon:**
   - all frame data and damage
@@ -236,6 +244,9 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
     knee's flame, Flame Burst)
   - throw choices
   - the CPU's behaviour
+  - how Ashka's look reads the sheet where it leaves a choice: the ribbon (a small bow) rather than the clasp, both
+    the chain and the brooch shown, the embroidery's motif (a trailing vine with leaves and small flowers), and how
+    brightly the flame lights the lining
   - Wren's and Ashka's fighting each other as a versus/sparring setup, which carries no story meaning
 - **Deliberately unresolved:**
   - the origins and rules of Look See Do and the Fighting Spirit of Humanity
