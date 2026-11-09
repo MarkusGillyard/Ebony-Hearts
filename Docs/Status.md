@@ -1,9 +1,9 @@
 # Status and handoff
 
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
-refined to her new character sheet and to its version 2, then the blocking animations and Ashka's coat tails:
-candidate `8c22521` built and checked by the implementer; ready for independent review and the creator's playtest;
-nothing merged).
+refined to her new character sheet and to its version 2, then the blocking animations and Ashka's coat tails, now
+simulated as cloth: candidate `84acb66` built and checked by the implementer; ready for independent review and the
+creator's playtest; nothing merged).
 
 ## Where things stand
 
@@ -14,10 +14,10 @@ nothing merged).
   Ashka's overhaul, and the controls for all of it), the 2026-11-09 fighting-game control layout and Ashka's
   refinement to her character sheet of 2026-11-09 and its version 2 (the same day), then the blocking-animation
   refinement you asked for the same day.
-- **Candidate:** `EbonyHearts-Slice-8c22521.tar.gz` (Shipping, Linux), built from commit `8c22521`; SHA-256
-  `8bbeffb7a4e50bfad8794a398b54e857e6a82518393bebbb826cb2d355f4da15`. It is `32831cc` (the combat pass `5d5c316`, which
+- **Candidate:** `EbonyHearts-Slice-84acb66.tar.gz` (Shipping, Linux), built from commit `84acb66`; SHA-256
+  `0998f768cdb6697f961191f535bf916cba298fb612c5039121a35bf0b0de5207`. It is `32831cc` (the combat pass `5d5c316`, which
   you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2, the guard,
-  block and crouch animations rebuilt, and Ashka's coat kept over her legs. Local review build in the delivery
+  block and crouch animations rebuilt, and Ashka's coat tails simulated as cloth over her legs. Local review build in the delivery
   workspace's `release/` folder; not published.
 - **Pull request #1** (`release/first-slice` → `main`) now carries this work. Its 2026-11-08 technical audit
   ([Review](Review.md), previous round, section 6) applies to its earlier head `ea3ddc6`, not to this work. Nothing
@@ -59,7 +59,7 @@ nothing merged).
    loose ponytail tied with a small black ribbon, slightly parted bangs and two framing strands; a heart-shaped face,
    almond crimson eyes, fine brows, fuller lips and a gentle smile. When she uses a flame move, the fire lights the
    coat's lining. Where the sheet leaves a choice, the game shows the ribbon (not the clasp), both the chain and the
-   brooch, and a vine-and-flower embroidery; say if you want any of these otherwise. The chest tattoo stays gone, as
+   brooch, and a vine-and-flower embroidery; you approved these choices and the lining's moderate glow on 2026-11-09. The chest tattoo stays gone, as
    do version 1's shirt, tie and loafers. Her kit gains the
    sheet's front kick (away + Light, a quick snap kick that cancels into a special on hit) and spinning elbow (away +
    Heavy, at head height; Light, Light into it on hit is a combo). Nothing was removed. The select screen calls her
@@ -73,8 +73,9 @@ nothing merged).
     at the temples, elbows on the ribs), Ashka an upright Muay Thai high guard (gloves at the brow, elbows forward). A
     blocked hit pushes the guard back a little and it settles. Crouching keeps its depth (it matches what can be hit)
     with the hands in front of the face, lower when not blocking and up over the face when blocking. No combat rule,
-    timing or hitbox changed. Ashka's coat now stays over her legs: its tails stay outside them, and the cloth in front
-    of each thigh partly follows the thigh, so in the crouch and in kicks the thighs no longer show through it.
+    timing or hitbox changed. Ashka's coat now stays over her legs: at your go-ahead its tails became a simulated
+    cloth (12 columns round the coat that keep their spacing, stay out of her legs, ride on a raised thigh and fall off
+    the knee), so in the crouch and in kicks the thighs no longer show through it.
 
 ## How to test the candidate
 
@@ -138,8 +139,10 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
   not the flame light: frame times across eight flame moves are the same with and without it, even with an empty
   shader cache; nothing in the logs or the resource sampler marks that second.
 - **Ashka's coat and her legs:** in the crouch her rear thigh used to show through the coat (a dark area beside the
-  side slit); `8c22521` fixes it in the crouching guard. A small notch remains in the open crouch, and in the most
-  extreme poses some cloth still crosses the far side of a raised thigh; closing those needs cloth simulation.
+  side slit). `8c22521` fixed it in the crouching guard; since `84acb66` the tails are a simulated cloth and the open
+  crouch's notch and the far side of a raised thigh are covered too, on both sides of the screen. Seen straight from
+  the front (not a game camera angle) the front panel stands out stiffly from the raised thigh in the crouch. The
+  coat swings more freely than before; say if it is too lively.
 - **For you to know:** with the CPU playing both, Ashka beats Wren 60 of 96 times (63 before her new moves); at Hard
   against Hard 22 of 24. Balance between the fighters was not part of this work. The first match after installing or
   updating a build compiles shaders on first use (small hitches, none over 33 ms here).

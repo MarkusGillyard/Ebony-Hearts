@@ -2,8 +2,9 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-8c22521/<run>` and
-`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-108455a/<run>`, `evidence/rc-0c8a9f5/<run>`,
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-84acb66/<run>` and
+`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-8c22521/<run>`, `evidence/rc-108455a/<run>`,
+`evidence/rc-0c8a9f5/<run>`,
 `evidence/rc-c6c0de2/<run>` and
 `evidence/ashka-1109v2/`,
 `evidence/rc-2c993b0/<run>` and `evidence/ashka-1109/`,
@@ -11,7 +12,67 @@ files (logs, screenshots, footage, frame-time captures, resource samples) are ke
 `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `8c22521` (2026-11-09, Ashka's coat follows her thighs)
+## Current candidate `84acb66` (2026-11-09, Ashka's coat tails simulated as cloth)
+
+**Result: PASS on every objective check run.** This candidate is `8c22521` (below) with Ashka's coat tails rebuilt as a simulated cloth, which
+the creator authorized after `8c22521`'s report. Combat code and data are unchanged. This is the implementer's own
+verification, not an independent review; nobody has played it yet.
+
+| Item | Value |
+|---|---|
+| Source | `84acb66`: the generator and animation-build change (`77ea4ac`) and the reimported skeleton, mesh, coat and clothes textures and clips (`84acb66`); the commit after it changes documentation only |
+| Release archive | `EbonyHearts-Slice-84acb66.tar.gz`, 335 968 536 bytes, SHA-256 `0998f768cdb6697f961191f535bf916cba298fb612c5039121a35bf0b0de5207` |
+| Content hash | `636f2c0f5c5cbd7f521c669c811b5b526942242d9cb7c75271cf118b14796d96` |
+| Build | Shipping, package `pkg-82-cloth1109`: 859 packages (852 cooked, 7 skipped by platform), 0 warnings, 0 errors; all 21 files verified after extraction into a path with a space |
+
+**What changed and why.** `8c22521` left her thighs crossing the coat's tails in the most extreme poses (a notch in
+the open crouch, the far side of a raised thigh). The tails hung from four chains, one per panel: a panel could only
+swing as a whole, and the cloth between its edges followed by skin weights. They are now a cloth of 12 columns of
+three bones round the coat (three per panel, every 30°, so the front opening, the side slits and the back vent fall
+between columns), simulated together in the animation build (`Tools/Blender/anim/animlib.py`, `_step_coat_grid`):
+
+- each column keeps its length; neighbouring columns stay between 50% and 112% of their spacing in the bind pose,
+  except across the front opening, the back vent and the side slits below their tops; a bending term keeps the cloth
+  as curved as the hanging target, across and down, so it does not zig-zag;
+- every joint and the middle of every segment stays out of a capsule round each thigh and calf; the columns in front
+  of the hips leave a thigh on the side they hang on (the front panel rides on a raised thigh instead of slipping
+  under it), the others take the nearest way out;
+- in front of the hips each column's top bone leans after its thigh (fully at the front opening, fading to nothing
+  at the side seams) through a helper at mid-thigh; the back hangs free;
+- the top segment may lie along a raised thigh (up to 100° from hanging), each lower one hangs at most 50°, so the
+  cloth falls off the knee.
+
+Found on the way and fixed:
+
+- **Both animation builds fed the thigh follow back into itself.** Each frame was solved starting from the previous
+  frame's solved pose, so a part-strength follow (the old back tails' 55%) built up to a full one within a few frames,
+  and every loop began with the coat settling (in the crouching guard the hem moved up to 4 cm a frame for its first
+  20 frames, every time the loop came round). Each frame now starts from the bone's own pose; the loop seam is still
+  (0.05 cm).
+- **The follow helpers sat next to the hip joint**, so raising the thigh lifted them above and behind the waist and
+  turned the panel backwards. They now sit at mid-thigh.
+
+The skeleton gains 42 bones (36 exported cloth bones, 6 helpers that are not exported); no existing bone moved
+(`bones.json` compared bone by bone). Their rest pose is stored in `characters.json` (`rest_chains`), and a rebuild
+from it reproduces all 130 bones. The four earlier tail chains stay in the rig, unweighted. The thigh skin weights of
+`8c22521` (`tail_thigh_follow`) are off: the simulation does that job now.
+
+The coat and clothes textures were reimported with the mesh, from the same build (see `8c22521`, "Found later"); the
+eye, hair and skin textures came out byte-identical and the importer's re-saves of them, of her materials and of the
+shared masters were set aside and the committed versions kept.
+
+| Check | Result | Notes |
+|---|---|---|
+| Coat over the thighs, in renders | **fixed** | The coat drawn red and the trousers blue, back faces culled, `8c22521` against this candidate (`evidence/blocking-1109/cloth-compare`, `compare_game.jpg`, `compare_other.jpg`, `compare_front.jpg`): in the crouch and the crouching guard, the knee strike, the low kick and the body roundhouse, seen from the game camera's side, her other side and the front, the coat lies over a raised thigh and falls off the knee; the open crouch's notch and the far side's crossing are gone. Seen straight from the front, the front panel's outer edge stands out stiffly from the raised thigh in the crouch; the game camera does not see that angle |
+| Coat over the thighs, in game | **fixed** | The crouch and the crouching guard on both sides of the screen, brightness boosted 2.5 times (`evidence/blocking-1109/crouch-sides-84acb66`, against `crouch-sides-8c22521`): where the raised thigh came through between the panels the coat now falls in one panel from the hip to the floor, the side slit's red lining in place |
+| Coat motion | **PASS** | Every one of her clips measured at the hem (`evidence/blocking-1109/anim-audit-cloth2/coat_hem_*.log`): no pop in any clip, as before; the fastest hem step is 47.5 cm a frame in the back dash (43.1 before) and the clips' fastest steps have a median of 12.6 cm (8.9): the cloth swings more freely. The idle crouch loops are still (at most 0.1 cm a frame) |
+| Clip audit | **PASS** | 157 clips, none unexplained, body motion as before (`evidence/blocking-1109/anim-audit-cloth2`) |
+| Combat core, packaging | **PASS** | 53 cases, 1361 checks, 0 failures; 10 packaging tests; no code or data changed since `8c22521` |
+| Blocking review | **PASS** | `Tests/Auto/review_blocking.txt` on this candidate (`evidence/blocking-1109/footage/after-84acb66`); the phone copy with `8c22521` above it is `.../footage/phone/coat_cloth_before_after.mp4` |
+| Flame review | **seen** | `Tests/Auto/review_flame.txt` (`evidence/blocking-1109/footage/flame-84acb66`): the Flame Burst fires and lights her coat from both sides; in the Flying Knee the coat streams behind the raised knee |
+| Packaged battery | **PASS** | `evidence/rc-84acb66/battery/<run>`: 28 runs from an empty game profile, each with exit 0, no `FAIL` or `WARN` line and its completion marker; 12/12 matrix matches (memory 1 587 MiB at the end, peak 1 605: 45-85 MiB above the last three candidates, while the content grew by 0.36 MB; single runs spread as widely: the 1080p fight ended at 1 463 MiB on `8c22521` and 1 542 here, the native-resolution fight at 1 487 on both); 20 starts, 2.26 s on average (at most 2.44 s); every V-Sync run at a median of 16.67 ms, p99 ≤ 16.79 ms, no frame over 33 ms (max 19.0 ms in the smoke test's first match, at most 17.4 ms elsewhere); uncapped fight median 7.85 ms (7.68 on `8c22521`; the uncapped menu measured 0.4 ms slower too, so part of it is run-to-run) |
+
+## Candidate `8c22521` (2026-11-09, Ashka's coat follows her thighs)
 
 **Result: PASS on every objective check run.** This candidate is `108455a` (below) with one change: Ashka's coat
 mesh is weighted so the cloth in front of and beside each thigh partly follows that thigh. Skeleton, animations,
@@ -44,7 +105,13 @@ textures and materials were set aside and the committed versions kept.
 The penetration count (coat vertices behind the nearest trouser surface) did not fall with this change; it counts
 cloth lying on the leg and points between the legs as inside, so the contrasting-colour renders and the game are the
 measure used here. Some cloth still crosses the leg in the most extreme poses (the open crouch's notch, the far side
-of a raised thigh); closing those needs cloth simulation.
+of a raised thigh); closing those needs cloth simulation, which the next candidate, `84acb66`, adds.
+
+**Found later:** the UV packer does not lay the coat's and clothes' atlases out the same way twice, so a mesh needs
+the textures of its own build. This candidate shipped its rebuilt mesh with the coat and clothes textures of
+`b06b019`'s build (the importer's texture re-saves had been set aside). At the game's camera nothing shows (buttons,
+piping and lining sit in the same places in the blocking review's stills of this candidate and of `84acb66`), but the
+pairing was wrong; `84acb66` ships the mesh with its own textures.
 
 ## Candidate `108455a` (2026-11-09, coat tails off the legs; the open items of `0c8a9f5` and `c6c0de2`)
 
