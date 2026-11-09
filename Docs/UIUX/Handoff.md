@@ -4,6 +4,10 @@
 `release/first-slice`, ready for your review. You chose direction **A, Still Water**, and it is applied to every
 screen. **Nothing is merged.** PR #1, `release/first-slice` and `main` are unchanged by this work.
 
+You started the build on 2026-11-09; your controller died after about a minute, and you have many issues that are
+not itemized yet. An independent review of this pull request and of PR #1's latest round is prepared (its brief is
+outside the repository). The issues you name go into the next fix round.
+
 ## Direction A: Still Water
 
 - **Title screen:** your key art, with only the prompt and the credit over it.

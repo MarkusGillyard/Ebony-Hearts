@@ -74,6 +74,9 @@ Frame times are unchanged in every scenario (median 16.67 ms, p99 ≤ 16.80 ms a
 
 ## Not verified
 
+- **The creator's playtest.** On 2026-11-09 the creator started the `0126cac` build; after about a minute their
+  controller died. They report many issues, not yet itemized. Until they are, this work has not passed a human
+  playtest.
 - Hands-on play with a physical controller (simulated Xbox and DualShock 4 pads pass).
 - Listening to the four new sounds (generated at the house loudness and checked by measurement; this machine plays
   audio only through the TV or soundbar, which were not used).
