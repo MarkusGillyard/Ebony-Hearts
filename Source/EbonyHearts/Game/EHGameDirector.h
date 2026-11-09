@@ -250,9 +250,13 @@ private:
 	TObjectPtr<AEHVfx> Vfx;
 	UPROPERTY()
 	TObjectPtr<ACameraActor> Camera;
+	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
 	UPROPERTY()
 	TObjectPtr<UTexture2D> TitleTexture;
 	FSlateBrush TitleBrush;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LogoSmallTexture;
+	FSlateBrush LogoSmallBrush;
 	FVector CamPos = FVector(0, 600, 140);
 	float CamShake = 0.0f;
 	float CamPunch = 0.0f;

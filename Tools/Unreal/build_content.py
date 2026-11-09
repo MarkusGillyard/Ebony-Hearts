@@ -222,11 +222,8 @@ def main():
     build_fire(textures["FireSheet"])
     build_aura_shell(textures["Noise"])
     build_marker(textures["Ring"])
-    title = os.path.join(SRC_UI, "T_TitleCard.png")
-    # The title card is the creator's own artwork: imported once and never replaced by a rebuild.
-    if os.path.exists(title) and not eal.does_asset_exist("/Game/UI/T_TitleCard"):
-        import_texture(title, "/Game/UI", "T_TitleCard", srgb=True, compression=unreal.TextureCompressionSettings.TC_EDITOR_ICON, mips=False)
-        log("T_TitleCard")
+    # The interface's own textures (the creator's logo) are imported by Tools/Unreal/import_ui.py. The earlier title
+    # card was retired by the creator on 2026-11-09.
     log("DONE")
 
 

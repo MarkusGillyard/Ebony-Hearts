@@ -351,9 +351,10 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 		PaintTitle(P);
 		break;
 	case EEHScreen::Main:
-		if (TitleTexture)
+		if (LogoSmallTexture || TitleTexture)
 		{
-			P.Image(TitleBrush, FVector2f(96, 70), FVector2f(600, 600 * TitleBrush.ImageSize.Y / FMath::Max(1.0, TitleBrush.ImageSize.X)), FLinearColor(1, 1, 1, 0.95f));
+			const FSlateBrush& Logo = LogoSmallTexture ? LogoSmallBrush : TitleBrush;
+			P.Image(Logo, FVector2f(96, 56), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 0.95f));
 		}
 		PaintMenu(P, FString(), false);
 		break;

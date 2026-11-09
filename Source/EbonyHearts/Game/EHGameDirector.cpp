@@ -116,15 +116,19 @@ void AEHGameDirector::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("EbonyHearts: fonts missing: %s"), *FontMissing);
 	}
-	TitleTexture = LoadObject<UTexture2D>(nullptr, TEXT("/Game/UI/T_TitleCard.T_TitleCard"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-	if (TitleTexture)
-	{
-		TitleBrush.SetResourceObject(TitleTexture);
-		// The imported size is the artwork's true aspect even before the texture's platform data has streamed in.
-		const FIntPoint Imported = TitleTexture->GetImportedSize();
-		TitleBrush.ImageSize = Imported.X > 0 && Imported.Y > 0 ? FVector2D(Imported.X, Imported.Y) : FVector2D(TitleTexture->GetSizeX(), TitleTexture->GetSizeY());
-		TitleBrush.DrawAs = ESlateBrushDrawType::Image;
-	}
+	auto LoadBrush = [](const TCHAR* Path, TObjectPtr<UTexture2D>& Tex, FSlateBrush& Brush) {
+		Tex = LoadObject<UTexture2D>(nullptr, Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (Tex)
+		{
+			Brush.SetResourceObject(Tex);
+			// The imported size is the artwork's true aspect even before the texture's platform data has streamed in.
+			const FIntPoint Imported = Tex->GetImportedSize();
+			Brush.ImageSize = Imported.X > 0 && Imported.Y > 0 ? FVector2D(Imported.X, Imported.Y) : FVector2D(Tex->GetSizeX(), Tex->GetSizeY());
+			Brush.DrawAs = ESlateBrushDrawType::Image;
+		}
+	};
+	LoadBrush(TEXT("/Game/UI/T_Logo.T_Logo"), TitleTexture, TitleBrush);
+	LoadBrush(TEXT("/Game/UI/T_LogoSmall.T_LogoSmall"), LogoSmallTexture, LogoSmallBrush);
 	Audio.Init(GetWorld());
 	SpawnWorldActors();
 	ApplySettings(true);
