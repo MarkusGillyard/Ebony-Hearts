@@ -161,6 +161,8 @@ public:
 
 	void PaintUI(FEHPainter& P);
 	float UIScale() const { return Settings.UIScale; }
+	// CPU time spent building the interface's draw list, recorded between perf_begin and perf_end (milliseconds).
+	void RecordUiPaint(float Ms) { if (bRecordFrames) { UiPaintTimes.Add(Ms); } }
 
 	// Automation hooks (evaluation runs use the same router path as devices).
 	FEHInputRouter* Router() const { return RouterPtr.Get(); }
@@ -286,6 +288,7 @@ private:
 	FString EvidenceDir;
 	TArray<FString> AutoLog;
 	TArray<float> FrameTimes;
+	TArray<float> UiPaintTimes;
 	bool bRecordFrames = false;
 	float InputLogLeft = 0.0f;       // automation: log every press and held-state change while > 0
 	TMap<int32, uint32> InputLogHeld;

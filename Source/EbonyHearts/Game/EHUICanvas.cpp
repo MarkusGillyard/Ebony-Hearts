@@ -155,7 +155,9 @@ int32 SEHCanvas::OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeomet
 	if (AEHGameDirector* D = Director.Get())
 	{
 		FEHPainter P(AllottedGeometry, OutDrawElements, LayerId, D->UIScale());
+		const uint64 T0 = FPlatformTime::Cycles64();
 		D->PaintUI(P);
+		D->RecordUiPaint(static_cast<float>(FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - T0)));
 		return P.Layer + 2;
 	}
 	return LayerId;

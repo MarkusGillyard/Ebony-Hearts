@@ -682,6 +682,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 		else if (Cmd == TEXT("perf_begin"))
 		{
 			FrameTimes.Reset();
+			UiPaintTimes.Reset();
 			GpuTimes.Reset();
 			GameTimes.Reset();
 			RenderTimes.Reset();
@@ -711,14 +712,23 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			{
 				WorstSum += Sorted[N - 1 - i];
 			}
+			float UiSum = 0.0f;
+			float UiMax = 0.0f;
+			for (float V : UiPaintTimes)
+			{
+				UiSum += V;
+				UiMax = FMath::Max(UiMax, V);
+			}
+			const float UiMean = UiPaintTimes.Num() ? UiSum / UiPaintTimes.Num() : 0.0f;
 			const FPlatformMemoryStats Mem = FPlatformMemory::GetStats();
 			FViewport* VP = GEngine && GEngine->GameViewport ? GEngine->GameViewport->Viewport : nullptr;
 			const FIntPoint Size = VP ? VP->GetSizeXY() : FIntPoint::ZeroValue;
 			const FString Report = FString::Printf(
-				TEXT("{\n  \"name\": \"%s\",\n  \"frames\": %d,\n  \"seconds\": %.2f,\n  \"viewport\": [%d, %d],\n  \"mean_ms\": %.3f,\n  \"median_ms\": %.3f,\n  \"p95_ms\": %.3f,\n  \"p99_ms\": %.3f,\n  \"max_ms\": %.3f,\n  \"one_percent_low_fps\": %.2f,\n  \"hitches_over_33ms\": %d,\n  \"hitches_over_50ms\": %d,\n  \"gpu_median_ms\": %.3f,\n  \"gpu_p99_ms\": %.3f,\n  \"game_thread_median_ms\": %.3f,\n  \"render_thread_median_ms\": %.3f,\n  \"used_physical_mb\": %.1f,\n  \"peak_used_physical_mb\": %.1f,\n  \"dropped_sim_ticks\": %lld,\n  \"vfx_active\": %d\n}\n"),
+				TEXT("{\n  \"name\": \"%s\",\n  \"frames\": %d,\n  \"seconds\": %.2f,\n  \"viewport\": [%d, %d],\n  \"mean_ms\": %.3f,\n  \"median_ms\": %.3f,\n  \"p95_ms\": %.3f,\n  \"p99_ms\": %.3f,\n  \"max_ms\": %.3f,\n  \"one_percent_low_fps\": %.2f,\n  \"hitches_over_33ms\": %d,\n  \"hitches_over_50ms\": %d,\n  \"gpu_median_ms\": %.3f,\n  \"gpu_p99_ms\": %.3f,\n  \"game_thread_median_ms\": %.3f,\n  \"render_thread_median_ms\": %.3f,\n  \"used_physical_mb\": %.1f,\n  \"peak_used_physical_mb\": %.1f,\n  \"dropped_sim_ticks\": %lld,\n  \"vfx_active\": %d,\n  \"ui_paint_mean_ms\": %.4f,\n  \"ui_paint_p99_ms\": %.4f,\n  \"ui_paint_max_ms\": %.4f\n}\n"),
 				*Name, N, Sum / 1000.0f, Size.X, Size.Y, N ? Sum / N : 0.0f, Percentile(FrameTimes, 0.5f), Percentile(FrameTimes, 0.95f), Percentile(FrameTimes, 0.99f),
 				N ? Sorted.Last() : 0.0f, WorstSum > 0.0f ? 1000.0f / (WorstSum / WorstN) : 0.0f, Hitch33, Hitch50, Percentile(GpuTimes, 0.5f), Percentile(GpuTimes, 0.99f),
-				Percentile(GameTimes, 0.5f), Percentile(RenderTimes, 0.5f), Mem.UsedPhysical / 1048576.0, Mem.PeakUsedPhysical / 1048576.0, Clock.DroppedTicks(), Vfx ? Vfx->ActiveCount() : 0);
+				Percentile(GameTimes, 0.5f), Percentile(RenderTimes, 0.5f), Mem.UsedPhysical / 1048576.0, Mem.PeakUsedPhysical / 1048576.0, Clock.DroppedTicks(), Vfx ? Vfx->ActiveCount() : 0,
+				UiMean, Percentile(UiPaintTimes, 0.99f), UiMax);
 			WriteEvidence(Name + TEXT(".json"), Report);
 			FString Raw;
 			for (int32 i = 0; i < N; ++i)
@@ -726,7 +736,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 				Raw += FString::Printf(TEXT("%.3f,%.3f\n"), FrameTimes[i], GpuTimes.IsValidIndex(i) ? GpuTimes[i] : 0.0f);
 			}
 			WriteEvidence(Name + TEXT("_frames.csv"), Raw);
-			AutoLogLine(FString::Printf(TEXT("perf_end %s frames=%d median=%.2f p99=%.2f"), *Name, N, Percentile(FrameTimes, 0.5f), Percentile(FrameTimes, 0.99f)));
+			AutoLogLine(FString::Printf(TEXT("perf_end %s frames=%d median=%.2f p99=%.2f ui_paint_mean=%.3f ui_paint_p99=%.3f"), *Name, N, Percentile(FrameTimes, 0.5f), Percentile(FrameTimes, 0.99f), UiMean, Percentile(UiPaintTimes, 0.99f)));
 		}
 		else if (Cmd == TEXT("mem"))
 		{
