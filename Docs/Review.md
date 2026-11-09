@@ -70,7 +70,13 @@ candidate, not to this one.
 
 - Owner playtest of the new mechanics, art and feel (checklist in [Status](Status.md)).
 - Independent review of this candidate.
-- Physical controllers were simulated (virtual Xbox and DualShock 4 pads), not held.
+- Physical controllers were simulated (virtual Xbox and DualShock 4 pads), not held. A Bluetooth DualShock 4 was
+  recognised by the candidate but dropped off the system before any press was logged (Validation, "Physical
+  DualShock 4").
+- Frame times at the native 3440 × 1440 match the previous release, except one 0.4 s burst of slow frames (worst
+  32.8 ms) in one of three candidate captures, cause not found, not repeated (Validation, "Frame times").
+- Before/after footage of the art and jump scripts against release `309c87c`, with phone copies, is listed in
+  Validation, "Monitor-bound runs".
 
 ## 5. Commit structure
 

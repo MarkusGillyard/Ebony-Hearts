@@ -76,15 +76,17 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 - **Implemented and tested by automation on the candidate** (Validation, "Current candidate"): combat core (52 cases,
   1341 checks); packaging tests; the packaged battery (smoke, controls including a version-3 settings file migrating,
   menu journey, the full Lesson, real keyboard events, simulated Xbox and DualShock 4 pads, the CPU match matrix,
-  review scripts); frame-time captures at 1080p; a 58-minute soak (rendered off-screen).
+  review scripts, the simulated pads' left trigger and D-pad down); frame-time captures at 1080p and at the monitor's
+  native 3440 × 1440, each against the previous release under the same conditions; a 58-minute soak (rendered
+  off-screen).
 - **Observed by the implementer** (screenshots and footage): every new move on both fighters, both throws, the new
-  character art in the chapel and in neutral light, before and after.
-- **Not physically tested:** no human played this candidate with a real controller; pads were simulated.
+  character art in the chapel and in neutral light, before and after; before/after recordings of the art and jump
+  scripts against the previous release, with phone copies.
+- **Not physically tested:** no human played this candidate with a real controller. A Bluetooth DualShock 4 was
+  recognised by the game but dropped off the system before any press was logged; pads were otherwise simulated.
 - **Not independently reviewed** and **not accepted by the creator** yet.
-- **Not run yet (need the test machine's monitor):** frame times at the monitor's native borderless resolution, the
-  same captures on the previous release for comparison, the extended controller scenarios (L2 / LT throw, D-pad down
-  crouch), and before/after recordings of the art and jump scripts.
-- **Not verified:** hardware other than the test machine.
+- **Not verified:** hardware other than the test machine. One of three native-resolution captures of the candidate
+  had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur.
 
 ---
 

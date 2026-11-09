@@ -9,8 +9,8 @@ previous candidates' under `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/
 
 **Result: PASS on every objective check run; ready for independent review and the creator's playtest.** This is the
 implementer's own verification on branch `dev/combat-pass-1108`, not an independent review; nobody has played this
-candidate yet, and no physical controller was used. Runs that need the test machine's monitor and were not done in
-this session are listed at the end of this section.
+candidate yet. The runs that need the test machine's monitor were done later the same day ("Monitor-bound runs", at
+the end of this section).
 
 ### Build identity
 
@@ -38,7 +38,7 @@ script's own completion marker. The battery started from an empty game profile.
 | Journey | **PASS** | 25 checks across the menus, then Quit through the menu |
 | Lesson | **PASS** | `lesson_full.txt`: all 14 steps, "Lesson complete" (the anti-air step played by the Hard CPU on player 1's keyboard) |
 | Real X11 keyboard | **PASS** | Title, menu, fight, inputs, pause, quit (`xinput/x01`-`x06`) |
-| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts (every button the scenario pressed then: faces, shoulders, R2 / RT, D-pad left and right, stick, Options), menu-and-fight, disconnect and reconnect, remapping. L2 / LT (Throw) and D-pad down (Crouch) are checked by `input_selftest` through the input router; the scenario has been extended to press them too, but that version has not run yet: the game sees pads only with its window open, which needs the monitor |
+| Simulated pads | **PASS** | Xbox 360 and DualShock 4 layouts: every default button, each logged as the action it produces (faces, shoulders, R2 / RT, L2 / LT → Throw, D-pad down → Down, which crouches in a fight, D-pad left and right, stick, Options); menu-and-fight, now pressing Throw and Down in the fight too; disconnect and reconnect; remapping. The runs with L2 / LT and D-pad down are `evidence/rc-5d5c316/vpad-layout-xbox`, `vpad-layout-ds4` and `vpad-menu-and-fight`; the rest are in the battery |
 | Matrix | **PASS** | 12/12 complete matches (both fighters, both sides, mirrors, all CPU levels, rematch, local versus), 3 383 sounds, no missing assets; memory 1 509 MiB at the end (peak 1 527; previous candidate 1 492 / 1 510) |
 | Review scripts | **PASS** | `review_match`, `review_reactions`, `review_flow`, `review_playtest`, `review_combat`, `review_jump`, `review_art` |
 | Signature footage | **PASS** | Golden aura and crimson flame rendered |
@@ -56,6 +56,27 @@ Hard bot against the Hard CPU, which now crouches, throws and uppercuts; no vide
 | Menu, V-Sync off | 2 719 | 7.34 | 8.46 | 9.22 | 0 | 7.1 | (not run) |
 | Training, both auras and none | 422-601 | 16.67 | 16.72-16.75 | 16.82 | 0 | 6.6-6.7 | |
 | First match from its start (cold) | 1 501 | 16.67 | 16.76 | 16.91 | 0 | 6.7 | 16.67 / 16.78 / 16.87 |
+
+Release `309c87c` (before this pass), run later under the same 1080p conditions: fight with V-Sync 16.67 / 16.74 /
+16.86 ms, GPU 6.2; fight without V-Sync 7.31 / 8.50 / 17.21 ms (a single 17.2 ms frame), GPU 6.9; menus 16.67 /
+16.74 / 16.80 and 7.24 / 8.08 / 9.02 (`evidence/combat1108/baseline-309c87c-idle/perf-1080-*`). The two builds agree
+within run-to-run spread.
+
+**At the monitor's native resolution** (3440 × 1440 borderless, the saved display mode; V-Sync on, the monitor at
+165 Hz; the same script; the candidate and `309c87c` run back to back with no other heavy work running;
+`evidence/rc-5d5c316/perf-default*`, `evidence/combat1108/baseline-309c87c-idle/perf-default*`):
+
+| Fight, 60 s | Frames | Median | p99 | Max | Over 33 ms | GPU median |
+|---|---|---|---|---|---|---|
+| Candidate, run 1 | 3 602 | 16.67 ms | 16.81 | 32.82 | 0 | 9.7 ms |
+| Candidate, runs 2 and 3 | 3 602 / 3 601 | 16.67 | 16.76 / 16.76 | 16.86 / 16.86 | 0 | 9.8 |
+| `309c87c`, two runs | 3 602 / 3 601 | 16.67 | 16.75 / 16.76 | 17.07 / 16.84 | 0 | 9.8 |
+
+Menus, every run of both builds: median 16.67 ms, p99 at most 16.78, max at most 17.11, GPU 9.6 ms. The candidate's
+first run had one burst of slow frames 25.6 s into the fight: 16 frames over 17.5 ms within 0.4 s, the worst
+32.8 ms, with GPU time up to 21.6 ms on those frames. Two more runs of the candidate and both runs of the release had
+none. The cause was not identified and the burst did not recur. Game memory in that run matches the others, and its
+median game and render thread times (0.76 and 1.35 ms) are close to theirs (0.67-0.70 and 1.29-1.32 ms).
 
 **Render cost against release `309c87c` (before this pass).** Both builds rendering off-screen (`-RenderOffScreen`,
 V-Sync off, so the monitor stayed free; the desktop was in use, load average under 1.2), the same fight and menu
@@ -117,16 +138,35 @@ against release `309c87c` (`evidence/combat1108/before-after/art/compare`). The 
 name, parent and rest position is identical, so no clip had to change for the new meshes. Ashka's coat reads black
 in the chapel; under a bright neutral key its sheen reads charcoal.
 
-### Not run on this candidate
+### Monitor-bound runs
 
-These need the test machine's monitor and were left for a later session: the frame-time capture at the monitor's
-native borderless resolution with V-Sync (interrupted; the off-screen render cost at that resolution is above), the
-windowed V-Sync captures of `309c87c` under the same conditions (an earlier one ran beside a Blender render and is not
-used; the off-screen comparison above covers render cost), before/after recordings of the art and jump scripts, and the extended
-simulated-pad scenarios (L2 / LT and D-pad down; pads are read only while the game has a window). A task-local script
-runs the monitor-bound steps in order: `review-handoff-20261108/tools/after_battery.sh`. Also not
-re-run, because the code they cover did not change in this round: the display-mode changes, the monitor standby
+Run on the candidate's staging after the off-screen work, with the test machine's monitor, by the task-local scripts
+`review-handoff-20261108/tools/after_battery.sh` and `after_battery2.sh` (the repeats):
+
+- **Frame times at the native resolution, and the release's captures under the same conditions:** in "Frame times"
+  above. An earlier windowed capture of `309c87c` ran beside a Blender render and is not used.
+- **Extended simulated-pad scenarios** (L2 / LT, D-pad down): pass ("Simulated pads" in the results table).
+- **Before/after recordings** at 60 fps, normal speed, each pair starting on the same `match_start`, release
+  `309c87c` against the candidate: the art script (each fighter in Training: idle, kick, walking in close, Ashka's
+  teep) in `evidence/combat1108/before-after/art-motion-14s/{before,after}`, and the jump script (straight, forward
+  and back jumps, jump-in Heavy and Light, each fighter) in `.../jump-motion/{before,after}`. Phone copies with the
+  two builds stacked (960 × 800, 60 fps, H.264 Main, index at the front of the file): `.../phone/art_before_after_full.mp4`
+  (14 s) and `.../phone/jumps_before_after.mp4` (38 s, cut where the script leaves the fight). The first art
+  recordings asked for 30 s from a script that quits after 15, so the window closed before the files were finalized;
+  they are not used and were recorded again at 14 s.
+- **A physical controller:** see "Physical DualShock 4" below.
+
+Not re-run, because the code they cover did not change in this round: the display-mode changes, the monitor standby
 probe and the start-up loops (`060a75f`, below).
+
+### Physical DualShock 4
+
+The creator connected a DualShock 4 (Sony `054c:09cc`, Bluetooth) during the monitor-bound runs. In a two-minute
+Training check that logs every press (`evidence/rc-5d5c316/physical-ds4`), the game recognised it as "PS4
+Controller" with the PlayStation layout. About 19 s into Training, before any press reached the game, the
+controller left the system (Linux removed its input devices while Bluetooth still reported a link). The game logged
+the disconnect, kept running and exited cleanly. No button presses were recorded, so the candidate's bindings still
+have no physical button-by-button check.
 
 ## Candidate `4cee9c1` (2026-11-07, creator playtest round; PR #1)
 
