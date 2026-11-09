@@ -60,24 +60,24 @@ Errors: data error screen ("could not start", confirm or Escape quits); missing-
 
 P0 broken, P1 major friction, P2 inconsistency, P3 polish. No P0 was found: the 28-run battery and the soak pass.
 
-| # | Sev. | Finding | Reproduce | Evidence |
-|---|---|---|---|---|
-| A1 | P1 | **Essential text under the readability floor.** At 1080p these render below the 26 px body height that XAG 101 sets for TV distance: the prompt row (Select / Back) 24 px, the player tags P1 / CPU / PARTNER 23 px, gauge labels (SPIRIT, FLAME READY) 23 px, button letters inside glyphs about 19 px, move-list headers and notes 23–24 px, the input-history labels 21 px | Any menu, any match, the move list | `Fonts.Sized` values (16–19 pt) measured with the bundled fonts: below 20 pt renders under 26 px |
-| A2 | P1 | **The HUD fights the stage.** The timer and the inner ends of both health bars sit over the lit rose window; the timer's plate is translucent, so its contrast changes with the window behind it | Start any versus match; compare j04 / j05 | `j04_match_intro`, `j05_pause` |
-| A3 | P1 | **Fighter cards cover the fighters.** The two select cards sit across the fighters' legs and bodies, and the explanatory paragraph is the largest block on screen | Versus CPU ▶ select | `j03_select`, `j10a_versus_select` |
-| A4 | P1 | **The logo is retired.** The title and main menu show the old title card; the creator replaced it with the crescent logo on 2026-11-09 | Launch | `j01_title`, `j02_main` |
-| A5 | P2 | **One generic panel for every purpose.** Main menu, pause, settings, quit and results all use the same grey rounded panel and violet bar; there is no hierarchy between a mode choice, a setting and a destructive confirmation | Any menu | `j02`, `j05`, `j11`, `j16` |
-| A6 | P2 | **Mixed palette.** Warm bone, gold and brown edges, from before the logo, sit beside violet focus. Gold means P1, a selected value, the combo counter and Wren's gauge all at once | Any screen | `EHUIPalette` |
-| A7 | P2 | **Local Versus join wording disagrees.** The headline says each player presses Confirm to join; the per-player line says "press Light to join"; Light is Confirm by default, but a remapped player sees two names | Local Versus with one remapped layout | `PaintSelect` |
-| A8 | P2 | **Gauges are far from their owners.** The Spirit and Flame gauges sit at the bottom corners, about 950 px from the health bars, with 14 px tall fills; "READY" is shown by colour plus text | Any versus match | `j04` |
-| A9 | P2 | **The training pause is one long list** of 14 items mixing dummy settings, overlays and navigation | Training ▶ pause | `j07a_training_pause` |
-| A10 | P2 | **Move-list density.** 15 rows of 21–22 pt text plus 19 pt notes in one panel; the startup and damage columns are close together | Main ▶ Move List | `j06_movelist` |
-| A11 | P2 | **Pending vs saved values look the same** on the Video page until Apply; only the hint says so | Settings ▶ Video, change a value | `j13_video` |
-| A12 | P3 | **No transitions.** Screens cut instantly (only the title fades in), so moving between menus has no sense of place | Navigate any menus | — |
-| A13 | P3 | **The title prompt pulses forever** (sine on alpha) and is small against the art | Launch, wait | `j01_title` |
-| A15 | P1 | **The results menu overprints the stats table.** The menu is centred on the screen and the table sits at y = 290–540, so "Rematch" is drawn across the rows of numbers | Finish any match | `rc-84acb66/battery/matrix/m01_results.png` |
-| A16 | P2 | **The focus band was mostly hidden.** The menu panel (a rounded box) and the selection band (a plain box) shared a draw layer, and Slate may batch them in either order: the 90% panel was drawn over the band, leaving a faint stripe | Any menu | `j02_main` (the band barely shows) |
-| A14 | P3 | **Results lead with stats, not the decision.** The stats table sits above the Rematch / Change Fighters / Main Menu menu | Finish a match | `PaintResults` |
+| # | Sev. | Finding | Reproduce | Evidence | Status |
+|---|---|---|---|---|---|
+| A1 | P1 | **Essential text under the readability floor.** At 1080p these render below the 26 px body height that XAG 101 sets for TV distance: the prompt row (Select / Back) 24 px, the player tags P1 / CPU / PARTNER 23 px, gauge labels (SPIRIT, FLAME READY) 23 px, button letters inside glyphs about 19 px, move-list headers and notes 23–24 px, the input-history labels 21 px | Any menu, any match, the move list | `Fonts.Sized` values (16–19 pt) measured with the bundled fonts: below 20 pt renders under 26 px | Fixed (`dcb67a4`, `4c9cc21`) |
+| A2 | P1 | **The HUD fights the stage.** The timer and the inner ends of both health bars sit over the lit rose window; the timer's plate is translucent, so its contrast changes with the window behind it | Start any versus match; compare j04 / j05 | `j04_match_intro`, `j05_pause` | Fixed (`dcb67a4`) |
+| A3 | P1 | **Fighter cards cover the fighters.** The two select cards sit across the fighters' legs and bodies, and the explanatory paragraph is the largest block on screen | Versus CPU ▶ select | `j03_select`, `j10a_versus_select` | Fixed (`dcb67a4`) |
+| A4 | P1 | **The logo is retired.** The title and main menu show the old title card; the creator replaced it with the crescent logo on 2026-11-09 | Launch | `j01_title`, `j02_main` | Fixed (`3aa3601`) |
+| A5 | P2 | **One generic panel for every purpose.** Main menu, pause, settings, quit and results all use the same grey rounded panel and violet bar; there is no hierarchy between a mode choice, a setting and a destructive confirmation | Any menu | `j02`, `j05`, `j11`, `j16` | Waits on the art direction |
+| A6 | P2 | **Mixed palette.** Warm bone, gold and brown edges, from before the logo, sit beside violet focus. Gold means P1, a selected value, the combo counter and Wren's gauge all at once | Any screen | `EHUIPalette` | Fixed (`dcb67a4`) |
+| A7 | P2 | **Local Versus join wording disagrees.** The headline says each player presses Confirm to join; the per-player line says "press Light to join"; Light is Confirm by default, but a remapped player sees two names | Local Versus with one remapped layout | `PaintSelect` | Fixed (`dcb67a4`) |
+| A8 | P2 | **Gauges are far from their owners.** The Spirit and Flame gauges sit at the bottom corners, about 950 px from the health bars, with 14 px tall fills; "READY" is shown by colour plus text | Any versus match | `j04` | Fixed (`dcb67a4`) |
+| A9 | P2 | **The training pause is one long list** of 14 items mixing dummy settings, overlays and navigation | Training ▶ pause | `j07a_training_pause` | Fixed (`dcb67a4`) |
+| A10 | P2 | **Move-list density.** 15 rows of 21–22 pt text plus 19 pt notes in one panel; the startup and damage columns are close together | Main ▶ Move List | `j06_movelist` | Fixed (`4c9cc21`) |
+| A11 | P2 | **Pending vs saved values look the same** on the Video page until Apply; only the hint says so | Settings ▶ Video, change a value | `j13_video` | Fixed (`4c9cc21`) |
+| A12 | P3 | **No transitions.** Screens cut instantly (only the title fades in), so moving between menus has no sense of place | Navigate any menus | — | Waits on the art direction |
+| A13 | P3 | **The title prompt pulses forever** (sine on alpha) and is small against the art | Launch, wait | `j01_title` | Fixed (`4c9cc21`) |
+| A15 | P1 | **The results menu overprints the stats table.** The menu is centred on the screen and the table sits at y = 290–540, so "Rematch" is drawn across the rows of numbers | Finish any match | `rc-84acb66/battery/matrix/m01_results.png` | Fixed (`f866dc9`) |
+| A16 | P2 | **The focus band was mostly hidden.** The menu panel (a rounded box) and the selection band (a plain box) shared a draw layer, and Slate may batch them in either order: the 90% panel was drawn over the band, leaving a faint stripe | Any menu | `j02_main` (the band barely shows) | Fixed (`f866dc9`) |
+| A14 | P3 | **Results lead with stats, not the decision.** The stats table sits above the Rematch / Change Fighters / Main Menu menu | Finish a match | `PaintResults` | Fixed (`f866dc9`) |
 
 ## Preserve, improve, replace, remove
 
