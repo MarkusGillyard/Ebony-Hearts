@@ -1,8 +1,9 @@
 # Status and handoff
 
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
-refined to her new character sheet and to its version 2, then the blocking animations: candidate `0c8a9f5` built and
-checked by the implementer; ready for independent review and the creator's playtest; nothing merged).
+refined to her new character sheet and to its version 2, then the blocking animations and Ashka's coat tails:
+candidate `108455a` built and checked by the implementer; ready for independent review and the creator's playtest;
+nothing merged).
 
 ## Where things stand
 
@@ -13,11 +14,11 @@ checked by the implementer; ready for independent review and the creator's playt
   Ashka's overhaul, and the controls for all of it), the 2026-11-09 fighting-game control layout and Ashka's
   refinement to her character sheet of 2026-11-09 and its version 2 (the same day), then the blocking-animation
   refinement you asked for the same day.
-- **Candidate:** `EbonyHearts-Slice-0c8a9f5.tar.gz` (Shipping, Linux), built from commit `0c8a9f5`; SHA-256
-  `bf3526669db38a20cbade01fe81e54a001f349b0d14050a01d68a89ef96fa9f0`. It is `32831cc` (the combat pass `5d5c316`, which
-  you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2 and the
-  guard, block and crouch animations rebuilt. Local review build in the delivery workspace's `release/` folder; not
-  published.
+- **Candidate:** `EbonyHearts-Slice-108455a.tar.gz` (Shipping, Linux), built from commit `108455a`; SHA-256
+  `ddecfd0b0e0357d2c8b26c4e8611e311e36f413a82b51af0fcbd571feaaa10f8`. It is `32831cc` (the combat pass `5d5c316`, which
+  you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2, the guard,
+  block and crouch animations rebuilt, and Ashka's coat tails kept off her legs. Local review build in the delivery
+  workspace's `release/` folder; not published.
 - **Pull request #1** (`release/first-slice` → `main`) now carries this work. Its 2026-11-08 technical audit
   ([Review](Review.md), previous round, section 6) applies to its earlier head `ea3ddc6`, not to this work. Nothing
   has been merged, tagged or released; merging needs the creator's explicit OK.
@@ -72,7 +73,8 @@ checked by the implementer; ready for independent review and the creator's playt
     at the temples, elbows on the ribs), Ashka an upright Muay Thai high guard (gloves at the brow, elbows forward). A
     blocked hit pushes the guard back a little and it settles. Crouching keeps its depth (it matches what can be hit)
     with the hands in front of the face, lower when not blocking and up over the face when blocking. No combat rule,
-    timing or hitbox changed.
+    timing or hitbox changed. Ashka's coat tails no longer pass into her legs (in the crouch the rear thigh had swung
+    into the side tail).
 
 ## How to test the candidate
 
@@ -132,7 +134,10 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 - **Not independently reviewed** and **not accepted by the creator** yet; the creator's playtest feedback is not in.
 - **Not verified:** hardware other than the test machine. One of three native-resolution captures of `5d5c316`
   had a single 0.4 s burst of slow frames (worst 32.8 ms) whose cause was not found; it did not recur. Likewise one
-  native-resolution capture of `c6c0de2` had a single 46.9 ms frame (a processor-side stall); run again, none.
+  native-resolution capture of `c6c0de2` had a single 46.9 ms frame (a processor-side stall); run again, none. It is
+  not the flame light: frame times across eight flame moves are the same with and without it, even with an empty
+  shader cache. In Ashka's crouch a dark area shows at the top of her rear thigh only with the brightness boosted; it
+  reads as the trousers in the coat's shadow through the side slit.
 - **For you to know:** with the CPU playing both, Ashka beats Wren 60 of 96 times (63 before her new moves); at Hard
   against Hard 22 of 24. Balance between the fighters was not part of this work. The first match after installing or
   updating a build compiles shaders on first use (small hitches, none over 33 ms here).

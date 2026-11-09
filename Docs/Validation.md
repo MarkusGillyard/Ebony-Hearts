@@ -2,14 +2,63 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-0c8a9f5/<run>` and
-`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-c6c0de2/<run>` and `evidence/ashka-1109v2/`,
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-108455a/<run>` and
+`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-0c8a9f5/<run>`, `evidence/rc-c6c0de2/<run>` and
+`evidence/ashka-1109v2/`,
 `evidence/rc-2c993b0/<run>` and `evidence/ashka-1109/`,
 `evidence/rc-32831cc/<run>`, `evidence/rc-1b714fd/<run>`,
 `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `0c8a9f5` (2026-11-09, blocking animation refinement)
+## Current candidate `108455a` (2026-11-09, coat tails off the legs; the open items of `0c8a9f5` and `c6c0de2`)
+
+**Result: PASS on every objective check run.** This candidate is `0c8a9f5` (the simple guards, below) plus the follow-up
+work on what that round and the Ashka round had left open; no combat code or data changed. This is the implementer's
+own verification, not an independent review; nobody has played it yet.
+
+| Item | Value |
+|---|---|
+| Source | `108455a`: `0c8a9f5`'s docs, then the coat-tail collision with two review scripts (`e08d8a0`) and the reimported clips (`108455a`); the commit after it changes documentation only |
+| Release archive | `EbonyHearts-Slice-108455a.tar.gz`, 335 606 023 bytes, SHA-256 `ddecfd0b0e0357d2c8b26c4e8611e311e36f413a82b51af0fcbd571feaaa10f8` |
+| Content hash | `520eab3052365cedb7dc0d3f8cd61e9ad1ab51120748630e6cfaac96a72b6474` |
+| Build | Shipping, package `pkg-80-coattails1109`: 859 packages (852 cooked, 7 skipped by platform), 0 warnings, 0 errors; all 21 files verified after extraction into a path with a space |
+
+**What changed**
+
+- **Ashka's coat tails stay outside her legs.** The tails' spring simulation had no collision: in the kneeling crouch the
+  rear thigh swung back into the side tail (a black wedge at the knee in the renders). Each simulated tail point is now
+  pushed out of a capsule round each thigh and calf. Measured on all of her clips (`evidence/blocking-1109/coat-tails`):
+  the body is identical, the tails moved 4-19 cm where they met a leg, and no clip has a tail pop before or after; the
+  crouch tails move less. All 81 of her clips were rebuilt and reimported.
+- **Wren's uppercut eases into the idle again.** Keyed clips listed in `mocap_clips.json` are finished by the capture
+  build, which eases their last frames into the captured idle; `0c8a9f5` had rebuilt Wren's eight changed clips with the
+  keyed build alone, which skips that step. Only the uppercut has an ease-out (its other seven clips came out identical);
+  its last ten frames now end where the idle starts (the left hand had ended 18-40 cm away, covered by the game's
+  0.22 s blend). Ashka's came out right from her full rebuild.
+
+**Checks**
+
+| Check | Result | Notes |
+|---|---|---|
+| Clip audit | **PASS** | 157 clips, none unexplained (`evidence/blocking-1109/anim-audit-final`); body motion as in `0c8a9f5` |
+| Combat core, packaging | **PASS** | 53 cases, 1361 checks, 0 failures; 10 packaging tests (the code and data of `0c8a9f5`) |
+| Packaged battery | **PASS** | `evidence/rc-108455a/battery/<run>`: 28 runs from an empty game profile, each with exit 0, no `FAIL` or `WARN` line and its completion marker (the same suites as for `0c8a9f5`); 12/12 matrix matches (memory 1 542 MiB at the end, peak 1 560); 20 starts, 2.25 s on average (at most 2.43 s) |
+| Frame times | **PASS** | Every V-Sync run at a median of 16.67 ms, p99 ≤ 16.77 ms, max ≤ 17.35 ms, no frame over 33 ms (fight, menus, Training with and without auras, 1080p and 3440 × 1440, the first match of the new package); uncapped fight median 7.65 ms; GPU 6.8-10.0 ms |
+| The Flame Burst's light, in game | **seen** | `Tests/Auto/review_flame.txt` keeps the gauge full (`evidence/blocking-1109/footage/flame-108455a`, `evidence/ashka-1109v2/footage/review-flame`): the Flame Burst fires from both sides; with its fire, the light colours her coat and the floor around her crimson, the red on her coat peaking about 0.1 s in and gone within about 0.2 s |
+| Flame moves' frame cost | **PASS** | `Tests/Auto/perf_flame.txt`: one capture across three Flame Bursts, three Flame Elbows and two Flying Knees, on `2c993b0` (no light) and `0c8a9f5` (the light): no frame over 20 ms on either (max 16.86 / 16.78 ms). Again with an empty driver shader cache each, so every effect compiles on first use: max 19.56 / 19.47 ms, p99 18.52 / 18.72 ms, the same on both. The light adds no hitch |
+| The one slow frame of `c6c0de2` | **not repeated** | The 3440 × 1440 fight that had one 46.9 ms frame on `c6c0de2` has since run six times without a frame over 18 ms: once more on `c6c0de2`, in the batteries of `0c8a9f5` and `108455a`, and three times more on `108455a` (`evidence/rc-108455a/perf-native-repeat`, max ≤ 16.86 ms). Its cause is still not known; it is not the flame light (above) |
+
+**What the checks found and did not fix**
+
+- **Frozen frames in the review recordings are the screenshots.** The flame review's video froze for 3-8 frames right
+  after some screenshots; the same moves without screenshots (the perf capture above) never drop a frame. A screenshot
+  stalls the frame it is taken on; the review scripts mark moments with them by design.
+- **A dark area at the top of Ashka's rear thigh in the crouch.** At the brightness of the game it is black on black;
+  boosted 2.5 times it shows as a near-black patch beside the side slit's piping, the same on both sides of the screen,
+  in every crouch. Rendered with back faces culled (as the game draws), the tail lies on the thigh and no hole is
+  open, so this reads as the black trousers in the coat's shadow seen through the slit; it is not proven otherwise.
+
+## Candidate `0c8a9f5` (2026-11-09, blocking animation refinement)
 
 **Result: PASS on every objective check run; the blocking poses are fixed in game.** The creator reported that both
 fighters' guard and block animations sometimes looked contorted, twisted and "creepy" (brief of 2026-11-09). This
