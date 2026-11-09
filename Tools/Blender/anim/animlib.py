@@ -6,6 +6,7 @@ frame with chosen easing, poses pelvis/spine/head/clavicles analytically, drives
 planted feet for the root travel the combat simulation applies, then bakes to FK keys at 60 fps for export.
 """
 import math
+import re
 
 import bpy
 from mathutils import Matrix, Quaternion, Vector
@@ -479,9 +480,16 @@ def author(rigs_and_keys, total, loop=False):
             travel = travel_curve(travel, total)
         curves.append(travel)
     half_prev = {}
+    # Bones that only follow a constraint (the coat panels' thigh follow) start every frame from rest: keeping the
+    # previous frame's solved value as their own pose would feed it back, and a part-influence follow would build up
+    # to a full one over a few frames (2026-11-09).
+    tracked = [[pb for pb in rig.pb if any(c.type == "DAMPED_TRACK" for c in pb.constraints)] for rig, _, _ in rigs_and_keys]
     for frame in range(1, total + 1):
         sample_frame = frame
-        for (rig, keys, _), travel in zip(rigs_and_keys, curves):
+        for (rig, keys, _), travel, follow in zip(rigs_and_keys, curves, tracked):
+            for pb in follow:
+                pb.location = (0.0, 0.0, 0.0)
+                pb.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
             t = travel[min(frame, len(travel) - 1)] if travel else 0.0
             rig.apply(trailed(keys, sample_frame, loop), t)
         bpy.context.view_layer.update()
@@ -540,15 +548,159 @@ CHAIN_FLOOR = 0.025   # chain points never sink below this height (armature spac
 LEG_CAPSULES = (("thigh_l", 0.105), ("thigh_r", 0.105), ("calf_l", 0.075), ("calf_r", 0.075))
 
 
+def _leg_push(p, legs, side=None):
+    """How far point p must move to leave every leg capsule (zero vector when outside all of them). With `side` (the
+    cloth's outward direction in the rest pose) a point inside a thigh leaves on the side of the thigh it hangs on
+    at rest, turned with the thigh: a front panel stays on top of a raised thigh, a back panel under it, instead of
+    taking the nearest way out."""
+    total = Vector((0.0, 0.0, 0.0))
+    for a, b, r, turn in legs:
+        ab = b - a
+        t = max(0.0, min(1.0, (p + total - a).dot(ab) / max(ab.length_squared, 1e-9)))
+        c = a + ab * t
+        d = p + total - c
+        if d.length < r:
+            if side is not None and turn is not None:
+                axis = ab.normalized() if ab.length > 1e-6 else Vector((0.0, 0.0, 1.0))
+                sd = turn @ side
+                sd = sd - axis * sd.dot(axis)
+                if sd.length > 1e-6:
+                    sd.normalize()
+                    if d.dot(sd) < 0.0:
+                        d = d - sd * (2.0 * d.dot(sd))
+                    if d.length < 1e-6:
+                        d = sd.copy()
+            total = c + (d.normalized() if d.length > 1e-6 else Vector((0.0, 1.0, 0.0))) * r - p
+    return total
+
+
 def _out_of_legs(points, legs):
     for i in range(1, len(points)):
-        for a, b, r in legs:
-            ab = b - a
-            t = max(0.0, min(1.0, (points[i] - a).dot(ab) / max(ab.length_squared, 1e-9)))
-            c = a + ab * t
-            d = points[i] - c
-            if d.length < r:
-                points[i] = c + (d.normalized() if d.length > 1e-6 else Vector((0.0, 1.0, 0.0))) * r
+        points[i] = points[i] + _leg_push(points[i], legs)
+
+
+# Coat cloth grid (2026-11-09): the coat's tail columns (coat_c01..c12, every 30 degrees from 15, character generator
+# GRID_COLUMNS) are simulated together as one cloth. Each column keeps its length; neighbouring columns keep their
+# spacing between GRID_SQUASH and GRID_STRETCH times the spacing in the bind pose (not the posed target's, which the
+# thigh helpers spread apart), except across the front opening, the back vent and the side slits below their top; a
+# bending term keeps each linked row as curved as the target; every point and segment middle stays out of the legs.
+# Rows are the columns' joints (0 at the waist, pinned; 3 at the hem).
+GRID_RE = re.compile(r"^coat_c(\d\d)$")
+GRID_LINKED_ROWS = {(12, 1): 0, (6, 7): 0, (3, 4): 1, (9, 10): 1}   # pair -> last row linked (default: all)
+GRID_STRETCH, GRID_SQUASH, GRID_BEND, GRID_ITERS = 1.12, 0.5, 0.3, 8
+
+
+def _grid_rest(rig, chains, names):
+    """Bind-pose joint positions of each grid column (armature space)."""
+    out = {}
+    for n in names:
+        bones = [rig.arm.data.bones[b] for b in chains[n]["bones"]]
+        out[n] = [bones[0].head_local.copy()] + [b.tail_local.copy() for b in bones]
+    return out
+
+
+def _grid_links(names):
+    links = []
+    for k in range(len(names)):
+        a, b = names[k], names[(k + 1) % len(names)]
+        ka, kb = int(GRID_RE.match(a).group(1)), int(GRID_RE.match(b).group(1))
+        links.append((a, b, GRID_LINKED_ROWS.get((ka, kb), 3)))
+    return links
+
+
+def _step_coat_grid(names, rigid, rest, legs, state):
+    stiff, damp, grav = CHAIN_SPRING["coat"]
+    for n in names:
+        tgt = rigid[n]
+        if n not in state:
+            state[n] = ([p.copy() for p in tgt], [p.copy() for p in tgt])
+        cur, prev = state[n]
+        cur[0] = tgt[0].copy()
+        for i in range(1, len(cur)):
+            vel = (cur[i] - prev[i]) * damp
+            prev[i] = cur[i].copy()
+            cur[i] = cur[i] + vel + (tgt[i] - cur[i]) * stiff + Vector((0, 0, -grav))
+    links = _grid_links(names)
+    rows = len(state[names[0]][0])
+    # Columns in front of the hips (the ones that ride on a raised thigh) leave a thigh on their own side of it; the
+    # rest take the nearest way out (a back column that drifts into a kneeling thigh from below would otherwise be
+    # flipped across it).
+    centre = sum((rest[n][0] for n in names), Vector((0.0, 0.0, 0.0))) / len(names)
+    sides = {}
+    for n in names:
+        o = rest[n][1] - centre
+        o.z = 0.0
+        sides[n] = o.normalized() if o.length > 1e-6 and -o.normalized().y > 0.05 else None
+    for _ in range(GRID_ITERS):
+        for n in names:
+            tgt, cur = rigid[n], state[n][0]
+            for i in range(1, len(cur)):
+                d = cur[i] - cur[i - 1]
+                if d.length > 1e-6:
+                    cur[i] = cur[i - 1] + d.normalized() * (tgt[i] - tgt[i - 1]).length
+        for a, b, last in links:
+            ca, cb = state[a][0], state[b][0]
+            for r in range(1, min(last, rows - 1) + 1):
+                rl = (rest[a][r] - rest[b][r]).length
+                d = cb[r] - ca[r]
+                dl = d.length
+                if dl < 1e-6 or rl < 1e-6:
+                    continue
+                want = min(max(dl, rl * GRID_SQUASH), rl * GRID_STRETCH)
+                if abs(dl - want) > 1e-7:
+                    corr = d * ((dl - want) / dl) * 0.5
+                    ca[r] = ca[r] + corr
+                    cb[r] = cb[r] - corr
+        # Bending: a point between two linked neighbours keeps the target's offset from their midpoint.
+        linked = {}
+        for a, b, last in links:
+            linked.setdefault(a, {})["next"] = (b, last)
+            linked.setdefault(b, {})["prev"] = (a, last)
+        for n in names:
+            if "prev" not in linked.get(n, {}) or "next" not in linked[n]:
+                continue
+            (pa, la), (nb, lb) = linked[n]["prev"], linked[n]["next"]
+            cur = state[n][0]
+            for r in range(1, min(la, lb, rows - 1) + 1):
+                mid = (state[pa][0][r] + state[nb][0][r]) * 0.5
+                mid_t = (rigid[pa][r] + rigid[nb][r]) * 0.5
+                cur[r] = cur[r] + ((mid + (rigid[n][r] - mid_t)) - cur[r]) * GRID_BEND
+        # Bending down a column: an inner joint keeps the target's offset from the middle of its neighbours (no zigzag).
+        for n in names:
+            cur, tgt = state[n][0], rigid[n]
+            for i in range(1, rows - 1):
+                mid = (cur[i - 1] + cur[i + 1]) * 0.5
+                mid_t = (tgt[i - 1] + tgt[i + 1]) * 0.5
+                cur[i] = cur[i] + ((mid + (tgt[i] - mid_t)) - cur[i]) * GRID_BEND
+        for n in names:
+            cur = state[n][0]
+            for i in range(1, len(cur)):
+                cur[i] = cur[i] + _leg_push(cur[i], legs, sides[n])
+                mid = (cur[i] + cur[i - 1]) * 0.5
+                push = _leg_push(mid, legs, sides[n])
+                if push.length > 0.0:
+                    cur[i] = cur[i] + push * (2.0 if i == 1 else 1.0)
+                    if i > 1:
+                        cur[i - 1] = cur[i - 1] + push
+                if cur[i].z < CHAIN_FLOOR:
+                    cur[i].z = CHAIN_FLOOR
+
+
+def _key_chain(rig, pb, ch, cur, q_target, q_parent_target, frame):
+    """Keep each bone's authored rotation relative to its parent, then swing it onto its simulated segment."""
+    bones = ch["bones"]
+    q_parent_sim = q_parent_target
+    q_parent_tgt = q_parent_target
+    r_parent = rig.restq[ch["parent"]]
+    for i, b in enumerate(bones):
+        unposed = q_parent_sim @ q_parent_tgt.inverted() @ q_target[i]
+        axis = unposed @ Vector((0, 1, 0))
+        want = cur[i + 1] - cur[i]
+        q_world = (axis.rotation_difference(want) if want.length > 1e-6 else Quaternion()) @ unposed
+        r_bone = rig.restq[b]
+        pb[b].rotation_quaternion = (q_parent_sim @ r_parent.inverted() @ r_bone).inverted() @ q_world
+        pb[b].keyframe_insert("rotation_quaternion", frame=frame)
+        q_parent_sim, q_parent_tgt, r_parent = q_world, q_target[i], r_bone
 
 
 COAT_SWING = math.radians(50.0)   # furthest a coat tail's target swings from hanging straight down
@@ -569,6 +721,30 @@ def _hang(rigid, q_target):
     turn = Quaternion(axis.normalized(), over)
     root = rigid[0]
     return [root + turn @ (p - root) for p in rigid], [turn @ q for q in q_target]
+
+
+GRID_FIRST_SWING = math.radians(100.0)   # a grid column's top segment may lie along a raised thigh, just past level
+
+
+def _hang_grid(rigid, q_target):
+    """A cloth column's target drapes segment by segment: the top segment follows its thigh up to GRID_FIRST_SWING
+    from hanging down (it lies on a raised thigh), each lower one at most COAT_SWING (it falls off the knee); a segment
+    over its limit turns the rest of the column back about its upper joint."""
+    pts, qs = list(rigid), list(q_target)
+    down = Vector((0.0, 0.0, -1.0))
+    for i in range(len(pts) - 1):
+        seg = pts[i + 1] - pts[i]
+        if seg.length < 1e-6:
+            continue
+        over = seg.angle(down) - (GRID_FIRST_SWING if i == 0 else COAT_SWING)
+        axis = seg.cross(down)
+        if over <= 0.0 or axis.length < 1e-6:
+            continue
+        turn = Quaternion(axis.normalized(), over)
+        root = pts[i]
+        pts = pts[:i + 1] + [root + turn @ (p - root) for p in pts[i + 1:]]
+        qs = qs[:i] + [turn @ q for q in qs[i:]]
+    return pts, qs
 
 
 def bake_secondary(rig, chains, total, loop):
@@ -594,12 +770,24 @@ def bake_secondary(rig, chains, total, loop):
                          [pb[b].matrix.to_quaternion() for b in bones],
                          pb[ch["parent"]].matrix.to_quaternion())
         targets[frame] = per
-        legs[frame] = [(pb[b].head.copy(), pb[b].tail.copy(), r * getattr(rig, "scale", 1.0)) for b, r in LEG_CAPSULES if b in pb]
+        legs[frame] = [(pb[b].head.copy(), pb[b].tail.copy(), r * getattr(rig, "scale", 1.0),
+                        (pb[b].matrix.to_3x3() @ rig.arm.data.bones[b].matrix_local.to_3x3().inverted()) if b.startswith("thigh") else None)
+                       for b, r in LEG_CAPSULES if b in pb]
     # 2. Simulate and key.
     state = {}
+    grid = sorted((n for n in chains if GRID_RE.match(n)), key=lambda n: int(GRID_RE.match(n).group(1)))
+    grid_rest = _grid_rest(rig, chains, grid) if grid else {}
     for pass_i in range(2 if loop else 1):
         for frame in range(1, total + 1):
+            if grid:
+                hung = {n: _hang_grid(targets[frame][n][0], targets[frame][n][1]) for n in grid}
+                _step_coat_grid(grid, {n: hung[n][0] for n in grid}, grid_rest, legs[frame], state)
+                if pass_i >= (1 if loop else 0):
+                    for n in grid:
+                        _key_chain(rig, pb, chains[n], state[n][0], hung[n][1], targets[frame][n][2], frame)
             for name, ch in chains.items():
+                if name in grid:
+                    continue
                 bones = ch["bones"]
                 kind = next((k for k in CHAIN_SPRING if name.startswith(k)), "braid")
                 stiff, damp, grav = CHAIN_SPRING[kind]

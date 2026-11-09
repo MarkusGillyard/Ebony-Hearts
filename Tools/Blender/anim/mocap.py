@@ -1091,15 +1091,21 @@ def bake_tracked(arm, total):
     for pb in tracked:
         for c in pb.constraints:
             c.mute = c.type != "DAMPED_TRACK"
+    # Solve every frame first and key afterwards: a key inserted at one frame would hold over the next frame as the
+    # bone's own pose and feed the solve back, building a part-influence follow up to a full one (2026-11-09).
+    # (Unkeyed, they rest at their own rest pose; keyed, each frame_set evaluates their own keys.)
+    for pb in tracked:
+        pb.location = (0.0, 0.0, 0.0)
+        pb.rotation_quaternion = (1.0, 0.0, 0.0, 0.0)
     scene = bpy.context.scene
+    solved = {}
     for frame in range(1, total + 1):
         scene.frame_set(frame)
         bpy.context.view_layer.update()
-        solved = []
-        for pb in tracked:
-            m = arm.convert_space(pose_bone=pb, matrix=pb.matrix, from_space="POSE", to_space="LOCAL")
-            solved.append((pb, m.decompose()))
-        for pb, (loc, q, _) in solved:
+        solved[frame] = [(pb, arm.convert_space(pose_bone=pb, matrix=pb.matrix, from_space="POSE", to_space="LOCAL").decompose())
+                         for pb in tracked]
+    for frame in range(1, total + 1):
+        for pb, (loc, q, _) in solved[frame]:
             pb.location = loc
             pb.rotation_quaternion = q
             pb.keyframe_insert("location", frame=frame)

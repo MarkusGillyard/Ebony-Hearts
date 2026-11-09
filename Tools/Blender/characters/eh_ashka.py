@@ -31,6 +31,7 @@ COAT_LINING, WAISTCOAT, WAISTCOAT_BUTTON, CRAVAT_CLASP, CHAIN, GEM, GEM_SETTING 
 
 PANELS = (("fl", math.pi * 0.25, "l"), ("bl", math.pi * 0.75, "l"),
           ("br", math.pi * 1.25, "r"), ("fr", math.pi * 1.75, "r"))
+GRID_COLUMNS = 12      # cloth columns round the coat's tails (coat_c01..c12), three per panel
 
 
 def landmarks(rig, cfg):
@@ -553,19 +554,6 @@ def _skirt(coat, loop, rig, cfg, leg_objs, lining_part=None):
         panel_of[k] = col_panel[(j + 1) % N]
         panel_of[vid(i, j)] = col_panel[(j - 1) % N]
     A = ang[colj]
-    centers = np.array([p[1] for p in PANELS])
-    Wp = np.maximum(np.cos(A[:, None] - centers[None, :]), 0) ** 2
-    Wp /= Wp.sum(1, keepdims=True)
-    hard = np.zeros((n, 4))
-    hard[np.arange(n), panel_of] = 1
-    slit_depth = np.zeros(n)
-    for c, nr in split_col.values():
-        top_row = max(1, Rn + 1 - nr)
-        dcol = np.minimum(np.abs(colj - c), N - np.abs(colj - c))
-        near = np.exp(-(dcol / 2.5) ** 2) * M.smoothstep(top_row - 2.0, top_row + 0.5, rowi)
-        slit_depth = np.maximum(slit_depth, near)
-    Wpanel = Wp * (1 - slit_depth[:, None]) + hard * slit_depth[:, None]
-    Wpanel /= Wpanel.sum(1, keepdims=True)
     chains = {}
     for pi_, (key, center, side) in enumerate(PANELS):
         jc = int(np.argmin(np.abs((ang - center + math.pi) % (2 * math.pi) - math.pi)))
@@ -587,13 +575,38 @@ def _skirt(coat, loop, rig, cfg, leg_objs, lining_part=None):
     k_hand = M.smoothstep(0.0, 0.16, s_m)
     for name, w in Wtop.items():
         Wall[name] = w[colj] * (1 - k_hand)
-    for pi_, (key, center, side) in enumerate(PANELS):
-        Wc_ = R.chain_weights(s_m, bounds, chains[key]["names"])
+    # Cloth columns (2026-11-09): the tails hang from GRID_COLUMNS chains round the skirt, every 30 degrees from 15
+    # (three in each panel, so the front opening, the slits and the vent fall between columns); the animation build
+    # simulates them as one cloth grid (Tools/Blender/anim/animlib.py, _step_coat_grid). Each vertex follows the two
+    # nearest columns of its own panel, never one across an opening. The four panel chains above stay in the rig,
+    # unweighted, so the skeleton keeps every earlier bone where it was.
+    columns = {}
+    for k in range(GRID_COLUMNS):
+        ca = math.radians(15.0 + 30.0 * k)
+        jc = int(np.argmin(np.abs((ang - ca + math.pi) % (2 * math.pi) - math.pi)))
+        pts = []
+        for fr in (0.0, 1 / 3, 2 / 3, 1.0):
+            i = int(round(Rn * fr))
+            pts.append(rows[i, [(jc + dj) % N for dj in (-1, 0, 1)]].mean(0))
+        key = "c%02d" % (k + 1)
+        columns[key] = {"points": pts, "angle": ca, "side": "l" if math.sin(ca) > 0 else "r",
+                        "names": ["coat_%s_%02d" % (key, j + 1) for j in range(3)]}
+    a_deg = np.degrees(A)
+    rel = np.mod(a_deg - 90.0 * panel_of + 180.0, 360.0) - 180.0
+    u = np.clip((rel - 15.0) / 30.0, 0.0, 2.0)
+    i0 = np.minimum(np.floor(u).astype(int), 1)
+    fpart = u - i0
+    Wcol = np.zeros((n, GRID_COLUMNS))
+    rows_idx = np.arange(n)
+    Wcol[rows_idx, 3 * panel_of + i0] += 1.0 - fpart
+    Wcol[rows_idx, 3 * panel_of + i0 + 1] += fpart
+    for k, (key, col) in enumerate(columns.items()):
+        Wc_ = R.chain_weights(s_m, bounds, col["names"])
         for nm, w in Wc_.items():
-            Wall[nm] = Wall.get(nm, 0) + w * Wpanel[:, pi_] * k_hand
-    # The cloth in front of and beside each thigh partly follows it, most in the upper half of the tails and less toward
-    # the hem (which keeps their swing), so a thigh raised in the crouch, a knee or a kick carries the cloth over itself.
-    # Hung from the pelvis and their own bones only, the front tails let the crouching thighs through by up to 7 cm.
+            Wall[nm] = Wall.get(nm, 0) + w * Wcol[:, k] * k_hand
+    # Optional thigh weights (tail_thigh_follow, 2026-11-09): the cloth in front of and beside each thigh partly follows
+    # it, most in the upper half of the tails and less toward the hem. Off (0.0) since the tails became a simulated
+    # cloth, which keeps them over the thighs itself.
     follow_max = o.get("tail_thigh_follow", 0.0)
     if follow_max > 0.0:
         Vv = np.asarray(verts, dtype=float)
@@ -626,7 +639,7 @@ def _skirt(coat, loop, rig, cfg, leg_objs, lining_part=None):
         M.solidify(ob, o["skirt_thickness"], offset=-1.0)
     else:
         ob = _skirt_lining(ob, rowi, yc, o["skirt_thickness"], lining_part)
-    return ob, {"chains": chains, "length": L, "yc": yc}
+    return ob, {"chains": chains, "columns": columns, "length": L, "yc": yc}
 
 
 def _skirt_lining(ob, rowi, yc, thick, lining_part):
@@ -994,6 +1007,23 @@ def coat_rig(rig, skirt_info, rest=None):
         tail = np.array(pts[1])
         R.add_helper(rig, helper, "thigh_" + ch["side"], tail, tail + np.array([0, 0, -0.05]), rest=rest)
         infl = 1.0 if key.startswith("f") else 0.55
+        R.damped_follow(rig, ch["names"][0], helper, infl)
+    # The cloth columns: each hangs from the pelvis; in front of the hips the first bone leans after the thigh on its
+    # side (fully at the front opening, fading to nothing at the side seams). The back columns hang free: a thigh
+    # raised forward would swing them under the seat. The animation build simulates all of them as one grid against
+    # the legs.
+    for key, ch in skirt_info.get("columns", {}).items():
+        out = (math.sin(ch["angle"]), -math.cos(ch["angle"]), 0.0)
+        R.add_chain(rig, ch["names"], ch["points"], "pelvis", roll_up=out, connect=True, rest=rest)
+        infl = max(0.0, math.cos(ch["angle"]))
+        if infl < 0.05:
+            continue
+        # The helper lies on the column's first bone, extended to twice its length (about mid-thigh): close to the
+        # hip joint a raised thigh would lift it above and behind the waist and turn the column backwards.
+        helper = "helper_coat_" + key
+        p0, p1 = np.array(ch["points"][0]), np.array(ch["points"][1])
+        tail = p0 + (p1 - p0) * 2.0
+        R.add_helper(rig, helper, "thigh_" + ch["side"], tail, tail + np.array([0, 0, -0.05]), rest=rest)
         R.damped_follow(rig, ch["names"][0], helper, infl)
 
 
