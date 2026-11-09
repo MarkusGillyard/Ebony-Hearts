@@ -4,7 +4,7 @@ Machine: FLOWBOX (AMD Ryzen 7 5700G, 32 GB, NVIDIA GeForce RTX 2060 6 GB, driver
 Packaged Shipping builds from `dev/ui-ux-identity-overhaul`. Evidence is in the delivery workspace under
 `evidence/uiux-1109/`. Everything here is the implementer's own testing; nobody else has played these builds yet.
 
-## Status (2026-11-09)
+## Status (2026-11-09, shared branch head `92cc208`)
 
 Done:
 - the shared foundation: tokens, type floor, HUD, select, results, menus' focus and headers, the move list,
@@ -19,6 +19,7 @@ Waiting on the creator's choice of art direction (`Directions.md`):
 
 | Check | Result | Evidence |
 |---|---|---|
+| Full battery on `92cc208`, the shared branch's head (the same 28 runs) | **PASS**: 28/28, no `FAIL` or `WARN`; 20 starts at 2.24 s on average (at most 2.43); matrix memory 1 515 MiB (peak 1 533); no frame over 33 ms (max 18.6 ms); uncapped fight median 7.6 ms | `battery-92cc208/`, `battery-92cc208.log` |
 | Full battery on `f866dc9` (28 runs: smoke, controls self-tests, remap and persistence, Controls UI, journey, full Lesson, keyboard, simulated Xbox and DualShock 4 pads incl. disconnect/reconnect and remap, 12-match matrix, review scripts, footage, frame times) | **PASS**: 28/28, no `FAIL` or `WARN`; 20 starts at 2.25 s on average (at most 2.40); matrix memory 1 505 MiB (peak 1 523); every V-Sync run without a frame over 33 ms (max 17.4 ms); uncapped fight median 8.0 ms (7.7–7.9 on the last three candidates, within their spread; the interface itself measures 0.04 ms) | `battery-f866dc9/`, `battery-f866dc9.log` |
 | Journey on each later build (every screen, keyboard) | **PASS**, no `FAIL` | `journey-tokens*`, `journey-focus*`, `journey-layers`, `check93-journey` |
 | Results screens (CPU and local versus) | Decision first, columns named, no overprint | `results1/` |
@@ -30,15 +31,15 @@ Waiting on the creator's choice of art direction (`Directions.md`):
 
 ## Interface cost (`Tests/Auto/perf_ui.txt`, mean / p99 ms of CPU to build the draw list)
 
-| Screen | Before (`0471443` + timing) | After (`4c9cc21`) |
+| Screen | Before (`0471443` + timing) | After (`92cc208`, two runs) |
 |---|---|---|
 | Title | 0.013 / 0.022 | 0.013 / 0.024 |
-| Main menu, navigating | 0.047 / 0.29 | 0.046 / 0.28 |
-| Fighter select | 0.048 / 0.076 | 0.045 / 0.081 |
-| Settings (controls, video) | 0.040–0.048 / 0.074–0.080 | 0.039–0.048 / 0.070–0.083 |
-| Move list | 0.126 / 0.19 | 0.219 / 0.29 (wraps long notes each frame) |
-| Fight | 0.030 / 0.085 | 0.039 / 0.080 |
-| Training with overlays | 0.095 / 0.27 | 0.093 / 0.27 |
+| Main menu, navigating | 0.047 / 0.29 | 0.047 / 0.23 |
+| Fighter select | 0.048 / 0.076 | 0.045 / 0.080 |
+| Settings (controls, video) | 0.040–0.048 / 0.074–0.080 | 0.041–0.049 / 0.080–0.084 |
+| Move list | 0.126 / 0.19 | 0.222 / 0.32 (wraps long notes each frame) |
+| Fight | 0.030 / 0.085 | 0.038 / 0.082 |
+| Training with overlays | 0.095 / 0.27 | 0.098 / 0.22 |
 
 Frame times are unchanged in every scenario (median 16.67 ms, p99 ≤ 16.80 ms at 60 Hz V-Sync, 1080p). The budget is
 1.0 ms mean and 2.0 ms p99.
