@@ -1,0 +1,44 @@
+# Isolates the cost of Ashka's flame moves (their fire and, from 2026-11-09, the light on her coat): Training with
+# the gauge always full, Ashka on the left; one capture across three Flame Bursts (away + Special), three Flame
+# Elbows (Special) and two Flying Knees (toward + Special), about 2 s apart. The first of each is the first use of
+# its effects in the session. No screenshots during the capture (a screenshot stalls the frame it is taken on).
+wait 3
+press kbA Light
+wait 1
+training_gauge full
+match ashka wren training 0 left
+wait 4
+perf_begin
+wait 1
+hold kbA Left
+press kbA Special
+release kbA Left
+wait 2
+hold kbA Left
+press kbA Special
+release kbA Left
+wait 2
+hold kbA Left
+press kbA Special
+release kbA Left
+wait 2
+press kbA Special
+wait 2
+press kbA Special
+wait 2
+press kbA Special
+wait 2
+hold kbA Right
+press kbA Special
+release kbA Right
+wait 2.2
+hold kbA Left
+wait 0.6
+release kbA Left
+hold kbA Right
+press kbA Special
+release kbA Right
+wait 2.2
+perf_end perf_flame_moves
+goto_main
+quit

@@ -1,0 +1,61 @@
+# Flame light review (2026-11-09): Ashka's flame moves light her coat (character sheet v2). Training with the gauge
+# kept full, Ashka on the left against Wren: Flame Burst (away + Special), Flame Elbow (Special) and Flying Knee
+# (toward + Special), with screenshots in each move's burning frames; then on the right: Flame Burst again, and a
+# crouch and a crouching guard (the coat over the thighs). Record with capture.py ... --start-on
+# <evidence>/auto_log.txt:match_start for at most 19 s; script waits are not frame-exact.
+wait 5
+press kbA Light
+wait 1
+training_gauge full
+match ashka wren training 0 left
+wait 2.0
+hold kbA Left
+press kbA Special
+release kbA Left
+wait 0.1
+screenshot fl1_burst_a
+wait 0.06
+screenshot fl1_burst_b
+wait 1.6
+press kbA Reset
+wait 1.0
+hold kbA Right
+wait 0.9
+release kbA Right
+press kbA Special
+wait 0.2
+screenshot fl1_elbow
+wait 1.4
+press kbA Reset
+wait 1.0
+hold kbA Right
+press kbA Special
+release kbA Right
+wait 0.36
+screenshot fl1_knee
+wait 1.6
+press kbA Reset
+wait 1.0
+match ashka wren training 0 right
+wait 2.0
+hold kbA Right
+press kbA Special
+release kbA Right
+wait 0.1
+screenshot fl2_burst_a
+wait 0.06
+screenshot fl2_burst_b
+wait 1.6
+press kbA Reset
+wait 1.0
+hold kbA Down
+wait 1.0
+screenshot fl2_crouch
+hold kbA Block
+wait 1.0
+screenshot fl2_crouch_guard
+release kbA Block
+release kbA Down
+wait 0.6
+goto_main
+quit

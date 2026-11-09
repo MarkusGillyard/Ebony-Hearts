@@ -534,6 +534,21 @@ CHAIN_SPRING = {
     "coat": (0.36, 0.78, 0.0003),
 }
 CHAIN_FLOOR = 0.025   # chain points never sink below this height (armature space, metres)
+# Coat tails stay outside the legs: each simulated tail point is pushed out of a capsule round each thigh and calf
+# (bone segment, radius in metres at the rig's 1.75 m scale: the leg plus the cloth's clearance). Without it, the rear
+# thigh of the kneeling crouch swung back into the side tail (2026-11-09).
+LEG_CAPSULES = (("thigh_l", 0.105), ("thigh_r", 0.105), ("calf_l", 0.075), ("calf_r", 0.075))
+
+
+def _out_of_legs(points, legs):
+    for i in range(1, len(points)):
+        for a, b, r in legs:
+            ab = b - a
+            t = max(0.0, min(1.0, (points[i] - a).dot(ab) / max(ab.length_squared, 1e-9)))
+            c = a + ab * t
+            d = points[i] - c
+            if d.length < r:
+                points[i] = c + (d.normalized() if d.length > 1e-6 else Vector((0.0, 1.0, 0.0))) * r
 
 
 COAT_SWING = math.radians(50.0)   # furthest a coat tail's target swings from hanging straight down
@@ -566,8 +581,9 @@ def bake_secondary(rig, chains, total, loop):
     """
     pb = rig.arm.pose.bones
     scene = bpy.context.scene
-    # 1. Record targets from the authored keys.
+    # 1. Record targets from the authored keys (and where the legs are, for the coat tails).
     targets = {}
+    legs = {}
     for frame in range(1, total + 1):
         scene.frame_set(frame)
         bpy.context.view_layer.update()
@@ -578,6 +594,7 @@ def bake_secondary(rig, chains, total, loop):
                          [pb[b].matrix.to_quaternion() for b in bones],
                          pb[ch["parent"]].matrix.to_quaternion())
         targets[frame] = per
+        legs[frame] = [(pb[b].head.copy(), pb[b].tail.copy(), r * getattr(rig, "scale", 1.0)) for b, r in LEG_CAPSULES if b in pb]
     # 2. Simulate and key.
     state = {}
     for pass_i in range(2 if loop else 1):
@@ -604,6 +621,8 @@ def bake_secondary(rig, chains, total, loop):
                         cur[i] = cur[i - 1] + d.normalized() * lengths[i - 1]
                     if cur[i].z < CHAIN_FLOOR:
                         cur[i].z = CHAIN_FLOOR
+                if name.startswith("coat"):
+                    _out_of_legs(cur, legs[frame])
                 if pass_i < (1 if loop else 0):
                     continue
                 q_parent_sim = q_parent_target
