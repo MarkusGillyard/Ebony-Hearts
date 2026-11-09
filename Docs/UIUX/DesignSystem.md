@@ -3,15 +3,8 @@
 The rules every screen follows. The tokens live in `Source/EbonyHearts/Game/EHUIStyle.h`; change the look there,
 not in the painters.
 
-**Status (2026-11-09).** In place:
-- the tokens and type scale;
-- the shared layouts (HUD, fighter select);
-- the text floor;
-- the logo;
-- grouped menus.
-
-The ornament layer (title composition, menu framing and the crescent's decorative use) waits for the creator's choice
-of direction (`Directions.md`), so it is not yet described here.
+**Status (2026-11-09).** Direction A, Still Water, chosen by the creator, is applied to every screen: the tokens and
+type, the shared layouts, and the ornament, motion and sound below.
 
 ## Colour roles
 
@@ -91,3 +84,40 @@ glyphs are 40 px tall, so the letter inside is at the floor too. The interface-s
 
 The interface's draw list costs 0.01–0.13 ms of CPU a frame on average, 0.3 ms at most at p99, before and after these
 changes (the move list 0.22 ms since it wraps long notes each frame) (`Tests/Auto/perf_ui.txt`, `ui_paint_*`). The budget is 1.0 ms mean and 2.0 ms p99.
+
+## Still Water: ornament, motion, sound
+
+**Ornament.** Darkness as negative space, silver for structure, violet only for focus and rare moments, and the
+logo's crescent as the one recurring emblem. The crescent never stands for lore.
+- **Title:** the creator's key art fills the screen (cover; wider screens crop top and bottom), with its wordmark
+  painted in. Only the prompt (letter-spaced display capitals) and the credit sit over it, on a dark gradient at the
+  bottom.
+- **Main menu:** a plain list over the live, darkened chapel:
+  - the left of the screen darkens toward the list;
+  - the small logo at the top left;
+  - a hairline divides the fight modes from the rest;
+  - a one-line description of the focused mode.
+- **Other menus:** a square dark veil between two silver rules, with the crescent set into the top rule.
+- **Focus:** a violet band fading to the right, and the crescent beside the focused row. It sits outside the veil;
+  inside, next to the label, a small crescent reads like a tick.
+
+**Motion.**
+- Screens fade in over 0.15 s. This is visual only: input acts immediately, and a press during the fade is never
+  lost.
+- The title fades in over 1.2 s.
+- The title prompt breathes for 4 s, then holds.
+- Nothing moves during a round except what the fight itself does.
+
+**Sound.** One sound per press, all at the same loudness (−1 dBTP peak, −20 LUFS momentary), synthesised in one soft
+mallet style (`Tools/Audio/eh_audio/ui.py`).
+
+| Sound | When |
+|---|---|
+| `UiMove` | Focus moves, a value changes |
+| `UiConfirm` | A menu choice, joining Local Versus |
+| `UiBack` | Back, unlocking |
+| `UiOpen` / `UiClose` | Pause opens / closes |
+| `UiLock` | Locking in a fighter or the match setup |
+| `UiDenied` | Something that cannot be done (a third device trying to join a full Local Versus) |
+| `UiApply` | Apply and Keep on the video settings |
+| `UiWarn` | A controller is lost; the last three seconds before a display change reverts |

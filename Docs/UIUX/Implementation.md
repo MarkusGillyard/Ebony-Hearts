@@ -25,6 +25,9 @@ keyboard and pad identical navigation. Changes are made in place, screen by scre
 | Motion | `EHDirectorUI.cpp` | The title prompt pulses for 4 s, then holds; the Local Versus "Both ready" line is steady (A13; XAG 117) | None |
 | Move list | `EHDirectorUI.cpp` (`PaintMoveList`) | A wider panel (100–1820); a note wider than its column wraps onto a second line, and the row spacing adapts so all rows fit; direction words in light violet; 34 px glyphs (A10) | None |
 | Training and Lesson | `EHDirectorUI.cpp` (`PaintTraining`, `PaintLesson`) | Frame data: ADVANTAGE large and signed (green plus, red minus, a dash before any hit), then the move and both states. Lesson: a 14-segment progress strip (done filled, current outlined, later dim), with the panel 22 px taller to hold it | None |
+| Direction A: title, main menu | `EHDirectorUI.cpp` (`PaintTitle`, `PaintMainMenuA`), `EHGameDirector.*` (`KeyArtTexture`), `EHDirectorFlow.cpp` (main-menu divider), `Content/UI/T_KeyArt`, `Tools/Unreal/import_ui.py` | The key art is the title; the main menu is a plain list with the crescent marker and a divider (a header, skipped by navigation) | None |
+| Direction A: menus, fades | `EHDirectorUI.cpp` (`PaintMenu`, `PaintUI`), `EHUICanvas.*` (`FEHPainter::Opacity`) | Veils, rules and the crescent; focus band and marker; 0.15 s fade-in per screen (visual only) | None |
+| Direction A: sounds | `Tools/Audio/eh_audio/ui.py`, `Content/Audio/UI/S_Ui{Lock,Denied,Apply,Warn}`, `EHDirectorFlow.cpp`, `EHGameDirector.*` (`FEHMenuItem::ConfirmSound`), `Tools/Unreal/build_audio.py` (`EH_AUDIO_NAMES`) | Four new cues; one sound per press | None |
 | Menus | `EHDirectorFlow.cpp` (`Header`), `EHDirectorUI.cpp` (`PaintMenu`) | Section headers in the training pause (Partner, Positions, Practice aids, More). Navigation skips headers, so every item is the same number of presses away | None |
 
 ## Risks and checks

@@ -1,4 +1,7 @@
-# Art directions for the interface (for the creator's decision)
+# Art directions for the interface
+
+**Decision (the creator, 2026-11-09): A, Still Water.** The key art becomes the title screen; the fonts stay. B and
+C below are kept as the record of what was considered.
 
 Three treatments of the same screens: title, main menu, fighter select and the in-fight HUD. Each is drawn at
 1920 × 1080 on clean plates of the real stage and fighters. The plates come from the packaged game with the interface

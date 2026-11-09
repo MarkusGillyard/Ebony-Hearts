@@ -63,13 +63,14 @@ Files deliberately excluded:
     it was AI-generated, the notes on the earlier title card apply in the same way.
   - **Handling.** Keep the original (`sourceart/ui/supplied-20261109/` in the delivery workspace, with `SHA256SUMS`).
     Do not redraw or redesign the logo without the creator's approval.
-- **Key art** (not imported yet). Supplied by the creator on 2026-11-09 as `1000012878.png`, the file `EH Concept
+- **Key art** (`/Game/UI/T_KeyArt`, the title screen since the creator chose direction A on 2026-11-09). Supplied by the creator on 2026-11-09 as `1000012878.png`, the file `EH Concept
   Art.png` (1536 × 864), SHA-256 `21992941f9b3ad508701c4f061ffcb32f8a7ecd8a51d3b742ae9b72acaaf7f69`.
   - The data is a JPEG despite the `.png` name, so it is lossy.
   - A copy with the same bytes is named "ChatGPT Image Nov 9, 2026", which suggests AI generation (not confirmed).
   - The painting contains the logo's wordmark, so it can serve as a title screen but not behind other screens.
   - The depicted buildings are atmosphere, not canon locations.
-  - Its use waits for the creator's choice of art direction (`Docs/UIUX/Directions.md`).
+  - Imported unchanged by `Tools/Unreal/import_ui.py` (BC1, 1536 × 864). A larger or lossless version would be
+    sharper at 1080p and above.
 - **Title card, retired** (was `/Game/UI/T_TitleCard`; removed from the content on 2026-11-09 at the creator's
   decision, kept in the repository's history). Imported unmodified from the creator's file `Ebony Hearts Title Card`
   (PNG, 2172 × 724), SHA-256 `2856a3520ba7def78f39c1daeb6c8e1b4b119c637902d6a55e78598f5a401f0f`.

@@ -263,7 +263,7 @@ private:
 	UPROPERTY()
 	TObjectPtr<UTexture2D> LogoSmallTexture;
 	FSlateBrush LogoSmallBrush;
-	// The creator's key art (direction A preview): the title screen, its wordmark painted in.
+	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
 	UPROPERTY()
 	TObjectPtr<UTexture2D> KeyArtTexture;
 	FSlateBrush KeyArtBrush;

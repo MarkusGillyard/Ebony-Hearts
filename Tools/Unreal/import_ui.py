@@ -1,7 +1,8 @@
 """Imports the interface textures into /Game/UI (UI/UX overhaul, 2026-11-09).
 
 Inputs: $EH_WS/sourceart/ui/T_Logo.png and T_LogoSmall.png (made by Tools/Assets/make_ui_textures.py from the
-creator's supplied logo). Run headless: bin/editor_py.sh Tools/Unreal/import_ui.py
+creator's supplied logo) and T_KeyArt.jpg (the creator's key art, copied unchanged). Run headless:
+bin/editor_py.sh Tools/Unreal/import_ui.py
 
 Each texture is sRGB, BC7 (good alpha at 1 byte per pixel; both sizes are multiples of 4), without mips (the logo is
 never drawn smaller than about half its size, and each use picks the nearer of the two sizes), in the UI texture
@@ -47,9 +48,9 @@ def import_ui_texture(name, ext="png", compression=None):
 def main():
     for name in ("T_Logo", "T_LogoSmall"):
         import_ui_texture(name)
-    # Direction A preview (not approved yet): the key art as the title screen; opaque, so the default (BC1) format.
-    if os.path.exists(os.path.join(SRC_UI, "T_KeyArt.jpg")):
-        import_ui_texture("T_KeyArt", "jpg", unreal.TextureCompressionSettings.TC_DEFAULT)
+    # The key art is the title screen (direction A, chosen by the creator on 2026-11-09); opaque, so the default (BC1)
+    # format. Its source is the creator's file unchanged (a JPEG, despite the .png name it was supplied under).
+    import_ui_texture("T_KeyArt", "jpg", unreal.TextureCompressionSettings.TC_DEFAULT)
     log("DONE")
 
 
