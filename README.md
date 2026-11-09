@@ -8,21 +8,17 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**First playable slice: independent technical review complete; ready for the creator's merge decision. Not merged.**
-- **Creator-played candidate.** `EbonyHearts-Slice-4cee9c1.tar.gz` (Shipping, Linux), built from commit `4cee9c1`. On the test machine
-  it passes the combat core, the packaged suites (menus and modes, 12-match matrix, controls, real keyboard events and
-  simulated Xbox and DualShock 4 pads) and 1080p/60 performance. The previous candidate `060a75f` also passed a
-  58-minute soak and 385 clean starts across every display mode; the start-up code has not changed since. The
-  intermittent start-up crash found in the previous review has two identified causes, both fixed (EH-07).
-- **Repaired review candidate.** `EbonyHearts-Slice-309c87c.tar.gz` was built from `309c87c`, with a fresh Shipping
-  package, extraction and targeted runtime checks. It is local review evidence, not a published release; details and
-  exact hashes are in `Docs/Review.md`, section 6.
-- **Creator playtests (2026-11-07).** `060a75f` on the 4K TV: the PS4 controller and audio through the TV verified;
-  the changes requested then are in `4cee9c1`. The creator played this candidate on 2026-11-07 and later identified
-  combat smoothness, jumping feel, and placeholder character models as areas that still need work. On 2026-11-08 the
-  creator classified these as ongoing improvements that do not block this merge-readiness verdict.
-- **Still open.** Explicit merge authorization. The independent technical audit, repaired-package results and
-  nonblocking limitations are in `Docs/Review.md`, section 6.
+**Combat, animation and character pass (2026-11-08): candidate `5d5c316` ready for independent review and the
+creator's playtest. Not merged.**
+- **This branch** (`dev/combat-pass-1108`, on PR #1's head `ea3ddc6`) adds crouching and hit levels, uppercuts,
+  standalone throws that also finish combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit
+  of every clip and every move-to-move relationship, Wren's ankle wraps and materials, Ashka's tailored coat and
+  outfit, and the controls, Lesson and CPU for all of it.
+- **Candidate.** `EbonyHearts-Slice-5d5c316.tar.gz` (Shipping, Linux), built from commit `5d5c316`. Results on the
+  test machine are in `Docs/Validation.md` ("Current candidate").
+- **Pull request #1** (`release/first-slice` → `main`) is unchanged; its 2026-11-08 independent technical audit
+  applies to its own head (`Docs/Review.md`, previous round, section 6).
+- **Still open.** An independent review of this candidate, the creator's playtest and the merge decision.
 - **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
   The packaged game has no crash reporter.
 
@@ -161,27 +157,30 @@ Tests/Core/run_core_tests.sh
   resolution costs as much GPU time as the native one. The game carries its own fixes for two engine/SDL defects
   (`Source/EbonyHeartsLinux`, see `Docs/Production.md`); Wayland sessions were not tested.
 - **Evaluation.** The creator played the `4cee9c1` candidate on 2026-11-07 and reported that combat smoothness and
-  jumping need refinement. The character models are placeholders that also need work. Automated checks do not settle
+  jumping need refinement and the character models need work; this pass answers that, and nobody has played its
+  candidate yet. Automated checks do not settle
   gameplay feel, balance, or acceptance of the tuning values (see the combat contract). The creator verified TV audio
   on the earlier `060a75f` candidate; an independent listening check of this candidate has not been recorded.
 - **Controllers.** Gamepads were verified with simulated Xbox 360 and DualShock 4 pads, including disconnect, reconnect
   and remapping. The creator physically checked a PS4 controller on `060a75f`; the later candidate's revised bindings
   have packaged and simulated-controller checks, but no recorded physical button-by-button check.
 - **Art.**
-  - The fighters are built by script from a MakeHuman base. They read well at gameplay distance, but close-up detail
-    (faces, hair cards) is modest.
+  - The fighters are built by script from a MakeHuman base. They read well at gameplay distance; close-up detail is
+    modest: Ashka's face is a MakeHuman head with painted shading, her bangs are hair cards, and her braid, her coat's
+    drape and Wren's ankle wraps are fixed geometry rather than simulated cloth.
   - Both fighters stand in researched stances (Wren MMA, Ashka Muay Thai; see `Docs/Research.md`). Most motion comes
     from motion capture (ACCAD and Mixamo):
     - the idles, walks and held guards;
     - Wren's jab, cross (and jab-to-cross string), four kicks and Spirit Enhanced Strikes;
     - Ashka's jab, both elbows, step-in knee, flying knee, body roundhouse and teep;
-    - Wren's double-leg slam and shoulder throw (both sides), and the falls of the fighters Ashka throws;
+    - Wren's double-leg takedown and shoulder throw (both sides), and the falls in Ashka's older clinch throws;
     - both fighters' forward roll, jump and landing, and heavy jump attack;
     - both fighters' intros, wins and defeated poses;
     - both fighters' hit reactions (by where each hit lands), block, knockdown, KO and get-ups.
 
-    The remaining moves are keyed by script on the same stances: Wren's spinning elbow, Ashka's Flame Burst, the back
-    rolls, the grabs and Ashka's clinch (both kept for when grappling returns) and the light jump attacks. Moves blend into each other with inertial transitions,
+    The remaining moves are keyed by script on the same stances: Wren's spinning elbow, both uppercuts and low kicks,
+    the crouches and their reactions, the uppercut's launch, Ashka's Flame Burst and clinch trip (with its fall), the
+    back rolls, the older grabs (kept for when grappling returns) and the light jump attacks. Moves blend into each other with inertial transitions,
     the legs settling over their own time so a strike from a walk finishes the step. Coat panels
     and braids are spring-simulated, and they can clip in the most extreme spins.
   - Only Wren's primary outfit is in the slice.
