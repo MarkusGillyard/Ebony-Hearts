@@ -546,6 +546,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	};
 	int32 Version = 1;
 	Int(TEXT("version"), Version);
+	S.LoadedVersion = Version;
 	Int(TEXT("windowMode"), S.WindowMode);
 	Int(TEXT("resX"), S.Resolution.X);
 	Int(TEXT("resY"), S.Resolution.Y);

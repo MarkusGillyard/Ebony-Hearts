@@ -113,6 +113,8 @@ FKey EHMenuKey(EEHBindingSet Class, EEHNav Nav);
 
 struct FEHSettings
 {
+	// The format version of the file these settings were loaded from; 0 when there was no readable file. Not saved.
+	int32 LoadedVersion = 0;
 	// Video
 	int32 WindowMode = 1;            // 0 fullscreen, 1 windowed fullscreen, 2 windowed
 	FIntPoint Resolution = FIntPoint(1920, 1080);

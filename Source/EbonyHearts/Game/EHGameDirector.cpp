@@ -157,6 +157,12 @@ void AEHGameDirector::BeginPlay()
 	{
 		ShowToast(SettingsWarning);
 	}
+	// A file in an older format was migrated in memory: write it back once, so the migration and its notice do not
+	// repeat on every launch. WriteSettings keeps the saved display mode, so launch flags never reach the file.
+	if (Settings.LoadedVersion > 0 && Settings.LoadedVersion < EHSettingsVersion)
+	{
+		SaveSettings();
+	}
 }
 
 void AEHGameDirector::EndPlay(const EEndPlayReason::Type Reason)
