@@ -201,7 +201,7 @@ int main(int argc, char** argv)
 	}
 	const Action L{"L", BtnLight, 0, 0}, H{"H", BtnHeavy, 0, 0}, FH{"toward+H", BtnHeavy, 1, 0}, CL{"down+L", BtnLight, 0, -1},
 		U{"down+H", BtnHeavy, 0, -1}, S{"S", BtnSpecial, 0, 0}, FS{"toward+S", BtnSpecial, 1, 0}, T{"Throw", BtnThrow, 0, 0},
-		DF{"toward+Dodge", BtnDodge, 1, 0}, J{"Jump", 0, 1, 1};
+		DF{"toward+Dodge", BtnDodge, 1, 0}, J{"Jump", 0, 1, 1}, BL{"away+L", BtnLight, -1, 0}, BH{"away+H", BtnHeavy, -1, 0};
 	struct Source { std::string name; std::vector<Action> presses; };
 	const std::vector<Source> sources = {{"L1", {L}}, {"L1 > L2", {L, L}}, {"L1 > L2 > L3", {L, L, L}}, {"H", {H}}, {"toward+H", {FH}},
 		{"down+L (low)", {CL}}, {"down+H (uppercut)", {U}}};
@@ -219,20 +219,31 @@ int main(int argc, char** argv)
 	{
 		const CharacterDef& atk = c[a];
 		const CharacterDef& def = c[1 - a];
+		// A fighter with away moves (Ashka's front kick and spinning elbow) gets them as sources and follow-ups too.
+		std::vector<Source> srcs = sources;
+		std::vector<Action> fol = follows;
+		for (const auto& [id, act] : {std::pair<const char*, Action>{"BL", BL}, std::pair<const char*, Action>{"BH", BH}})
+		{
+			if (atk.FindMove(id) >= 0)
+			{
+				srcs.push_back({act.label, {act}});
+				fol.push_back(act);
+			}
+		}
 		for (int block = 0; block < 2; ++block)
 		{
 			std::printf("#### %s vs %s, %s\n\n| Source | ", atk.name.c_str(), def.name.c_str(), block ? "on block" : "on hit");
-			for (const Action& f : follows) std::printf("%s | ", f.label.c_str());
+			for (const Action& f : fol) std::printf("%s | ", f.label.c_str());
 			std::printf("\n|---|");
-			for (size_t k = 0; k < follows.size(); ++k) std::printf("---|");
+			for (size_t k = 0; k < fol.size(); ++k) std::printf("---|");
 			std::printf("\n");
-			for (const Source& s : sources)
+			for (const Source& s : srcs)
 			{
 				std::printf("| %s | ", s.name.c_str());
 				const bool low = s.presses.back().y < 0 && s.presses.back().button == BtnLight;
 				const int defence = block ? (low ? 2 : 1) : 0;
 				const int32_t dist = (atk.halfWidth + def.halfWidth) + 4 * kUnitsPerCm;
-				for (const Action& f : follows)
+				for (const Action& f : fol)
 				{
 					const Outcome o = Trial(r, atk, def, s.presses, f, defence, dist);
 					std::printf("%s | ", Cell(o, block == 0).c_str());

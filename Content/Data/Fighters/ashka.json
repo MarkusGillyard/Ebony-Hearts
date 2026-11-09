@@ -40,7 +40,7 @@
       "hits": [{"frames": [9, 10], "box": [10, 118, 72, 152], "level": "high", "damage": 40, "hitstun": 27, "blockstun": 23, "hitstop": 9, "hitPush": 16, "blockPush": 26, "react": "HitHookR"}],
       "travel": [{"frames": [1, 9], "vx": 3.33}],
       "hurt": [{"frames": [9, 18], "box": [0, 116, 58, 154]}],
-      "cancel": {"frames": [9, 26], "onHit": true, "onBlock": true, "into": ["L3", "@special"], "intoOnHit": ["T"]}
+      "cancel": {"frames": [9, 26], "onHit": true, "onBlock": true, "into": ["L3", "@special"], "intoOnHit": ["T", "BH"]}
     },
     {
       "id": "L3", "name": "Step-In Knee", "anim": "L3", "kind": "strike", "button": "light", "chainOnly": true, "total": 27,
@@ -60,6 +60,19 @@
       "hits": [{"frames": [16, 18], "box": [30, 90, 145, 135], "level": "mid", "damage": 60, "hitstun": 22, "blockstun": 18, "hitstop": 10, "hitPush": 150, "blockPush": 120, "knockdownOnCounter": true, "react": "HitBodyHeavy"}],
       "travel": [{"frames": [3, 14], "vx": 0.58}],
       "hurt": [{"frames": [14, 28], "box": [20, 85, 130, 130]}]
+    },
+    {
+      "id": "BL", "name": "Front Kick", "anim": "BL", "kind": "strike", "button": "light", "dir": "back", "total": 26,
+      "hits": [{"frames": [10, 11], "box": [40, 95, 125, 130], "level": "mid", "damage": 38, "hitstun": 20, "blockstun": 13, "hitstop": 8, "hitPush": 45, "blockPush": 45, "react": "HitBody"}],
+      "travel": [{"frames": [3, 9], "vx": 0.8}],
+      "hurt": [{"frames": [8, 16], "box": [20, 85, 118, 130]}],
+      "cancel": {"frames": [10, 21], "onHit": true, "into": ["@special"]}
+    },
+    {
+      "id": "BH", "name": "Spinning Elbow", "anim": "BH", "kind": "strike", "button": "heavy", "dir": "back", "total": 40,
+      "hits": [{"frames": [14, 16], "box": [12, 118, 92, 160], "level": "high", "damage": 92, "hitstun": 26, "blockstun": 17, "hitstop": 12, "hitPush": 80, "blockPush": 70, "heavy": true, "knockdownOnCounter": true, "react": "HitHookRHeavy"}],
+      "travel": [{"frames": [2, 13], "vx": 2.2}],
+      "hurt": [{"frames": [12, 24], "box": [0, 112, 80, 160]}]
     },
     {
       "id": "CL", "name": "Low Teep", "anim": "CL", "kind": "strike", "button": "light", "dir": "any", "down": true, "crouching": true, "total": 24,

@@ -188,7 +188,11 @@ int main(int argc, char** argv)
 
 	Run("data_loads_and_matches_contract", [] {
 		EXPECT_EQ(static_cast<int>(g_wren.moves.size()), 15, "Wren move count");
-		EXPECT_EQ(static_cast<int>(g_ashka.moves.size()), 15, "Ashka move count");
+		EXPECT_EQ(static_cast<int>(g_ashka.moves.size()), 17, "Ashka move count (with the front kick and spinning elbow)");
+		for (const char* id : {"BL", "BH"})
+		{
+			EXPECT_TRUE(Move(1, id) >= 0 && MoveOf(1, id).dir == DirReq::Back, std::string("ashka has ") + id + " on away");
+		}
 		for (int c = 0; c < 2; ++c)
 		{
 			for (const char* id : {"L1", "L2", "L3", "H", "FH", "S", "FS", "BS", "T", "DF", "DB", "U", "CL"})
@@ -1839,6 +1843,92 @@ int main(int argc, char** argv)
 			}
 			EXPECT_TRUE(low && l.IsActionable(0) && l.IsCrouching(0), std::string(FighterName(c)) + ": the low attack is crouched throughout and after");
 		}
+	});
+
+	Run("ashka_front_kick_and_spinning_elbow", [] {
+		// Ashka's character sheet (2026-11-09) lists a front kick and spinning elbows: away + Light and away + Heavy. Wren
+		// has no away moves, so the same presses stay her jab and roundhouse; neutral and toward are unchanged for both.
+		struct Case { int c; int8_t x; uint8_t b; const char* want; };
+		const Case cases[] = {{1, -1, BtnLight, "BL"}, {1, -1, BtnHeavy, "BH"}, {1, 0, BtnLight, "L1"}, {1, 1, BtnLight, "L1"},
+			{1, 0, BtnHeavy, "H"}, {1, 1, BtnHeavy, "FH"}, {0, -1, BtnLight, "L1"}, {0, -1, BtnHeavy, "H"}};
+		for (const Case& k : cases)
+		{
+			Match m = MakeMatch(k.c, 1 - k.c);
+			m.TrainingPlace(Cm(-150), Cm(150));
+			Step(m, In(k.x, k.b));
+			const FighterState& f = m.State().f[0];
+			EXPECT_TRUE(f.state == FState::Attack && f.move == Move(k.c, k.want),
+				std::string(FighterName(k.c)) + " x " + std::to_string(k.x) + " -> " + k.want);
+		}
+		EXPECT_TRUE(MoveOf(1, "BL").hits[0].level == HitLevel::Mid && MoveOf(1, "BH").hits[0].level == HitLevel::High,
+			"the front kick is a mid, the spinning elbow a high (a crouch ducks it)");
+		// Routes: Light, Light (the elbow) into away + Heavy on hit is a 3-hit combo; the front kick on hit cancels into
+		// the Flame Elbow (neutral special) for 2 hits.
+		for (int route = 0; route < 2; ++route)
+		{
+			Match m = MakeMatch(1, 0);
+			m.TrainingPlace(Cm(-50), Cm(50));
+			int maxCombo = 0, presses = 0;
+			const int links = route == 0 ? 2 : 1;
+			bool sawFinisher = false;
+			for (int t = 0; t < 110; ++t)
+			{
+				InputFrame p0;
+				const FighterState& f = m.State().f[0];
+				if (t == 0)
+				{
+					p0 = route == 0 ? In(0, BtnLight) : In(static_cast<int8_t>(-Toward(m, 0)), BtnLight);
+				}
+				else if (f.state == FState::Attack && f.connectedHit && f.hitstop == 1 && presses < links)
+				{
+					++presses;
+					if (route == 0)
+					{
+						p0 = presses == links ? In(static_cast<int8_t>(-Toward(m, 0)), BtnHeavy) : In(0, BtnLight);
+					}
+					else
+					{
+						p0 = In(0, BtnSpecial);
+					}
+				}
+				Step(m, p0);
+				sawFinisher = sawFinisher || m.State().f[0].move == Move(1, route == 0 ? "BH" : "S");
+				maxCombo = m.State().f[1].combo > maxCombo ? m.State().f[1].combo : maxCombo;
+			}
+			EXPECT_TRUE(sawFinisher, route == 0 ? "L1 L2 > away + Heavy gives the spinning elbow" : "front kick > Special gives the Flame Elbow");
+			EXPECT_EQ(maxCombo, links + 1, route == 0 ? "ashka L1 L2 BH is a 3-hit combo" : "ashka BL S is a 2-hit combo");
+		}
+		// The elbow's cancel into the spinning elbow needs a hit: on block, away + Heavy waits for the elbow to end.
+		Match b = MakeMatch(1, 0);
+		b.TrainingPlace(Cm(-50), Cm(50));
+		int pressedAt = -1;
+		bool cancelledOnBlock = false, blocked = false;
+		for (int t = 0; t < 90; ++t)
+		{
+			InputFrame p0;
+			const FighterState& f = b.State().f[0];
+			if (t == 0)
+			{
+				p0 = In(0, BtnLight);
+			}
+			else if (pressedAt < 0 && f.state == FState::Attack && f.move == Move(1, "L2") && f.moveFrame == 12)
+			{
+				p0 = In(static_cast<int8_t>(-Toward(b, 0)), BtnHeavy);
+				pressedAt = t;
+			}
+			else if (f.state == FState::Attack && f.move == Move(1, "L1") && f.connected && !f.connectedHit && f.hitstop == 1)
+			{
+				p0 = In(0, BtnLight);
+			}
+			Step(b, p0, In(0, 0, BtnBlock));
+			blocked = blocked || HasEvent(b, EventType::Block);
+			const FighterState& g = b.State().f[0];
+			if (pressedAt >= 0 && g.move == Move(1, "BH") && g.moveFrame <= 2 && t < pressedAt + MoveOf(1, "L2").total - 12)
+			{
+				cancelledOnBlock = true;
+			}
+		}
+		EXPECT_TRUE(blocked && pressedAt >= 0 && !cancelledOnBlock, "a blocked elbow does not cancel into the spinning elbow");
 	});
 
 	Run("uppercut_anti_air_launch_and_risk", [] {

@@ -544,7 +544,7 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 		P.Text(CP.Style.ToString(), Pos + FVector2f(32, 142), Fonts.Sized(Fonts.BodyMedium, 22), Muted, 0.0f, 0.5f);
 		const FString Blurb = c == 0
 			? TEXT("All-rounder. Reach, spinning and flying kicks, a double-leg takedown;\nthe 720 Hook Kick; golden Spirit Enhanced Strikes.")
-			: TEXT("Muay Thai specialist. Teeps, elbows, knees and the clinch trip,\npunctuated by the crimson Lamplighter Flame.");
+			: TEXT("Muay Thai specialist. Teeps, front kicks, spinning elbows, knees and\nclinch trips, with the crimson Lamplighter Flame.");
 		P.Text(Blurb, Pos + FVector2f(32, 210), Fonts.Sized(Fonts.Body, 21), Bone, 0.0f, 0.5f);
 		// Cursor markers: gold for player one, silver for player two / CPU.
 		for (int32 s = 0; s < 2; ++s)

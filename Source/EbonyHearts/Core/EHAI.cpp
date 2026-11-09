@@ -297,9 +297,17 @@ InputFrame CpuController::Decide(const Match& match)
 			const bool throwEnder = me.connectedHit && match.GetRules().ThrowsEnabled() && t >= 0 && m.cancelIndices.size() > m.cancelHitOnlyFrom &&
 				gap <= mine.moves[static_cast<size_t>(t)].comboRange && Roll(35);
 			const bool finish = me.connectedHit && (m.id == "L2" || Roll(20)) && Roll(60);
+			// A fighter with an away + Heavy cancel from her second light (Ashka's spinning elbow) uses it on some hits.
+			// The roll is only made for such a fighter, so the others' decisions are unchanged.
+			const int32_t spinElbow = FindByAnim(mine, "BH");
+			const bool spinEnder = !throwEnder && me.connectedHit && m.id == "L2" && spinElbow >= 0 && Roll(35);
 			if (throwEnder)
 			{
 				Queue(BtnThrow, 0, 0);
+			}
+			else if (spinEnder)
+			{
+				Queue(BtnHeavy, -1, 0);
 			}
 			else
 			{
@@ -534,7 +542,8 @@ InputFrame CpuController::Decide(const Match& match)
 			{
 				if (roll < 35) Queue(BtnHeavy, 0, 0);
 				else if (roll < 55) Queue(BtnHeavy, 1, 0);
-				else if (roll < 75) Queue(BtnLight, 0, 0);
+				// Light from range: a fighter with an away + Light poke (Ashka's front kick) mixes it in.
+				else if (roll < 75) Queue(BtnLight, static_cast<int8_t>(FindByAnim(mine, "BL") >= 0 && Roll(40) ? -1 : 0), 0);
 				else if (roll < 88) Queue(BtnSpecial, 1, 0);
 				else Queue(BtnSpecial, 0, 0);
 			}

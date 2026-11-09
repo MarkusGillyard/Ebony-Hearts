@@ -103,7 +103,8 @@ with the actionable step and while in blockstun or landing. Detection outcomes:
 ## Character kits
 
 Shared structure: each fighter has a Light string, Heavy, toward + Heavy, a low (down + Light), an uppercut (down +
-Heavy), three specials (neutral, toward, away), a light and a heavy jump attack, two dodges and one throw. The
+Heavy), three specials (neutral, toward, away), a light and a heavy jump attack, two dodges and one throw. Ashka also
+has two away moves (away + Light, away + Heavy) for the front kick and spinning elbow of her character sheet. The
 fighters do not share animations or tuning.
 
 **Wren Ku** is an all-rounder with kicking reach and spinning and flying techniques. Her Light string
@@ -121,10 +122,12 @@ the **double-leg takedown**: a level change and penetration step on the grab's a
 finish to the mat, and she is back on her feet before the throw ends; from Light or Light, Light on hit it is her combo
 throw (up to 70 cm away). The shoulder throw (data id `wren_suplex`) is kept for the dormant grappling set.
 
-**Ashka Rook** is a composed Muay Thai specialist who controls space with teeps and wins up close with elbows and
-knees. Her Light string is jab, stepping horizontal elbow, step-in knee. Heavy is a roundhouse to the body (the hips
-turn over and the shin lands level); toward + Heavy
-is a long teep with large pushback. Her Lamplighter Flame variations:
+**Ashka Rook** is a composed Muay Thai specialist who controls space with teeps and front kicks and wins up close
+with elbows and knees. Her Light string is jab, stepping horizontal elbow, step-in knee. Heavy is a roundhouse to the
+body (the hips turn over and the shin lands level); toward + Heavy is a long teep with large pushback. Away + Light is
+a quick lead-leg front kick (a snap kick to the body, unlike the teep's push), which cancels into a special on hit;
+away + Heavy is a spinning elbow (sok klap) at head height, which a crouch ducks and which knocks down on a counter
+hit; from Light, Light (the elbow) on hit it is a combo ender. Her Lamplighter Flame variations:
 - **Flame Elbow** (neutral). A leaping downward elbow wreathed in crimson flame.
 - **Flying Knee** (toward). Ends strings.
 - **Flame Burst** (away). Spends half a gauge. Invulnerable through frame 10, so it works as a reversal, but it is
@@ -136,9 +139,10 @@ lands on the back in front of her. From Light, Light on hit it is her combo thro
 cm). Clinch knees and the clinch turn are kept for the dormant grappling set.
 
 Verified example combos (`Tests/Core`, `example_combos_each_fighter`, `combo_throws_scale_cannot_be_escaped_and_need_a_hit`,
-`deep_jump_in_links_into_ground_offense`): Light, Light, Light; Light, Light into toward + Special; Light into toward +
-Special; **Light, Light into Throw** (and Light into Throw); and a deep jump-in into Light, the low or the uppercut, for
-both fighters. True strike-to-throw routes, reproducible in Training against the standing partner from the reset
+`deep_jump_in_links_into_ground_offense`, `ashka_front_kick_and_spinning_elbow`): Light, Light, Light; Light, Light
+into toward + Special; Light into toward + Special; **Light, Light into Throw** (and Light into Throw); and a deep
+jump-in into Light, the low or the uppercut, for both fighters. Ashka also has Light, Light into away + Heavy (the
+spinning elbow, 3 hits) and away + Light into Special (front kick, Flame Elbow, 2 hits). True strike-to-throw routes, reproducible in Training against the standing partner from the reset
 position after walking in:
 - **Wren:** Light (jab) on hit, then Throw while it hits (8-19 frames into the jab) → 30 + 110 = 140 damage, 2 hits.
   Light, Light, Throw → 30 + 36 + 88 = 154, 3 hits (the takedown scaled to 80 %).
@@ -183,10 +187,12 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
 | Input | Move | Level | Startup | Active | Recovery | Reach (cm) | Damage | On block | On hit | Cancels | Gauge | Notes / counterplay | Anim |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Light | Jab | high | 8 | 2 | 15 | 77 | 28 | +2 | +6 | L2, @special on hit/block; T on hit (8-22) | - | Fast high jab. Into the elbow, a special, or the throw on hit. | `L1` |
-| Light, Light | Horizontal Elbow | high | 9 | 2 | 20 | 99 | 40 | +2 | +6 | L3, @special on hit/block; T on hit (9-26) | - | Stepping elbow (high). Into the knee, a special, or the clinch trip. | `L2` |
+| Light, Light | Horizontal Elbow | high | 9 | 2 | 20 | 99 | 40 | +2 | +6 | L3, @special on hit/block; T, BH on hit (9-26) | - | Stepping elbow (high). Into the knee or a special; on hit the clinch trip or the spinning elbow. | `L2` |
 | Light x3 | Step-In Knee | mid | 8 | 3 | 17 | 97 | 54 | -5 | +3 | - | - | Driving knee. String ender. | `L3` |
 | Heavy | Body Roundhouse | mid | 16 | 3 | 27 | 138 | 84 | -6 | +3 (KD on counter) | @special on hit (16-27) | - | Muay Thai roundhouse to the body. Special-cancel on hit. | `H` |
 | toward + Heavy | Teep | mid | 16 | 3 | 19 | 152 | 60 | -3 | +1 (KD on counter) | - | - | Teep. Long reach, huge pushback; controls space. | `FH` |
+| away + Light | Front Kick | mid | 10 | 2 | 15 | 131 | 38 | -3 | +4 | @special on hit (10-21) | - | Quick snap kick to the body. Keeps people off; into a special on hit. | `BL` |
+| away + Heavy | Spinning Elbow | high | 14 | 3 | 24 | 118 | 92 | -9 | +0 (KD on counter) | - | - | Spinning elbow to the head. Ducked by a crouch; Light, Light into it on hit. | `BH` |
 | down + Light | Low Teep | low | 8 | 2 | 15 | 110 | 30 | -4 | +2 | - | - | Low: block it crouching. Pushes the opponent away. | `CL` |
 | down + Heavy | Rising Elbow | mid | 9 | 4 | 36 | 62 | 110 | -23 | launch, knockdown | - | - | Anti-air: rises under jump-ins and launches. Risky if blocked. | `U` |
 | Special | Flame Elbow | overhead | 12 | 3 | 25 | 149 | 115 (chip 12) | -11 | knockdown | - | - | Leaping flame elbow: an overhead. Knocks down. | `S` |
@@ -209,27 +215,32 @@ Health 1000; walk 2.6 cm/frame forward, 2.3 back; pushbox half-width 22 cm; stan
 ## Canon boundaries
 
 - **Confirmed canon** (from the character sheets):
-  - **Wren:** names, aliases, heights and builds, hair (two braids for Wren, a loose crimson braid with bangs and two
-    face-framing strands for Ashka), eye colours, her black and ocean-blue motif, MMA and Look See Do, and her listed
-    techniques, including the 720 Hook Kick. Spirit Enhanced Strikes is a golden lightning aura that raises strike damage
-    and defence against energy and magical attacks.
-  - **Ashka:** her title, her outfit (white long-sleeved shirt, black tie, black pants, brown loafers, long black trench
-    coat), the crimson cross-shaped lamp tattoo, Muay Thai and Flame Style, and her listed techniques. Her Lamplighter
-    Flame is crimson, and she describes it as purifying.
-  - **Relationship:** they are best friends.
+  - **Wren:** name, alias, height and build, two braids, eye colour, her black and ocean-blue motif, MMA and Look See
+    Do, and her listed techniques, including the 720 Hook Kick. Spirit Enhanced Strikes is a golden lightning aura that
+    raises strike damage and defence against energy and magical attacks.
+  - **Ashka** (her character sheet of 2026-11-09, which replaces the earlier one): Ashka Rook, The Last Lamplighter; a
+    former Muay Thai fighter and Lamplighter; 5'7", lean and slim; long crimson hair, normally in a loose ponytail,
+    with bangs just past her eyebrows and two longer side bangs framing her face; crimson red eyes; usually a calm
+    expression, most often calmly smiling. Her usual clothes are a white long-sleeved shirt, a black tie, black pants
+    and brown loafers. Muay Thai and Lamplighter Flame Style; her signature techniques are Lamplighter Flame
+    variations, spinning elbows, the flying knee, the teep, the front kick and clinch trips. Her Lamplighter Flame is
+    crimson, and she describes it as purifying. The earlier sheet's trench coat, braid and chest tattoo are no longer
+    canon.
+  - **Relationship:** Wren and Ashka are best friends.
 - **Gameplay proposals, not canon:**
   - all frame data and damage
   - the gauge and its labels (SPIRIT, FLAME)
   - the 8 s aura duration and its multipliers
   - Flame Burst's invulnerability and gauge cost
-  - which techniques sit on which buttons
+  - which techniques sit on which buttons, and which Lamplighter Flame variations exist (Flame Elbow, the flying
+    knee's flame, Flame Burst)
   - throw choices
   - the CPU's behaviour
   - Wren's and Ashka's fighting each other as a versus/sparring setup, which carries no story meaning
 - **Deliberately unresolved:**
   - the origins and rules of Look See Do and the Fighting Spirit of Humanity
   - the full properties of the Lamplighter Flame, including any mechanical "purifying" effect (none is implemented)
-  - Ashka's background, origin and her people's disappearance
+  - Ashka's background and origin (unknown in her sheet), and anything her sheet leaves open
   - how the tournament-era biographies relate to the concept's Forsaken / Drowning War premise
   - The Drowned Chapel's place in the world's history
   No scene in this slice depends on resolving these.
