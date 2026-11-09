@@ -25,6 +25,9 @@ DISPOSITIONS = {
     "A_Wren_JH": "Flying kick: the extended foot is 3.7 cm below the clip's floor on frame 20; the game draws jump attacks lifted by the jump height, and the attack ends on landing, so it is above the floor in play. Kept.",
     "A_Wren_U": "New (2026-11-08): keyed rising uppercut. One 21 cm forearm step at the start of the rise (frame 5) stays as the drive begins.",
     "A_Ashka_U": "New (2026-11-08): keyed rising elbow. Rises over frames 5-9; the elbow point peaks near 40 cm/f at the strike.",
+    "A_Ashka_BH": "New (2026-11-09): keyed spinning elbow (sok klap). Through the turn the elbow point leads at about 36 cm/f "
+                  "into contact while the folded fist and the shoulder stay near the spin axis, which trips the flip test; frames "
+                  "11-16 checked: the forearm stays folded and the arm's plane does not flip.",
     "A_Wren_Victim_AshkaThrowC": "New (2026-11-08): keyed clinch-trip fall. Arms follow the torso while falling (pelvis-relative); the left forearm's 21 cm step on frame 17 (the trip taking the legs) trips the flip test; fastest joint is the head landing (33 cm/f, frame 47).",
 }
 HOLDS = {"Crouch", "CrouchGuard", "KnockdownLie", "KnockdownLieRev", "JL", "CL", "BS", "ThrowF", "ThrowB", "U"}

@@ -581,6 +581,59 @@ def ashka_moves(data):
                    chest=(0, -10, 0), hand_l=(0.30, 0.15, 1.45), hand_r=(0.15, -0.12, 1.45))
     out["FH"] = ([(1, w, "smooth"), (5, chamber, "in"), (9, teep, "snap"), (11, teep, "hold"), (17, chamber(foot_l=(0.40, 0.09, 0.40)), "smooth"),
                   (28, w(foot_l_world=(0.30, 0.09, 0.0)), "smooth")], 28, m["FH"]["travel"], False)
+    # Away + Light: front kick (character sheet, 2026-11-09). A quick lead-leg snap kick, unlike the teep's push: the
+    # knee chambers high, the ball of the foot snaps up into the body at chest height on frame 10 (the first active
+    # frame), the guard stays up and the torso leans back a little; then the foot comes straight back to its spot.
+    if "BL" in m:
+        fk_ch = w(foot_l_world=None, foot_l=(0.34, 0.09, 0.52), knee_l=(0.8, 0.1, 0.62), pelvis_rot=(-22, -6, 0), chest=(0, -4, 0),
+                  ball_r=10, hand_l=(0.36, 0.08, 1.45), hand_r=(0.26, -0.11, 1.46))
+        # The foot stays within the leg's reach (a target past it snapped the straightened leg 70 cm in one frame);
+        # the hips drive in a little instead of leaning away.
+        fk = fk_ch(foot_l=(0.92, 0.06, 1.04), foot_l_rot=(0, -55, 0), knee_l=(0.62, 0.1, 1.0), pelvis=(0.02, 0, 0.0),
+                   pelvis_rot=(-28, -12, 0), chest=(0, -8, 0), hand_l=(0.32, 0.14, 1.45), hand_r=(0.18, -0.12, 1.48))
+        # The extension runs linear over three frames into contact on frame 10: a "snap" moved the foot 79 cm in one
+        # frame and an "out" (70% of its travel in the first frame) 55 cm.
+        out["BL"] = ([(1, w, "smooth"), (4, fk_ch(foot_l=(0.30, 0.09, 0.36), knee_l=(0.85, 0.1, 0.5)), "in"), (7, fk_ch, "linear"),
+                      (10, fk, "linear"), (11, fk, "hold"), (15, fk_ch(foot_l=(0.40, 0.09, 0.42)), "smooth"),
+                      (26, w(foot_l_world=(s["foot_l"][0] + sum((g["frames"][1] - g["frames"][0] + 1) * g["vx"] for g in m["BL"]["travel"]) / 100.0,
+                                           s["foot_l"][1], 0.0)), "smooth")], 26, m["BL"]["travel"], False)
+    # Away + Heavy: spinning elbow (sok klap; character sheet, 2026-11-09). The lead foot steps across onto a pivot with
+    # the travel and turns on its ball while the back turns through (clockwise); the right elbow slashes round at head
+    # height on frame 14 (the first active frame) with the right side to the opponent, the forearm folded in front of
+    # the right shoulder and the left hand guarding the face; the rear foot swings round at hip width and lands back in
+    # stance, and the lead foot steps back out. Built on the same rules as Wren's spinning back elbow (keyed spin from 0,
+    # a flowing turn, the elbow dropping under the arm on the way back to the guard), timed and placed for Ashka.
+    if "BH" in m:
+        tb = sum((g["frames"][1] - g["frames"][0] + 1) * g["vx"] for g in m["BH"]["travel"]) / 100.0
+        piv = (0.26 + tb, 0.02)
+        across = (piv[0] - 0.11, piv[1], 0.0)
+        home_l = (s["foot_l"][0] + tb, s["foot_l"][1], 0.0)
+        sb = w(spin=0.0, pivot=piv, pivot_world=True, foot_l_world=across, foot_r_world=None, foot_r=(s["foot_r"][0] - 0.035, s["foot_r"][1], 0.0),
+               knee_l=(0.6, 0.3, 0.0), knee_r=(0.5, -0.5, 0.0))
+        el = sb(spin=-200, hand_r=(-0.07, -0.17, 1.46), elbow_r=(-0.8, -0.30, 0.50), hand_l=(0.20, -0.08, 1.47),
+                chest=(-15, 8, 0), head=(-60, 6, 0), gaze=0.0, foot_r=(-0.08, -0.20, 0.07))
+        # Keys two frames apart through the strike, as in Wren's (three apart, the arm bunched its travel into the middle
+        # frame: an elbow flip in the audit); Ashka's longer move spends its extra frames in the step-in and the recovery.
+        out["BH"] = ([(1, w, "smooth"),
+                      (4, w(foot_l_world=((s["foot_l"][0] + across[0]) / 2, (s["foot_l"][1] + across[1]) / 2, 0.04), chest=(8, 6, 0), knee_l=(0.6, 0.2, 0.0)), "smooth"),
+                      (7, sb(chest=(12, 8, 0)), "smooth"),
+                      (10, sb(spin=-60, chest=(20, 10, 0), hand_r=(0.10, 0.05, 1.38), gaze=0.4, foot_r=(-0.14, -0.20, 0.06)), "smooth"),
+                      (12, sb(spin=-130, chest=(5, 9, 0), hand_r=(0.06, 0.02, 1.40), elbow_r=(-0.5, -0.45, 0.05), hand_l=(0.30, 0.02, 1.44),
+                              head=(-35, 4, 0), gaze=0.0, foot_r=(-0.10, -0.20, 0.07)), "smooth"),
+                      # Mid-turn the forearm stays folded so the elbow leads (between the keys either side it swung
+                      # out from the body and folded back, 36 cm in a frame).
+                      (13, sb(spin=-165, hand_r=(0.0, -0.08, 1.43), elbow_r=(-0.68, -0.38, 0.28), hand_l=(0.25, -0.03, 1.46),
+                              chest=(-5, 8, 0), head=(-48, 5, 0), gaze=0.0, foot_r=(-0.09, -0.20, 0.07)), "smooth"),
+                      (14, el, "smooth"), (16, el(spin=-225, head=(-55, 6, 0)), "smooth"),
+                      (18, sb(spin=-265, hand_r=(0.02, -0.16, 1.44), elbow_r=(-0.6, -0.55, -0.1), hand_l=(0.30, 0.0, 1.43),
+                              head=(-35, 5, 0), gaze=0.15, foot_r=(-0.14, -0.20, 0.06)), "smooth"),
+                      (20, sb(spin=-305, hand_r=(0.20, -0.10, 1.40), elbow_r=(-0.1, -0.4, -0.8), hand_l=(0.38, 0.04, 1.40),
+                              head=(-20, 4, 0), gaze=0.4, foot_r=(-0.18, -0.20, 0.06)), "smooth"),
+                      (21, sb(spin=-330, gaze=0.6, foot_r=(-0.20, -0.20, 0.05)), "smooth"),
+                      (25, sb(spin=-360, foot_r=s["foot_r"]), "smooth"),
+                      (30, sb(spin=-360, foot_l_world=((across[0] + home_l[0]) / 2, (across[1] + home_l[1]) / 2, 0.05)), "smooth"),
+                      (35, sb(spin=-360, foot_l_world=home_l), "smooth"),
+                      (40, sb(spin=-360, foot_l_world=home_l), "smooth")], 40, m["BH"]["travel"], False)
     # Special: Flame Elbow. Two quick steps, leap, chop the right elbow down onto the head on frame 12.
     up = s(pelvis=(0.10, 0, 0.18), chest=(10, -5, 0), hand_r=(0.10, -0.15, 1.85), elbow_r=(0.2, -0.3, 0.6), hand_l=(0.30, 0.15, 1.40),
            foot_l=(0.30, 0.09, 0.30), foot_r=(-0.10, -0.12, 0.20))
