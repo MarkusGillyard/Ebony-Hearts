@@ -1,8 +1,16 @@
 # Interface overhaul: handoff (for Markus)
 
-**Where it stands (2026-11-09).** The shared foundation is done and tested on `dev/ui-ux-identity-overhaul`; no art
-direction has been chosen yet. A draft pull request into `release/first-slice` carries it for review. **Nothing is
-merged.** PR #1, `release/first-slice` and `main` are unchanged by this work.
+**Where it stands (2026-11-09).** Done and tested on `dev/ui-ux-identity-overhaul`, in pull request #2 into
+`release/first-slice`, ready for your review. You chose direction **A, Still Water**, and it is applied to every
+screen. **Nothing is merged.** PR #1, `release/first-slice` and `main` are unchanged by this work.
+
+## Direction A: Still Water
+
+- **Title screen:** your key art, with only the prompt and the credit over it.
+- **Main menu:** a plain list over the darkened chapel, with the crescent marking the choice.
+- **Other menus:** a dark veil between silver rules, with the crescent set into the top rule.
+- **Motion:** screens fade in over 0.15 s (they never delay a press).
+- **Sounds:** four new interface cues: lock-in, unavailable, apply, warning.
 
 ## What changed (all three directions share it)
 
@@ -32,14 +40,11 @@ merged.** PR #1, `release/first-slice` and `main` are unchanged by this work.
 
 ## What needs your judgment
 
-1. **The art direction:** A Still Water (recommended), B Fractured Divinity, C Drowned Cathedral, or a mix.
-   - Mockups: `Directions.md` and `~/Documents/Ebony Hearts/UIUX_directions_2026-11-09/`.
-   - Direction A already runs in the game on a local, unpushed preview branch (`dev/ui-ux-direction-a-preview`): your
-     key art as the title screen, every menu in its style, short fades and four new interface sounds.
-2. **The key art as the title screen**, if A or C. It arrived as a 1536 × 864 JPEG, slightly soft at 1080p; a larger
-   or lossless version would sharpen it.
-3. **The fonts:** Cinzel and Alegreya Sans are kept unless you want others.
-4. **Merging**, later, and only on your word.
+1. **Play it** with your controller, on your screen and through your speakers (the new sounds have not been heard by
+   anyone yet).
+2. **The key art's resolution:** it arrived as a 1536 × 864 JPEG and is slightly soft at 1080p and above; a larger or
+   lossless version would sharpen the title.
+3. **Merging** PR #2 (and later PR #1), only on your word.
 
 ## How to run it
 
