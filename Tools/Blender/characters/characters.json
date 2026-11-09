@@ -299,7 +299,7 @@
    },
    "expression": {
     "race": "caucasian",
-    "mouth-corner-puller": 0.18,
+    "mouth-corner-puller": 0.42,
     "eye-left-slit": 0.22,
     "eye-right-slit": 0.22
    },
@@ -322,7 +322,6 @@
     "loafer": "#4e2c18",
     "loafer_dark": "#24130a",
     "metal": "#8a8378",
-    "tattoo": "#8e0f22",
     "coat_dark": "#0d0e10",
     "coat_stitch": "#27282d",
     "shirt_stitch": "#cfccc4",
@@ -333,25 +332,21 @@
    },
    "uv": {
     "head_scale": 1.6,
-    "tattoo_scale": 2.5,
     "part_density": {
-     "11": 1.5,
-     "12": 1.6,
-     "13": 1.6,
-     "14": 1.5,
-     "20": 1.5,
-     "15": 0.62,
-     "16": 1.5,
+     "11": 1.0,
+     "12": 1.5,
+     "13": 1.5,
+     "14": 1.4,
+     "20": 1.4,
+     "15": 0.75,
+     "16": 1.4,
      "17": 1.0,
      "18": 1.2,
-     "19": 1.5,
+     "19": 1.4,
      "2": 1.2,
      "3": 1.2,
      "8": 1.5
     }
-   },
-   "tattoo": {
-    "size_cm": 6.5
    },
    "hair": {
     "cap_thickness": 0.01,
@@ -374,12 +369,20 @@
     "tie_color": "#141416",
     "bang_count": 8,
     "bang_thick": 0.006,
-    "strand_thick": 0.006
+    "strand_thick": 0.006,
+    "ponytail": {
+     "tie_at": 0.03,
+     "width_tie": 0.014,
+     "width_max": 0.034,
+     "width_tip": 0.01,
+     "depth": 0.55,
+     "cards": 18,
+     "card_width": 0.034
+    }
    },
    "outfit": {
     "button_above_pelvis": 0.075,
     "v_halfwidth_top": 0.088,
-    "tattoo_dz": -0.075,
     "pants_hem_z": 0.035,
     "pants_min_radius": 0.062,
     "skirt_top_rel_pelvis": -0.03,
@@ -425,7 +428,24 @@
     "loafer_topline_dip": 0.008,
     "loafer_welt": 0.0035,
     "loafer_heel_len": 0.07,
-    "loafer_toe_taper": 0.04
+    "loafer_toe_taper": 0.04,
+    "cuff_start_t": 0.86,
+    "shirt_tuck_depth": 0.04,
+    "shirt_offset": 0.0035,
+    "shirt_sleeve_offset": 0.006,
+    "shirt_blouse": 0.006,
+    "shirt_drape_slope": 0.45,
+    "shirt_drape_slope_side": 1.2,
+    "shirt_drape_reach": 0.25,
+    "shirt_drape_ease": 0.004,
+    "shirt_waist_ease": 0.003,
+    "shirt_waist_blouse": 0.25,
+    "shirt_sleeve_round": 0.45,
+    "pants_waist_ease": 0.007,
+    "tie_tip_above_pelvis": 0.06,
+    "tie_settle": 0.6,
+    "shirt_smooth_iters": 8,
+    "shirt_tucked_gap": 0.0025
    },
    "face": {
     "contour": 0.05,

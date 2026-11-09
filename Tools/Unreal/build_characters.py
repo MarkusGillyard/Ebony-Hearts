@@ -162,6 +162,20 @@ TWO_SIDED = {"Coat", "Outfit", "Clothes"}
 
 def assign_materials(mesh, char_id, cap, textures, masters, alpha):
     mats = list(mesh.materials)
+    # A reimport keeps slots the new FBX no longer has (Ashka's coat slot after 2026-11-09). Trailing ones that the
+    # source build did not export are dropped, so no other slot's index moves; a stale slot elsewhere stops the build.
+    report = os.path.join(SRC, "characters", char_id, "build_report.json")
+    if os.path.exists(report):
+        with open(report) as fh:
+            exported = set(json.load(fh).get("materials", {}))
+        if exported:
+            names = [str(m.material_slot_name) for m in mats]
+            stale = [i for i, n in enumerate(names) if n not in exported]
+            if stale and stale != list(range(len(names) - len(stale), len(names))):
+                raise RuntimeError(f"stale material slots not at the end for {cap}: {[names[i] for i in stale]}")
+            for i in reversed(stale):
+                log(f"slot {names[i]} is no longer exported: removed")
+                mats.pop(i)
     for i, sm in enumerate(mats):
         slot = str(sm.material_slot_name)
         key = slot

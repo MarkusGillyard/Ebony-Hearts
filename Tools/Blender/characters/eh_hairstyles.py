@@ -2,9 +2,12 @@
 
 Wren: long brown hair, centre part, two neat braids from behind the ears down the upper back
       (chains braid_l_01..04, braid_r_01..04 under head).
-Ashka: long crimson hair swept back into one loose braid from the nape (braid_01..05 under head),
+Ashka: long crimson hair swept back into one loose ponytail tied at the nape (2026-11-09 canon; it rides
+      the former braid's chain, braid_01..05 under head, so the skeleton is unchanged),
       bangs ending just past the eyebrows, two longer face-framing strands (strand_l_01..02,
       strand_r_01..02 under head)."""
+import math
+
 import numpy as np
 
 import eh_garment as G
@@ -152,9 +155,11 @@ def _card_object(name, parts, part_id=None):
 
 
 def ashka(body, rig, parts, garments, cfg):
-    """Bangs and face-framing strands are layered alpha cards (strand clumps, tapered tips), the loose
-    braid keeps woven strand tubes but gets flyaway cards along it and gathered cards from the nape
-    into its top, so it is attached to the head with volume. Chains as before (same control paths)."""
+    """Bangs just past the eyebrows and two longer face-framing side bangs are layered alpha cards
+    (strand clumps, tapered tips). The loose ponytail (character sheet of 2026-11-09) is a soft core
+    under layered strand cards of varied length, gathered by a hair tie at the nape, with cards from
+    the occipital hair into the tie. It follows the shipped braid_01..05 chain (same bones, same rest
+    pose), so every clip keeps working."""
     H.set_layout("cards")
     h = cfg["hair"]
     hi = head_extras(body, H.head_info(body, rig, parts))
@@ -226,7 +231,7 @@ def ashka(body, rig, parts, garments, cfg):
         M.set_weights(ob, M.normalize_limit(R.chain_weights(arc, bounds, names, "head", 0.04), 8))
         pieces.append(ob)
         info["strand_" + s] = {"length_m": round(L, 3)}
-    # ---- loose braid from the nape
+    # ---- loose ponytail from the nape (on the shipped braid_01..05 chain)
     nape_z = hi["ear_l"][2] - h["nape_down"]
     c0 = _back(capc, 0.0, nape_z, -0.008)
     c1 = c0 + np.array([0.0, 0.016, -0.055])
@@ -234,68 +239,94 @@ def ashka(body, rig, parts, garments, cfg):
     c3 = _back(col_all, 0.01, zc - 0.12, h["clear"])
     c4 = _back(col_all, 0.016, zc - 0.28, h["clear"])
     c5 = _back(col_all, 0.012, zc - h["drop"], h["clear"])
-    names = ["braid_%02d" % k for k in range(1, 6)]
-    ctrl = R.rest_points(cfg.get("rest_chains"), names) or [c0, c1, c2, c3, c4, c5]
-    parts_, arcs, desc = H.braid(ctrl, col_all, depth_hint=(0, 1.0, 0.05),
-                                 width=tuple(h["width"]), period=h["period"], tassel=h["tassel"],
-                                 amp_lat=0.33, amp_depth=0.2, r_lat=0.4, r_depth=0.27, loose=0.6, seed=5)
-    ob, arc = _tube_object("braid", parts_, arcs, H.P_BRAID, H.P_TIE)
-    L = desc["length"]
-    rp = R.rest_points(cfg.get("rest_chains"), names)
-    if rp is not None:                     # weights follow the stored joints projected onto the path
-        bp_ = desc["path"]
-        sp_ = np.r_[0, np.cumsum(np.linalg.norm(np.diff(bp_, axis=0), axis=1))]
-        bounds = [float(sp_[np.argmin(np.linalg.norm(bp_ - j, axis=1))]) for j in rp]
+    names = ["braid_%02d" % k for k in range(1, 6)]          # bone names kept from the braid: skeleton unchanged
+    rest = cfg.get("rest_chains")
+    ctrl = R.rest_points(rest, names) or [c0, c1, c2, c3, c4, c5]
+    pt = h["ponytail"]
+    n = 64
+    path, L = M.catmull_rom(ctrl, n)
+    for _ in range(3):                                      # keep the tail off the shirt and the back
+        path, _ = col_all.push_out(path, pt["depth"] * pt["width_max"] + h["clear"])
+        path = np.vstack([path[:1], M.smooth(path, H._chain_adj(len(path)), 1, 0.5)[1:-1], path[-1:]])
+    path, L = M.catmull_rom(path[::max(1, len(path) // 24)].tolist() + [path[-1].tolist()], n)
+    sp = np.r_[0, np.cumsum(np.linalg.norm(np.diff(path, axis=0), axis=1))]
+    Tv = np.gradient(path, axis=0)
+    Tv /= np.linalg.norm(Tv, axis=1, keepdims=True)
+    Dv = np.array([0.0, 1.0, 0.05]) - Tv * (Tv @ np.array([0.0, 1.0, 0.05]))[:, None]   # away from the back
+    Dv /= np.linalg.norm(Dv, axis=1, keepdims=True)
+    Lv = np.cross(Tv, Dv)
+    tie_s = pt["tie_at"]
+    # half-width: pinched at the tie, swelling just below it, tapering to a soft end
+    w = np.where(sp < tie_s, pt["width_tie"],
+                 pt["width_tie"] + (pt["width_max"] - pt["width_tie"]) * M.smoothstep(tie_s, tie_s + 0.07, sp))
+    w = w * (1 - (1 - pt["width_tip"] / pt["width_max"]) * M.smoothstep(0.3 * L, L, sp))
+    rng_p = np.random.default_rng(11)
+    sway = (np.sin(sp * 19.0 + 1.3) * 0.25 + np.sin(sp * 37.0) * 0.12) * w * 0.25      # a loose, uneven fall
+    core_path = path + Lv * sway[:, None]
+    verts, faces, uvs = M.tube(core_path, w * 0.82, w * pt["depth"] * 0.82, 10, Lv, Dv, cap_start=False, cap_end=True)
+    uvs = [[tuple(H.rect_map(np.array([uv]), H.BRAID)[0]) for uv in f] for f in uvs]
+    core = M.make_object("ponytail_core", *M.merge_parts([(verts, faces, uvs)])[:3])
+    G.set_part_attr(core, "part", np.full(len(core.data.vertices), H.P_BRAID, np.int32))
+    core_arc = np.r_[np.repeat(sp, 10), sp[-1]]
+    # layered strand cards around the core, each its own length, splaying slightly towards the ends
+    cards, carc = [], []
+    nc = pt["cards"]
+    for k in range(nc):
+        ang = 2 * math.pi * (k + 0.5 * rng_p.random()) / nc
+        lat_c, dep_c = math.cos(ang), math.sin(ang)
+        a_end = L * (0.72 + 0.34 * rng_p.random())
+        i_end = int(np.searchsorted(sp, min(a_end, sp[-1])))
+        i_beg = int(np.searchsorted(sp, tie_s * (0.6 + 0.8 * rng_p.random())))
+        if i_end - i_beg < 6:
+            continue
+        idx = np.arange(i_beg, i_end + 1)
+        tt = (sp[idx] - sp[i_beg]) / max(sp[i_end] - sp[i_beg], 1e-6)
+        spread = 1.0 + 0.22 * tt + 0.08 * rng_p.random()
+        off = (Lv[idx] * (lat_c * w[idx] * spread)[:, None]
+               + Dv[idx] * (dep_c * w[idx] * pt["depth"] * spread + 0.0015)[:, None])
+        cp = core_path[idx] + off
+        cp = cp[::max(1, len(cp) // 14)].tolist() + [cp[-1].tolist()]
+        cpath, _ = M.catmull_rom(cp, max(10, len(cp)))
+        nrm = Lv[idx[len(idx) // 2]] * lat_c + Dv[idx[len(idx) // 2]] * dep_c
+        u0 = 0.5 * (rng_p.random() > 0.5)
+        cards.append(H.card(cpath, pt["card_width"] * (0.8 + 0.4 * rng_p.random()), _norm(nrm),
+                            window=(u0, u0 + 0.5), tip=0.2 + 0.15 * rng_p.random(), cup=0.0015))
+        carc.append(np.repeat(np.linspace(sp[i_beg], sp[i_end], len(cpath)), 3))
+    # hair tie: a short band round the gather point
+    i_t = int(np.searchsorted(sp, tie_s))
+    band = core_path[max(i_t - 1, 0):i_t + 2]
+    tv, tf, tuv = M.tube(band, np.full(len(band), pt["width_tie"] * 1.12), np.full(len(band), pt["width_tie"] * pt["depth"] * 1.25),
+                         12, Lv[max(i_t - 1, 0):i_t + 2], Dv[max(i_t - 1, 0):i_t + 2], cap_start=False, cap_end=False)
+    tuv = [[tuple(H.rect_map(np.array([uv]), H.TIE)[0]) for uv in f] for f in tuv]
+    tie_ob = M.make_object("ponytail_tie", *M.merge_parts([(tv, tf, tuv)])[:3])
+    G.set_part_attr(tie_ob, "part", np.full(len(tie_ob.data.vertices), H.P_TIE, np.int32))
+    # weights follow the stored joints projected onto the path
+    rp = R.rest_points(rest, names)
+    if rp is not None:
+        bounds = [float(sp[np.argmin(np.linalg.norm(path - j, axis=1))]) for j in rp]
         bounds[0], bounds[-1] = 0.0, L
     else:
         bounds = list(np.linspace(0, L, 6))
-    pts = _path_points(desc["path"], bounds)
-    R.add_chain(rig, names, pts, "head", roll_up=(1, 0, 0), rest=cfg.get("rest_chains"))
-    M.set_weights(ob, M.normalize_limit(R.chain_weights(arc, bounds, names, "head", 0.04), 8))
-    pieces.append(ob)
-    # flyaway cards along the braid and a splayed tassel
-    bp = desc["path"]
-    seg = np.linalg.norm(np.diff(bp, axis=0), axis=1)
-    sp = np.r_[0, np.cumsum(seg)]
-    fly = []
-    farc = []
-    n_fly = int(L / (h["period"] * 0.5))
-    for k in range(n_fly):
-        a0 = (k + 0.5) / n_fly * L * 0.95 + 0.02
-        i0 = int(np.searchsorted(sp, a0))
-        i1 = int(np.searchsorted(sp, min(a0 + 0.06 + 0.04 * rng.random(), sp[-1])))
-        if i1 - i0 < 3:
-            continue
-        side = (-1) ** k
-        Tv = bp[min(i0 + 1, len(bp) - 1)] - bp[i0]
-        Tv /= np.linalg.norm(Tv)
-        lat = np.cross(Tv, [0, 1.0, 0])
-        lat /= max(np.linalg.norm(lat), 1e-6)
-        sub = bp[i0:i1 + 1].copy()
-        tt = np.linspace(0, 1, len(sub))[:, None]
-        sub = sub + lat * side * (h["width"][0] * 0.42 + 0.006 * tt) + np.array([0, 0.012, 0]) * (1 - tt) * 0.5
-        path, _ = M.catmull_rom(sub[::max(1, len(sub) // 4)].tolist() + [sub[-1].tolist()], 6)
-        u0 = 0.5 * (rng.random() > 0.5)
-        fly.append(H.card(path, 0.014 + 0.008 * rng.random(), np.array([0, 1.0, 0.1]), window=(u0, u0 + 0.5),
-                          tip=0.2, cup=0.001))
-        farc.append(np.repeat(sp[i0] + np.linspace(0, sp[i1] - sp[i0], len(path)), 3))
-    # nape gather: cards from the occipital hair into the braid's top
-    for k in range(7):
-        ang = (k - 3) / 3.0
-        start = _onto(capc, np.array([ang * 0.05, hi["center"][1] + 0.07, hi["ear_l"][2] + 0.02 + 0.015 * (1 - abs(ang))]),
+    pts = _path_points(path, bounds)
+    R.add_chain(rig, names, pts, "head", roll_up=(1, 0, 0), rest=rest)
+    M.set_weights(core, M.normalize_limit(R.chain_weights(core_arc, bounds, names, "head", 0.04), 8))
+    M.set_weights(tie_ob, M.normalize_limit(R.chain_weights(np.full(len(tie_ob.data.vertices), tie_s), bounds, names, "head", 0.04), 8))
+    pieces += [core, tie_ob]
+    # nape gather: cards from the occipital hair into the tie
+    for k in range(9):
+        ang = (k - 4) / 4.0
+        start = _onto(capc, np.array([ang * 0.055, hi["center"][1] + 0.07, hi["ear_l"][2] + 0.02 + 0.017 * (1 - abs(ang))]),
                       inset=-0.004)
-        end = bp[int(np.searchsorted(sp, 0.05))] + np.array([ang * 0.008, 0.004, 0])
-        mid = 0.5 * (start + end)
-        mid = _onto(capc, mid, inset=-0.005)
-        path, _ = M.catmull_rom([start, mid, end], 7)
+        end = core_path[i_t] + Lv[i_t] * ang * pt["width_tie"] * 0.8 + Dv[i_t] * 0.002
+        mid = _onto(capc, 0.5 * (start + end), inset=-0.005)
+        gpath, _ = M.catmull_rom([start, mid, end], 7)
         u0 = 0.5 * (k % 2)
-        fly.append(H.card(path, 0.026, _norm(np.array([0, 1.0, 0.25])), window=(u0, u0 + 0.5), tip=0.55, cup=0.002))
-        farc.append(np.zeros(len(path) * 3))
-    flo = _card_object("braid_cards", fly)
-    arcv = np.concatenate(farc)
-    M.set_weights(flo, M.normalize_limit(R.chain_weights(arcv, bounds, names, "head", 0.04), 8))
+        cards.append(H.card(gpath, 0.028, _norm(np.array([0, 1.0, 0.25])), window=(u0, u0 + 0.5), tip=0.55, cup=0.002))
+        carc.append(np.zeros(len(gpath) * 3))
+    flo = _card_object("ponytail_cards", cards)
+    M.set_weights(flo, M.normalize_limit(R.chain_weights(np.concatenate(carc), bounds, names, "head", 0.04), 8))
     pieces.append(flo)
-    info["braid"] = {"length_m": round(L, 3), "periods_in_v": desc["periods_in_v"], "flyaway_cards": len(farc)}
+    info["ponytail"] = {"length_m": round(float(L), 3), "cards": len(carc), "tie_at_m": tie_s}
     return _finish(pieces, parts, cfg), info
 
 

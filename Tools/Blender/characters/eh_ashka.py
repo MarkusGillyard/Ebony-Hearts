@@ -1,7 +1,13 @@
-"""Ashka Rook's canon outfit: white long-sleeved shirt (built where it can show: the coat's V opening,
-collar and cuffs), black tie, black trousers, brown penny loafers and a long black trench coat.
+"""Ashka Rook's canon outfit (character sheet of 2026-11-09): white long-sleeved shirt, black tie, black
+trousers and brown penny loafers. The shirt is a full shell over torso and arms, gently draped (it falls
+from the bust and blouses a little above the waistband) and tucked into the trousers, with a collar,
+cuffs and a tie that hangs to the waistband.
 
-Coat: torso and sleeves are a shell grown from the body (inheriting skin weights) and then draped:
+The long black trench coat of the earlier sheet is no longer canon and is not built; its builders below
+(drape, skirt, lapels, collar, belt, buttons, cuff straps) are kept for reference only. Its tail chains
+stay in the rig, unweighted, so the shipped skeleton is unchanged (coat_chains_from_rest).
+
+Coat (former): torso and sleeves are a shell grown from the body (inheriting skin weights) and then draped:
 every horizontal slice is pushed out to a hanging envelope of the body (cloth falls from the bust
 and shoulder blades instead of shrink-wrapping the waist) and the sleeves are rounded towards a
 tube. A double-breasted front closes from the belt to the V, where real lapels (roll, notch,
@@ -9,8 +15,8 @@ thickness) and a two-part collar (stand + fall) open onto shirt and tie. Below t
 skirt hangs almost straight with drape folds, split into four panels (front opening, two side vents
 and a back vent), each skinned to its own 3-bone chain. Belt with knot and tails, buttons, cuff
 straps, hems with thickness.
-Shirt collar with stand and points, cuffs showing past the coat sleeves, a four-in-hand knot and a
-tapered blade that hangs from the knot. Trousers fall straight with a front crease and a break over
+Shirt collar with stand and points, cuffs at the wrists, a four-in-hand knot and a tapered blade that
+hangs from the knot. Trousers fall straight with a front crease and a break over
 the shoe. Loafers are built on a last fitted to the foot: upper with a vamp, saddle strap and heel
 counter, a welt and a sole with a stacked heel."""
 import math
@@ -61,7 +67,6 @@ def build(body, rig, cfg, collider_body):
     front = Y < sy
     out = {}
     hide = np.zeros(len(body.data.polygons), bool)
-    keep = np.zeros(len(body.data.polygons), bool)
     handw = {s: G.wsum(W, G.side_names(G.HAND, s)) for s in "lr"}
     tfa = {s: G.limb_param(rig, "lowerarm_" + s, V)[0] for s in "lr"}
     armw = {s: G.wsum(W, G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], s))
@@ -73,22 +78,51 @@ def build(body, rig, cfg, collider_body):
     headw = W.get("head", np.zeros(len(V)))
     info = {"landmarks": f}
 
-    # ------------------------------------------------------------------ shirt (visible parts)
-    vh = vline(Z, f, o)
-    vm = front & (ax < vh + 0.075) & (Z > f["zvb"] - 0.07) & (Z < np.minimum(neck_cut + 0.04, zn + 0.01)) \
-        & ~is_arm & (headw < 0.3) & ~hand
-    shirt, src, fm = G.shell(body, vm, "shirt", 0.0035, collider_body, relax_iters=10, lip=0.0, soft=3,
-                             edge_smooth=0)
+    # ------------------------------------------------------------------ waistline (trousers' top edge)
+    zw = np.where(front, zp + 0.045, zp + 0.06)
+    zw_front = zp + 0.045
+
+    # ------------------------------------------------------------------ shirt: full, long-sleeved, tucked in
+    cuff_t = o["cuff_start_t"]
+    z_tuck = zw_front - o["shirt_tuck_depth"]
+    region = (Z >= z_tuck - 0.04) & (Z < neck_cut + 0.012) & ~hand & (headw < 0.3) \
+        & ~(is_arm & (arm_t > cuff_t + 0.08))
+    t_arm = np.where(is_arm, arm_t, 0.0)
+    off = np.where(is_arm, o["shirt_sleeve_offset"] + 0.004 * M.smoothstep(0.3, 1.0, t_arm),
+                   o["shirt_offset"] + o["shirt_blouse"] * np.exp(-((Z - (zw_front + 0.035)) / 0.035) ** 2))
+
+    def tuck(P):
+        return P[:, 2] - z_tuck
+
+    cuts = (tuck, _limb_cut(rig, "lowerarm_l", cuff_t + 0.02), _limb_cut(rig, "lowerarm_r", cuff_t + 0.02))
+    shirt, src, fm = G.shell(body, region, "shirt", off, collider_body, relax_iters=12, relax_factor=0.5,
+                             smooth_offset=6, lip=0.0, soft=3, implicit=cuts, edge_smooth=0)
+    shirt_cover = fm & M.face_mask_from_verts(body, ~(is_arm & (arm_t > cuff_t - 0.02)), "all")
+    f_sh = dict(f, z_cut=z_tuck, zb=zw_front + 0.02)
+    o_sh = dict(o, drape_slope=o["shirt_drape_slope"], drape_slope_side=o["shirt_drape_slope_side"],
+                drape_reach=o["shirt_drape_reach"], drape_ease=o["shirt_drape_ease"],
+                belt_ease=o["shirt_waist_ease"], belt_blouse=o["shirt_waist_blouse"])
+    _drape_torso(shirt, body, rig, f_sh, {"outfit": o_sh}, collider_body)
+    for s_ in "lr":
+        _round_sleeve(shirt, rig, s_, {"sleeve_round": o["shirt_sleeve_round"]})
+    _settle_shirt(shirt, rig, collider_body, zp, o)
+    Wsh = M.weights(shirt)                # torso shell: no thigh influence
+    for s_ in "lr":
+        for nm in ("thigh_" + s_, "thigh_twist_01_" + s_, "thigh_half_" + s_):
+            if nm in Wsh:
+                Wsh["pelvis"] = Wsh.get("pelvis", 0) + Wsh.pop(nm)
+    Wsh = M.smooth_weights(Wsh, M.adjacency(shirt), 3, 0.5)
+    M.set_weights(shirt, M.normalize_limit(Wsh, 8))
     _tags(shirt, SHIRT)
-    hide |= G.hidden_face_mask(body, fm, garment=shirt)
+    hide |= G.hidden_face_mask(body, shirt_cover, garment=shirt, margin_m=0.012)
     cuffs = []
     for s in "lr":
         side = (X > 0) if s == "l" else (X < 0)
-        vm = side & (armw[s] + handw[s] > 0.4) & (tfa[s] > 0.8) & (tfa[s] < 1.08)
-        c, src, fm = G.shell(body, vm, "cuff_" + s, 0.0048, collider_body, relax_iters=3, lip=0.003,
-                             implicit=(_limb_cut(rig, "lowerarm_" + s, 0.86, keep_after=True),
+        vm = side & (armw[s] + handw[s] > 0.4) & (tfa[s] > cuff_t - 0.06) & (tfa[s] < 1.08)
+        c, src, fm = G.shell(body, vm, "cuff_" + s, 0.0072, collider_body, relax_iters=3, lip=0.003,
+                             implicit=(_limb_cut(rig, "lowerarm_" + s, cuff_t, keep_after=True),
                                        _limb_cut(rig, "lowerarm_" + s, 1.0)), edge_smooth=0)
-        _round_limb(c, rig, "lowerarm_" + s, 0.7, 0.002)
+        _round_limb(c, rig, "lowerarm_" + s, 0.7, 0.003)
         _tags(c, SHIRT_CUFF)
         cuffs.append(c)
         hide |= G.hidden_face_mask(body, fm, garment=c, margin_m=0.025)
@@ -99,23 +133,18 @@ def build(body, rig, cfg, collider_body):
     tie_ob = tie(rig, cfg, shirt, f)
     _weights_from(tie_ob, shirt)
     out["tie"] = tie_ob
-    # keep a sternum patch of skin under the shirt (the chest tattoo lives there)
-    fc = M.poly_centers(body)
-    patch = (np.abs(fc[:, 0]) < 0.075) & (np.abs(fc[:, 2] - (zc + o["tattoo_dz"])) < 0.06) \
-        & (fc[:, 1] < G.spine_y(rig, fc[:, 2]))
-    keep |= patch
 
-    # ------------------------------------------------------------------ trousers
-    zw = np.where(front, zp + 0.045, zp + 0.06)
+    # ------------------------------------------------------------------ trousers (over the tucked shirt)
     legs = np.zeros(len(V), bool)
     for s in "lr":
         legs |= G.wsum(W, G.side_names(["thigh", "thigh_twist_01", "calf"], s)) > 0.5
     footw = G.wsum(W, G.side_names(["foot", "ball"], "l") + G.side_names(["foot", "ball"], "r"))
     z_ank = rig.data.bones["foot_l"].head_local[2]
     sole = cfg["sole_m"]
-    vm = (Z <= zw) & (Z >= sole + 0.015) & ~((footw >= 0.5) & (Z < z_ank - 0.02)) & ~is_arm & ~hand
+    vm = (Z <= zw + 0.02) & (Z >= sole + 0.015) & ~((footw >= 0.5) & (Z < z_ank - 0.02)) & ~is_arm & ~hand
     tcalf = np.where(X > 0, G.limb_param(rig, "calf_l", V)[0], G.limb_param(rig, "calf_r", V)[0])
-    off = 0.0055 + 0.006 * M.smoothstep(0.15, 0.6, tcalf) * legs
+    off = 0.0055 + 0.006 * M.smoothstep(0.15, 0.6, tcalf) * legs \
+        + o["pants_waist_ease"] * M.smoothstep(z_tuck - 0.03, z_tuck + 0.01, Z)
 
     def straighten(P, src_):
         # trousers hang straight below the knee: push out to a minimum radius about the shin line
@@ -136,8 +165,15 @@ def build(body, rig, cfg, collider_body):
         return out_
 
     hem_cuts = tuple(_hem_cut(rig, s, cfg) for s in "lr")
+
+    def waist_cut(P):
+        # a clean waistline (front 4.5 cm, back 6 cm above the pelvis joint, blended round the sides)
+        ff = 1 - M.smoothstep(-0.03, 0.03, P[:, 1] - G.spine_y(rig, P[:, 2]))
+        return zp + 0.06 - 0.015 * ff - P[:, 2]
+
     pants, src, fm = G.shell(body, vm, "pants", off, collider_body, relax_iters=14, relax_factor=0.5,
-                             smooth_offset=5, lip=0.0045, extra_push=straighten, implicit=hem_cuts, edge_smooth=0)
+                             smooth_offset=5, lip=0.0045, extra_push=straighten, implicit=hem_cuts + (waist_cut,),
+                             edge_smooth=0)
     _crease_and_break(pants, rig, cfg)
     _tags(pants, PANTS)
     hide |= G.hidden_face_mask(body, fm, garment=pants)
@@ -161,81 +197,31 @@ def build(body, rig, cfg, collider_body):
         fwd /= np.linalg.norm(fwd)
         info["loafer"]["frames"][s] = (ank, fwd)
 
-    # ------------------------------------------------------------------ coat: torso + sleeves
-    z_cut = f["z_cut"]
-    sleeve_end = o["sleeve_end_t"]
-    region = (Z >= z_cut - 0.04) & (Z < neck_cut + 0.012) & ~hand & ~(is_arm & (arm_t > sleeve_end + 0.08))
-    t_arm = np.where(is_arm, arm_t, 0.0)
-    zb = f["zb"]
-    off = np.where(is_arm, 0.011 + 0.006 * M.smoothstep(0.3, 1.0, t_arm),
-                   o["coat_offset"] * (1 - 0.35 * np.exp(-((Z - zb) / 0.06) ** 2)))
-    off = off + 0.004 * M.smoothstep(zc - 0.06, zc + 0.03, Z) * (~is_arm)       # light shoulder structure
-
-    def hip(P):
-        return P[:, 2] - z_cut
-
-    def v_open(P):
-        return np.maximum.reduce([np.abs(P[:, 0]) - vline(P[:, 2], f, o), f["zvb"] + 0.012 - P[:, 2],
-                                  P[:, 1] - G.spine_y(rig, P[:, 2]) + 0.03])
-
-    cuts = (hip, v_open, _limb_cut(rig, "lowerarm_l", sleeve_end), _limb_cut(rig, "lowerarm_r", sleeve_end))
-    coat, src, fm = G.shell(body, region, "coat", off, collider_body, relax_iters=12, relax_factor=0.5,
-                            smooth_offset=6, lip=0.0, soft=3, implicit=cuts, edge_smooth=0)
-    coat_cover = fm & M.face_mask_from_verts(body, ~(is_arm & (arm_t > sleeve_end - 0.02)), "all")
-    _drape_torso(coat, body, rig, f, cfg, collider_body)
-    for s in "lr":
-        _round_sleeve(coat, rig, s, o)
-    Wcs = M.weights(coat)                 # torso shell: no thigh influence either
-    for s_ in "lr":
-        for nm in ("thigh_" + s_, "thigh_twist_01_" + s_, "thigh_half_" + s_):
-            if nm in Wcs:
-                Wcs["pelvis"] = Wcs.get("pelvis", 0) + Wcs.pop(nm)
-    Wcs = M.smooth_weights(Wcs, M.adjacency(coat), 3, 0.5)
-    M.set_weights(coat, M.normalize_limit(Wcs, 8))
-    Pc = M.co(coat)
-    src_c = G.nearest_src(body, Pc)
-    part = np.where(is_arm[src_c] & (arm_t[src_c] > sleeve_end - 0.07), COAT_CUFF, COAT_MAIN)
-    G.set_part_attr(coat, "part", part.astype(np.int32))
-    # the shell's bottom loop around the hips becomes the skirt's top row
-    loops = M.boundary_loops(coat)
-    best = None
-    for lp in loops:
-        q = Pc[lp]
-        if np.abs(q[:, 0]).max() < 0.35 and np.abs(q[:, 0].mean()) < 0.05 and len(lp) > 20 \
-                and np.ptp(q[:, 2]) < 0.02:
-            if best is None or q[:, 2].mean() < Pc[best][:, 2].mean():
-                best = lp
-    if best is None:
-        raise RuntimeError("no hip loop on the coat shell")
-    skirt, skirt_info = _skirt(coat, best, rig, cfg, [pants, out["loafers"]])
-    lapels = _lapels(coat, rig, f, cfg)
-    collar_ob = _collar(body, rig, cfg, coat, f)
-    belt = _belt(coat, rig, cfg, skirt)
-    buttons = _buttons(coat, rig, f, cfg)
-    straps = [_cuff_strap(coat, rig, s, o) for s in "lr"]
-    for ob in [lapels, collar_ob, buttons] + straps:
-        _weights_from(ob, coat)
-    tmp = M.join([M.duplicate(coat, "tmp_c"), M.duplicate(skirt, "tmp_s")], "tmp_cs")
-    _weights_from(belt, tmp)
-    bpy.data.objects.remove(tmp)
-    loop_pos = M.co(coat)[best]
-    hipm = np.zeros(len(M.co(coat)), bool)
-    hipm[best] = True
-    n0 = len(coat.data.vertices)
-    M.add_boundary_lip(coat, 0.0045, vmask=~hipm)
-    lipf = np.zeros(len(coat.data.vertices), np.float32)
-    lipf[n0:] = 1
-    G.set_float_attr(coat, "lip", lipf)
-    coat = M.join([coat, skirt, lapels, collar_ob, belt, buttons] + straps, "coat")
-    _weld_points(coat, loop_pos)
-    out["coat"] = coat
-    hide |= G.hidden_face_mask(body, coat_cover, garment=coat, margin_m=0.015)
-    hide &= ~keep
     out["_info"] = info
-    return out, hide, skirt_info
+    return out, hide, None
 
 
 # ----------------------------------------------------------------------------- helpers
+
+def _settle_shirt(shirt, rig, collider, zp, o):
+    """Shirt over the torso: Laplacian passes even out small bumps the shell copied from the body (the
+    shirt spans them), then a minimum gap off the body; below the trousers' waistband (front zp + 4.5
+    cm, back zp + 6 cm) it is tucked in, so it is pulled to a thin layer that the waistband covers."""
+    P = M.co(shirt)
+    adj = M.adjacency(shirt)
+    Wc = M.weights(shirt)
+    arm = G.wsum(Wc, G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], "l")
+                 + G.side_names(["upperarm", "upperarm_twist_01", "lowerarm", "lowerarm_twist_01", "hand"], "r"))
+    fixed = M.boundary_vmask(shirt) | (arm > 0.35)
+    P = M.smooth(P, adj, o["shirt_smooth_iters"], 0.5, fixed=fixed)
+    P, _ = collider.push_out(P, o["shirt_offset"])
+    d, loc, dirv = collider.signed_distance(P)
+    ff = 1 - M.smoothstep(-0.03, 0.03, P[:, 1] - G.spine_y(rig, P[:, 2]))     # 1 at the front (as the waist cut)
+    zw = zp + 0.06 - 0.015 * ff
+    tucked = 1 - M.smoothstep(zw - 0.004, zw + 0.022, P[:, 2])
+    gap = d + (np.minimum(d, o["shirt_tucked_gap"]) - d) * tucked
+    M.set_co(shirt, loc + dirv * gap[:, None])
+
 
 def _limb_cut(rig, bone, t_end, radius=0.12, keep_after=False):
     """Implicit cut across a limb: removes the part beyond fraction t_end of `bone` (or before it with
@@ -860,7 +846,7 @@ def _cuff_strap(coat, rig, s, o):
 
 def tie(rig, cfg, shirt, f):
     """Four-in-hand knot under the collar and a blade that hangs from it (over the bust it bridges
-    instead of following the body), tapering to the wide end with a pointed tip."""
+    instead of following the body), tapering to the wide end with a pointed tip at the waistband."""
     o = cfg["outfit"]
     zn = f["zn"]
     col = M.Collider([shirt])
@@ -892,15 +878,15 @@ def tie(rig, cfg, shirt, f):
     G.set_part_attr(knot, "part", TIE_KNOT)
     # blade
     z_top = zs_k[-1] + 0.006
-    z_tip = f["zvb"] + 0.03
+    z_tip = f["zp"] + o["tie_tip_above_pelvis"]
     n = 30
     zs = np.linspace(z_top, z_tip, n)
     yb = np.array([front_y(z) for z in zs]) - 0.0035
     hang = yb.copy()
     for i in range(1, n):                     # hangs from the highest forward point (limited slope)
         hang[i] = min(yb[i], hang[i - 1] + 0.12 * (zs[i - 1] - zs[i]))
-    tuck = M.smoothstep(f["zvb"] + 0.05, f["zvb"] + 0.005, zs)     # tucked under the closed coat front
-    hang = hang + (yb - hang) * tuck
+    settle = M.smoothstep(z_tip + 0.09, z_tip + 0.01, zs)        # the wide end settles onto the shirt
+    hang = hang + (yb - hang) * settle * o["tie_settle"]
     cols = np.linspace(-1, 1, 7)
     P = np.zeros((n, len(cols), 3))
     for i, z in enumerate(zs):
@@ -1170,6 +1156,21 @@ def _loafer_sole(Pr, fs, a, cen, ank, fwd, outw, z_bot, f_heel, s, o):
     part[:2 * nring] = LOAFER_WELT
     G.set_part_attr(ob, "part", part)
     return ob
+
+
+def coat_chains_from_rest(rest):
+    """The coat's tail chains as coat_rig expects them, from the shipped rest pose alone. The coat is no
+    longer built (2026-11-09 canon), but its chains stay in the rig, unweighted, so the exported
+    skeleton keeps every bone in the same place."""
+    chains = {}
+    for key, _, side in PANELS:
+        names = ["coat_%s_%02d" % (key, k + 1) for k in range(3)]
+        pts = R.rest_points(rest, names)
+        if pts is None:
+            raise RuntimeError("rest_chains has no %s chain; the coat chains can only be kept from rest" % key)
+        chains[key] = {"names": names, "points": pts, "side": side}
+    yc = float(np.mean([chains[k]["points"][0][1] for k in chains]))
+    return {"chains": chains, "yc": yc}
 
 
 def coat_rig(rig, skirt_info, rest=None):

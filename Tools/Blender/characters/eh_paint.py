@@ -356,18 +356,26 @@ def hair(rs, cfg, ctx, hair_ob):
     ed = rs.vattr([G.get_attr(hair_ob, "edge_d")])[m]
     rag = T.vnoise2(np.stack([u[m] * 420, v[m] * 30], 1), 1.0, 77)
     alpha[m] = M.smoothstep(0.002, 0.006, ed + 0.003 * rag)
-    # braid strip: strands along v, lobe shading periodic in v
+    # braid strip: strands along v, lobe shading periodic in v; with no braid (Ashka's ponytail core)
+    # the strip is loose hair: straight strands along v, darker on the inner face
     m = in_rect(H.BRAID)
     uu = (u[m] - H.BRAID[0]) / (H.BRAID[2] - H.BRAID[0])
     per = ctx["braid_periods"]
-    depth = np.sin(4 * math.pi * v[m] * per)
     side = 0.5 + 0.5 * np.cos((uu - 0.25) * 2 * math.pi)          # 1 on the outer face
-    s = streaks(uu, v[m] * per * 0.5, 60.0, 21)
-    lobe = M.smoothstep(-0.9, 0.7, depth)
-    base = T.mix(pal["hair_dark"], pal["hair"], 0.45 + 0.35 * s + 0.2 * lobe)
-    col[m] = T.mix(base, pal["hair_light"], M.smoothstep(0.2, 0.9, s) * lobe * side * 0.55)
-    ao[m] = (0.45 + 0.55 * lobe) * (0.7 + 0.3 * side)
-    h[m] = s * 0.6 + lobe * 0.8
+    if per > 0:
+        depth = np.sin(4 * math.pi * v[m] * per)
+        s = streaks(uu, v[m] * per * 0.5, 60.0, 21)
+        lobe = M.smoothstep(-0.9, 0.7, depth)
+        base = T.mix(pal["hair_dark"], pal["hair"], 0.45 + 0.35 * s + 0.2 * lobe)
+        col[m] = T.mix(base, pal["hair_light"], M.smoothstep(0.2, 0.9, s) * lobe * side * 0.55)
+        ao[m] = (0.45 + 0.55 * lobe) * (0.7 + 0.3 * side)
+        h[m] = s * 0.6 + lobe * 0.8
+    else:
+        s = streaks(uu, v[m] * 1.5, 90.0, 21)
+        base = T.mix(pal["hair_dark"], pal["hair"], 0.4 + 0.45 * s)
+        col[m] = T.mix(base, pal["hair_light"], M.smoothstep(0.3, 0.9, s) * side * 0.4)
+        ao[m] = 0.55 + 0.45 * side
+        h[m] = s
     # loose strands (bangs, face strands, tassels)
     m = in_rect(H.STRAND)
     uu = (u[m] - H.STRAND[0]) / (H.STRAND[2] - H.STRAND[0])

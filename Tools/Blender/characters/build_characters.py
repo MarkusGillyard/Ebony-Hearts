@@ -121,21 +121,21 @@ def build(cid):
         ctx["ashka"] = garments.pop("_info")
         ctx["ashka_pal"] = cfg["palette"]
         ctx["ashka_cfg"] = cfg
-        hair, hair_info = HS.ashka(body, rig, parts, [garments["coat"], garments["shirt"]], cfg)
-        zc = rig.data.bones["clavicle_l"].head_local[2]
-        Vb = M.co(body)
-        sel = (np.abs(Vb[:, 0]) < 0.01) & (np.abs(Vb[:, 2] - (zc + cfg["outfit"]["tattoo_dz"])) < 0.01)
-        ty = Vb[sel, 1].min() if sel.any() else -0.1
-        ctx["tattoo_center"] = np.array([0.0, ty, zc + cfg["outfit"]["tattoo_dz"]])
+        hair, hair_info = HS.ashka(body, rig, parts, [garments["shirt"]], cfg)
+        if cfg.get("tattoo"):
+            zc = rig.data.bones["clavicle_l"].head_local[2]
+            Vb = M.co(body)
+            sel = (np.abs(Vb[:, 0]) < 0.01) & (np.abs(Vb[:, 2] - (zc + cfg["outfit"]["tattoo_dz"])) < 0.01)
+            ty = Vb[sel, 1].min() if sel.any() else -0.1
+            ctx["tattoo_center"] = np.array([0.0, ty, zc + cfg["outfit"]["tattoo_dz"]])
         ctx["z_button"] = rig.data.bones["pelvis"].head_local[2] + cfg["outfit"]["button_above_pelvis"]
         ctx["ankles"] = {s: np.array(rig.data.bones["foot_" + s].head_local) for s in "lr"}
         ctx["sole"] = cfg["sole_m"]
         ctx["loafer_dark"] = cfg["palette"]["loafer_dark"]
-        A.coat_rig(rig, skirt_info, cfg.get("rest_chains"))
-        coat = garments["coat"]
-        coat.name = coat.data.name = name + "_Coat"
+        # no coat since the 2026-11-09 canon: its tail chains are kept, unweighted, from the shipped rest pose
+        A.coat_rig(rig, skirt_info or A.coat_chains_from_rest(cfg.get("rest_chains")), cfg.get("rest_chains"))
         clothes = M.join([garments["shirt"], garments["tie"], garments["pants"], garments["loafers"]], name + "_Clothes")
-        mats = {"Skin": [body], "Hair": [hair], "Coat": [coat], "Eyes": [parts["eyes"]], "Clothes": [clothes]}
+        mats = {"Skin": [body], "Hair": [hair], "Eyes": [parts["eyes"]], "Clothes": [clothes]}
     report["hair"] = hair_info
     M.delete_faces(body, hide)
     R.twist_constraints(rig)
@@ -204,7 +204,7 @@ def build(cid):
     M.delete_verts(capo, G.get_attr(hair, "part").astype(int) != H.P_CAP)
     ctx["cap_collider"] = M.Collider([capo])
     bpy.data.objects.remove(capo)
-    ctx["braid_periods"] = max(v.get("periods_in_v", 0) for v in hair_info.values() if isinstance(v, dict))
+    ctx["braid_periods"] = max((v.get("periods_in_v", 0) for v in hair_info.values() if isinstance(v, dict)), default=0)
     ctx["brow_png"] = T.load_image(_mh_png("eyebrows", cfg["eyebrows"]))
     ctx["lash_png"] = T.load_image(_mh_png("eyelashes", cfg["eyelashes"]))
 
@@ -217,9 +217,10 @@ def build(cid):
         jobs = {"Skin": ("skin", None), "Hair": ("hair", None), "Eyes": ("eyes", None),
                 "Outfit": ("outfit", outfit_spec), "Gloves": ("accessory", acc_spec)}
     else:
-        outfit_spec, acc_spec = SP.ashka(cfg)
+        _, clothes_spec = SP.ashka(cfg)
+        # the whole outfit (shirt, tie, trousers, loafers) is one material at the outfit size
         jobs = {"Skin": ("skin", None), "Hair": ("hair", None), "Eyes": ("eyes", None),
-                "Coat": ("outfit", outfit_spec), "Clothes": ("accessory", acc_spec)}
+                "Clothes": ("outfit", clothes_spec)}
     report["materials"] = {}
     for mat_key, (kind, spec) in jobs.items():
         res = sizes[kind]

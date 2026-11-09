@@ -337,7 +337,7 @@ def _shirt_buttons(rs, part, col, dn, rough, metal, ctx):
     f = ctx["ashka"]["landmarks"]
     P = rs.P
     acc = np.zeros(rs.K, np.float32)
-    for z in np.arange(f["zvb"], f["zn"], 0.075):
+    for z in np.arange(f["zp"] + 0.07, f["zn"], 0.075):         # waistband to collar
         dd = np.hypot(P[:, 0], P[:, 2] - z)
         acc = np.maximum(acc, 1 - M.smoothstep(0.0045, 0.0055, dd))
     acc *= m & (P[:, 1] < -0.02)
