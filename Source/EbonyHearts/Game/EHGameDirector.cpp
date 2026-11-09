@@ -10,6 +10,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Misc/ScopeExit.h"
 #include "GameFramework/GameUserSettings.h"
 #include "GameFramework/PlayerController.h"
 #include "GenericPlatform/GenericApplication.h"
@@ -924,6 +925,14 @@ void AEHGameDirector::HandleConnections()
 
 void AEHGameDirector::RefreshDisconnectNotice()
 {
+	const bool bHadNotice = !DisconnectNotice.IsEmpty();
+	ON_SCOPE_EXIT
+	{
+		if (!bHadNotice && !DisconnectNotice.IsEmpty())
+		{
+			Audio.Play(TEXT("UiWarn"), EEHSoundCat::Ui);   // a controller was lost
+		}
+	};
 	DisconnectNotice.Reset();
 	for (int32 i = 0; i < 2; ++i)
 	{

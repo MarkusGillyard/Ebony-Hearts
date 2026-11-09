@@ -76,17 +76,17 @@ FPaintGeometry FEHPainter::Paint(FVector2f Pos, FVector2f Size) const
 
 void FEHPainter::Fill(const FLinearColor& Color)
 {
-	FSlateDrawElement::MakeBox(Out, Layer, Geo.ToPaintGeometry(), &White(), ESlateDrawEffect::None, Color);
+	FSlateDrawElement::MakeBox(Out, Layer, Geo.ToPaintGeometry(), &White(), ESlateDrawEffect::None, Faded(Color));
 }
 
 void FEHPainter::Rect(FVector2f Pos, FVector2f Size, const FLinearColor& Color)
 {
-	FSlateDrawElement::MakeBox(Out, Layer, Paint(Pos, Size), &White(), ESlateDrawEffect::None, Color);
+	FSlateDrawElement::MakeBox(Out, Layer, Paint(Pos, Size), &White(), ESlateDrawEffect::None, Faded(Color));
 }
 
 void FEHPainter::Round(FVector2f Pos, FVector2f Size, const FLinearColor& Color, float Radius)
 {
-	FSlateDrawElement::MakeBox(Out, Layer, Paint(Pos, Size), &RoundBrush(), ESlateDrawEffect::None, Color);
+	FSlateDrawElement::MakeBox(Out, Layer, Paint(Pos, Size), &RoundBrush(), ESlateDrawEffect::None, Faded(Color));
 }
 
 void FEHPainter::Frame(FVector2f Pos, FVector2f Size, const FLinearColor& Color, float Thickness)
@@ -115,12 +115,12 @@ void FEHPainter::Line(const TArray<FVector2f>& Points, const FLinearColor& Color
 	{
 		LocalPts.Add(Origin + P * Scale);
 	}
-	FSlateDrawElement::MakeLines(Out, Layer, Geo.ToPaintGeometry(), MoveTemp(LocalPts), ESlateDrawEffect::None, Color, true, Thickness * Scale);
+	FSlateDrawElement::MakeLines(Out, Layer, Geo.ToPaintGeometry(), MoveTemp(LocalPts), ESlateDrawEffect::None, Faded(Color), true, Thickness * Scale);
 }
 
 void FEHPainter::Image(const FSlateBrush& Brush, FVector2f Pos, FVector2f Size, const FLinearColor& Tint)
 {
-	FSlateDrawElement::MakeBox(Out, Layer, Paint(Pos, Size), &Brush, ESlateDrawEffect::None, Tint);
+	FSlateDrawElement::MakeBox(Out, Layer, Paint(Pos, Size), &Brush, ESlateDrawEffect::None, Faded(Tint));
 }
 
 FVector2f FEHPainter::Measure(const FString& Str, const FSlateFontInfo& Font) const
@@ -135,10 +135,10 @@ FVector2f FEHPainter::Text(const FString& Str, FVector2f Pos, const FSlateFontIn
 	const FVector2f TopLeft = Pos - FVector2f(Size.X * AlignX, Size.Y * AlignY);
 	if (bShadow)
 	{
-		const FLinearColor Shadow(0.0f, 0.0f, 0.0f, 0.75f * Color.A);
+		const FLinearColor Shadow(0.0f, 0.0f, 0.0f, 0.75f * Color.A * Opacity);
 		FSlateDrawElement::MakeText(Out, Layer, Paint(TopLeft + FVector2f(2.0f, 2.0f), Size), Str, Font, ESlateDrawEffect::None, Shadow);
 	}
-	FSlateDrawElement::MakeText(Out, Layer + 1, Paint(TopLeft, Size), Str, Font, ESlateDrawEffect::None, Color);
+	FSlateDrawElement::MakeText(Out, Layer + 1, Paint(TopLeft, Size), Str, Font, ESlateDrawEffect::None, Faded(Color));
 	return Size;
 }
 

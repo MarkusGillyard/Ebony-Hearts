@@ -76,6 +76,8 @@ struct FEHMenuItem
 	bool bHeader = false;
 	// Optional: true while the value differs from what is saved (shown marked until applied).
 	TFunction<bool()> Pending;
+	// Optional: the sound for confirming this item instead of the usual confirm (one sound per press).
+	FName ConfirmSound;
 };
 
 // One entry of a prompt row: a gameplay action or a menu command, and its label.

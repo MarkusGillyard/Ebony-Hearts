@@ -115,6 +115,7 @@ void AEHGameDirector::BuildMenu()
 	case EEHScreen::DisplayConfirm:
 		MenuTitle = TEXT("Keep these display settings?");
 		Menu.Add(Button(TEXT("Keep"), [this] { bSessionDisplayOverride = false; SaveSettings(); SettingsPage = 2; GoTo(EEHScreen::Settings); }));
+		Menu.Last().ConfirmSound = TEXT("UiApply");
 		Menu.Add(Button(TEXT("Revert"), [this] { Settings = DisplayRevert; ApplySettings(true); SaveSettings(); SettingsPage = 2; GoTo(EEHScreen::Settings); }));
 		DisplayConfirmLeft = 12.0f;
 		break;
@@ -282,6 +283,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			ApplySettings(true);
 			GoTo(EEHScreen::DisplayConfirm);
 		}, TEXT("Reverts automatically unless you confirm.")));
+		Menu.Last().ConfirmSound = TEXT("UiApply");
 		Menu.Last().Value = [this] {
 			int32 N = 0;
 			for (const FEHMenuItem& It : Menu)
@@ -575,6 +577,10 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 					SelectDevice[Slot] = E.Device;
 					Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
 				}
+				else
+				{
+					Audio.Play(TEXT("UiDenied"), EEHSoundCat::Ui);   // both places are taken
+				}
 			}
 			else if (bBack && SelectDevice[0] == EHDeviceNone && SelectDevice[1] == EHDeviceNone)
 			{
@@ -592,7 +598,7 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 			if (!SelectLocked[Slot])
 			{
 				SelectLocked[Slot] = true;
-				Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
+				Audio.Play(TEXT("UiLock"), EEHSoundCat::Ui);
 			}
 			else if (SelectLocked[0] && SelectLocked[1])
 			{
@@ -675,7 +681,7 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 	{
 		return;
 	}
-	Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
+	Audio.Play(TEXT("UiLock"), EEHSoundCat::Ui);
 	if (Mode == EEHMode::Tutorial)
 	{
 		SelectCursor[1] = 1 - SelectCursor[0];
@@ -741,7 +747,7 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 		{
 			break;
 		}
-		Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui, 0.8f);
+		Audio.Play(Menu[MenuIndex].ConfirmSound.IsNone() ? FName(TEXT("UiConfirm")) : Menu[MenuIndex].ConfirmSound, EEHSoundCat::Ui, 0.8f);
 		if (Menu[MenuIndex].Activate)
 		{
 			TFunction<void()> Fn = Menu[MenuIndex].Activate;   // the menu may be rebuilt inside
@@ -855,7 +861,12 @@ void AEHGameDirector::HandleNav()
 {
 	if (Screen == EEHScreen::DisplayConfirm)
 	{
+		const float Before = DisplayConfirmLeft;
 		DisplayConfirmLeft -= GetWorld()->GetDeltaSeconds();
+		if (Before > 3.0f && DisplayConfirmLeft <= 3.0f)
+		{
+			Audio.Play(TEXT("UiWarn"), EEHSoundCat::Ui);
+		}
 		if (DisplayConfirmLeft <= 0.0f)
 		{
 			Menu.Last().Activate();   // revert

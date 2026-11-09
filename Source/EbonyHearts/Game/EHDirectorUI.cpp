@@ -358,6 +358,11 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 			PaintBackdrop(P, Screen == EEHScreen::Title ? 0.15f : 0.35f);
 		}
 	}
+	// Screens fade in over 0.15 s. Visual only: input acts at once, and a press during the fade is never lost.
+	if (Screen != EEHScreen::Match && Screen != EEHScreen::Title && Screen != EEHScreen::Error)
+	{
+		P.Opacity = FMath::Clamp(ScreenAge / 0.15f, 0.0f, 1.0f);
+	}
 	switch (Screen)
 	{
 	case EEHScreen::Title:
@@ -555,10 +560,13 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 	const float HeadH = Heading.IsEmpty() ? 0.0f : 80.0f;
 	const float H = HeadH + (Menu.Num() - Headers) * RowH + Headers * HeaderH + 40.0f;
 	const FVector2f Pos = bCentered ? FVector2f(960 - W * 0.5f, TopY >= 0.0f ? TopY : FMath::Max(80.0f, 540 - H * 0.5f)) : FVector2f(96, 380);
-	P.Round(Pos, FVector2f(W, H), Panel, 8);
-	// Slate may batch rounded and plain boxes of one layer in either order: anything drawn on a panel goes a layer up.
+	// Still Water: a square dark veil between two silver rules, the crescent set into the top one.
+	P.Rect(Pos, FVector2f(W, H), EHStyle::Alpha(EHStyle::Abyss, 0.86f));
 	P.NextLayer();
-	P.Rect(Pos + FVector2f(0, 0), FVector2f(W, 2), Edge);
+	P.Rect(Pos + FVector2f(0, 0), FVector2f(W * 0.5f - 22, 1), EHStyle::Alpha(EHStyle::Silver, 0.55f));
+	P.Rect(Pos + FVector2f(W * 0.5f + 22, 0), FVector2f(W * 0.5f - 22, 1), EHStyle::Alpha(EHStyle::Silver, 0.55f));
+	P.Rect(Pos + FVector2f(0, H - 1), FVector2f(W, 1), EHStyle::Alpha(EHStyle::Silver, 0.55f));
+	EHUIShapes::Crescent(P, Pos + FVector2f(W * 0.5f, -2), 10.0f, EHStyle::Silver, true);
 	if (!Heading.IsEmpty())
 	{
 		P.Text(Heading, Pos + FVector2f(36, 46), Fonts.Sized(Fonts.Display, 30), Bone, 0.0f, 0.5f);
@@ -583,9 +591,15 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 		const bool bSel = i == MenuIndex;
 		if (bSel)
 		{
-			// Focus: a violet band with a solid violet edge (a shape cue at 4.6:1 on the panel) and bold primary text.
-			P.Rect(Row + FVector2f(16, 6), FVector2f(W - 32, RowH - 12), EHStyle::Alpha(EHStyle::Focus, 0.55f));
-			P.Rect(Row + FVector2f(16, 6), FVector2f(6, RowH - 12), EHStyle::FocusText);
+			// Focus: a violet band fading to the right, the crescent marking the row (shape), bold primary text.
+			const int32 Steps = 12;
+			for (int32 k = 0; k < Steps; ++k)
+			{
+				const float T = static_cast<float>(k) / Steps;
+				P.Rect(Row + FVector2f(16 + (W - 32) * k / Steps, 6), FVector2f((W - 32) / Steps + 1.0f, RowH - 12), EHStyle::Alpha(EHStyle::Focus, 0.62f - 0.42f * T));
+			}
+			// Outside the veil, as on the main menu: beside the label a small crescent reads like a tick.
+			EHUIShapes::Crescent(P, Row + FVector2f(-20, RowH * 0.5f - 5), 10.0f, EHStyle::Silver, true);
 		}
 		P.Text(It.Label, Row + FVector2f(40, RowH * 0.5f), Fonts.Sized(bSel ? Fonts.BodyBold : Fonts.BodyMedium, 26), bSel ? Bone : Muted, 0.0f, 0.5f);
 		if (It.PaintValue)
