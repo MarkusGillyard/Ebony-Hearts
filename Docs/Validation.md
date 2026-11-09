@@ -2,13 +2,97 @@
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-c6c0de2/<run>` and
-`evidence/ashka-1109v2/`; the previous candidates' under `evidence/rc-2c993b0/<run>` and `evidence/ashka-1109/`,
+`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-0c8a9f5/<run>` and
+`evidence/blocking-1109/`; the previous candidates' under `evidence/rc-c6c0de2/<run>` and `evidence/ashka-1109v2/`,
+`evidence/rc-2c993b0/<run>` and `evidence/ashka-1109/`,
 `evidence/rc-32831cc/<run>`, `evidence/rc-1b714fd/<run>`,
 `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `c6c0de2` (2026-11-09, Ashka Rook to her character sheet's version 2)
+## Current candidate `0c8a9f5` (2026-11-09, blocking animation refinement)
+
+**Result: PASS on every objective check run; the blocking poses are fixed in game.** The creator reported that both
+fighters' guard and block animations sometimes looked contorted, twisted and "creepy" (brief of 2026-11-09). This
+candidate is `c6c0de2` with the guard, block and crouch clips rebuilt; no combat code or data changed (`git diff
+c6c0de2 0c8a9f5` touches only the animation tools, 16 clips, a review script and documentation). This is the
+implementer's own verification, not an independent review; nobody has played this candidate yet.
+
+### Causes (confirmed by measuring and rendering the shipped clips, then in game)
+
+Every clip was measured from its exported FBX (where the wrists, elbows and head joint are, in character space) and
+rendered on the characters (`evidence/blocking-1109/before-blender`); the game was recorded with the same inputs
+before and after (`Tests/Auto/review_blocking.txt`).
+
+1. **The standing guard's hands were keyed in the wrong place.** The keyed guard (the base of the shipped Guard and
+   BlockHit clips) put the wrists 17-20 cm forward of the root at 1.52 m. In each fighter's leaning stance the head is
+   already there (Wren's head joint 17 cm forward at 1.46 m), so the hands ended on and over the head; the elbow aims
+   pointed outward, so the elbows rose to 1.33-1.40 m and flared 20-30 cm out. The result was "hands on the head,
+   elbows out", a cower rather than a guard. The stance itself (the idle) has a sound guard, so pressing block
+   visibly swapped a good pose for a contorted one, and the 0.10 s blend swung the arms up and out every time.
+2. **Captured motion layered as local rotations.** Guard and BlockHit took an MMA idle and a large Mixamo block
+   reaction and applied each bone's rotation since the clip's first frame onto that guard. On a different arm pose
+   those rotations do not mean the same movement: the block reaction's swing flung an arm behind the head (BlockHit
+   frame 11).
+3. **The crouch family's hands were placed without the head.** The crouch carries the head 43-47 cm forward (it must
+   be low for the crouching hurtbox), but the hands were keyed in plain character space, so they ended 12-24 cm behind
+   and above the head: the forearms crossed in an X over it, in the crouch, the crouching guard and its block
+   reaction. The rear knee aimed out to the side.
+4. **Not the cause:** the skeleton, the import, the retargeting of the captured clips and the runtime blending. Every
+   bone of the clip matched the rendered pose; the game drew exactly what the clips contained.
+
+### What changed
+
+- **The pose solver can place a hand from the head** (`hand_*_head`: an offset from the posed head joint, in character
+  space), so a guard stays in front of the face wherever the stance or the crouch carries the head.
+- **Simple guards, one per fighter** (`WREN_GUARD`, `ASHKA_GUARD` in `Tools/Blender/anim/moves.py`). Wren holds a
+  compact MMA shell: a little lower, chin tucked, gloves at the temples with the forearms upright, elbows down on the
+  ribs. Ashka holds an upright Muay Thai high guard: gloves at the brow, elbows forward over the body. Both are keyed
+  loops with a slow breath; the feet stay where the stance has them, so going into and out of the guard moves the
+  arms and upper body only.
+- **Blocked hits are keyed too:** the guard takes the hit, the hips and chest give a little, the gloves are pushed
+  toward the face, and it settles within 18 frames; blockstun holds the guard after that. The two captured clips
+  are no longer used.
+- **The crouch** keeps its depth (it matches the crouching hurtbox) but holds the hands in front of the face: lower
+  and further out when crouching, up over the face when crouch-blocking, so the two read differently. Elbows aim down
+  and in; the rear knee aims forward instead of out to the side. The crouch-hit reaction, the low attacks and the
+  uppercuts start from the new crouch; Wren's uppercut load is eased (its 21 cm forearm step at frame 5 is gone).
+- **Unchanged:** hit and hurt boxes, frame data, guard timing, the simulation, the clip blend times.
+
+### Results on the candidate
+
+| Check | Result | Notes |
+|---|---|---|
+| Clip audit | **PASS** | 157 clips, none unexplained (`evidence/blocking-1109/anim-audit`); the two guard loops are listed as deliberate holds (a slow breath, like the crouch loops); Wren's uppercut no longer has a pop |
+| Combat core | **PASS** | Built from this source: 53 cases, 1361 checks, 0 failures (`evidence/rc-0c8a9f5/core_tests.txt`); the combat code and data are those of `c6c0de2` |
+| Packaging safety | **PASS** | 10 tests |
+| Packaged battery | **PASS** | `evidence/rc-0c8a9f5/battery/<run>`: 28 runs from an empty game profile, each with exit 0, no `FAIL` or `WARN` line and its completion marker. No missing animations or sounds; `bindings_selftest` 101 and `input_selftest` 44 checks; remap (27), persistence (22), Controls UI (6), video settings keep audio (4); 25 journey checks; all 14 Lesson steps (its blocking steps included); real X11 keyboard events; simulated Xbox and DualShock 4 pads; 12/12 matrix matches (memory 1 503 MiB at the end, peak 1 521); the review scripts and signature |
+| Start-ups | **PASS** | 20 starts, 2.37 s on average to the first automation line; one start took 3.84 s (the others at most 2.4 s) |
+| Frame times | **PASS** | As for `c6c0de2`: every V-Sync run at a median of 16.67 ms, p99 ≤ 16.78 ms, max ≤ 17.23 ms, no frame over 33 ms (fight, menus, Training with and without auras, 1080p and 3440 × 1440, the first match of the new package); uncapped fight median 8.12 ms; GPU 6.8-10.3 ms |
+
+### In game (before and after, same inputs)
+
+`Tests/Auto/review_blocking.txt` (Training, 60 fps, 1920 × 1080): each fighter holds the guard, crouches, crouch-blocks,
+returns to the guard and the stance, walks into a block and jabs into a block, then the partner (set to block
+everything) takes the light string, a Heavy and a low; Wren on the left against Ashka, then Ashka on the right against
+Wren. Recordings `evidence/blocking-1109/footage/before2` (`c6c0de2`) and `.../after` (`0c8a9f5`), ten screenshot
+pairs `evidence/blocking-1109/compare`, and a phone copy with the two stacked
+(`evidence/blocking-1109/footage/phone/blocking_before_after.mp4`, 960 × 800, H.264 Main, index first).
+
+- **Before:** Wren's standing guard has her hands on top of her head and elbows out; both crouching guards kneel with
+  the forearms crossed above the head; Ashka's guard has her hands on her head.
+- **After:** both standing guards hold the gloves in front of the face with the forearms upright and the elbows down;
+  both crouching guards are compact with the forearms over the face; the crouch without block holds the fists lower and
+  forward. Stepping through the transitions at 20 frames a second (stance to guard, guard to stance, stance to crouch,
+  crouch to crouching guard, crouching guard to guard), the arms move in front of the body in about 0.1 s with no
+  shoulder twist or limb snapping; the feet stay planted.
+
+### Not run on this candidate
+
+The one-hour soak (16 animation assets changed and no code; `c6c0de2`'s soak covers the rest of this build), the CPU
+probe (no combat change) and the render-cost comparison. No physical controller and no human player have used this
+candidate yet.
+
+## Candidate `c6c0de2` (2026-11-09, Ashka Rook to her character sheet's version 2)
 
 **Result: PASS on every objective check run.** The creator updated Ashka's appearance again the same day; version 2 of
 her sheet is the canon ("I updated Ashka's appearance again"). She now wears a Gothic-Victorian ensemble: a jet-black

@@ -1,8 +1,8 @@
 # Status and handoff
 
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
-refined to her new character sheet and to its version 2: candidate `c6c0de2` built and checked by the implementer;
-ready for independent review and the creator's playtest; nothing merged).
+refined to her new character sheet and to its version 2, then the blocking animations: candidate `0c8a9f5` built and
+checked by the implementer; ready for independent review and the creator's playtest; nothing merged).
 
 ## Where things stand
 
@@ -11,11 +11,13 @@ ready for independent review and the creator's playtest; nothing merged).
   requests (crouching, Wren's takedown, Ashka's clinch trip, throws that work inside combos without grappling, higher
   and more useful jumps, uppercuts, an audit of every animation and move relationship, Wren's feet and materials,
   Ashka's overhaul, and the controls for all of it), the 2026-11-09 fighting-game control layout and Ashka's
-  refinement to her character sheet of 2026-11-09 and its version 2 (the same day).
-- **Candidate:** `EbonyHearts-Slice-c6c0de2.tar.gz` (Shipping, Linux), built from commit `c6c0de2`; SHA-256
-  `65c8d2032985b0f6459812a8e6e7e824d712271cfc548f808c62d2c394eba2cf`. It is `32831cc` (the combat pass `5d5c316`, which
-  you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2. Local review
-  build in the delivery workspace's `release/` folder; not published.
+  refinement to her character sheet of 2026-11-09 and its version 2 (the same day), then the blocking-animation
+  refinement you asked for the same day.
+- **Candidate:** `EbonyHearts-Slice-0c8a9f5.tar.gz` (Shipping, Linux), built from commit `0c8a9f5`; SHA-256
+  `bf3526669db38a20cbade01fe81e54a001f349b0d14050a01d68a89ef96fa9f0`. It is `32831cc` (the combat pass `5d5c316`, which
+  you played on 2026-11-09, plus the new default controls) with Ashka refined to her sheet's version 2 and the
+  guard, block and crouch animations rebuilt. Local review build in the delivery workspace's `release/` folder; not
+  published.
 - **Pull request #1** (`release/first-slice` → `main`) now carries this work. Its 2026-11-08 technical audit
   ([Review](Review.md), previous round, section 6) applies to its earlier head `ea3ddc6`, not to this work. Nothing
   has been merged, tagged or released; merging needs the creator's explicit OK.
@@ -63,6 +65,14 @@ ready for independent review and the creator's playtest; nothing merged).
    style "Muay Thai · Lamplighter Flame". Story details from the sheet are kept in a private canon file in the
    workspace (`notes/canon/ashka-rook.md`), as you chose; the repository carries her look, style, title and her
    friendship with Wren.
+10. **Blocking animations (2026-11-09, your brief).** The contorted guards are gone. The cause was the poses
+    themselves: the standing guard put the hands on top of the head with the elbows flared out, the crouching guards
+    crossed the forearms above the head, and the blocked-hit reaction layered a captured recoil that could fling an arm
+    behind the head. Now each fighter has one simple guard, kept in front of the face: Wren a compact MMA shell (gloves
+    at the temples, elbows on the ribs), Ashka an upright Muay Thai high guard (gloves at the brow, elbows forward). A
+    blocked hit pushes the guard back a little and it settles. Crouching keeps its depth (it matches what can be hit)
+    with the hands in front of the face, lower when not blocking and up over the face when blocking. No combat rule,
+    timing or hitbox changed.
 
 ## How to test the candidate
 
@@ -98,6 +108,9 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
 7. **Ashka's new moves.** Away + Light (front kick) and away + Heavy (spinning elbow); Light, Light, away + Heavy and
    front kick into Special. Do they feel like her Muay Thai, and are the inputs comfortable? Holding away while you
    press Light no longer jabs for her.
+8. **Blocking.** Hold Block, crouch-block, let the CPU attack you, and block from both sides of the screen. Do both
+   guards look like trained fighters defending (no twisted arms or shoulders)? Is blocking as quick to come up as
+   before? Do the standing and crouching guards read clearly apart?
 
 ## Implemented, tested, observed and not verified
 
@@ -122,7 +135,9 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
   native-resolution capture of `c6c0de2` had a single 46.9 ms frame (a processor-side stall); run again, none.
 - **For you to know:** with the CPU playing both, Ashka beats Wren 60 of 96 times (63 before her new moves); at Hard
   against Hard 22 of 24. Balance between the fighters was not part of this work. The first match after installing or
-  updating a build compiles shaders on first use (small hitches, none over 33 ms here). Ashka's new outfit costs
+  updating a build compiles shaders on first use (small hitches, none over 33 ms here).
+- **Blocking (`0c8a9f5`):** checked in game with recordings and frame-by-frame stills, before and after, both
+  fighters, both sides; not yet seen by you or played with a controller. Ashka's new outfit costs
   about 0.3-0.9 ms of GPU time a frame (the coat is a fifth material; she has 66 150 triangles, 47 926 before); the
   game still holds 60 fps with room to spare on this machine.
 

@@ -8,17 +8,18 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**Combat, animation and character pass (2026-11-08), the fighting-game control layout and Ashka refined to her
-character sheet (version 2 of 2026-11-09): candidate `c6c0de2` ready for independent review and the creator's
-playtest. Not merged.**
+**Combat, animation and character pass (2026-11-08), the fighting-game control layout, Ashka refined to her character
+sheet (version 2 of 2026-11-09) and simple, natural guards for both fighters: candidate `0c8a9f5` ready for independent
+review and the creator's playtest. Not merged.**
 - **This round** (made on `dev/combat-pass-1108` from PR #1's earlier head `ea3ddc6`, and added to PR #1 on
   2026-11-09 at the creator's request) adds crouching and hit levels, uppercuts, standalone throws that also finish
   combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit of every clip and every
   move-to-move relationship, Wren's ankle wraps and materials, the controls, Lesson and CPU for all of it, the
   MK-style default controls, and Ashka Rook to her 2026-11-09 character sheet (version 2: a Gothic-Victorian frock
   coat with crimson lining, blouse, brocade waistcoat, crimson cravat, high-waisted trousers and ankle boots; a loose
-  crimson ponytail with a black ribbon; the flame lights her coat's lining; a front kick and a spinning elbow).
-- **Candidate.** `EbonyHearts-Slice-c6c0de2.tar.gz` (Shipping, Linux), built from commit `c6c0de2`. Results on the
+  crimson ponytail with a black ribbon; the flame lights her coat's lining; a front kick and a spinning elbow), and
+  the blocking animations rebuilt (one simple guard per fighter in front of the face, standing and crouching).
+- **Candidate.** `EbonyHearts-Slice-0c8a9f5.tar.gz` (Shipping, Linux), built from commit `0c8a9f5`. Results on the
   test machine are in `Docs/Validation.md` ("Current candidate").
 - **Pull request #1** (`release/first-slice` → `main`) carries this work. Its 2026-11-08 independent technical audit
   applies to its earlier head `ea3ddc6` (`Docs/Review.md`, previous round, section 6).
