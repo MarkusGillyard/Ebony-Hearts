@@ -526,7 +526,8 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 		P.Image(Logo, FVector2f(LogoX, LogoY), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 1));
 	}
 	P.NextLayer();
-	const float X = FMath::Max(150.0f, P.VirtualMin.X + 56.0f);
+	// Leave enough room for the focused row's crescent inside the enlarged visible rect.
+	const float X = FMath::Max(150.0f, P.VirtualMin.X + 80.0f);
 	const float RowH = 62.0f;
 	int32 Headers = 0;
 	for (const FEHMenuItem& It : Menu)
@@ -766,7 +767,8 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 		Instruction = TEXT("CPU level and your side");
 	}
 	P.Text(Instruction, FVector2f(960, HeadingY + 54.0f), Fonts.Sized(Fonts.BodyMedium, St::Type::Body + 2.0f), St::TextSecondary, 0.5f, 0.5f);
-	const float FighterY = FMath::Min(742.0f, P.VirtualMax.Y - 225.0f);
+	// Keep the fighter descriptions above the prompt row when that row is clamped upward by UI scale.
+	const float FighterY = FMath::Min(742.0f, P.VirtualMax.Y - 305.0f);
 	for (int32 c = 0; c < 2; ++c)
 	{
 		const FEHCharacterPresentation& CP = Pres.Get(CharId(c));
