@@ -565,7 +565,8 @@ void AEHGameDirector::BeginSelect(EEHMode InMode)
 	SelectLocked[0] = SelectLocked[1] = false;
 	SelectCursor[0] = 0;
 	SelectCursor[1] = 1;
-	SelectDevice[0] = (InMode == EEHMode::Versus) ? EHDeviceNone : PrimaryDevice;
+	const FEHDevice* Primary = RouterPtr->FindDevice(PrimaryDevice);
+	SelectDevice[0] = (InMode == EEHMode::Versus || Primary == nullptr || !Primary->bConnected) ? EHDeviceNone : PrimaryDevice;
 	SelectDevice[1] = EHDeviceNone;
 	bPlayerOnRight = false;
 	GoTo(EEHScreen::Select);
@@ -643,6 +644,19 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 	}
 
 	// Single-player flows are driven by the device that entered the screen.
+	if (SelectDevice[0] == EHDeviceNone)
+	{
+		if (bOk)
+		{
+			SelectDevice[0] = PrimaryDevice = E.Device;
+			Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
+		}
+		else if (bBack)
+		{
+			GoTo(EEHScreen::Main);
+		}
+		return;
+	}
 	if (E.Device != SelectDevice[0])
 	{
 		return;

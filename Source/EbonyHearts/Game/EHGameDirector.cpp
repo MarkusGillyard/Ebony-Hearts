@@ -878,6 +878,18 @@ void AEHGameDirector::HandleConnections()
 		static const TCHAR* Kinds[] = {TEXT("keyboard"), TEXT("playstation"), TEXT("xbox"), TEXT("generic")};
 		AutoLogLine(FString::Printf(TEXT("device %s key=%d name=%s kind=%s"), bConnected ? TEXT("connected") : TEXT("disconnected"), Device, *Name,
 			Kinds[static_cast<int32>(RouterPtr->KindOf(Device))]));
+		if (!bConnected && Screen == EEHScreen::Select)
+		{
+			for (int32 i = 0; i < 2; ++i)
+			{
+				if (SelectDevice[i] == Device)
+				{
+					SelectDevice[i] = EHDeviceNone;
+					SelectLocked[i] = false;
+					ShowToast(FString::Printf(TEXT("Player %d disconnected. Press Confirm on another device to join."), i + 1));
+				}
+			}
+		}
 		if (!bConnected && Screen == EEHScreen::Match && (SlotDevice[0] == Device || SlotDevice[1] == Device))
 		{
 			RefreshDisconnectNotice();

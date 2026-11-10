@@ -24,8 +24,10 @@ wait 0.4
 screenshot usc_accessibility_140
 goto_main
 wait 0.6
+screenshot usc_main_140
 match wren ashka training 0 left
 wait 2
+screenshot usc_training_hud_140
 press kbA Pause
 wait 0.5
 screenshot usc_training_pause_140

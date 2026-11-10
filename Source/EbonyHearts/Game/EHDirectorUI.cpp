@@ -281,6 +281,17 @@ void AEHGameDirector::PaintPromptRow(FEHPainter& P, FVector2f Pos, const TArray<
 	}
 	const FSlateFontInfo F = Fonts.Sized(Fonts.BodyMedium, EHStyle::Type::Label + 2.0f);
 	const float G = EHStyle::GlyphHeight;
+	float Width = 0.0f;
+	for (const FEHHint& It : Items)
+	{
+		Width += PaintKeyGlyph(P, FVector2f::ZeroVector, PromptKind(Device), PromptKey(It, Device), G, true)
+			+ 10.0f + P.Measure(It.Label, F).X + 32.0f;
+	}
+	// The visible virtual rect shrinks as interface scale grows. Keep edge prompts inside it.
+	Pos.X = FMath::Clamp(Pos.X, P.VirtualMin.X + 24.0f,
+		FMath::Max(P.VirtualMin.X + 24.0f, P.VirtualMax.X - Width - 24.0f));
+	Pos.Y = FMath::Clamp(Pos.Y, P.VirtualMin.Y + G,
+		FMath::Max(P.VirtualMin.Y + G, P.VirtualMax.Y - G));
 	float X = Pos.X;
 	for (const FEHHint& It : Items)
 	{
@@ -511,9 +522,11 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 		P.Image(Logo, FVector2f(96, 56), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 1));
 	}
 	P.NextLayer();
-	const float X = 150.0f;
-	float Y = 392.0f;
+	const float X = FMath::Max(150.0f, P.VirtualMin.X + 56.0f);
 	const float RowH = 62.0f;
+	const int32 Headers = Menu.CountByPredicate([](const FEHMenuItem& It) { return It.bHeader; });
+	const float ListH = (Menu.Num() - Headers) * RowH + Headers * 30.0f;
+	float Y = FMath::Min(392.0f, P.VirtualMax.Y - ListH - 132.0f);
 	for (int32 i = 0; i < Menu.Num(); ++i)
 	{
 		const FEHMenuItem& It = Menu[i];
@@ -805,7 +818,8 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 		{
 			const FEHDevice* D = RouterPtr->FindDevice(SelectDevice[s]);
 			const FString Line = D ? FString::Printf(TEXT("P%d  ·  %s"), s + 1, *D->Name) : FString::Printf(TEXT("P%d  ·  press Confirm to join"), s + 1);
-			P.Text(Line, FVector2f(s == 0 ? 120.0f : 1800.0f, 690), Fonts.Sized(Fonts.BodyBold, St::Type::Label + 2.0f), s == 0 ? St::P1 : St::P2, s == 0 ? 0.0f : 1.0f, 0.5f);
+			const float X = s == 0 ? FMath::Max(120.0f, P.VirtualMin.X + 24.0f) : FMath::Min(1800.0f, P.VirtualMax.X - 24.0f);
+			P.Text(Line, FVector2f(X, 690), Fonts.Sized(Fonts.BodyBold, St::Type::Label + 2.0f), s == 0 ? St::P1 : St::P2, s == 0 ? 0.0f : 1.0f, 0.5f);
 		}
 		if (SelectLocked[0] && SelectLocked[1])
 		{
@@ -822,8 +836,11 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 	namespace St = EHStyle;
 	const eh::MatchState& S = Match->State();
 	const float Wide = P.VirtualMax.X - P.VirtualMin.X;
+	const float Edge = FMath::Max(110.0f, P.VirtualMin.X + 24.0f);
+	const float RightEdge = FMath::Min(1810.0f, P.VirtualMax.X - 24.0f);
+	const float HudTop = FMath::Max(46.0f, P.VirtualMin.Y + 20.0f);
 	// A dark band behind the top of the HUD so the lit rose window behind it cannot lower its contrast.
-	P.Gradient(FVector2f(P.VirtualMin.X, P.VirtualMin.Y), FVector2f(Wide, 230.0f - P.VirtualMin.Y), St::Alpha(St::Abyss, 0.80f), St::Alpha(St::Abyss, 0.0f));
+	P.Gradient(FVector2f(P.VirtualMin.X, P.VirtualMin.Y), FVector2f(Wide, HudTop + 184.0f - P.VirtualMin.Y), St::Alpha(St::Abyss, 0.80f), St::Alpha(St::Abyss, 0.0f));
 	const FSlateFontInfo NameFont = Fonts.Sized(Fonts.Display, St::Type::Name);
 	const bool bVersus = Mode == EEHMode::VersusCpu || Mode == EEHMode::Versus;
 	for (int32 i = 0; i < 2; ++i)
@@ -833,10 +850,10 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		const int32 Char = SlotChar[i];
 		const FEHCharacterPresentation& CP = Pres.Get(CharId(Char));
 		const bool bLeft = i == 0;
-		const float BarW = 720.0f;
+		const float BarW = FMath::Min(720.0f, FMath::Max(300.0f, (RightEdge - Edge - 220.0f) * 0.5f));
 		const float BarH = 30.0f;
-		const float X = bLeft ? 110.0f : 1810.0f - BarW;
-		const float Y = 46.0f;
+		const float X = bLeft ? Edge : RightEdge - BarW;
+		const float Y = HudTop;
 		const float Pct = FMath::Clamp(static_cast<float>(F.health) / C.maxHealth, 0.0f, 1.0f);
 		const float Lag = FMath::Clamp(HealthLag[i], Pct, 1.0f);
 		P.Rect(FVector2f(X, Y), FVector2f(BarW, BarH), St::Track);
@@ -868,18 +885,18 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		if (bVersus)
 		{
 			const float PlateX = bLeft ? 812.0f : 1024.0f;
-			P.Round(FVector2f(PlateX, 128), FVector2f(84, 40), St::Plate, 8);
+			P.Round(FVector2f(PlateX, HudTop + 82.0f), FVector2f(84, 40), St::Plate, 8);
 			P.NextLayer();
 			for (int32 r = 0; r < Rules.roundsToWin; ++r)
 			{
-				const FVector2f Ctr(bLeft ? 874.0f - r * 40.0f : 1046.0f + r * 40.0f, 141.0f);
+				const FVector2f Ctr(bLeft ? 874.0f - r * 40.0f : 1046.0f + r * 40.0f, HudTop + 95.0f);
 				EHUIShapes::Crescent(P, Ctr, 13.0f, r < F.roundWins ? St::Silver : St::Alpha(St::Silver, 0.55f), r < F.roundWins);
 			}
 		}
 		// The fighter's gauge, under their own name.
 		const float GW = 420.0f;
-		const float GX = bLeft ? 110.0f : 1810.0f - GW;
-		const float GY = 150.0f;
+		const float GX = bLeft ? Edge : RightEdge - GW;
+		const float GY = HudTop + 104.0f;
 		const float Meter = static_cast<float>(F.meter) / Rules.meterMax;
 		const FLinearColor& GCol = Accent(Char);
 		const bool bFull = (Char == 0 && F.meter >= Rules.meterMax) || (Char == 1 && F.meter >= Rules.meterMax / 2);
@@ -904,27 +921,27 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		const eh::FighterState& Def = S.f[1 - i];
 		if (Def.combo >= 2 && (Def.state == eh::FState::Hitstun || Def.state == eh::FState::Knockdown))
 		{
-			const float CX = bLeft ? 110.0f : 1810.0f;
-			P.Text(FString::Printf(TEXT("%d HITS"), Def.combo), FVector2f(CX, 330), Fonts.Sized(Fonts.Display, 46), St::TextPrimary, bLeft ? 0.0f : 1.0f, 0.5f);
-			P.Text(FString::Printf(TEXT("%d damage"), Def.comboDamage), FVector2f(CX, 378), Fonts.Sized(Fonts.BodyMedium, St::Type::Body), St::TextSecondary, bLeft ? 0.0f : 1.0f, 0.5f);
+			const float CX = bLeft ? Edge : RightEdge;
+			P.Text(FString::Printf(TEXT("%d HITS"), Def.combo), FVector2f(CX, HudTop + 284.0f), Fonts.Sized(Fonts.Display, 46), St::TextPrimary, bLeft ? 0.0f : 1.0f, 0.5f);
+			P.Text(FString::Printf(TEXT("%d damage"), Def.comboDamage), FVector2f(CX, HudTop + 332.0f), Fonts.Sized(Fonts.BodyMedium, St::Type::Body), St::TextSecondary, bLeft ? 0.0f : 1.0f, 0.5f);
 		}
 	}
 	// Timer on a near-opaque plate, so its contrast never depends on the stage.
 	if (bVersus)
 	{
 		const int32 Seconds = FMath::CeilToInt(S.timer / static_cast<float>(eh::kTickHz));
-		P.Round(FVector2f(902, 30), FVector2f(116, 92), St::Plate, 10);
+		P.Round(FVector2f(902, HudTop - 16.0f), FVector2f(116, 92), St::Plate, 10);
 		P.NextLayer();
-		P.Frame(FVector2f(902, 30), FVector2f(116, 92), St::Alpha(St::Silver, 0.6f), 2.0f);
-		P.Text(FString::Printf(TEXT("%d"), Seconds), FVector2f(960, 76), Fonts.Sized(Fonts.Display, 48), Seconds <= 10 ? St::Warning : St::TextPrimary, 0.5f, 0.5f);   // 48: pre-rendered on the title
+		P.Frame(FVector2f(902, HudTop - 16.0f), FVector2f(116, 92), St::Alpha(St::Silver, 0.6f), 2.0f);
+		P.Text(FString::Printf(TEXT("%d"), Seconds), FVector2f(960, HudTop + 30.0f), Fonts.Sized(Fonts.Display, 48), Seconds <= 10 ? St::Warning : St::TextPrimary, 0.5f, 0.5f);   // 48: pre-rendered on the title
 	}
 	for (const FEHCallout& Co : Callouts)
 	{
 		const float Fade = FMath::Clamp((Co.Life - Co.Age) / 0.25f, 0.0f, 1.0f);
 		const float Rise = Co.Age * 18.0f;
 		// In the Lesson its panel (y 204-406) is where callouts would rise, so they sit below it.
-		const float BaseY = Mode == EEHMode::Tutorial ? 460.0f : 270.0f;
-		P.Text(Co.Text, FVector2f(Co.Side == 0 ? 110.0f : 1810.0f, BaseY - Rise), Fonts.Sized(Fonts.Display, 34), A(Co.Color, Fade), Co.Side == 0 ? 0.0f : 1.0f, 0.5f);
+		const float BaseY = Mode == EEHMode::Tutorial ? FMath::Max(460.0f, HudTop + 414.0f) : HudTop + 224.0f;
+		P.Text(Co.Text, FVector2f(Co.Side == 0 ? Edge : RightEdge, BaseY - Rise), Fonts.Sized(Fonts.Display, 34), A(Co.Color, Fade), Co.Side == 0 ? 0.0f : 1.0f, 0.5f);
 	}
 	for (const FEHBanner& B : Banners)
 	{
@@ -1016,7 +1033,7 @@ void AEHGameDirector::PaintTraining(FEHPainter& P)
 		for (int32 i = 0; i < 2; ++i)
 		{
 			const bool bLeft = i == 0;
-			const float X = bLeft ? 120.0f : 1800.0f;
+			const float X = bLeft ? FMath::Max(120.0f, P.VirtualMin.X + 24.0f) : FMath::Min(1800.0f, P.VirtualMax.X - 24.0f);
 			P.Text(i == 0 ? TEXT("INPUT") : TEXT("PARTNER"), FVector2f(X, 430), Fonts.Sized(Fonts.BodyBold, EHStyle::Type::Label), Muted, bLeft ? 0.0f : 1.0f, 0.5f);
 			const TArray<FEHInputLogEntry>& Log = InputLog[i];
 			for (int32 k = 0; k < Log.Num() && k < 14; ++k)
@@ -1039,7 +1056,7 @@ void AEHGameDirector::PaintTraining(FEHPainter& P)
 	{
 		namespace St = EHStyle;
 		// The number a player acts on (frame advantage) large and signed; the move and the states beside it.
-		const FVector2f Box(520, 846);
+		const FVector2f Box(520, FMath::Min(846.0f, P.VirtualMax.Y - 204.0f));
 		P.Round(Box, FVector2f(880, 124), St::Plate, 8);
 		P.NextLayer();
 		P.Frame(Box, FVector2f(880, 124), St::Alpha(St::Silver, 0.35f), 1.0f);
@@ -1076,8 +1093,8 @@ void AEHGameDirector::PaintLesson(FEHPainter& P)
 		return;
 	}
 	const FEHTutorialStep& Step = Lesson[LessonStep];
-	// Below the HUD's name and gauge rows (which end at about y = 172).
-	const FVector2f Pos(460, 204);
+	// Below the HUD's name and gauge rows, including at enlarged interface scale.
+	const FVector2f Pos(460, FMath::Max(204.0f, P.VirtualMin.Y + 198.0f));
 	P.Round(Pos, FVector2f(1000, 202), FLinearColor(0, 0, 0, 0.62f), 8);
 	P.NextLayer();
 	P.Rect(Pos, FVector2f(1000, 3), Violet);
