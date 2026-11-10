@@ -164,8 +164,7 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 
 	void PaintUI(FEHPainter& P);
-	// The full move table needs its authored 1920x1080 width and height to show every row at once.
-	float UIScale() const { return Screen == EEHScreen::MoveList ? FMath::Min(Settings.UIScale, 1.0f) : Settings.UIScale; }
+	float UIScale() const { return Settings.UIScale; }
 	// CPU time spent building the interface's draw list, recorded between perf_begin and perf_end (milliseconds).
 	void RecordUiPaint(float Ms) { if (bRecordFrames) { UiPaintTimes.Add(Ms); } }
 
@@ -206,6 +205,8 @@ private:
 	int32 SelectDevice[2] = {EHDeviceNone, EHDeviceNone};
 	int32 SelectStage = 0;          // versus CPU: 0 pick yours, 1 pick CPU fighter, 2 difficulty/side
 	bool bPlayerOnRight = false;
+	int32 MoveListPage = 0;
+	int32 MoveListPageCount = 1;
 
 	// Match
 	TUniquePtr<eh::Match> Match;

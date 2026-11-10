@@ -582,6 +582,12 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			const int32 Want = FCString::Atoi(*Arg(1, TEXT("0")));
 			AutoLogLine(FString::Printf(TEXT("%s expect_screen %d (is %d)"), static_cast<int32>(Screen) == Want ? TEXT("ok") : TEXT("FAIL"), Want, static_cast<int32>(Screen)));
 		}
+		else if (Cmd == TEXT("expect_move_page"))
+		{
+			const bool bLast = Arg(1, TEXT("first")) == TEXT("last");
+			const bool bOk = Screen == EEHScreen::MoveList && MoveListPageCount >= 2 && MoveListPage == (bLast ? MoveListPageCount - 1 : 0);
+			AutoLogLine(FString::Printf(TEXT("%s expect_move_page %s (is %d/%d)"), bOk ? TEXT("ok") : TEXT("FAIL"), bLast ? TEXT("last") : TEXT("first"), MoveListPage + 1, MoveListPageCount));
+		}
 		else if (Cmd == TEXT("expect_master_volume"))
 		{
 			const int32 Want = FCString::Atoi(*Arg(1, TEXT("80")));

@@ -68,6 +68,11 @@ void AEHGameDirector::GoTo(EEHScreen Next)
 	Screen = Next;
 	ScreenAge = 0.0f;
 	MenuIndex = 0;
+	if (Next == EEHScreen::MoveList)
+	{
+		MoveListPage = 0;
+		MoveListPageCount = 1;
+	}
 	BuildMenu();
 	AutoLogLine(FString::Printf(TEXT("screen %d"), static_cast<int32>(Next)));
 }
@@ -958,10 +963,21 @@ void AEHGameDirector::HandleNav()
 			HandleMatchNav(E);
 			break;
 		case EEHScreen::MoveList:
-			if (E.Nav == EEHNav::Left || E.Nav == EEHNav::Right)
+			if ((E.Nav == EEHNav::Left || E.Nav == EEHNav::Right) && !E.bRepeat)
 			{
 				SelectCursor[0] = 1 - SelectCursor[0];
+				MoveListPage = 0;
 				Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
+			}
+			else if ((E.Nav == EEHNav::Up || E.Nav == EEHNav::Down) && !E.bRepeat)
+			{
+				const int32 NextPage = FMath::Clamp(MoveListPage + (E.Nav == EEHNav::Up ? -1 : 1), 0, MoveListPageCount - 1);
+				if (NextPage != MoveListPage)
+				{
+					MoveListPage = NextPage;
+					AutoLogLine(FString::Printf(TEXT("move_list page=%d/%d fighter=%d"), MoveListPage + 1, MoveListPageCount, SelectCursor[0]));
+					Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
+				}
 			}
 			else if (bBackish || E.Nav == EEHNav::Confirm)
 			{

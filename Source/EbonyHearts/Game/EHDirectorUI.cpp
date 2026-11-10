@@ -1226,51 +1226,52 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	const int32 C = SelectCursor[0];
 	const FEHCharacterPresentation& CP = Pres.Get(CharId(C));
 	const eh::CharacterDef& Def = Chars[C];
-	P.Text(CP.DisplayName.ToString(), FVector2f(960, 70), Fonts.Sized(Fonts.Display, St::Type::Title), St::TextPrimary, 0.5f, 0.5f);
-	P.Text(TEXT("‹  Move List  ›"), FVector2f(960, 118), Fonts.Sized(Fonts.DisplayLight, St::Type::Body), St::TextSecondary, 0.5f, 0.5f);
-	const float Left = 100.0f;
-	const float Right = 1820.0f;
-	P.Round(FVector2f(Left, 160), FVector2f(Right - Left, 822), St::Panel, 8);
+	const float TitleY = FMath::Max(70.0f, P.VirtualMin.Y + 40.0f);
+	const float SubtitleY = TitleY + 48.0f;
+	const float Left = FMath::Max(100.0f, P.VirtualMin.X + 24.0f);
+	const float Right = FMath::Min(1820.0f, P.VirtualMax.X - 24.0f);
+	const float PanelTop = SubtitleY + 42.0f;
+	const float PanelBottom = FMath::Min(982.0f, P.VirtualMax.Y - 80.0f);
+	P.Text(CP.DisplayName.ToString(), FVector2f(960, TitleY), Fonts.Sized(Fonts.Display, St::Type::Title), St::TextPrimary, 0.5f, 0.5f);
+	P.Text(TEXT("‹  Move List  ›"), FVector2f(960, SubtitleY), Fonts.Sized(Fonts.DisplayLight, St::Type::Body), St::TextSecondary, 0.5f, 0.5f);
+	P.Round(FVector2f(Left, PanelTop), FVector2f(Right - Left, PanelBottom - PanelTop), St::Panel, 8);
 	P.NextLayer();
 	const FSlateFontInfo Head = Fonts.Sized(Fonts.BodyBold, St::Type::Label);
 	const FSlateFontInfo RowF = Fonts.Sized(Fonts.Body, St::Type::Body);
+	const FSlateFontInfo NameF = Fonts.Sized(Fonts.BodyBold, St::Type::Body);
 	const FSlateFontInfo NoteF = Fonts.Sized(Fonts.Body, St::Type::Label);
-	const float Cols[] = {140, 440, 712, 812, 936};
+	const bool bNarrow = Right - Left < 1600.0f;
+	const float Cols[] = {Left + 40.0f, Left + (bNarrow ? 240.0f : 340.0f),
+		Left + (bNarrow ? 540.0f : 612.0f), Left + (bNarrow ? 635.0f : 712.0f),
+		Left + (bNarrow ? 725.0f : 836.0f)};
 	const float NoteW = Right - Cols[4] - 24.0f;
-	P.Text(TEXT("Technique"), FVector2f(Cols[0], 196), Head, St::TextSecondary, 0.0f, 0.5f);
-	P.Text(TEXT("Input"), FVector2f(Cols[1], 196), Head, St::TextSecondary, 0.0f, 0.5f);
-	P.Text(TEXT("Startup"), FVector2f(Cols[2], 196), Head, St::TextSecondary, 0.0f, 0.5f);
-	P.Text(TEXT("Damage"), FVector2f(Cols[3], 196), Head, St::TextSecondary, 0.0f, 0.5f);
-	P.Text(TEXT("Notes"), FVector2f(Cols[4], 196), Head, St::TextSecondary, 0.0f, 0.5f);
+	const float HeaderY = PanelTop + 36.0f;
+	P.Text(TEXT("Technique"), FVector2f(Cols[0], HeaderY), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Input"), FVector2f(Cols[1], HeaderY), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Startup"), FVector2f(Cols[2], HeaderY), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Damage"), FVector2f(Cols[3], HeaderY), Head, St::TextSecondary, 0.0f, 0.5f);
+	P.Text(TEXT("Notes"), FVector2f(Cols[4], HeaderY), Head, St::TextSecondary, 0.0f, 0.5f);
 	// Collect the rows first: a note wider than its column wraps onto a second line, and the spacing adapts so every
 	// row fits above the prompt row.
 	struct FRow
 	{
 		const eh::MoveDef* Move = nullptr;
 		FString Id;
+		TArray<FString> Name;
 		TArray<FString> Note;
+		int32 ExtraLines = 0;
 	};
 	TArray<FRow> Rows;
-	int32 ExtraLines = 0;
-	for (const eh::MoveDef& M : Def.moves)
-	{
-		if (M.kind == eh::MoveKind::Throw && !Rules.ThrowsEnabled())
-		{
-			continue;   // the throw stays in the data but is not part of this rule set
-		}
-		FRow R;
-		R.Move = &M;
-		R.Id = UTF8_TO_TCHAR(M.id.c_str());
-		const FText* Note = CP.MoveNotes.Find(R.Id);
+	auto Wrap = [&P](const FString& Text, const FSlateFontInfo& Font, float Width, TArray<FString>& Out) {
 		TArray<FString> Words;
-		(Note ? Note->ToString() : FString()).ParseIntoArray(Words, TEXT(" "));
+		Text.ParseIntoArray(Words, TEXT(" "));
 		FString LineText;
 		for (const FString& Word : Words)
 		{
 			const FString Try = LineText.IsEmpty() ? Word : LineText + TEXT(" ") + Word;
-			if (!LineText.IsEmpty() && P.Measure(Try, NoteF).X > NoteW)
+			if (!LineText.IsEmpty() && P.Measure(Try, Font).X > Width)
 			{
-				R.Note.Add(LineText);
+				Out.Add(LineText);
 				LineText = Word;
 			}
 			else
@@ -1280,20 +1281,58 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 		}
 		if (!LineText.IsEmpty())
 		{
-			R.Note.Add(LineText);
+			Out.Add(LineText);
 		}
-		ExtraLines += FMath::Max(0, R.Note.Num() - 1);
+	};
+	for (const eh::MoveDef& M : Def.moves)
+	{
+		if (M.kind == eh::MoveKind::Throw && !Rules.ThrowsEnabled())
+		{
+			continue;   // the throw stays in the data but is not part of this rule set
+		}
+		FRow R;
+		R.Move = &M;
+		R.Id = UTF8_TO_TCHAR(M.id.c_str());
+		Wrap(UTF8_TO_TCHAR(M.name.c_str()), NameF, Cols[1] - Cols[0] - 12.0f, R.Name);
+		const FText* Note = CP.MoveNotes.Find(R.Id);
+		Wrap(Note ? Note->ToString() : FString(), NoteF, NoteW, R.Note);
+		R.ExtraLines = FMath::Max(0, FMath::Max(R.Name.Num(), R.Note.Num()) - 1);
 		Rows.Add(MoveTemp(R));
 	}
-	const float Top = 222.0f;
-	const float Bottom = 970.0f;
+	const float Top = PanelTop + 62.0f;
+	const float Bottom = PanelBottom - 12.0f;
 	const float ExtraH = 26.0f;
-	const float RowH = FMath::Clamp((Bottom - Top - ExtraLines * ExtraH) / FMath::Max(1, Rows.Num()), 36.0f, 48.0f);
-	float Y = Top + RowH * 0.5f;
-	for (const FRow& R : Rows)
+	const float AvailableH = Bottom - Top;
+	TArray<int32> PageStarts = {0};
+	float UsedH = 0.0f;
+	for (int32 i = 0; i < Rows.Num(); ++i)
 	{
+		const float Need = 36.0f + Rows[i].ExtraLines * ExtraH;
+		if (i > PageStarts.Last() && UsedH + Need > AvailableH)
+		{
+			PageStarts.Add(i);
+			UsedH = 0.0f;
+		}
+		UsedH += Need;
+	}
+	MoveListPageCount = PageStarts.Num();
+	MoveListPage = FMath::Clamp(MoveListPage, 0, MoveListPageCount - 1);
+	P.Text(FString::Printf(TEXT("Page %d / %d"), MoveListPage + 1, MoveListPageCount),
+		FVector2f(Right - 24.0f, SubtitleY), RowF, St::TextSecondary, 1.0f, 0.5f);
+	const int32 First = PageStarts[MoveListPage];
+	const int32 End = MoveListPage + 1 < MoveListPageCount ? PageStarts[MoveListPage + 1] : Rows.Num();
+	int32 PageExtraLines = 0;
+	for (int32 i = First; i < End; ++i)
+	{
+		PageExtraLines += Rows[i].ExtraLines;
+	}
+	const float RowH = FMath::Clamp((AvailableH - PageExtraLines * ExtraH) / FMath::Max(1, End - First), 36.0f, 48.0f);
+	float Y = Top + RowH * 0.5f;
+	for (int32 i = First; i < End; ++i)
+	{
+		const FRow& R = Rows[i];
 		const eh::MoveDef& M = *R.Move;
-		const float Extra = FMath::Max(0, R.Note.Num() - 1) * ExtraH;
+		const float Extra = R.ExtraLines * ExtraH;
 		const float Mid = Y + Extra * 0.5f;
 		// Inputs are drawn with the viewer's own buttons: direction words, then the action's button glyph.
 		const FString DirText = M.air ? TEXT("In a jump: ") : (M.down ? TEXT("Down + ") : (M.dir == eh::DirReq::Forward ? TEXT("Toward + ") : (M.dir == eh::DirReq::Back ? TEXT("Away + ") : TEXT(""))));
@@ -1305,7 +1344,10 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 		if (M.kind == eh::MoveKind::Dodge && M.dir == eh::DirReq::Any) Suffix = TEXT("  away or neutral");
 		const FString Startup = M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().frames.first);
 		const FString Damage = M.kind == eh::MoveKind::Throw ? FString::Printf(TEXT("%d"), Def.throws[static_cast<size_t>(M.throwIndex)].damage) : (M.hits.empty() ? FString(TEXT("-")) : FString::Printf(TEXT("%d"), M.hits.front().damage));
-		P.Text(UTF8_TO_TCHAR(M.name.c_str()), FVector2f(Cols[0], Mid), Fonts.Sized(Fonts.BodyBold, St::Type::Body), St::TextPrimary, 0.0f, 0.5f);
+		for (int32 l = 0; l < R.Name.Num(); ++l)
+		{
+			P.Text(R.Name[l], FVector2f(Cols[0], Mid + (l - (R.Name.Num() - 1) * 0.5f) * ExtraH), NameF, St::TextPrimary, 0.0f, 0.5f);
+		}
 		{
 			float X = Cols[1];
 			if (!DirText.IsEmpty())
@@ -1330,7 +1372,8 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 		}
 		Y += RowH + Extra;
 	}
-	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Left, TEXT("Other fighter")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, EHDeviceNone);
+	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Up, TEXT("Prev page")), FEHHint::Menu(EEHNav::Down, TEXT("Next page")),
+		FEHHint::Menu(EEHNav::Left, TEXT("Other fighter")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, EHDeviceNone);
 }
 
 void AEHGameDirector::PaintCredits(FEHPainter& P)

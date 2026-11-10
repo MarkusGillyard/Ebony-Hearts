@@ -1,5 +1,5 @@
-# Interface scale review (2026-11-09): set Accessibility > Interface scale to 140%, then open the longest menu (the
-# training pause) and check it stays inside the visible area.
+# Interface scale review: set 140%, inspect the full Move List on every page for both fighters, then the training HUD
+# and longest pause menu. The Move List must stay at 140% and make every row reachable with Up/Down.
 wait 5
 press kbA Light
 wait 1
@@ -31,7 +31,30 @@ press kbA Down
 press kbA Down
 press kbA Light
 wait 0.5
-screenshot usc_move_list_full_fit
+expect_move_page first
+screenshot usc_move_list_wren_p1_140
+press kbA Down
+screenshot usc_move_list_wren_p2_140
+press kbA Down
+screenshot usc_move_list_wren_p3_140
+press kbA Down
+screenshot usc_move_list_wren_p4_140
+expect_move_page last
+press kbA Up
+press kbA Up
+press kbA Up
+expect_move_page first
+press kbA Right
+wait 0.5
+expect_move_page first
+screenshot usc_move_list_ashka_p1_140
+press kbA Down
+screenshot usc_move_list_ashka_p2_140
+press kbA Down
+screenshot usc_move_list_ashka_p3_140
+press kbA Down
+screenshot usc_move_list_ashka_p4_140
+expect_move_page last
 press kbA Heavy
 wait 0.5
 press kbA Light
