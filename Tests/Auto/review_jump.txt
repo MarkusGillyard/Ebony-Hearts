@@ -1,7 +1,7 @@
 # Jumping: straight up, forward and back, then jump-in Heavy and jump-in Light from walking range, each fighter
 # against the standing partner in Training. Record with capture.py --start-on <auto_log.txt>:match_start.
 wait 5
-press kbA Light
+goto_main
 wait 1
 training_gauge full
 match wren ashka training 0 left
