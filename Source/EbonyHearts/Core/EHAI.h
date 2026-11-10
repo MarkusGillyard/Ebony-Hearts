@@ -43,7 +43,7 @@ class CpuController
 {
 public:
 	void Setup(int player, CpuLevel level, uint32_t seed);
-	void SetDummy(DummyMode mode) { dummy_ = mode; }
+	void SetDummy(DummyMode mode);
 	DummyMode Dummy() const { return dummy_; }
 	// Call once per tick before Match::Tick with the current (pre-tick) match.
 	InputFrame Decide(const Match& match);
