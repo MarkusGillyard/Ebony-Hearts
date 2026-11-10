@@ -162,8 +162,8 @@ def ashka_clinch_trip(victim, td):
     by pulling it down, then steer the head like a wheel, pushing one side and pulling the other, turning the upper
     body and hips toward the pulling side (her right). That loads the opponent onto the near leg, and as the hips turn
     her lead foot sweeps that ankle low, across her body. The opponent loses the base and lands on the back in front
-    of her; she lets go as they fall and squares up again. No side switch: she turns about 70 degrees on her planted
-    rear foot and back."""
+    of her; she follows the fall through floor contact, then releases and squares up again. No side switch: she
+    turns about 70 degrees on her planted rear foot and back."""
     hold, land = td["holdX"] / 100.0, td["landX"] / 100.0
     t = world_feet(ASHKA)(spin=0.0)
     fl, fr_ = ASHKA["foot_l"], ASHKA["foot_r"]
@@ -186,14 +186,20 @@ def ashka_clinch_trip(victim, td):
                   knee_l=(0.7, -0.4, 0.2), hand_l=(hold - 0.10, 0.12, 1.05), hand_r=(hold - 0.30, -0.24, 0.98), pelvis=(0.0, 0, -0.16))
     through = sweep(spin=-72.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.08), hand_l=(land - 0.40, -0.10, 0.72), hand_r=(land - 0.50, -0.30, 0.64),
                     chest=(-32, 32, -12), fist=0.2)
-    # She lets go as the opponent drops, the lead foot comes back down in front of her, and she turns back square.
-    release = through(spin=-50.0, foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.05), hand_l=(0.45, 0.10, 1.25), hand_r=(0.38, -0.08, 1.20),
+    # Follow the descending shoulders with both hands while the rear foot stays planted. The lead foot finishes its
+    # sweep through the victim's floor contact (damage frame 46), then she releases.
+    follow = through(spin=-72.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.05),
+                     hand_l=(land - 0.30, -0.08, 0.54), hand_r=(land - 0.40, -0.24, 0.48), chest=(-35, 36, -12))
+    contact = follow(foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.0),
+                     hand_l=(land - 0.22, -0.06, 0.38), hand_r=(land - 0.32, -0.20, 0.34), chest=(-38, 39, -12))
+    # Once the victim is down, bring the lead foot back and turn toward her stance.
+    release = contact(spin=-50.0, foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.05), hand_l=(0.45, 0.10, 1.25), hand_r=(0.38, -0.08, 1.20),
                       chest=(-10, 14, 0), pelvis=(0.02, 0, -0.08), fist=0.8, elbow_l=(0.4, 0.1, -0.8), elbow_r=(0.4, -0.1, -0.8))
     set_down = release(foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.0), foot_l_rot=(-50, 0, 0))
     square = set_down(spin=0.0, foot_l_abs=(fl[0], fl[1], 0.0), foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0), chest=ASHKA["chest"], ball_r=ASHKA["ball_r"],
                       ball_l=ASHKA["ball_l"], hand_l=ASHKA["hand_l"], hand_r=ASHKA["hand_r"], elbow_l=ASHKA["elbow_l"], elbow_r=ASHKA["elbow_r"])
     attacker = [(1, t, "smooth"), (6, plum, "snap"), (12, down, "smooth"), (18, steer, "smooth"), (24, sweep, "smooth"), (28, through, "smooth"),
-                (36, release, "smooth"), (42, set_down, "smooth"), (52, square, "smooth"),
+                (36, follow, "smooth"), (46, contact, "smooth"), (53, release, "smooth"), (56, set_down, "smooth"), (60, square, "smooth"),
                 (62, unrel(t(spin=0.0, foot_l_world=None, foot_r_world=None, foot_l_abs=None, foot_r_abs=None, foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0))), "smooth")]
     # The victim turns with the steering about the clinch's centre, its head held down at her chest.
     v = victim(spin=0.0, pivot=(hold / 2.0, 0.0))
