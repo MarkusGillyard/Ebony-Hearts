@@ -16,8 +16,8 @@ in use, and an outcome:
   fail        exit 0 with FAIL/WARN lines or without the quit marker
   nonzero     any other exit status
 
-Before each launch the loop waits for any earlier game process to leave and records an overlap if one remains; after
-each exit it checks for leftover game processes (orphans). --fresh-profile renames the game's saved profile aside
+Before each launch the loop waits for any earlier game process to leave and aborts if one remains; after
+each exit it checks only its own process group for leftover game processes (orphans). --fresh-profile renames the game's saved profile aside
 before every attempt (nothing is deleted), so each launch is a first run. summary.json holds the counts.
 """
 import argparse
@@ -47,13 +47,25 @@ def game_pids():
     return pids
 
 
-def wait_no_game(seconds):
+def game_pids_in_group(pgid):
+    result = []
+    for pid in game_pids():
+        try:
+            if os.getpgid(pid) == pgid:
+                result.append(pid)
+        except OSError:
+            pass
+    return result
+
+
+def wait_no_game(seconds, pgid=None):
+    remaining = game_pids if pgid is None else lambda: game_pids_in_group(pgid)
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
-        if not game_pids():
+        if not remaining():
             return []
         time.sleep(0.2)
-    return game_pids()
+    return remaining()
 
 
 def quiet(cmd):
@@ -125,14 +137,20 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     if os.listdir(a.out):
         sys.exit(f"output folder is not empty: {a.out}")
-    jsonl = open(os.path.join(a.out, "attempts.jsonl"), "a")
+    jsonl = None
     counts = {}
     started = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
     for i in range(1, a.runs + 1):
         aid = f"attempt-{i:04d}"
         ev = os.path.join(a.out, aid)
-        os.makedirs(ev)
         overlap = wait_no_game(15.0)
+        if overlap:
+            if jsonl is not None:
+                jsonl.close()
+            sys.exit(f"another game process is still running; refusing to launch or clean it up: {overlap}")
+        os.makedirs(ev)
+        if jsonl is None:
+            jsonl = open(os.path.join(a.out, "attempts.jsonl"), "a")
         profile_moved = move_profile_aside(f"{os.path.basename(os.path.normpath(a.out))}-{aid}") if a.fresh_profile else None
         args = [launcher, f"-EHAuto={script}", f"-EHEvidence={ev}", *a.game_args]
         rec = {"id": aid, "label": a.label, "start": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds"),
@@ -161,12 +179,13 @@ def main():
         rec["exit"] = rc
         rec["signal"] = -rc if rc < 0 else (rc - 128 if rc > 128 else 0)
         rec["timed_out"] = timed_out
-        orphans = wait_no_game(10.0)
+        orphans = wait_no_game(10.0, pgid=proc.pid)
         rec["orphan_pids"] = orphans
         for pid in orphans:
             try:
-                os.kill(pid, signal.SIGKILL)
-            except ProcessLookupError:
+                if os.getpgid(pid) == proc.pid:
+                    os.kill(pid, signal.SIGKILL)
+            except OSError:
                 pass
         with open(os.path.join(ev, "stdout.log"), errors="replace") as f:
             stdout_text = f.read()
@@ -185,6 +204,8 @@ def main():
         if outcome != "clean" and a.stop_on_fail:
             break
         time.sleep(a.gap)
+    if jsonl is not None:
+        jsonl.close()
     summary = {"label": a.label, "launcher": launcher, "script": script, "game_args": a.game_args, "runs": sum(counts.values()),
                "counts": counts, "started": started, "finished": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")}
     with open(os.path.join(a.out, "summary.json"), "w") as f:
