@@ -182,18 +182,20 @@ def ashka_clinch_trip(victim, td):
                        chest=(-20, 22, -6), hand_l=(hold - 0.06, 0.18, 1.30), hand_r=(hold - 0.20, -0.04, 1.22), pelvis=(0.0, 0, -0.14), ball_r=35))
     # The sweep: turning on, the inside of her lead foot meets the planted ankle low, the hands driving the head down
     # and round the same way.
-    sweep = steer(spin=-60.0, chest=(-28, 28, -10), foot_l_abs=(ankle[0] + 0.02, ankle[1] + 0.07, 0.05), foot_l_rot=(-70, 0, 20),
-                  knee_l=(0.7, -0.4, 0.2), hand_l=(hold - 0.10, 0.12, 1.05), hand_r=(hold - 0.30, -0.24, 0.98), pelvis=(0.0, 0, -0.16))
-    through = sweep(spin=-72.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.08), hand_l=(land - 0.40, -0.10, 0.72), hand_r=(land - 0.50, -0.30, 0.64),
-                    chest=(-32, 32, -12), fist=0.2)
+    sweep = steer(spin=-50.0, chest=(-28, 28, -10), foot_l_abs=(ankle[0] + 0.02, ankle[1] + 0.07, 0.05), foot_l_rot=(-70, 0, 20),
+                  knee_l=(0.7, -0.4, 0.2), hand_l=(hold - 0.10, 0.12, 1.25), hand_r=(hold - 0.20, -0.04, 1.20), pelvis=(0.0, 0, -0.16))
+    through = sweep(spin=-45.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.08), hand_l=(land - 0.40, 0.10, 1.05), hand_r=(land - 0.50, -0.10, 1.00),
+                    chest=(-25, 30, -10), fist=0.2)
     # Follow the descending shoulders with both hands while the rear foot stays planted. The lead foot finishes its
     # sweep through the victim's floor contact (damage frame 46), then she releases.
-    follow = through(spin=-72.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.05),
-                     hand_l=(land - 0.30, -0.08, 0.54), hand_r=(land - 0.40, -0.24, 0.48), chest=(-35, 36, -12))
-    contact = follow(foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.0),
-                     hand_l=(land - 0.22, -0.06, 0.38), hand_r=(land - 0.32, -0.20, 0.34), chest=(-38, 39, -12))
+    # Turn back toward the falling opponent while following the upper body. A deeper turn at this stage rotates
+    # the hand targets behind Ashka in world space, visibly separating the pair before the landing.
+    follow = through(spin=-35.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.05),
+                     hand_l=(land - 0.05, 0.15, 0.80), hand_r=(land - 0.12, -0.05, 0.76), chest=(-18, 25, -6))
+    contact = follow(spin=-30.0, foot_l_abs=(ankle[0] - 0.06, ankle[1] - 0.18, 0.0),
+                     hand_l=(land, 0.13, 0.33), hand_r=(land - 0.08, -0.05, 0.32), chest=(-20, 30, -6))
     # Once the victim is down, bring the lead foot back and turn toward her stance.
-    release = contact(spin=-50.0, foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.05), hand_l=(0.45, 0.10, 1.25), hand_r=(0.38, -0.08, 1.20),
+    release = contact(spin=-15.0, foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.05), hand_l=(0.45, 0.10, 1.25), hand_r=(0.38, -0.08, 1.20),
                       chest=(-10, 14, 0), pelvis=(0.02, 0, -0.08), fist=0.8, elbow_l=(0.4, 0.1, -0.8), elbow_r=(0.4, -0.1, -0.8))
     set_down = release(foot_l_abs=(lead[0] - 0.02, lead[1] - 0.10, 0.0), foot_l_rot=(-50, 0, 0))
     square = set_down(spin=0.0, foot_l_abs=(fl[0], fl[1], 0.0), foot_l_rot=(0, 0, 0), foot_r_rot=(0, 0, 0), chest=ASHKA["chest"], ball_r=ASHKA["ball_r"],
