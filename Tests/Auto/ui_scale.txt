@@ -25,6 +25,20 @@ screenshot usc_accessibility_140
 goto_main
 wait 0.6
 screenshot usc_main_140
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.5
+screenshot usc_move_list_full_fit
+press kbA Heavy
+wait 0.5
+press kbA Light
+wait 0.5
+screenshot usc_select_140
+press kbA Heavy
+wait 0.5
 match wren ashka training 0 left
 wait 2
 screenshot usc_training_hud_140

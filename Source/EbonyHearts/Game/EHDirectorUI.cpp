@@ -435,8 +435,9 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 		const float Alpha = FMath::Clamp(3.0f - ToastAge, 0.0f, 1.0f);
 		const FSlateFontInfo F = Fonts.Sized(Fonts.BodyMedium, 22);
 		const FVector2f Size = P.Measure(Toast, F);
-		P.Round(FVector2f(960 - Size.X * 0.5f - 24, 960), FVector2f(Size.X + 48, 52), A(Panel, Alpha), 6);
-		P.Text(Toast, FVector2f(960, 986), F, A(Bone, Alpha), 0.5f, 0.5f);
+		const float ToastY = P.VirtualMax.Y < 1000.0f ? P.VirtualMax.Y - 150.0f : 960.0f;
+		P.Round(FVector2f(960 - Size.X * 0.5f - 24, ToastY), FVector2f(Size.X + 48, 52), A(Panel, Alpha), 6);
+		P.Text(Toast, FVector2f(960, ToastY + 26.0f), F, A(Bone, Alpha), 0.5f, 0.5f);
 	}
 	if (bAnyGraybox && Screen != EEHScreen::Title)
 	{
@@ -731,7 +732,8 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 	const FString Heading = Mode == EEHMode::VersusCpu ? TEXT("VERSUS CPU") : (Mode == EEHMode::Versus ? TEXT("LOCAL VERSUS") : (Mode == EEHMode::Training ? TEXT("TRAINING") : TEXT("LESSON")));
 	FSlateFontInfo HeadFont = Fonts.Sized(Fonts.Display, St::Type::Title);
 	HeadFont.LetterSpacing = 120;
-	P.Text(Heading, FVector2f(960, 66), HeadFont, St::TextPrimary, 0.5f, 0.5f);
+	const float HeadingY = FMath::Max(66.0f, P.VirtualMin.Y + 48.0f);
+	P.Text(Heading, FVector2f(960, HeadingY), HeadFont, St::TextPrimary, 0.5f, 0.5f);
 	FString Instruction;
 	if (Mode == EEHMode::Versus)
 	{
@@ -749,14 +751,15 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 	{
 		Instruction = TEXT("CPU level and your side");
 	}
-	P.Text(Instruction, FVector2f(960, 120), Fonts.Sized(Fonts.BodyMedium, St::Type::Body + 2.0f), St::TextSecondary, 0.5f, 0.5f);
+	P.Text(Instruction, FVector2f(960, HeadingY + 54.0f), Fonts.Sized(Fonts.BodyMedium, St::Type::Body + 2.0f), St::TextSecondary, 0.5f, 0.5f);
+	const float FighterY = FMath::Min(742.0f, P.VirtualMax.Y - 225.0f);
 	for (int32 c = 0; c < 2; ++c)
 	{
 		const FEHCharacterPresentation& CP = Pres.Get(CharId(c));
 		const bool bRight = c == 1;
-		const float X = bRight ? 1800.0f : 120.0f;
+		const float X = bRight ? FMath::Min(1800.0f, P.VirtualMax.X - 24.0f) : FMath::Max(120.0f, P.VirtualMin.X + 24.0f);
 		const float AlignX = bRight ? 1.0f : 0.0f;
-		const float Y = 742.0f;
+		const float Y = FighterY;
 		// Who is on this fighter: one chip per player, filled once locked in.
 		float ChipX = X;
 		bool bAnyCursor = false;
@@ -794,7 +797,7 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 	if (Mode == EEHMode::VersusCpu && SelectStage == 2)
 	{
 		const FString Levels[] = {TEXT("Easy"), TEXT("Normal"), TEXT("Hard")};
-		const FVector2f Box(700, 838);
+		const FVector2f Box(700, FMath::Min(838.0f, P.VirtualMax.Y - 220.0f));
 		P.Round(Box, FVector2f(520, 128), St::Panel, 8);
 		P.NextLayer();
 		P.Frame(Box, FVector2f(520, 128), A(St::Silver, 0.35f), 1.0f);
@@ -819,11 +822,11 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 			const FEHDevice* D = RouterPtr->FindDevice(SelectDevice[s]);
 			const FString Line = D ? FString::Printf(TEXT("P%d  ·  %s"), s + 1, *D->Name) : FString::Printf(TEXT("P%d  ·  press Confirm to join"), s + 1);
 			const float X = s == 0 ? FMath::Max(120.0f, P.VirtualMin.X + 24.0f) : FMath::Min(1800.0f, P.VirtualMax.X - 24.0f);
-			P.Text(Line, FVector2f(X, 690), Fonts.Sized(Fonts.BodyBold, St::Type::Label + 2.0f), s == 0 ? St::P1 : St::P2, s == 0 ? 0.0f : 1.0f, 0.5f);
+			P.Text(Line, FVector2f(X, FighterY - 52.0f), Fonts.Sized(Fonts.BodyBold, St::Type::Label + 2.0f), s == 0 ? St::P1 : St::P2, s == 0 ? 0.0f : 1.0f, 0.5f);
 		}
 		if (SelectLocked[0] && SelectLocked[1])
 		{
-			P.Text(TEXT("Both ready  ·  press Confirm to fight"), FVector2f(960, 900), Fonts.Sized(Fonts.Display, St::Type::Heading), St::FocusText, 0.5f, 0.5f);
+			P.Text(TEXT("Both ready  ·  press Confirm to fight"), FVector2f(960, FMath::Min(900.0f, P.VirtualMax.Y - 90.0f)), Fonts.Sized(Fonts.Display, St::Type::Heading), St::FocusText, 0.5f, 0.5f);
 		}
 	}
 	// The confirm that starts the match says so.
@@ -1170,14 +1173,16 @@ void AEHGameDirector::PaintResults(FEHPainter& P)
 	{
 		Headline = Pres.Get(CharId(SlotChar[LastWinner])).DisplayName.ToString().ToUpper() + TEXT(" WINS");
 	}
-	P.Text(Headline, FVector2f(960, 130), Fonts.Sized(Fonts.Display, 76), St::TextPrimary, 0.5f, 0.5f);
+	const float HeadY = FMath::Max(130.0f, P.VirtualMin.Y + 50.0f);
+	P.Text(Headline, FVector2f(960, HeadY), Fonts.Sized(Fonts.Display, 76), St::TextPrimary, 0.5f, 0.5f);
 	auto WhoOf = [this](int32 i) { return SlotCpu[i] ? FString(TEXT("CPU")) : FString::Printf(TEXT("Player %d"), i + 1); };
 	if (LastWinner == 0 || LastWinner == 1)
 	{
-		P.Text(WhoOf(LastWinner), FVector2f(960, 200), Fonts.Sized(Fonts.DisplayLight, 28), LastWinner == 0 ? St::P1 : St::P2, 0.5f, 0.5f);
+		P.Text(WhoOf(LastWinner), FVector2f(960, HeadY + 70.0f), Fonts.Sized(Fonts.DisplayLight, 28), LastWinner == 0 ? St::P1 : St::P2, 0.5f, 0.5f);
 	}
-	PaintMenu(P, FString(), true, 246.0f);
-	const FVector2f Table(560, 500);
+	const float MenuTop = FMath::Max(246.0f, HeadY + 105.0f);
+	PaintMenu(P, FString(), true, MenuTop);
+	const FVector2f Table(560, MenuTop + 254.0f);
 	const bool bThrows = Rules.ThrowsEnabled();
 	const int32 Rows = bThrows ? 5 : 4;
 	P.Round(Table, FVector2f(800, 70 + Rows * 42), St::Panel, 8);
