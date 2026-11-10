@@ -525,7 +525,11 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 	P.NextLayer();
 	const float X = FMath::Max(150.0f, P.VirtualMin.X + 56.0f);
 	const float RowH = 62.0f;
-	const int32 Headers = Menu.CountByPredicate([](const FEHMenuItem& It) { return It.bHeader; });
+	int32 Headers = 0;
+	for (const FEHMenuItem& It : Menu)
+	{
+		Headers += It.bHeader ? 1 : 0;
+	}
 	const float ListH = (Menu.Num() - Headers) * RowH + Headers * 30.0f;
 	float Y = FMath::Min(392.0f, P.VirtualMax.Y - ListH - 132.0f);
 	for (int32 i = 0; i < Menu.Num(); ++i)
@@ -839,7 +843,7 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 	namespace St = EHStyle;
 	const eh::MatchState& S = Match->State();
 	const float Wide = P.VirtualMax.X - P.VirtualMin.X;
-	const float Edge = FMath::Max(110.0f, P.VirtualMin.X + 24.0f);
+	const float SafeEdge = FMath::Max(110.0f, P.VirtualMin.X + 24.0f);
 	const float RightEdge = FMath::Min(1810.0f, P.VirtualMax.X - 24.0f);
 	const float HudTop = FMath::Max(46.0f, P.VirtualMin.Y + 20.0f);
 	// A dark band behind the top of the HUD so the lit rose window behind it cannot lower its contrast.
@@ -853,9 +857,9 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		const int32 Char = SlotChar[i];
 		const FEHCharacterPresentation& CP = Pres.Get(CharId(Char));
 		const bool bLeft = i == 0;
-		const float BarW = FMath::Min(720.0f, FMath::Max(300.0f, (RightEdge - Edge - 220.0f) * 0.5f));
+		const float BarW = FMath::Min(720.0f, FMath::Max(300.0f, (RightEdge - SafeEdge - 220.0f) * 0.5f));
 		const float BarH = 30.0f;
-		const float X = bLeft ? Edge : RightEdge - BarW;
+		const float X = bLeft ? SafeEdge : RightEdge - BarW;
 		const float Y = HudTop;
 		const float Pct = FMath::Clamp(static_cast<float>(F.health) / C.maxHealth, 0.0f, 1.0f);
 		const float Lag = FMath::Clamp(HealthLag[i], Pct, 1.0f);
@@ -898,7 +902,7 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		}
 		// The fighter's gauge, under their own name.
 		const float GW = 420.0f;
-		const float GX = bLeft ? Edge : RightEdge - GW;
+		const float GX = bLeft ? SafeEdge : RightEdge - GW;
 		const float GY = HudTop + 104.0f;
 		const float Meter = static_cast<float>(F.meter) / Rules.meterMax;
 		const FLinearColor& GCol = Accent(Char);
@@ -924,7 +928,7 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		const eh::FighterState& Def = S.f[1 - i];
 		if (Def.combo >= 2 && (Def.state == eh::FState::Hitstun || Def.state == eh::FState::Knockdown))
 		{
-			const float CX = bLeft ? Edge : RightEdge;
+			const float CX = bLeft ? SafeEdge : RightEdge;
 			P.Text(FString::Printf(TEXT("%d HITS"), Def.combo), FVector2f(CX, HudTop + 284.0f), Fonts.Sized(Fonts.Display, 46), St::TextPrimary, bLeft ? 0.0f : 1.0f, 0.5f);
 			P.Text(FString::Printf(TEXT("%d damage"), Def.comboDamage), FVector2f(CX, HudTop + 332.0f), Fonts.Sized(Fonts.BodyMedium, St::Type::Body), St::TextSecondary, bLeft ? 0.0f : 1.0f, 0.5f);
 		}
@@ -944,7 +948,7 @@ void AEHGameDirector::PaintHUD(FEHPainter& P)
 		const float Rise = Co.Age * 18.0f;
 		// In the Lesson its panel (y 204-406) is where callouts would rise, so they sit below it.
 		const float BaseY = Mode == EEHMode::Tutorial ? FMath::Max(460.0f, HudTop + 414.0f) : HudTop + 224.0f;
-		P.Text(Co.Text, FVector2f(Co.Side == 0 ? Edge : RightEdge, BaseY - Rise), Fonts.Sized(Fonts.Display, 34), A(Co.Color, Fade), Co.Side == 0 ? 0.0f : 1.0f, 0.5f);
+		P.Text(Co.Text, FVector2f(Co.Side == 0 ? SafeEdge : RightEdge, BaseY - Rise), Fonts.Sized(Fonts.Display, 34), A(Co.Color, Fade), Co.Side == 0 ? 0.0f : 1.0f, 0.5f);
 	}
 	for (const FEHBanner& B : Banners)
 	{

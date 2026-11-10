@@ -4,7 +4,7 @@ Inputs: $EH_WS/sourceart/characters/<char>/SK_<Char>.fbx (+_LOD1, textures/, alp
 $EH_WS/sourceart/anims/<char>/*.fbx. Each fighter gets its own skeleton; animations are sampled at 60 fps so frame N
 of a move lands on simulation frame N. Run headless: bin/editor_py.sh Tools/Unreal/build_characters.py
 Environment: EH_CHARS=wren,ashka (subset), EH_ANIMS_ONLY=1 (reimport clips only), EH_SKIP_ANIMS=1 (meshes only),
-EH_ANIM_NAMES=A_Wren_L3,A_Ashka_H (import only these clips).
+EH_ANIM_NAMES=A_Wren_L3,A_Ashka_H (import only these clips), EH_ANIM_ROOT=<isolated FBX root> (optional).
 """
 import glob
 import json
@@ -216,8 +216,9 @@ def import_lod1(mesh, char_id, cap):
 
 
 def import_anims(char_id, cap, skel):
-    files = sorted(glob.glob(os.path.join(SRC, "anims", char_id, "*.fbx")))
-    files += sorted(glob.glob(os.path.join(SRC, "anims", "*", f"victim_{char_id}", "*.fbx")))
+    anim_root = os.environ.get("EH_ANIM_ROOT") or os.path.join(SRC, "anims")
+    files = sorted(glob.glob(os.path.join(anim_root, char_id, "*.fbx")))
+    files += sorted(glob.glob(os.path.join(anim_root, "*", f"victim_{char_id}", "*.fbx")))
     names = [n for n in os.environ.get("EH_ANIM_NAMES", "").split(",") if n]
     if names:
         files = [f for f in files if os.path.splitext(os.path.basename(f))[0] in names]
@@ -255,6 +256,8 @@ def import_anims(char_id, cap, skel):
         eal.save_asset(anim.get_path_name(), only_if_is_dirty=False)
         count += 1
     log(f"anims {cap} {count}/{len(files)}")
+    if count != len(files) or not files:
+        raise RuntimeError(f"animation import incomplete for {cap}: {count}/{len(files)}")
 
 
 def main():
@@ -262,6 +265,17 @@ def main():
     masters = None if anims_only else {"opaque": build_master("M_Character", False), "masked": build_master("M_CharacterMasked", True),
                                        "two_sided": build_master("M_CharacterTwoSided", False, True)}
     only = os.environ.get("EH_CHARS", "wren,ashka").split(",")
+    requested = {n for n in os.environ.get("EH_ANIM_NAMES", "").split(",") if n}
+    if requested:
+        anim_root = os.environ.get("EH_ANIM_ROOT") or os.path.join(SRC, "anims")
+        found = set()
+        for char_id in only:
+            for pattern in (os.path.join(anim_root, char_id, "*.fbx"),
+                            os.path.join(anim_root, "*", f"victim_{char_id}", "*.fbx")):
+                found.update(os.path.splitext(os.path.basename(p))[0] for p in glob.glob(pattern))
+        missing = requested - found
+        if missing:
+            raise RuntimeError(f"requested animation FBX missing: {', '.join(sorted(missing))}")
     for char_id in only:
         cap = char_id.capitalize()
         alpha_path = os.path.join(SRC, "characters", char_id, "alpha.json")
