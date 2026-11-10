@@ -497,8 +497,8 @@ void AEHGameDirector::PaintTitle(FEHPainter& P)
 	const float Pulse = FMath::Lerp(Breath, 1.0f, FMath::SmoothStep(2.5f, 4.0f, ScreenAge));
 	FSlateFontInfo PromptF = Fonts.Sized(Fonts.Display, 26.0f);
 	PromptF.LetterSpacing = 300;
-	P.Text(TEXT("PRESS ANY BUTTON"), FVector2f(960, 952), PromptF, A(St::Silver, In * Pulse), 0.5f, 0.5f);
-	P.Text(TEXT("© 2026 Markus Gillyard  ·  Cinqic"), FVector2f(960, 1032), Fonts.Sized(Fonts.BodyMedium, St::Type::Label), A(Muted, In), 0.5f, 0.5f);
+	P.Text(TEXT("PRESS ANY BUTTON"), FVector2f(960, FMath::Min(952.0f, P.VirtualMax.Y - 72.0f)), PromptF, A(St::Silver, In * Pulse), 0.5f, 0.5f);
+	P.Text(TEXT("© 2026 Markus Gillyard  ·  Cinqic"), FVector2f(960, FMath::Min(1032.0f, P.VirtualMax.Y - 24.0f)), Fonts.Sized(Fonts.BodyMedium, St::Type::Label), A(Muted, In), 0.5f, 0.5f);
 }
 
 // Still Water's main menu: a plain list over the darkened chapel, a violet band fading to the right, and the crescent
