@@ -520,7 +520,10 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 	if (LogoSmallTexture || TitleTexture)
 	{
 		const FSlateBrush& Logo = LogoSmallTexture ? LogoSmallBrush : TitleBrush;
-		P.Image(Logo, FVector2f(96, 56), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 1));
+		// At enlarged scale the visible rect is narrower. Keep the full-size wordmark in the open area beside the list.
+		const float LogoX = P.VirtualMin.X > 96.0f ? P.VirtualMax.X - 716.0f : 96.0f;
+		const float LogoY = FMath::Max(56.0f, P.VirtualMin.Y + 14.0f);
+		P.Image(Logo, FVector2f(LogoX, LogoY), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 1));
 	}
 	P.NextLayer();
 	const float X = FMath::Max(150.0f, P.VirtualMin.X + 56.0f);
@@ -593,7 +596,7 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 	}
 	const FVector2f Pos = bCentered ? FVector2f(960 - W * 0.5f, TopY >= 0.0f ? TopY : FMath::Max(P.VirtualMin.Y + 30.0f, 540 - H * 0.5f)) : FVector2f(96, 380);
 	// Still Water: a square dark veil between two silver rules, the crescent set into the top one.
-	P.Rect(Pos, FVector2f(W, H), EHStyle::Alpha(EHStyle::Abyss, 0.86f));
+	P.Rect(Pos, FVector2f(W, H), bPaused && Screen == EEHScreen::Match ? EHStyle::Abyss : EHStyle::Alpha(EHStyle::Abyss, 0.86f));
 	P.NextLayer();
 	P.Rect(Pos + FVector2f(0, 0), FVector2f(W * 0.5f - 22, 1), EHStyle::Alpha(EHStyle::Silver, 0.55f));
 	P.Rect(Pos + FVector2f(W * 0.5f + 22, 0), FVector2f(W * 0.5f - 22, 1), EHStyle::Alpha(EHStyle::Silver, 0.55f));
@@ -666,6 +669,13 @@ void AEHGameDirector::PaintMenu(FEHPainter& P, const FString& Heading, bool bCom
 		// Escape or Options / Menu cancels a capture; show the one that belongs to the layout being edited.
 		const int32 CancelDevice = EHIsKeyboardSet(BindingSet) ? EHDeviceKeyboardA : RouterPtr->MostRecentGamepad();
 		PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Pause, TEXT("Cancel"))}, CancelDevice);
+		return;
+	}
+	if (bPaused && Screen == EEHScreen::Match)
+	{
+		// The full training menu uses the visible height. Place its controls in the clear rail beside it.
+		PaintPromptRow(P, FVector2f(P.VirtualMax.X, P.VirtualMin.Y + 250.0f), {FEHHint::Menu(EEHNav::Confirm, TEXT("Select"))}, Owner);
+		PaintPromptRow(P, FVector2f(P.VirtualMax.X, P.VirtualMin.Y + 310.0f), {FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Owner);
 		return;
 	}
 	PaintPromptRow(P, FVector2f(96, 1000), {FEHHint::Menu(EEHNav::Confirm, TEXT("Select")), FEHHint::Menu(EEHNav::Back, TEXT("Back"))}, Owner);
@@ -761,7 +771,7 @@ void AEHGameDirector::PaintSelect(FEHPainter& P)
 	{
 		const FEHCharacterPresentation& CP = Pres.Get(CharId(c));
 		const bool bRight = c == 1;
-		const float X = bRight ? FMath::Min(1800.0f, P.VirtualMax.X - 24.0f) : FMath::Max(120.0f, P.VirtualMin.X + 24.0f);
+		const float X = bRight ? FMath::Min(1800.0f, P.VirtualMax.X - 72.0f) : FMath::Max(120.0f, P.VirtualMin.X + 24.0f);
 		const float AlignX = bRight ? 1.0f : 0.0f;
 		const float Y = FighterY;
 		// Who is on this fighter: one chip per player, filled once locked in.
@@ -1029,6 +1039,10 @@ void AEHGameDirector::PaintHitboxes(FEHPainter& P)
 
 void AEHGameDirector::PaintTraining(FEHPainter& P)
 {
+	if (bPaused)
+	{
+		return;  // Training aids and their prompts belong to the live view, not the pause menu.
+	}
 	const eh::MatchState& S = Match->State();
 	if (bShowHitboxes)
 	{
@@ -1245,9 +1259,10 @@ void AEHGameDirector::PaintMoveList(FEHPainter& P)
 	const FSlateFontInfo NameF = Fonts.Sized(Fonts.BodyBold, St::Type::Body);
 	const FSlateFontInfo NoteF = Fonts.Sized(Fonts.Body, St::Type::Label);
 	const bool bNarrow = Right - Left < 1600.0f;
-	const float Cols[] = {Left + 40.0f, Left + (bNarrow ? 240.0f : 340.0f),
-		Left + (bNarrow ? 540.0f : 612.0f), Left + (bNarrow ? 635.0f : 712.0f),
-		Left + (bNarrow ? 725.0f : 836.0f)};
+	const float StartupX = Left + (bNarrow ? 500.0f : 612.0f);
+	const float DamageX = bNarrow ? StartupX + P.Measure(FString(TEXT("Startup")), Head).X + 24.0f : Left + 712.0f;
+	const float NotesX = bNarrow ? DamageX + P.Measure(FString(TEXT("Damage")), Head).X + 24.0f : Left + 836.0f;
+	const float Cols[] = {Left + 40.0f, Left + (bNarrow ? 240.0f : 340.0f), StartupX, DamageX, NotesX};
 	const float NoteW = Right - Cols[4] - 24.0f;
 	const float HeaderY = PanelTop + 36.0f;
 	P.Text(TEXT("Technique"), FVector2f(Cols[0], HeaderY), Head, St::TextSecondary, 0.0f, 0.5f);

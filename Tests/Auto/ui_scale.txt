@@ -34,14 +34,9 @@ wait 0.5
 expect_move_page first
 screenshot usc_move_list_wren_p1_140
 press kbA Down
+wait 0.2
 screenshot usc_move_list_wren_p2_140
-press kbA Down
-screenshot usc_move_list_wren_p3_140
-press kbA Down
-screenshot usc_move_list_wren_p4_140
 expect_move_page last
-press kbA Up
-press kbA Up
 press kbA Up
 expect_move_page first
 press kbA Right
@@ -49,11 +44,8 @@ wait 0.5
 expect_move_page first
 screenshot usc_move_list_ashka_p1_140
 press kbA Down
+wait 0.2
 screenshot usc_move_list_ashka_p2_140
-press kbA Down
-screenshot usc_move_list_ashka_p3_140
-press kbA Down
-screenshot usc_move_list_ashka_p4_140
 expect_move_page last
 press kbA Heavy
 wait 0.5
