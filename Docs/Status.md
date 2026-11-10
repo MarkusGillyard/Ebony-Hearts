@@ -1,5 +1,14 @@
 # Status and handoff
 
+## Independent review update (2026-11-10)
+
+PR #1 and stacked PR #2 remain open during the current independent review. The creator has now identified the first
+issues from the November 9 playtest to address: transitions between animations look unrealistic, and the throws look
+and feel broken. Other playtest concerns will be addressed gradually; this does not constitute acceptance of the
+current package. The owner has authorized integration without another confirmation if all technical and review gates
+pass. The candidate handoff below is the implementer's dated record, and its older authorization and feedback status
+statements are superseded by this update. The current findings and disposition belong in [Review](Review.md).
+
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
 refined to her new character sheet and to its version 2, then the blocking animations and Ashka's coat tails, now
 simulated as cloth: candidate `84acb66` built and checked by the implementer; ready for independent review and the

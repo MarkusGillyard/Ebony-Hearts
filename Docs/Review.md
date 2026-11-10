@@ -1,5 +1,59 @@
 # Review guide: combat, animation and character pass (2026-11-08), controls and Ashka (2026-11-09)
 
+## Independent review record (2026-11-10; qualification in progress)
+
+This section is the current independent review record. The implementer's earlier reviews and failed or superseded
+rounds remain below as dated history. The starting identities were PR #2 `bed7fb60d03704cf8e58a000b1fb284968690dc8`
+into `release/first-slice` `04714438f6901424ff1cdf6feae126123aae1b5e`, then PR #1 at that release head
+into `main` `9a34d030281f3321d41ac64e8a065f8a0336b6dc`. Both PRs were open at the review
+start. Final heads and integration results must be recorded after qualification; these starting refs are not approval.
+
+### Coverage ledger
+
+| Area | Review scope and boundary |
+|---|---|
+| Combat and AI | Core, fighter/rule JSON, callers, 60 Hz state transitions, throws, jump rules, CPU behavior and Core tests. Found a stale queued CPU input on Training dummy-mode changes. |
+| Game and interface | Input routing, settings, menus, two-player ownership, Still Water UI, scale, flow and automation. Found enlarged-scale clipping and character select ownership after pad removal. |
+| Assets and motion | Character/animation mapping, editable source provenance, imported content identities, clip audit and prior and current packaged footage. The creator's first prioritized feedback is animation transitions and throws. Pair-generated Ashka clinch-trip motion was rebuilt and inspected in the shipped game; this targeted visual check does not establish creator acceptance or all-transition quality. |
+| Platform and delivery | Linux display/audio integration, packaging, LFS, third-party notices, guard/launcher scripts and prior raw evidence. Found unsafe global process cleanup in the startup loop. Prior green CI does not compile or run Unreal. |
+| Documentation and research | Current contract, research, status, production, UI reports and historical reviews were reconciled against code. Old jump-in prose and an unimplemented reduced-motion control were labelled correctly; prior results retain their original dates. |
+
+### Issue register
+
+| ID | Severity | Confirmed behavior and location | Repair and verification status |
+|---|---|---|---|
+| EH-SOL-01 | P2 | `EHAI.cpp`: switching Training dummy modes retained queued CPU actions; a pre-fix 256-seed probe observed 33 stale presses. | `026b264`; current-head Core regression and 1,618-check suite passed. Final packaged battery is running. |
+| EH-SOL-02 | P2 | At 140% scale, HUD and prompts clipped; Move List initially needed full-scale pagination. | `6c035ca` through `9f6146a`, `8e1707c`, `78158b4`; final `05978ee` package screenshots show the crescent and select labels inside the viewport, and both fighters' two Move List pages were reached. Other UI scenarios remain to be checked. |
+| EH-SOL-03 | P2 | A disconnected pad could retain a character-select slot and prevent replacement. | `6c035ca`; distinct-ID virtual-pad scenario added; final packaged retest pending. |
+| EH-SOL-04 | P2 | `launch_loop.py` could kill an unrelated, pre-existing game session through global process cleanup. | `6984e05`; three mocked safety cases passed; live launcher check pending. |
+| EH-SOL-05 | P2 | In the prior shipped Ashka clinch trip, the attacker released at frame 36, ten frames before the victim's frame-46 floor contact; prior footage showed visible disengagement during the fall. | `a2fe27b`, `30d3fa8`, imported as `05978ee`: isolated 12-clip rebuild/import and final packaged `review-combat` footage show clinch contact into the trip and an attached follow-through to floor contact. This targeted observation does not resolve the creator's broader transition/throw judgment. |
+| EH-SOL-06 | P2 | The prior package-battery wrapper records run exit codes but does not fail itself when a scenario fails or assert every expected completion marker. | `6f03f99` adds a separate completeness/evidence verifier with five synthetic tests; `8cc2fb3` starts affected scripts from a known menu. The interrupted first review battery is retained as invalid evidence. A full final battery is running and needs the separate verifier. |
+
+### Evidence index
+
+| Evidence | Scope and limitation |
+|---|---|
+| Original-head GitHub `core` checks and `git lfs fsck` | Core/data/Python/package/move tables and LFS presence; no Unreal build or human playtest. |
+| Prior `0126cac` UI package and `84acb66` slice package | Their source trees match the original PR runtime source except later documentation; useful regression baselines, not evidence for the repaired source. |
+| `evidence/uiux-1109/battery-0126cac.log` and individual run directories | Twenty-eight recorded scenario exits were zero; individual markers were checked because the wrapper's final exit cannot by itself certify the battery. |
+| `evidence/rc-84acb66/battery/review-combat/review-combat.mp4` | Prior in-game throw motion; confirms the visual review target, not a post-repair result. |
+| New isolated throw FBX stage and clip audit | Generated from retained editable and licensed inputs; numerical clip checks and renders are separate from Unreal import and package review. |
+| `sol-review-05978ee` local Shipping package | UE 5.8.4 Development and Shipping compile, cook/package, 21/21 archive file hashes, archive SHA-256 `289216aae646c2defa441934ce87ecd37594129185f1e3a373900900b4b9935e`. `VERSION` records source `05978eef016a72a481e49fe938f911a84b1c0f88` and content `a468ce65fe95280a47cce3840cff29db82f8d71826b6b088cff4ae09322a6a87`. Local artifact only; source changes after this commit need equivalence assessment. |
+| `review-check/sol-05978ee-motion` and `sol-05978ee-ui-scale` | Final package ran scripted 60 fps combat/jump capture and 140% UI navigation without logged FAIL/WARN; screenshots and sampled video frames were inspected. The captures are machine-driven visual samples, not human playtesting. |
+| Source and documentation checks | 1,618 Core checks, 10 package and 5 battery-verifier tests, Python compile, LFS fsck and move-table consistency passed at packaged source `05978ee`. The later documentation-only review commit passed `git show --check`; its source and content are unchanged. |
+
+### PR disposition
+
+| PR | Current disposition | Required next gate |
+|---|---|
+| #2 → `release/first-slice` | Open; qualification in progress. | Complete fresh source/package/runtime and independent verification, resolve material motion and UI findings, then check live head/base/rules. |
+| #1 → `main` | Open; dependent on #2. | Re-review the combined release head against current `main`, run integrated gates, and merge only if the combined result qualifies. |
+
+The GitHub account currently available is the author of both PRs. A formal self-approval is not available; an
+independent technical comment is distinct from GitHub approval. Neither PR is merged or released by this record.
+
+---
+
 This guide is for reviewing branch `dev/combat-pass-1108`, which carries the creator's 2026-11-08 combat, animation and
 character requests on top of the PR #1 head, then the 2026-11-09 fighting-game control layout and Ashka Rook refined to
 her new character sheet (and then to its version 2, the same day), then the blocking animations. It is the implementer's account, not an independent review. Earlier rounds

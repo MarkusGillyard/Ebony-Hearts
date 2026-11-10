@@ -8,6 +8,12 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
+**Independent review update (2026-11-10):** PR #1 and the stacked Still Water PR #2 remain open. The creator has
+identified animation transitions and the appearance and feel of throws as the first issues to address from the
+November 9 playtest. Focused review repairs and a fresh packaged validation are in progress; neither PR has a new
+technical approval or a completed human playtest. The owner has authorized normal integration if the review gates
+pass. See [Docs/Review.md](Docs/Review.md) for the current disposition. The candidate account below is historical.
+
 **Combat, animation and character pass (2026-11-08), the fighting-game control layout, Ashka refined to her character
 sheet (version 2 of 2026-11-09) and simple, natural guards for both fighters: candidate `84acb66` ready for independent
 review and the creator's playtest. Not merged.**

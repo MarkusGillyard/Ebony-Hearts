@@ -1,5 +1,20 @@
 # Validation report
 
+**Independent review update (2026-11-10).** The candidate records below are dated implementer evidence. The current
+local Shipping review package is `sol-review-05978ee`, from source
+`05978eef016a72a481e49fe938f911a84b1c0f88` and content
+`a468ce65fe95280a47cce3840cff29db82f8d71826b6b088cff4ae09322a6a87`; its archive SHA-256 is
+`289216aae646c2defa441934ce87ecd37594129185f1e3a373900900b4b9935e`.
+Development and Shipping compilation, cook/package, and all 21 extracted file hashes passed. Current-head Core
+tests passed (1,618 checks, zero failures), along with 10 package tests, five battery-verifier tests, three launcher
+tests, Python compilation, LFS fsck, move-table consistency and whitespace checks. Machine-driven packaged motion
+and 140% UI captures were inspected; see [Review](Review.md) for their scope and the still-open battery, independent
+review, creator feedback and PR gates. This update does not transfer an older candidate's PASS to the current package.
+The creator started the November 9 package but the controller failed after about a minute; the session was not a
+completed playtest. The creator identified animation transitions and throw appearance/feel as the first issues to
+address, with other issues to be handled gradually. Reported `dropped_sim_ticks` in the current JSON is a cumulative
+clock count at `perf_end`, not a delta over the measured frame-time window.
+
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
 `evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-84acb66/<run>` and

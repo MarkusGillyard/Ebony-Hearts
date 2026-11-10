@@ -1,5 +1,10 @@
 # Validation of the interface work
 
+**Independent review update (2026-11-10).** The results below belong to the earlier implementer package `0126cac`.
+The current review found clipping at enlarged interface scale and a disconnected selection owner. Repairs are being
+qualified on a new candidate. The creator's first identified playtest priority is animation transitions and throws;
+no completed human acceptance is recorded. See [`Docs/Review.md`](../Review.md) for fresh evidence and disposition.
+
 Machine: FLOWBOX (AMD Ryzen 7 5700G, 32 GB, NVIDIA GeForce RTX 2060 6 GB, driver 595.99.02), Linux X11.
 Packaged Shipping builds from `dev/ui-ux-identity-overhaul`. Evidence is in the delivery workspace under
 `evidence/uiux-1109/`. Everything here is the implementer's own testing, plus one independent code review (its

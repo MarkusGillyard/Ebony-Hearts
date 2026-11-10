@@ -104,6 +104,11 @@ workspace, not this repository.
   replaces a pair with a capture (optional `anchors` retime it), and `victim_falls` gives a keyed throw a captured fall.
   The grab move's pose on its first active frame is where the throw starts, so a throw's entry (the double-leg's
   level change, the clinch's reach) belongs on the grab's active frames.
+  For a targeted review rebuild, generate FBXs to a separate `--out` tree and import with `EH_ANIM_ROOT` set to that
+  tree, `EH_ANIMS_ONLY=1`, `EH_CHARS` set to the affected skeletons, and an explicit comma-separated
+  `EH_ANIM_NAMES` list. The importer rejects missing requested FBXs and incomplete counts. Back up the selected
+  `.uasset` files and compare their hashes before and after import; an old asset can still be loaded if an individual
+  Unreal import task fails, so import logs and asset hashes are also required evidence.
 - **Character skeletons.** These use MPFB's game_engine skeleton (`root`, `pelvis`, `spine_01-03`, ... ) plus twist
   bones and secondary chains (braids, Ashka's ponytail on the former braid chain, face strands, and Ashka's coat
   tails: 12 cloth columns `coat_c01`..`coat_c12` simulated together as one cloth against the legs, `_step_coat_grid`
