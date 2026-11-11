@@ -1,9 +1,18 @@
 # Validation of the interface work
 
 **Independent review update (2026-11-10).** The results below belong to the earlier implementer package `0126cac`.
-The current review found clipping at enlarged interface scale and a disconnected selection owner. Repairs are being
-qualified on a new candidate. The creator's first identified playtest priority is animation transitions and throws;
-no completed human acceptance is recorded. See [`Docs/Review.md`](../Review.md) for fresh evidence and disposition.
+The current review found clipping at enlarged interface scale and a disconnected selection owner. The final
+`sol-review-05978ee` local Shipping package ran `ui_scale.txt` at 1920×1080 with scripted quit and no logged
+FAIL/WARN; its nine captures were independently inspected, including both fighters' two Move List pages, and the
+enlarged logo, select labels and Training prompts fit the sampled viewport. A second `05978ee` run completed results,
+settings, plates and UI-cost scripts and the 140% scale script at 1280×720. An independent reviewer inspected all
+9 enlarged 720p captures, 3 settings, 3 results and 10 plates. The 720p and settings captures had no concrete
+clipping finding. An apparent results-text dropout was a visual reading error: a later pixel-level comparison found
+no missing glyphs before and after focus on either `05978ee` or `cec9493`; see EH-SOL-09 in the review record.
+Eight UI perf windows had frame-time p99 16.731–16.787 ms, zero frames over 33 ms, and UI paint p99 at most 0.3377 ms.
+These are sampled scripted states; small white crescent marks visible in several captures are intended menu ornaments.
+The creator's first identified playtest priority is animation transitions and throws; no
+completed human acceptance is recorded. See [`Docs/Review.md`](../Review.md) for fresh evidence and disposition.
 
 Machine: FLOWBOX (AMD Ryzen 7 5700G, 32 GB, NVIDIA GeForce RTX 2060 6 GB, driver 595.99.02), Linux X11.
 Packaged Shipping builds from `dev/ui-ux-identity-overhaul`. Evidence is in the delivery workspace under
