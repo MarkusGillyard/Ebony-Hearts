@@ -210,7 +210,8 @@ def ashka_clinch_trip(victim, td):
     # Steered round, the weight goes onto its left (lead) leg and the right foot comes light off the floor.
     lifted = lambda foot, u: (foot[0], foot[1], u)
     vl, vr = victim["foot_l"], victim["foot_r"]
-    stumble = bowed(spin=-15.0, foot_r=lifted(vr, 0.07), pelvis=(0.04, 0.05, -0.08), pelvis_rot=(0, 30, 8))
+    stumble = bowed(spin=-15.0, foot_r=lifted(vr, 0.07), pelvis=(0.04, 0.05, -0.08), pelvis_rot=(0, 30, 8),
+                    elbow_r=(0.2, -0.5, -0.6))
     loaded = bowed(spin=-28.0, foot_r=lifted(vr, 0.10), pelvis=(0.0, 0.08, -0.06), pelvis_rot=(0, 30, 12), chest=(8, 32, 8))
     # The sweep takes the loaded foot out to its left and the steering drives the head down the other way: the base is
     # gone, both feet leave the floor and the body tips onto its back toward the swept side, hands reaching out to
