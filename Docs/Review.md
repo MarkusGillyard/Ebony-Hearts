@@ -1,12 +1,26 @@
 # Review guide: combat, animation and character pass (2026-11-08), controls and Ashka (2026-11-09)
 
-## Independent review record (2026-11-11; qualification in progress)
+## Independent review record (2026-11-11; integration completed)
 
 This section is the current independent review record. The implementer's earlier reviews and failed or superseded
 rounds remain below as dated history. The starting identities were PR #2 `bed7fb60d03704cf8e58a000b1fb284968690dc8`
 into `release/first-slice` `04714438f6901424ff1cdf6feae126123aae1b5e`, then PR #1 at that release head
 into `main` `9a34d030281f3321d41ac64e8a065f8a0336b6dc`. Both PRs were open at the review
-start. Final heads and integration results must be recorded after qualification; these starting refs are not approval.
+start. The actual integration identities and limits are recorded below; these starting refs were not approval.
+
+### Final integration record
+
+| Step | Verified result |
+|---|---|
+| PR #2 to `release/first-slice` | Merged at reviewed head `4b21045a948f4e0dc0731deb314c3197ccd78477` as `964eeb8c95f38d2c35fee3dde3c8847705cf6bfb`. Its parents are the old release `04714438f6901424ff1cdf6feae126123aae1b5e` and reviewed head; the merge tree is `e1e5769c3b70bd8ef02f606f0a48ff207f2a8653`. The exact-head and release-push `core` checks succeeded. |
+| PR #1 to `main` | Merged at combined release head `964eeb8c95f38d2c35fee3dde3c8847705cf6bfb` as `1fe9eec631d0d6f747d6248275feccbbf25713b0`, with parents old main `9a34d030281f3321d41ac64e8a065f8a0336b6dc` and that release head. Its tree is the same `e1e5769c3b70bd8ef02f606f0a48ff207f2a8653`; the updated PR `core` check and post-merge main push run `43059063902` both succeeded. A separate non-authoring combined-tree review found no conflict or source/content delta from the reviewed PR #2 head and freshly passed 1,618 Core checks, zero failures. |
+
+Both PRs had exact-head technical review comments; they were not formal GitHub approvals because the authenticated
+account authored the PRs. The creator explicitly authorized qualifying merges, and the normal GitHub merge path was
+used with a head-SHA guard after live head/base, checks, reviews and rules were refreshed. Neither merge is a public
+release or creator playtest acceptance. The November 9 report of other issues remains open for gradual follow-up;
+overall animation transitions and throw feel still need creator judgment. The package and human/hardware limits below
+remain in effect.
 
 ### Coverage ledger
 
@@ -60,11 +74,11 @@ start. Final heads and integration results must be recorded after qualification;
 
 | PR | Current disposition | Required next gate |
 |---|---|
-| #2 → `release/first-slice` | Locally technically qualified at source/package `f3c5abd`; still open. The specific material findings above have repairs and fresh checks. Wider creator feel feedback is a recorded development follow-up, not a claim of acceptance. | Freeze the documentation head, obtain exact-head CI, refresh live head/base/reviews/rules, verify intended integration and submit an accurately attributed technical comment before a guarded merge. |
-| #1 → `main` | Open; dependent on #2. | Re-review the combined release head against current `main`, run integrated checks and a safe merge candidate, then merge only if those fresh gates pass. |
+| #2 → `release/first-slice` | Merged as `964eeb8` after exact-head technical review, successful CI and guarded integration; see the final integration record above. | Creator evaluation of broader throw and transition feel remains a development follow-up. |
+| #1 → `main` | Merged as `1fe9eec` after fresh combined-tree review, successful PR CI and guarded integration; the post-merge main push check passed. | Retain the package, human and hardware limits. |
 
-The GitHub account currently available is the author of both PRs. A formal self-approval is not available; an
-independent technical comment is distinct from GitHub approval. Neither PR is merged or released by this record.
+The GitHub account available for these merges authored both PRs. It could not provide formal self-approval; the
+technical comments and non-authoring checks are recorded with their actual scope. No release occurred in this record.
 
 ---
 

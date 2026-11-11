@@ -2,12 +2,15 @@
 
 ## Independent review update (2026-11-11)
 
-At this review-head snapshot, PR #1 and stacked PR #2 remain open. The creator identified the first
+PR #2 merged into `release/first-slice` as `964eeb8c95f38d2c35fee3dde3c8847705cf6bfb`; the freshly reviewed
+combined PR #1 then merged into `main` as `1fe9eec631d0d6f747d6248275feccbbf25713b0`. Both merge trees equal
+the reviewed documentation head's tree. See the exact gates and limits in [Review](Review.md), "Final integration
+record". This is source integration, not a released game or creator playtest acceptance. The creator identified the first
 issues from the November 9 playtest to address: transitions between animations look unrealistic, and the throws look
 and feel broken. Other playtest concerns will be addressed gradually; this does not constitute acceptance of the
 current package. The targeted throw transition, paired fall and victim elbow repairs have been imported and checked in
 a fresh local Shipping package; creator judgment of the overall movement and throw feel remains untested. The owner has
-authorized integration without another confirmation if all technical and review gates pass. The candidate handoff
+authorized integration without another confirmation if all technical and review gates passed. The candidate handoff
 below is the implementer's dated record; its older authorization and feedback status statements are superseded by this
 update. The current findings and disposition belong in [Review](Review.md).
 
