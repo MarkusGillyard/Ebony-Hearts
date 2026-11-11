@@ -1,0 +1,131 @@
+{
+  "id": "ashka",
+  "name": "Ashka Rook",
+  "maxHealth": 1000,
+  "walkForward": 2.6,
+  "walkBack": 2.3,
+  "halfWidth": 22,
+  "hurt": [-24, 0, 24, 170],
+  "crouchHurt": [-28, 0, 32, 105],
+  "throws": [
+    {
+      "id": "ashka_clinch_trip", "name": "Clinch Trip",
+      "attackerAnim": "ThrowC", "victimAnim": "Victim_AshkaThrowC",
+      "duration": 62, "damageFrame": 46, "damage": 100,
+      "holdX": 52, "landX": 100, "victimKnockdown": 34
+    },
+    {
+      "id": "ashka_clinch_knees", "name": "Clinch Knees",
+      "attackerAnim": "ThrowF", "victimAnim": "Victim_AshkaThrowF",
+      "duration": 74, "damageFrame": 54, "damage": 115,
+      "holdX": 54, "landX": 115, "victimKnockdown": 34
+    },
+    {
+      "id": "ashka_clinch_turn", "name": "Clinch Turn Trip",
+      "attackerAnim": "ThrowB", "victimAnim": "Victim_AshkaThrowB",
+      "duration": 66, "damageFrame": 48, "damage": 105,
+      "holdX": 54, "landX": -105, "victimKnockdown": 36
+    }
+  ],
+  "moves": [
+    {
+      "id": "L1", "name": "Jab", "anim": "L1", "kind": "strike", "button": "light", "dir": "any", "total": 24,
+      "hits": [{"frames": [8, 9], "box": [16, 122, 72, 150], "level": "high", "damage": 28, "hitstun": 22, "blockstun": 18, "hitstop": 7, "hitPush": 14, "blockPush": 24}],
+      "travel": [{"frames": [3, 8], "vx": 1.0}],
+      "hurt": [{"frames": [8, 14], "box": [0, 118, 66, 154]}],
+      "cancel": {"frames": [8, 22], "onHit": true, "onBlock": true, "into": ["L2", "@special"], "intoOnHit": ["T"]}
+    },
+    {
+      "id": "L2", "name": "Horizontal Elbow", "anim": "L2", "kind": "strike", "button": "light", "chainOnly": true, "total": 30,
+      "hits": [{"frames": [9, 10], "box": [10, 118, 72, 152], "level": "high", "damage": 40, "hitstun": 27, "blockstun": 23, "hitstop": 9, "hitPush": 16, "blockPush": 26, "react": "HitHookR"}],
+      "travel": [{"frames": [1, 9], "vx": 3.33}],
+      "hurt": [{"frames": [9, 18], "box": [0, 116, 58, 154]}],
+      "cancel": {"frames": [9, 26], "onHit": true, "onBlock": true, "into": ["L3", "@special"], "intoOnHit": ["T", "BH"]}
+    },
+    {
+      "id": "L3", "name": "Step-In Knee", "anim": "L3", "kind": "strike", "button": "light", "chainOnly": true, "total": 27,
+      "hits": [{"frames": [8, 10], "box": [8, 85, 70, 142], "level": "mid", "damage": 54, "hitstun": 22, "blockstun": 14, "hitstop": 11, "hitPush": 85, "blockPush": 65, "heavy": true, "react": "HitBody"}],
+      "travel": [{"frames": [2, 8], "vx": 4.5}],
+      "hurt": [{"frames": [8, 16], "box": [0, 80, 60, 140]}]
+    },
+    {
+      "id": "H", "name": "Body Roundhouse", "anim": "H", "kind": "strike", "button": "heavy", "dir": "any", "total": 45,
+      "hits": [{"frames": [16, 18], "box": [28, 85, 130, 140], "level": "mid", "damage": 84, "hitstun": 32, "blockstun": 23, "hitstop": 12, "hitPush": 65, "blockPush": 55, "heavy": true, "knockdownOnCounter": true, "react": "HitBodyR"}],
+      "travel": [{"frames": [4, 13], "vx": 0.84}],
+      "hurt": [{"frames": [13, 34], "box": [20, 80, 122, 135]}],
+      "cancel": {"frames": [16, 27], "onHit": true, "into": ["@special"]}
+    },
+    {
+      "id": "FH", "name": "Teep", "anim": "FH", "kind": "strike", "button": "heavy", "dir": "forward", "total": 37,
+      "hits": [{"frames": [16, 18], "box": [30, 90, 145, 135], "level": "mid", "damage": 60, "hitstun": 22, "blockstun": 18, "hitstop": 10, "hitPush": 150, "blockPush": 120, "knockdownOnCounter": true, "react": "HitBodyHeavy"}],
+      "travel": [{"frames": [3, 14], "vx": 0.58}],
+      "hurt": [{"frames": [14, 28], "box": [20, 85, 130, 130]}]
+    },
+    {
+      "id": "BL", "name": "Front Kick", "anim": "BL", "kind": "strike", "button": "light", "dir": "back", "total": 26,
+      "hits": [{"frames": [10, 11], "box": [40, 95, 125, 130], "level": "mid", "damage": 38, "hitstun": 20, "blockstun": 13, "hitstop": 8, "hitPush": 45, "blockPush": 45, "react": "HitBody"}],
+      "travel": [{"frames": [3, 9], "vx": 0.8}],
+      "hurt": [{"frames": [8, 16], "box": [20, 85, 118, 130]}],
+      "cancel": {"frames": [10, 21], "onHit": true, "into": ["@special"]}
+    },
+    {
+      "id": "BH", "name": "Spinning Elbow", "anim": "BH", "kind": "strike", "button": "heavy", "dir": "back", "total": 40,
+      "hits": [{"frames": [14, 16], "box": [12, 118, 92, 160], "level": "high", "damage": 92, "hitstun": 26, "blockstun": 17, "hitstop": 12, "hitPush": 80, "blockPush": 70, "heavy": true, "knockdownOnCounter": true, "react": "HitHookRHeavy"}],
+      "travel": [{"frames": [2, 13], "vx": 2.2}],
+      "hurt": [{"frames": [12, 24], "box": [0, 112, 80, 160]}]
+    },
+    {
+      "id": "CL", "name": "Low Teep", "anim": "CL", "kind": "strike", "button": "light", "dir": "any", "down": true, "crouching": true, "total": 24,
+      "hits": [{"frames": [8, 9], "box": [25, 0, 110, 45], "level": "low", "damage": 30, "hitstun": 18, "blockstun": 12, "hitstop": 7, "hitPush": 30, "blockPush": 35}],
+      "hurt": [{"frames": [7, 15], "box": [20, 0, 100, 40]}]
+    },
+    {
+      "id": "U", "name": "Rising Elbow", "anim": "U", "kind": "strike", "button": "heavy", "dir": "any", "down": true, "total": 48,
+      "hits": [{"frames": [9, 12], "box": [5, 80, 52, 215], "level": "mid", "damage": 110, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 60, "blockPush": 45, "heavy": true, "knockdown": true, "launch": true}],
+      "travel": [{"frames": [2, 8], "vx": 1.4}],
+      "hurt": [{"frames": [1, 2], "box": [-26, 0, 28, 142], "replaceBase": true}, {"frames": [3, 5], "box": [-28, 0, 32, 105], "replaceBase": true}, {"frames": [9, 18], "box": [0, 120, 56, 205]}]
+    },
+    {
+      "id": "S", "name": "Flame Elbow", "anim": "S", "kind": "strike", "button": "special", "dir": "neutral", "total": 39,
+      "hits": [{"frames": [12, 14], "box": [10, 90, 95, 166], "level": "overhead", "damage": 115, "chip": 12, "hitstun": 0, "blockstun": 16, "hitstop": 14, "hitPush": 130, "blockPush": 75, "heavy": true, "knockdown": true, "energy": true}],
+      "travel": [{"frames": [3, 12], "vx": 6.0}],
+      "hurt": [{"frames": [12, 22], "box": [0, 108, 88, 166]}]
+    },
+    {
+      "id": "FS", "name": "Flying Knee", "anim": "FS", "kind": "strike", "button": "special", "dir": "forward", "total": 50,
+      "hits": [{"frames": [22, 24], "box": [10, 95, 85, 162], "level": "mid", "damage": 120, "chip": 12, "hitstun": 0, "blockstun": 17, "hitstop": 14, "hitPush": 140, "blockPush": 80, "heavy": true, "knockdown": true, "energy": true}],
+      "travel": [{"frames": [3, 23], "vx": 6.43}],
+      "airborne": [7, 27],
+      "hurt": [{"frames": [7, 27], "box": [-24, 30, 24, 182], "replaceBase": true}]
+    },
+    {
+      "id": "BS", "name": "Flame Burst", "anim": "BS", "kind": "strike", "button": "special", "dir": "back", "total": 49, "meterCost": 500,
+      "hits": [{"frames": [7, 10], "box": [-20, 0, 125, 190], "level": "mid", "damage": 115, "chip": 12, "hitstun": 0, "blockstun": 14, "hitstop": 15, "hitPush": 160, "blockPush": 110, "heavy": true, "knockdown": true, "energy": true}],
+      "invulnStrike": [1, 10]
+    },
+    {
+      "id": "JL", "name": "Jumping Elbow", "anim": "JL", "kind": "strike", "button": "light", "dir": "any", "air": true, "total": 18,
+      "hits": [{"frames": [6, 11], "box": [6, 80, 60, 140], "level": "overhead", "damage": 42, "hitstun": 18, "blockstun": 14, "hitstop": 9, "hitPush": 18, "blockPush": 22, "react": "HitHookR"}]
+    },
+    {
+      "id": "JH", "name": "Jumping Knee", "anim": "JH", "kind": "strike", "button": "heavy", "dir": "any", "air": true, "total": 24,
+      "hits": [{"frames": [8, 14], "box": [10, 30, 70, 100], "level": "overhead", "damage": 62, "hitstun": 22, "blockstun": 16, "hitstop": 11, "hitPush": 40, "blockPush": 40, "heavy": true, "react": "HitBodyHeavy"}]
+    },
+    {
+      "id": "T", "name": "Clinch Trip", "anim": "T", "kind": "throw", "button": "throw", "dir": "any", "total": 32,
+      "hits": [{"frames": [5, 6], "box": [20, 80, 64, 160], "level": "mid", "damage": 0, "hitstun": 1, "blockstun": 0, "hitstop": 0, "hitPush": 0, "blockPush": 0}],
+      "throwRange": 30, "comboRange": 45, "throw": "ashka_clinch_trip", "throwForward": "ashka_clinch_knees", "throwBack": "ashka_clinch_turn",
+      "hurt": [{"frames": [5, 19], "box": [0, 90, 58, 150]}]
+    },
+    {
+      "id": "DF", "name": "Forward Roll", "anim": "DF", "kind": "dodge", "button": "dodge", "dir": "forward", "total": 30,
+      "invulnStrike": [4, 15], "noPush": [3, 18],
+      "travel": [{"frames": [2, 18], "vx": 8.5}]
+    },
+    {
+      "id": "DB", "name": "Back Roll", "anim": "DB", "kind": "dodge", "button": "dodge", "dir": "any", "total": 30,
+      "invulnStrike": [3, 12],
+      "travel": [{"frames": [2, 15], "vx": -8.0}]
+    }
+  ]
+}

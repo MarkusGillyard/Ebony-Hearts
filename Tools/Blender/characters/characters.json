@@ -1,0 +1,1644 @@
+{
+ "about": "Build parameters for the Ebony Hearts fighters (read by build_characters.py). MPFB macros are 0..1; region targets -1..1 by 'category/modifier'; expression units are MPFB face units baked into the neutral head. Heights are barefoot stature in metres; sole_m raises the body so shoe soles rest on Z=0. rest_chains: rest head/tail (cm) and x-axis of the secondary chain bones (braids, strands, coat tails) and coat helpers, copied from the shipped rigs so the spring-simulated chains keep their exact rest pose when garments or hair change.",
+ "common": {
+  "eyes": "high-poly",
+  "rig": "game_engine",
+  "texture_sizes": {
+   "skin": 2048,
+   "outfit": 2048,
+   "accessory": 1024,
+   "hair": 1024,
+   "eyes": 512
+  },
+  "weight_limit": 8,
+  "lod1_ratio": 0.5,
+  "ao_rays": 20,
+  "eye": {
+   "iris_angle": 0.68,
+   "pupil_angle": 0.22
+  }
+ },
+ "characters": {
+  "wren": {
+   "name": "Wren",
+   "display_name": "Wren Ku",
+   "height_m": 1.78,
+   "sole_m": 0.0,
+   "macros": {
+    "gender": 0.0,
+    "age": 0.53,
+    "muscle": 0.95,
+    "weight": 0.42,
+    "proportions": 0.95,
+    "cupsize": 0.45,
+    "firmness": 0.75,
+    "race": {
+     "caucasian": 0.9,
+     "asian": 0.05,
+     "african": 0.05
+    }
+   },
+   "targets": {
+    "legs/upperlegs-height-decr-incr": 0.3,
+    "legs/lowerlegs-height-decr-incr": 0.15,
+    "legs/upperleg-muscle-decr-incr": 0.5,
+    "legs/measure-thigh-circ-decr-incr": 0.25,
+    "legs/lowerleg-muscle-decr-incr": 0.35,
+    "hip/hip-scale-horiz-decr-incr": 0.12,
+    "buttocks/buttocks-volume-decr-incr": 0.25,
+    "pelvis/pelvis-tone-decr-incr": 0.4,
+    "stomach/stomach-pregnant-decr-incr": -0.35,
+    "torso/torso-muscle-dorsi-decr-incr": 0.3,
+    "torso/torso-vshape-decr-incr": 0.15,
+    "torso/measure-waist-circ-decr-incr": -0.15,
+    "arms/upperarm-muscle-decr-incr": 0.5,
+    "arms/upperarm-shoulder-muscle-decr-incr": 0.45,
+    "arms/lowerarm-muscle-decr-incr": 0.4,
+    "neck/measure-neck-circ-decr-incr": 0.1,
+    "cheek/cheek-bones-decr-incr": 0.3,
+    "eyes/eye-scale-decr-incr": 0.32,
+    "mouth/mouth-scale-horiz-decr-incr": 0.08,
+    "chin/chin-width-decr-incr": -0.1,
+    "torso/measure-shoulder-dist-decr-incr": 0.12,
+    "mouth/mouth-lowerlip-volume-decr-incr": 0.2,
+    "mouth/mouth-upperlip-volume-decr-incr": 0.15,
+    "nose/nose-scale-horiz-decr-incr": -0.1
+   },
+   "expression": {
+    "race": "caucasian",
+    "mouth-corner-puller": 0.58,
+    "eye-left-slit": 0.18,
+    "eye-right-slit": 0.18
+   },
+   "eyelashes": "eyelashes01",
+   "eyebrows": "eyebrow001",
+   "palette": {
+    "skin": "#cf9b7c",
+    "skin_shadow": "#9c6249",
+    "lips": "#b8665d",
+    "hair": "#45301f",
+    "hair_light": "#73523a",
+    "hair_dark": "#20140c",
+    "iris": "#1677b8",
+    "iris_dark": "#06294f",
+    "black": "#16171b",
+    "black_light": "#2a2c33",
+    "blue": "#0f6fae",
+    "blue_light": "#2a9bd6",
+    "fab_black": "#16171a",
+    "fab_black2": "#1d1e22",
+    "blue_dark": "#0a4b7a",
+    "stitch_grey": "#5a5c63"
+   },
+   "uv": {
+    "head_scale": 1.6
+   },
+   "abs": {
+    "navel_frac": 0.595,
+    "normal_strength": 0.0016,
+    "paint_strength": 0.09
+   },
+   "hair": {
+    "cap_thickness": 0.013,
+    "anchor_back": 0.032,
+    "anchor_down": 0.012,
+    "clear": 0.012,
+    "drop": 0.3,
+    "width": [
+     0.044,
+     0.03
+    ],
+    "period": 0.065,
+    "tassel": 0.06,
+    "tie_color": "#16171b",
+    "tie_stripe": "#0f6fae",
+    "hairline_up": 0.04
+   },
+   "outfit": {
+    "shorts_hem": 0.5,
+    "neck_front_drop": 0.06,
+    "neck_front_curve": 9.0,
+    "neck_back_drop": 0.075,
+    "neck_back_curve": 6.0,
+    "armhole_dx": 0.012,
+    "armhole_dz": -0.035,
+    "armhole_r": [
+     0.075,
+     0.095,
+     0.115
+    ]
+   },
+   "rest_chains": {
+    "braid_l_01": {
+     "head_cm": [
+      5.47,
+      3.17,
+      162.234
+     ],
+     "tail_cm": [
+      6.546,
+      6.923,
+      150.202
+     ],
+     "x_axis": [
+      0.0,
+      -0.9546,
+      -0.2977
+     ]
+    },
+    "braid_l_02": {
+     "head_cm": [
+      6.546,
+      6.923,
+      150.202
+     ],
+     "tail_cm": [
+      7.592,
+      8.918,
+      138.552
+     ],
+     "x_axis": [
+      0.0,
+      -0.9856,
+      -0.1688
+     ]
+    },
+    "braid_l_03": {
+     "head_cm": [
+      7.592,
+      8.918,
+      138.552
+     ],
+     "tail_cm": [
+      8.322,
+      5.946,
+      126.293
+     ],
+     "x_axis": [
+      0.0,
+      -0.9718,
+      0.2356
+     ]
+    },
+    "braid_l_04": {
+     "head_cm": [
+      8.322,
+      5.946,
+      126.293
+     ],
+     "tail_cm": [
+      8.815,
+      2.401,
+      114.167
+     ],
+     "x_axis": [
+      0.0,
+      -0.9598,
+      0.2806
+     ]
+    },
+    "braid_r_01": {
+     "head_cm": [
+      -5.421,
+      3.171,
+      162.011
+     ],
+     "tail_cm": [
+      -6.527,
+      6.909,
+      150.187
+     ],
+     "x_axis": [
+      -0.0,
+      0.9535,
+      0.3014
+     ]
+    },
+    "braid_r_02": {
+     "head_cm": [
+      -6.527,
+      6.909,
+      150.187
+     ],
+     "tail_cm": [
+      -7.614,
+      8.896,
+      138.11
+     ],
+     "x_axis": [
+      -0.0,
+      0.9867,
+      0.1624
+     ]
+    },
+    "braid_r_03": {
+     "head_cm": [
+      -7.614,
+      8.896,
+      138.11
+     ],
+     "tail_cm": [
+      -8.339,
+      5.873,
+      126.095
+     ],
+     "x_axis": [
+      -0.0,
+      0.9698,
+      -0.244
+     ]
+    },
+    "braid_r_04": {
+     "head_cm": [
+      -8.339,
+      5.873,
+      126.095
+     ],
+     "tail_cm": [
+      -8.811,
+      2.402,
+      114.177
+     ],
+     "x_axis": [
+      -0.0,
+      0.9601,
+      -0.2796
+     ]
+    }
+   }
+  },
+  "ashka": {
+   "name": "Ashka",
+   "display_name": "Ashka Rook",
+   "height_m": 1.7,
+   "sole_m": 0.022,
+   "macros": {
+    "gender": 0.0,
+    "age": 0.515,
+    "muscle": 0.55,
+    "weight": 0.32,
+    "proportions": 0.9,
+    "cupsize": 0.4,
+    "firmness": 0.6,
+    "race": {
+     "caucasian": 0.62,
+     "asian": 0.3,
+     "african": 0.08
+    }
+   },
+   "targets": {
+    "legs/upperlegs-height-decr-incr": 0.12,
+    "torso/measure-waist-circ-decr-incr": -0.2,
+    "neck/measure-neck-height-decr-incr": 0.15,
+    "chin/chin-prominent-decr-incr": 0.12,
+    "chin/chin-width-decr-incr": -0.3,
+    "cheek/cheek-volume-decr-incr": -0.2,
+    "eyes/eye-scale-decr-incr": 0.22,
+    "nose/nose-scale-horiz-decr-incr": -0.2,
+    "mouth/mouth-cupidsbow-decr-incr": 0.3,
+    "head/head-invertedtriangular": 0.3,
+    "cheek/cheek-bones-decr-incr": 0.3,
+    "nose/nose-point-width-decr-incr": -0.25,
+    "nose/nose-nostrils-width-decr-incr": -0.15,
+    "mouth/mouth-upperlip-volume-decr-incr": 0.3,
+    "mouth/mouth-lowerlip-volume-decr-incr": 0.35,
+    "eyes/eye-corner2-down-up": 0.2
+   },
+   "expression": {
+    "race": "caucasian",
+    "mouth-corner-puller": 0.42,
+    "eye-left-slit": 0.22,
+    "eye-right-slit": 0.22
+   },
+   "eyelashes": "eyelashes02",
+   "eyebrows": "eyebrow005",
+   "palette": {
+    "skin": "#d8a68c",
+    "skin_shadow": "#a87060",
+    "lips": "#a6545a",
+    "hair": "#651219",
+    "hair_light": "#94272c",
+    "hair_dark": "#280609",
+    "iris": "#6a1420",
+    "iris_dark": "#2a0306",
+    "coat": "#0e0f12",
+    "coat_light": "#24252b",
+    "shirt": "#eef2f6",
+    "tie": "#7a0c19",
+    "pants": "#0c0c0e",
+    "loafer": "#0d0d0f",
+    "loafer_dark": "#050506",
+    "metal": "#8a8378",
+    "coat_dark": "#0a0a0c",
+    "coat_stitch": "#1c1d22",
+    "shirt_stitch": "#d8dde3",
+    "pants_stitch": "#1c1c20",
+    "sole": "#141210",
+    "welt": "#141210",
+    "button": "#b7bac0",
+    "crimson": "#8c1020",
+    "lining": "#5a0a14",
+    "silver": "#b7bac0",
+    "dark_silver": "#5f6268",
+    "ice": "#eef2f6",
+    "waistcoat": "#121215",
+    "brocade": "#1d1d22",
+    "cravat": "#7a0c19",
+    "gem": "#a0061b",
+    "ribbon": "#0b0b0d"
+   },
+   "uv": {
+    "head_scale": 1.6,
+    "part_density": {
+     "11": 1.0,
+     "12": 1.5,
+     "13": 1.5,
+     "14": 1.4,
+     "20": 1.4,
+     "15": 0.75,
+     "16": 1.4,
+     "17": 1.0,
+     "18": 1.2,
+     "19": 1.4,
+     "2": 1.2,
+     "3": 1.2,
+     "8": 1.5
+    }
+   },
+   "hair": {
+    "cap_thickness": 0.01,
+    "clear": 0.012,
+    "drop": 0.36,
+    "width": [
+     0.05,
+     0.034
+    ],
+    "period": 0.085,
+    "tassel": 0.07,
+    "nape_down": 0.035,
+    "bang_span": 0.07,
+    "bang_root": 0.05,
+    "bang_clear": 0.007,
+    "bang_past_brow": 0.011,
+    "bang_width": 0.034,
+    "strand_width": 0.026,
+    "strand_drop": 0.1,
+    "tie_color": "#0b0b0d",
+    "bang_count": 8,
+    "bang_thick": 0.006,
+    "strand_thick": 0.006,
+    "ponytail": {
+     "tie_at": 0.03,
+     "width_tie": 0.014,
+     "width_max": 0.034,
+     "width_tip": 0.01,
+     "depth": 0.55,
+     "cards": 18,
+     "card_width": 0.034,
+     "wave_amp": 0.012,
+     "wave_start": 0.45,
+     "ribbon_loop": 0.035,
+     "ribbon_tail": 0.085,
+     "ribbon_width": 0.014,
+     "wave_period": 0.075
+    },
+    "bang_part": 0.022
+   },
+   "outfit": {
+    "button_above_pelvis": 0.075,
+    "v_halfwidth_top": 0.105,
+    "pants_hem_z": 0.035,
+    "pants_min_radius": 0.062,
+    "skirt_top_rel_pelvis": -0.03,
+    "sleeve_end_t": 0.92,
+    "coat_offset": 0.011,
+    "hem_z": 0.52,
+    "skirt_rows": 18,
+    "skirt_flare": 0.03,
+    "skirt_clear": 0.03,
+    "side_slit_rows": 10,
+    "back_vent_rows": 14,
+    "skirt_thickness": 0.004,
+    "lapel_width": 0.085,
+    "collar_height": 0.035,
+    "belt_above_pelvis": 0.075,
+    "belt_height": 0.035,
+    "tie_width": 0.075,
+    "front_gap": 0.16,
+    "belt_knot_x": 0.05,
+    "v_bottom_above_pelvis": 0.085,
+    "drape_slope": 0.3,
+    "drape_slope_side": 0.9,
+    "drape_reach": 0.35,
+    "drape_ease": 0.008,
+    "belt_ease": 0.004,
+    "belt_blouse": 0.35,
+    "sleeve_round": 0.5,
+    "fold_amp": 0.015,
+    "fold_count": 9,
+    "lapel_roll": 0.008,
+    "collar_end_deg": 125,
+    "collar_fall": 0.05,
+    "button_x": 0.062,
+    "hem_front_z": 0.0,
+    "hem_back_z": 0.0,
+    "crease_depth": 0.0015,
+    "loafer_heel_room": 0.006,
+    "loafer_toe_room": 0.016,
+    "loafer_sections": 30,
+    "loafer_ring": 24,
+    "loafer_vamp_f": 0.045,
+    "loafer_topline_heel": 0.036,
+    "loafer_topline_dip": 0.008,
+    "loafer_welt": 0.0035,
+    "loafer_heel_len": 0.07,
+    "loafer_toe_taper": 0.04,
+    "cuff_start_t": 0.86,
+    "shirt_tuck_depth": 0.04,
+    "shirt_offset": 0.0035,
+    "shirt_sleeve_offset": 0.006,
+    "shirt_blouse": 0.006,
+    "shirt_drape_slope": 0.45,
+    "shirt_drape_slope_side": 1.2,
+    "shirt_drape_reach": 0.25,
+    "shirt_drape_ease": 0.004,
+    "shirt_waist_ease": 0.003,
+    "shirt_waist_blouse": 0.25,
+    "shirt_sleeve_round": 0.45,
+    "pants_waist_ease": 0.007,
+    "tie_tip_above_pelvis": 0.0,
+    "tie_settle": 0.6,
+    "shirt_smooth_iters": 8,
+    "shirt_tucked_gap": 0.0025,
+    "coat_waist_above_pelvis": 0.085,
+    "stand_collar_height": 0.058,
+    "lining_inset": 0.0028,
+    "blouse_collar_height": 0.05,
+    "waist_front_above_pelvis": 0.11,
+    "waist_back_above_pelvis": 0.125,
+    "waistcoat_offset": 0.0085,
+    "waistcoat_v_bottom_below_clav": 0.19,
+    "waistcoat_v_halfwidth": 0.075,
+    "waistcoat_hem_below_waist": 0.03,
+    "cravat_width": 0.1,
+    "cravat_length": 0.115,
+    "boot_shaft_above_ankle": 0.1,
+    "tail_thigh_follow": 0.0,
+    "tail_thigh_reach": 0.25
+   },
+   "face": {
+    "contour": 0.05,
+    "highlight": 0.04,
+    "tzone": 0.1,
+    "relief": 4e-05
+   },
+   "eye": {
+    "iris_angle": 0.68,
+    "pupil_angle": 0.22,
+    "lid_shadow": 0.38,
+    "iris_center": 1.05
+   },
+   "rest_chains": {
+    "strand_l_01": {
+     "head_cm": [
+      6.638,
+      -8.548,
+      166.209
+     ],
+     "tail_cm": [
+      6.546,
+      -8.512,
+      155.577
+     ],
+     "x_axis": [
+      -1.0,
+      -0.0,
+      0.0086
+     ]
+    },
+    "strand_l_02": {
+     "head_cm": [
+      6.546,
+      -8.512,
+      155.577
+     ],
+     "tail_cm": [
+      7.247,
+      -7.797,
+      142.408
+     ],
+     "x_axis": [
+      -0.9986,
+      -0.0,
+      -0.0532
+     ]
+    },
+    "strand_r_01": {
+     "head_cm": [
+      -6.638,
+      -8.548,
+      166.209
+     ],
+     "tail_cm": [
+      -6.546,
+      -8.512,
+      155.577
+     ],
+     "x_axis": [
+      -1.0,
+      0.0,
+      -0.0086
+     ]
+    },
+    "strand_r_02": {
+     "head_cm": [
+      -6.546,
+      -8.512,
+      155.577
+     ],
+     "tail_cm": [
+      -7.247,
+      -7.797,
+      142.408
+     ],
+     "x_axis": [
+      -0.9986,
+      0.0,
+      0.0532
+     ]
+    },
+    "braid_01": {
+     "head_cm": [
+      0.537,
+      5.284,
+      154.596
+     ],
+     "tail_cm": [
+      0.157,
+      5.888,
+      148.267
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9955,
+      -0.0951
+     ]
+    },
+    "braid_02": {
+     "head_cm": [
+      0.157,
+      5.888,
+      148.267
+     ],
+     "tail_cm": [
+      0.554,
+      9.991,
+      137.508
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9344,
+      -0.3563
+     ]
+    },
+    "braid_03": {
+     "head_cm": [
+      0.554,
+      9.991,
+      137.508
+     ],
+     "tail_cm": [
+      1.026,
+      8.583,
+      125.042
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9937,
+      0.1123
+     ]
+    },
+    "braid_04": {
+     "head_cm": [
+      1.026,
+      8.583,
+      125.042
+     ],
+     "tail_cm": [
+      1.619,
+      6.532,
+      112.648
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9866,
+      0.1632
+     ]
+    },
+    "braid_05": {
+     "head_cm": [
+      1.619,
+      6.532,
+      112.648
+     ],
+     "tail_cm": [
+      -2.885,
+      9.085,
+      103.2
+     ],
+     "x_axis": [
+      -0.0,
+      -0.9654,
+      -0.2608
+     ]
+    },
+    "helper_coat_fl": {
+     "head_cm": [
+      14.22,
+      -16.519,
+      70.825
+     ],
+     "tail_cm": [
+      14.22,
+      -16.519,
+      65.825
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_bl": {
+     "head_cm": [
+      12.99,
+      10.194,
+      70.403
+     ],
+     "tail_cm": [
+      12.99,
+      10.194,
+      65.403
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_br": {
+     "head_cm": [
+      -12.987,
+      10.193,
+      70.403
+     ],
+     "tail_cm": [
+      -12.987,
+      10.193,
+      65.403
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "helper_coat_fr": {
+     "head_cm": [
+      -14.204,
+      -16.503,
+      70.825
+     ],
+     "tail_cm": [
+      -14.204,
+      -16.503,
+      65.825
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "coat_fl_01": {
+     "head_cm": [
+      10.136,
+      -12.408,
+      92.283
+     ],
+     "tail_cm": [
+      14.22,
+      -16.519,
+      70.825
+     ],
+     "x_axis": [
+      -0.7094,
+      -0.7048,
+      -0.0
+     ]
+    },
+    "coat_fl_02": {
+     "head_cm": [
+      14.22,
+      -16.519,
+      70.825
+     ],
+     "tail_cm": [
+      12.736,
+      -15.025,
+      53.658
+     ],
+     "x_axis": [
+      -0.7094,
+      -0.7048,
+      0.0
+     ]
+    },
+    "coat_fl_03": {
+     "head_cm": [
+      12.736,
+      -15.025,
+      53.658
+     ],
+     "tail_cm": [
+      14.296,
+      -16.595,
+      32.2
+     ],
+     "x_axis": [
+      -0.7094,
+      -0.7048,
+      0.0
+     ]
+    },
+    "coat_bl_01": {
+     "head_cm": [
+      11.447,
+      8.722,
+      91.627
+     ],
+     "tail_cm": [
+      12.99,
+      10.194,
+      70.403
+     ],
+     "x_axis": [
+      0.6905,
+      -0.7233,
+      -0.0
+     ]
+    },
+    "coat_bl_02": {
+     "head_cm": [
+      12.99,
+      10.194,
+      70.403
+     ],
+     "tail_cm": [
+      14.171,
+      11.322,
+      53.424
+     ],
+     "x_axis": [
+      0.6905,
+      -0.7233,
+      -0.0
+     ]
+    },
+    "coat_bl_03": {
+     "head_cm": [
+      14.171,
+      11.322,
+      53.424
+     ],
+     "tail_cm": [
+      15.925,
+      12.997,
+      32.2
+     ],
+     "x_axis": [
+      0.6905,
+      -0.7233,
+      -0.0
+     ]
+    },
+    "coat_br_01": {
+     "head_cm": [
+      -11.445,
+      8.722,
+      91.627
+     ],
+     "tail_cm": [
+      -12.987,
+      10.193,
+      70.403
+     ],
+     "x_axis": [
+      0.6906,
+      0.7233,
+      0.0
+     ]
+    },
+    "coat_br_02": {
+     "head_cm": [
+      -12.987,
+      10.193,
+      70.403
+     ],
+     "tail_cm": [
+      -14.17,
+      11.323,
+      53.424
+     ],
+     "x_axis": [
+      0.6906,
+      0.7233,
+      0.0
+     ]
+    },
+    "coat_br_03": {
+     "head_cm": [
+      -14.17,
+      11.323,
+      53.424
+     ],
+     "tail_cm": [
+      -15.905,
+      12.98,
+      32.2
+     ],
+     "x_axis": [
+      0.6906,
+      0.7233,
+      0.0
+     ]
+    },
+    "coat_fr_01": {
+     "head_cm": [
+      -10.136,
+      -12.408,
+      92.283
+     ],
+     "tail_cm": [
+      -14.204,
+      -16.503,
+      70.825
+     ],
+     "x_axis": [
+      -0.7094,
+      0.7048,
+      0.0
+     ]
+    },
+    "coat_fr_02": {
+     "head_cm": [
+      -14.204,
+      -16.503,
+      70.825
+     ],
+     "tail_cm": [
+      -12.927,
+      -15.218,
+      53.658
+     ],
+     "x_axis": [
+      -0.7094,
+      0.7048,
+      -0.0
+     ]
+    },
+    "coat_fr_03": {
+     "head_cm": [
+      -12.927,
+      -15.218,
+      53.658
+     ],
+     "tail_cm": [
+      -14.296,
+      -16.595,
+      32.2
+     ],
+     "x_axis": [
+      -0.7094,
+      0.7048,
+      -0.0
+     ]
+    },
+    "helper_coat_c01": {
+     "head_cm": [
+      5.201,
+      -17.04,
+      70.068
+     ],
+     "tail_cm": [
+      5.201,
+      -17.04,
+      65.068
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_c02": {
+     "head_cm": [
+      13.585,
+      -18.667,
+      70.113
+     ],
+     "tail_cm": [
+      13.585,
+      -18.667,
+      65.113
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_c03": {
+     "head_cm": [
+      23.298,
+      -10.609,
+      70.179
+     ],
+     "tail_cm": [
+      23.298,
+      -10.609,
+      65.179
+     ],
+     "x_axis": [
+      1.0,
+      -0.0,
+      0.0
+     ]
+    },
+    "helper_coat_c10": {
+     "head_cm": [
+      -23.852,
+      -10.784,
+      70.179
+     ],
+     "tail_cm": [
+      -23.852,
+      -10.784,
+      65.179
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "helper_coat_c11": {
+     "head_cm": [
+      -13.372,
+      -18.485,
+      70.113
+     ],
+     "tail_cm": [
+      -13.372,
+      -18.485,
+      65.113
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "helper_coat_c12": {
+     "head_cm": [
+      -5.265,
+      -17.097,
+      70.068
+     ],
+     "tail_cm": [
+      -5.265,
+      -17.097,
+      65.068
+     ],
+     "x_axis": [
+      1.0,
+      0.0,
+      -0.0
+     ]
+    },
+    "coat_c01_01": {
+     "head_cm": [
+      3.865,
+      -13.807,
+      101.804
+     ],
+     "tail_cm": [
+      4.533,
+      -15.423,
+      85.936
+     ],
+     "x_axis": [
+      -0.9658,
+      -0.2588,
+      -0.0143
+     ]
+    },
+    "coat_c01_02": {
+     "head_cm": [
+      4.533,
+      -15.423,
+      85.936
+     ],
+     "tail_cm": [
+      4.863,
+      -16.368,
+      70.068
+     ],
+     "x_axis": [
+      -0.9659,
+      -0.2588,
+      -0.0047
+     ]
+    },
+    "coat_c01_03": {
+     "head_cm": [
+      4.863,
+      -16.368,
+      70.068
+     ],
+     "tail_cm": [
+      4.981,
+      -16.915,
+      54.2
+     ],
+     "x_axis": [
+      -0.9659,
+      -0.2588,
+      0.0017
+     ]
+    },
+    "coat_c02_01": {
+     "head_cm": [
+      7.931,
+      -12.377,
+      101.938
+     ],
+     "tail_cm": [
+      10.758,
+      -15.522,
+      86.026
+     ],
+     "x_axis": [
+      -0.707,
+      -0.707,
+      0.0141
+     ]
+    },
+    "coat_c02_02": {
+     "head_cm": [
+      10.758,
+      -15.522,
+      86.026
+     ],
+     "tail_cm": [
+      12.041,
+      -16.908,
+      70.113
+     ],
+     "x_axis": [
+      -0.7071,
+      -0.7071,
+      0.0046
+     ]
+    },
+    "coat_c02_03": {
+     "head_cm": [
+      12.041,
+      -16.908,
+      70.113
+     ],
+     "tail_cm": [
+      11.362,
+      -16.162,
+      54.2
+     ],
+     "x_axis": [
+      -0.7071,
+      -0.7071,
+      -0.003
+     ]
+    },
+    "coat_c03_01": {
+     "head_cm": [
+      14.065,
+      -7.687,
+      102.137
+     ],
+     "tail_cm": [
+      18.682,
+      -9.148,
+      86.158
+     ],
+     "x_axis": [
+      -0.2588,
+      -0.9658,
+      0.0136
+     ]
+    },
+    "coat_c03_02": {
+     "head_cm": [
+      18.682,
+      -9.148,
+      86.158
+     ],
+     "tail_cm": [
+      20.159,
+      -9.621,
+      70.179
+     ],
+     "x_axis": [
+      -0.2588,
+      -0.9659,
+      0.0047
+     ]
+    },
+    "coat_c03_03": {
+     "head_cm": [
+      20.159,
+      -9.621,
+      70.179
+     ],
+     "tail_cm": [
+      19.767,
+      -9.475,
+      54.2
+     ],
+     "x_axis": [
+      -0.2588,
+      -0.9659,
+      -0.0025
+     ]
+    },
+    "coat_c04_01": {
+     "head_cm": [
+      14.817,
+      -0.795,
+      102.252
+     ],
+     "tail_cm": [
+      19.255,
+      -0.028,
+      86.235
+     ],
+     "x_axis": [
+      0.2587,
+      -0.9656,
+      0.0255
+     ]
+    },
+    "coat_c04_02": {
+     "head_cm": [
+      19.255,
+      -0.028,
+      86.235
+     ],
+     "tail_cm": [
+      20.342,
+      0.018,
+      70.217
+     ],
+     "x_axis": [
+      0.2588,
+      -0.9658,
+      0.0148
+     ]
+    },
+    "coat_c04_03": {
+     "head_cm": [
+      20.342,
+      0.018,
+      70.217
+     ],
+     "tail_cm": [
+      20.483,
+      -0.001,
+      54.2
+     ],
+     "x_axis": [
+      0.2588,
+      -0.9659,
+      0.0034
+     ]
+    },
+    "coat_c05_01": {
+     "head_cm": [
+      9.731,
+      4.96,
+      102.553
+     ],
+     "tail_cm": [
+      13.828,
+      8.547,
+      86.435
+     ],
+     "x_axis": [
+      0.7069,
+      -0.7069,
+      0.0224
+     ]
+    },
+    "coat_c05_02": {
+     "head_cm": [
+      13.828,
+      8.547,
+      86.435
+     ],
+     "tail_cm": [
+      12.39,
+      7.203,
+      70.318
+     ],
+     "x_axis": [
+      0.7071,
+      -0.7071,
+      -0.0041
+     ]
+    },
+    "coat_c05_03": {
+     "head_cm": [
+      12.39,
+      7.203,
+      70.318
+     ],
+     "tail_cm": [
+      12.885,
+      7.611,
+      54.2
+     ],
+     "x_axis": [
+      0.7071,
+      -0.7071,
+      0.0038
+     ]
+    },
+    "coat_c06_01": {
+     "head_cm": [
+      2.623,
+      6.03,
+      102.37
+     ],
+     "tail_cm": [
+      3.996,
+      11.002,
+      86.313
+     ],
+     "x_axis": [
+      0.9659,
+      -0.2588,
+      0.0025
+     ]
+    },
+    "coat_c06_02": {
+     "head_cm": [
+      3.996,
+      11.002,
+      86.313
+     ],
+     "tail_cm": [
+      3.42,
+      9.016,
+      70.257
+     ],
+     "x_axis": [
+      0.9659,
+      -0.2588,
+      -0.0026
+     ]
+    },
+    "coat_c06_03": {
+     "head_cm": [
+      3.42,
+      9.016,
+      70.257
+     ],
+     "tail_cm": [
+      3.652,
+      9.971,
+      54.2
+     ],
+     "x_axis": [
+      0.9659,
+      -0.2588,
+      -0.0014
+     ]
+    },
+    "coat_c07_01": {
+     "head_cm": [
+      -2.623,
+      6.03,
+      102.37
+     ],
+     "tail_cm": [
+      -3.931,
+      10.725,
+      86.313
+     ],
+     "x_axis": [
+      0.9659,
+      0.2588,
+      -0.003
+     ]
+    },
+    "coat_c07_02": {
+     "head_cm": [
+      -3.931,
+      10.725,
+      86.313
+     ],
+     "tail_cm": [
+      -3.203,
+      8.085,
+      70.257
+     ],
+     "x_axis": [
+      0.9659,
+      0.2588,
+      0.0013
+     ]
+    },
+    "coat_c07_03": {
+     "head_cm": [
+      -3.203,
+      8.085,
+      70.257
+     ],
+     "tail_cm": [
+      -3.349,
+      8.672,
+      54.2
+     ],
+     "x_axis": [
+      0.9659,
+      0.2588,
+      0.0007
+     ]
+    },
+    "coat_c08_01": {
+     "head_cm": [
+      -9.705,
+      4.96,
+      102.569
+     ],
+     "tail_cm": [
+      -13.698,
+      8.482,
+      86.446
+     ],
+     "x_axis": [
+      0.707,
+      0.707,
+      -0.0207
+     ]
+    },
+    "coat_c08_02": {
+     "head_cm": [
+      -13.698,
+      8.482,
+      86.446
+     ],
+     "tail_cm": [
+      -11.981,
+      6.943,
+      70.323
+     ],
+     "x_axis": [
+      0.7071,
+      0.7071,
+      0.0078
+     ]
+    },
+    "coat_c08_03": {
+     "head_cm": [
+      -11.981,
+      6.943,
+      70.323
+     ],
+     "tail_cm": [
+      -12.308,
+      7.234,
+      54.2
+     ],
+     "x_axis": [
+      0.7071,
+      0.7071,
+      -0.0016
+     ]
+    },
+    "coat_c09_01": {
+     "head_cm": [
+      -14.818,
+      -0.795,
+      102.252
+     ],
+     "tail_cm": [
+      -19.188,
+      0.014,
+      86.235
+     ],
+     "x_axis": [
+      0.2588,
+      0.9657,
+      -0.0218
+     ]
+    },
+    "coat_c09_02": {
+     "head_cm": [
+      -19.188,
+      0.014,
+      86.235
+     ],
+     "tail_cm": [
+      -20.117,
+      0.159,
+      70.217
+     ],
+     "x_axis": [
+      0.2588,
+      0.9659,
+      -0.0062
+     ]
+    },
+    "coat_c09_03": {
+     "head_cm": [
+      -20.117,
+      0.159,
+      70.217
+     ],
+     "tail_cm": [
+      -20.164,
+      0.195,
+      54.2
+     ],
+     "x_axis": [
+      0.2588,
+      0.9659,
+      0.0014
+     ]
+    },
+    "coat_c10_01": {
+     "head_cm": [
+      -14.065,
+      -7.687,
+      102.137
+     ],
+     "tail_cm": [
+      -18.958,
+      -9.235,
+      86.158
+     ],
+     "x_axis": [
+      -0.2588,
+      0.9658,
+      -0.0144
+     ]
+    },
+    "coat_c10_02": {
+     "head_cm": [
+      -18.958,
+      -9.235,
+      86.158
+     ],
+     "tail_cm": [
+      -21.087,
+      -9.914,
+      70.179
+     ],
+     "x_axis": [
+      -0.2588,
+      0.9659,
+      -0.0066
+     ]
+    },
+    "coat_c10_03": {
+     "head_cm": [
+      -21.087,
+      -9.914,
+      70.179
+     ],
+     "tail_cm": [
+      -21.062,
+      -9.883,
+      54.2
+     ],
+     "x_axis": [
+      -0.2588,
+      0.9659,
+      0.0015
+     ]
+    },
+    "coat_c11_01": {
+     "head_cm": [
+      -7.931,
+      -12.377,
+      101.938
+     ],
+     "tail_cm": [
+      -10.652,
+      -15.431,
+      86.026
+     ],
+     "x_axis": [
+      -0.707,
+      0.707,
+      -0.0148
+     ]
+    },
+    "coat_c11_02": {
+     "head_cm": [
+      -10.652,
+      -15.431,
+      86.026
+     ],
+     "tail_cm": [
+      -11.685,
+      -16.602,
+      70.113
+     ],
+     "x_axis": [
+      -0.7071,
+      0.7071,
+      -0.0061
+     ]
+    },
+    "coat_c11_03": {
+     "head_cm": [
+      -11.685,
+      -16.602,
+      70.113
+     ],
+     "tail_cm": [
+      -10.866,
+      -15.736,
+      54.2
+     ],
+     "x_axis": [
+      -0.7071,
+      0.7071,
+      0.0021
+     ]
+    },
+    "coat_c12_01": {
+     "head_cm": [
+      -3.865,
+      -13.807,
+      101.804
+     ],
+     "tail_cm": [
+      -4.565,
+      -15.452,
+      85.936
+     ],
+     "x_axis": [
+      -0.9658,
+      0.2588,
+      0.0158
+     ]
+    },
+    "coat_c12_02": {
+     "head_cm": [
+      -4.565,
+      -15.452,
+      85.936
+     ],
+     "tail_cm": [
+      -4.97,
+      -16.464,
+      70.068
+     ],
+     "x_axis": [
+      -0.9659,
+      0.2588,
+      0.0082
+     ]
+    },
+    "coat_c12_03": {
+     "head_cm": [
+      -4.97,
+      -16.464,
+      70.068
+     ],
+     "tail_cm": [
+      -5.131,
+      -17.048,
+      54.2
+     ],
+     "x_axis": [
+      -0.9659,
+      0.2588,
+      0.0003
+     ]
+    }
+   }
+  }
+ }
+}

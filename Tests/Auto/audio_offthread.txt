@@ -1,0 +1,6 @@
+# Development builds: repeats the audio render thread's start-up submit from the game thread while SDL plays (EH-07).
+wait 4
+audio_offthread_submit 8
+wait 10
+platform_check
+quit

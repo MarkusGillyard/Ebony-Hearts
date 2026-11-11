@@ -1,0 +1,27 @@
+name: Core checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, release/first-slice]
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Combat and data tests
+        run: Tests/Core/run_core_tests.sh
+      - name: Python syntax
+        run: python3 -m compileall -q Tools Tests/Auto Tests/Package
+      - name: Packaging safety tests
+        run: python3 -m unittest discover -s Tests/Package -p 'test_*.py'
+      - name: Generated move tables are current
+        run: |
+          python3 Tools/Docs/move_tables.py
+          git diff --exit-code -- Docs/CombatContract.md

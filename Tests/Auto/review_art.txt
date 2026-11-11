@@ -1,0 +1,36 @@
+# Character art at gameplay distance in the chapel: each fighter on each side, standing, mid-kick (Heavy) and after a
+# walk in close, for before/after comparison of the models and materials. Works on builds without crouching too.
+wait 5
+press kbA Light
+wait 1
+match wren ashka training 0 left
+wait 2.2
+screenshot art_wren_left_idle
+press kbA Heavy
+wait 0.15
+screenshot art_wren_left_kick
+wait 1.2
+hold kbA Right
+wait 1.2
+release kbA Right
+wait 0.6
+screenshot art_close_wren_ashka
+match ashka wren training 0 left
+wait 2.2
+screenshot art_ashka_left_idle
+press kbA Heavy
+wait 0.15
+screenshot art_ashka_left_kick
+wait 1.2
+hold kbA Right
+wait 1.2
+release kbA Right
+wait 0.6
+screenshot art_close_ashka_wren
+hold kbA Right
+press kbA Heavy
+release kbA Right
+wait 0.12
+screenshot art_ashka_teep
+wait 1.5
+quit

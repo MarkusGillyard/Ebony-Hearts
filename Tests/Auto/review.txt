@@ -1,0 +1,46 @@
+# Motion review: a CPU-versus-bot match with stills every half second for frame review (footage is recorded alongside
+# by capture.py). Not a perf run.
+wait 5
+press kbA Light
+wait 1
+match wren ashka cpu 2 left
+bots 2 none
+wait 4
+screenshot r00
+wait 0.5
+screenshot r01
+wait 0.5
+screenshot r02
+wait 0.5
+screenshot r03
+wait 0.5
+screenshot r04
+wait 0.5
+screenshot r05
+wait 0.5
+screenshot r06
+wait 0.5
+screenshot r07
+wait 0.5
+screenshot r08
+wait 0.5
+screenshot r09
+wait 0.5
+screenshot r10
+wait 0.5
+screenshot r11
+wait 0.5
+screenshot r12
+wait 0.5
+screenshot r13
+wait 0.5
+screenshot r14
+wait 0.5
+screenshot r15
+wait 20
+screenshot r16
+wait_results 300
+screenshot r17_results
+goto_main
+wait 1
+quit

@@ -1,0 +1,12 @@
+# Pair with "virtual_pad.py layout <xbox|ds4>": the game sits in Training and logs what every press produced, then
+# reports the device it saw. Simulated-device evidence, not a physical controller.
+wait 3
+press kbA Light
+wait 1
+match wren ashka training 0 left
+wait 1
+log_input 34
+wait 34
+devices
+goto_main
+quit

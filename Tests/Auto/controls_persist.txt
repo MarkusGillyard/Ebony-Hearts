@@ -1,0 +1,46 @@
+# Second process after controls_remap.txt: the saved layouts load unchanged, gameplay uses them, then everything is
+# restored to the official defaults.
+wait 3
+expect_binding controller1 Light 0 Gamepad_FaceButton_Top
+expect_binding controller1 Heavy 0 Gamepad_FaceButton_Left
+expect_binding controller1 Special 0 Gamepad_FaceButton_Bottom
+expect_binding controller1 Block 1 none
+expect_binding controller1 Dodge 0 none
+expect_binding keyboard2 Light 2 NumPadFour
+expect_binding keyboard2 Jump 0 Up
+expect_binding keyboard2 Jump 1 none
+expect_binding controller2 Throw 0 Gamepad_RightTrigger
+expect_binding controller2 Block 0 Gamepad_LeftShoulder
+expect_binding keyboard1 Light 0 U
+expect_binding keyboard1 Throw 0 J
+expect_binding keyboard1 Down 0 X
+expect_binding controller1 Throw 0 Gamepad_RightThumbstick
+press kbA Light
+wait 1
+match wren ashka training 0 left
+wait 2
+log_input 4
+press pad3 key:Gamepad_FaceButton_Top
+wait 0.3
+press pad3 key:Gamepad_FaceButton_Left
+wait 0.3
+press pad3 key:Gamepad_FaceButton_Right
+wait 0.3
+press kbA key:U
+wait 0.3
+hold kbA key:X
+wait 0.3
+release kbA key:X
+wait 0.5
+goto_main
+wait 0.5
+reset_layout all
+expect_binding controller1 Light 0 Gamepad_FaceButton_Left
+expect_binding controller1 Special 0 Gamepad_FaceButton_Bottom
+expect_binding controller1 Throw 0 Gamepad_LeftShoulder
+expect_binding controller2 Block 0 Gamepad_RightTrigger
+expect_binding keyboard1 Light 0 J
+expect_binding keyboard1 Jump 1 none
+expect_binding keyboard1 Down 0 S
+expect_binding keyboard1 Throw 0 U
+quit

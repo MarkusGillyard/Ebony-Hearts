@@ -1,0 +1,118 @@
+# Blocking review (2026-11-09): both fighters' standing and crouching guards, their blocked-hit reactions and the
+# transitions into and out of them, from both sides of the screen. Training. Each part first holds the player's own
+# guard (stance -> guard -> stance -> crouch -> crouching guard -> guard -> stance, then a walk into a block and a jab
+# into a block), then sets the partner to "Block" (it blocks every hit at the height it needs: highs and mids standing,
+# lows crouching) and hits it with the light string, a Heavy and a low. Part 1: Wren on the left against Ashka; part 2:
+# Ashka on the right against Wren. Record with capture.py ... --start-on <evidence>/auto_log.txt:match_start for at
+# most 34 s; script waits are not frame-exact, the screenshots mark the moments to check.
+wait 5
+press kbA Light
+wait 1
+match wren ashka training 0 left
+wait 2.0
+hold kbA Block
+wait 1.2
+screenshot bl1_guard
+release kbA Block
+wait 0.6
+hold kbA Down
+wait 0.8
+screenshot bl1_crouch
+hold kbA Block
+wait 1.0
+screenshot bl1_crouch_guard
+release kbA Down
+wait 0.8
+release kbA Block
+wait 0.5
+hold kbA Right
+wait 0.5
+hold kbA Block
+wait 0.8
+release kbA Block
+release kbA Right
+press kbA Light
+wait 0.25
+hold kbA Block
+wait 0.8
+release kbA Block
+press kbA Reset
+wait 1.0
+# Partner: Dummy -> Block (pause item 2, one step right), then Resume.
+press kbA Pause
+wait 0.4
+press kbA Down
+press kbA Right
+wait 0.3
+press kbA Up
+press kbA Light
+wait 0.8
+hold kbA Right
+wait 1.08
+release kbA Right
+press kbA Light
+wait 0.2
+screenshot bl1_partner_blockhit
+press kbA Light
+wait 0.25
+press kbA Light
+wait 0.8
+press kbA Heavy
+wait 1.0
+hold kbA Down
+press kbA Light
+wait 0.2
+screenshot bl1_partner_crouch_blockhit
+release kbA Down
+wait 1.2
+match ashka wren training 0 right
+wait 2.0
+hold kbA Block
+wait 1.2
+screenshot bl2_guard
+release kbA Block
+wait 0.6
+hold kbA Down
+wait 0.8
+screenshot bl2_crouch
+hold kbA Block
+wait 1.0
+screenshot bl2_crouch_guard
+release kbA Down
+wait 0.8
+release kbA Block
+wait 0.5
+hold kbA Left
+wait 0.5
+hold kbA Block
+wait 0.8
+release kbA Block
+release kbA Left
+press kbA Light
+wait 0.25
+hold kbA Block
+wait 0.8
+release kbA Block
+press kbA Reset
+wait 1.0
+# The partner keeps its Block setting from part 1.
+hold kbA Left
+wait 1.08
+release kbA Left
+press kbA Light
+wait 0.2
+screenshot bl2_partner_blockhit
+press kbA Light
+wait 0.25
+press kbA Light
+wait 0.8
+press kbA Heavy
+wait 1.0
+hold kbA Down
+press kbA Light
+wait 0.2
+screenshot bl2_partner_crouch_blockhit
+release kbA Down
+wait 1.2
+goto_main
+quit

@@ -1,0 +1,120 @@
+# Plays the whole Lesson as Wren against the scripted partner. Each step's attempts repeat until the Lesson moves on
+# (wait_lesson N waits for step N, with a timeout that logs FAIL instead of hanging). The uppercut anti-air step needs
+# reaction timing, so player 1 is handed to the Hard CPU for it (its inputs go through the same device router).
+wait 5
+press kbA Light
+wait 1
+match wren ashka lesson 0 left
+wait 3
+lesson_status 1
+# 1 Movement: toward, then away.
+hold kbA Right
+wait 0.5
+release kbA Right
+hold kbA Left
+wait 0.5
+release kbA Left
+wait_lesson 2 10
+# 2 Light x3 (the string continues only when the jab connects: walk in first).
+hold kbA Right
+wait 1.2
+release kbA Right
+press kbA Light
+wait 0.18
+press kbA Light
+wait 0.18
+press kbA Light
+wait_lesson 3 10
+# 3 Land a Heavy.
+hold kbA Right
+wait 1.1
+release kbA Right
+press kbA Heavy
+wait_lesson 4 10
+# 4 Block three strikes (the partner jabs every 70 frames).
+hold kbA Block
+wait_lesson 5 20
+release kbA Block
+# 5 Crouching guard against two lows.
+hold kbA Down
+hold kbA Block
+wait_lesson 6 20
+release kbA Block
+release kbA Down
+# 6 Deflect a heavy: Block held, re-pressed every 15 frames (the mash lockout is 12), so one press lands 0-3 frames
+# before a contact now and then.
+loop 120
+hold kbA Block
+wait 0.2
+release kbA Block
+wait 0.05
+endloop
+wait_lesson 7 40
+# 7 Jump in on the crouching guard and hit on the way down.
+loop 4
+hold kbA Right
+wait 0.7
+hold kbA Jump
+wait 0.1
+release kbA Jump
+wait 0.28
+press kbA Heavy
+release kbA Right
+wait 1.4
+endloop
+wait_lesson 8 20
+# 8 Uppercut the partner's jump-ins (Hard CPU on player 1's keyboard for this step).
+bots 2 none
+wait_lesson 9 60
+bots none none
+# 9 Throw the guarding partner.
+loop 2
+hold kbA Right
+wait 1.6
+release kbA Right
+press kbA Throw
+wait 2.2
+endloop
+wait_lesson 10 20
+# 10 Escape the partner's throws.
+loop 60
+press kbA Throw
+wait 0.13
+endloop
+wait_lesson 11 30
+# 11 Combo throw: Light, Light, Throw while the lights hit.
+loop 3
+hold kbA Right
+wait 1.2
+release kbA Right
+press kbA Light
+wait 0.22
+press kbA Light
+wait 0.22
+press kbA Throw
+wait 2.6
+endloop
+wait_lesson 12 20
+# 12 Block the partner's uppercut, then punish its long recovery with Heavy.
+loop 20
+hold kbA Block
+wait 0.9
+release kbA Block
+press kbA Heavy
+wait 0.6
+endloop
+wait_lesson 13 40
+# 13 Specials: neutral, toward, away.
+press kbA Special
+wait 1.6
+hold kbA Right
+press kbA Special
+release kbA Right
+wait 1.6
+hold kbA Left
+press kbA Special
+release kbA Left
+wait_lesson 14 15
+lesson_status 14
+screenshot lesson_complete
+quit

@@ -1,0 +1,90 @@
+# Interface cost per screen (2026-11-09, UI/UX overhaul): frame times and the CPU time spent building the interface's
+# draw list (ui_paint_* in each JSON) on the title, the main menu while navigating, fighter select, two settings pages,
+# the move list, a bot-vs-CPU fight and training with its overlays (input history, frame data, hitboxes). Run the same
+# script before and after a UI change, on the same machine and resolution.
+wait 5
+perf_begin
+wait 5
+perf_end ui_title_5s
+press kbA Light
+wait 1
+perf_begin
+loop 12
+press kbA Down
+wait 0.3
+endloop
+perf_end ui_main_nav
+goto_main
+wait 0.6
+press kbA Light
+wait 1
+perf_begin
+wait 5
+perf_end ui_select_5s
+goto_main
+wait 0.6
+# Settings (main item 6) > Controls, then Video.
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.4
+press kbA Light
+wait 0.6
+perf_begin
+wait 5
+perf_end ui_settings_controls_5s
+press kbA Heavy
+wait 0.4
+press kbA Down
+press kbA Light
+wait 0.6
+perf_begin
+wait 5
+perf_end ui_settings_video_5s
+goto_main
+wait 0.6
+# Move List (main item 5).
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.6
+perf_begin
+wait 5
+perf_end ui_movelist_5s
+goto_main
+wait 0.6
+match wren ashka cpu 2 left
+bots 2 none
+wait 4
+perf_begin
+wait 20
+perf_end ui_fight_20s
+goto_main
+wait 0.6
+match wren ashka training 0 left
+wait 2
+# Training pause item 6: hitboxes on; then resume and let a bot play into the partner.
+press kbA Pause
+wait 0.3
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Light
+wait 0.3
+press kbA Heavy
+wait 0.5
+bots 2 none
+wait 2
+perf_begin
+wait 15
+perf_end ui_training_15s
+goto_main
+wait 0.5
+quit
