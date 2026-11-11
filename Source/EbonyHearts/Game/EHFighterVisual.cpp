@@ -379,16 +379,25 @@ void AEHFighterVisual::UpdateVisual(const eh::Match& Match, int32 PrevX, float A
 	FVector Loc(X, 0.0f, 0.0f);
 	// The pushboxes let the hips come within 46 cm, where the two bodies would pass through each other. Close in, ease
 	// them apart in depth (the fighter facing right toward the camera), so they stand staggered as real fighters do.
-	// Not during throws or their escapes, which are authored on the line.
+	// Paired throw clips are authored on the line. Start removing the stagger during the grab's startup,
+	// before the first paired frame makes hand contact, instead of leaving the pair separated into the clinch.
 	{
 		const eh::FighterState& O = Match.State().f[1 - Player];
-		auto Paired = [](const eh::FighterState& S)
+		auto ApproachingThrow = [&Match](int32 Slot)
 		{
-			return S.state == eh::FState::Throwing || S.state == eh::FState::Thrown || S.state == eh::FState::Tech;
+			const eh::FighterState& S = Match.State().f[Slot];
+			if (S.state == eh::FState::Throwing || S.state == eh::FState::Thrown || S.state == eh::FState::Tech)
+			{
+				return true;
+			}
+			return S.state == eh::FState::Attack && S.move >= 0 &&
+				static_cast<size_t>(S.move) < Match.Character(Slot).moves.size() &&
+				Match.Character(Slot).moves[static_cast<size_t>(S.move)].kind == eh::MoveKind::Throw;
 		};
 		const float Gap = FMath::Abs(static_cast<float>(O.x - F.x)) * UnitsToCm;
-		const float Target = (Paired(F) || Paired(O)) ? 0.0f : (F.facing > 0 ? 1.0f : -1.0f) * CloseStagger * FMath::Clamp((75.0f - Gap) / 25.0f, 0.0f, 1.0f);
-		DepthOffset = FMath::FInterpTo(DepthOffset, Target, DeltaSeconds, 10.0f);
+		const bool bThrowPair = ApproachingThrow(Player) || ApproachingThrow(1 - Player);
+		const float Target = bThrowPair ? 0.0f : (F.facing > 0 ? 1.0f : -1.0f) * CloseStagger * FMath::Clamp((75.0f - Gap) / 25.0f, 0.0f, 1.0f);
+		DepthOffset = FMath::FInterpTo(DepthOffset, Target, DeltaSeconds, bThrowPair ? 25.0f : 10.0f);
 		Loc.Y += DepthOffset;
 	}
 	// Small shake on the defender while hitstop holds both fighters still.

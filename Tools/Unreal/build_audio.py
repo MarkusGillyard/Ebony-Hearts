@@ -1,5 +1,6 @@
 """Imports the generated sound set (sourceart/audio/<Combat|UI|Ambience|Music>/S_*.wav) into /Game/Audio.
-Ambience and music are looping; everything else is a one-shot. Re-running replaces the assets."""
+Ambience and music are looping; everything else is a one-shot. Re-running replaces the assets.
+EH_AUDIO_NAMES=S_UiLock,S_UiWarn imports only those (the others are left untouched)."""
 import os
 
 import unreal
@@ -9,6 +10,7 @@ SRC = os.path.join(WS, "sourceart", "audio")
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 eal = unreal.EditorAssetLibrary
 
+ONLY = set(n for n in os.environ.get("EH_AUDIO_NAMES", "").split(",") if n)
 count = 0
 for cat in ("Combat", "UI", "Ambience", "Music"):
     folder = os.path.join(SRC, cat)
@@ -16,6 +18,8 @@ for cat in ("Combat", "UI", "Ambience", "Music"):
         if not (f.startswith("S_") and f.endswith(".wav")):
             continue
         name = os.path.splitext(f)[0]
+        if ONLY and name not in ONLY:
+            continue
         task = unreal.AssetImportTask()
         task.filename = os.path.join(folder, f)
         task.destination_path = f"/Game/Audio/{cat}"

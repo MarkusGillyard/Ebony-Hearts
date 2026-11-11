@@ -1555,6 +1555,26 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(teched, "tech dummy escapes neutral throws");
 	});
 
+	Run("dummy_mode_switch_discards_queued_cpu_actions", [] {
+		int stalePresses = 0;
+		for (uint32_t seed = 1; seed <= 256; ++seed)
+		{
+			Match m = MakeMatch(0, 1);
+			m.TrainingPlace(Cm(-45), Cm(45));
+			CpuController cpu;
+			cpu.Setup(1, CpuLevel::Hard, seed);
+			Step(m, InputFrame(), cpu.Decide(m));
+			cpu.SetDummy(DummyMode::Stand);
+			const InputFrame idle = cpu.Decide(m);
+			Step(m, InputFrame(), idle);
+			cpu.SetDummy(DummyMode::Cpu);
+			const InputFrame resumed = cpu.Decide(m);
+			EXPECT_EQ(static_cast<int>(idle.pressed), 0, "stand dummy emits no queued CPU press");
+			stalePresses += resumed.pressed != 0 ? 1 : 0;
+		}
+		EXPECT_EQ(stalePresses, 0, "returning to CPU mode does not fire an action queued before the mode change");
+	});
+
 	Run("hit_levels_agree_with_the_crouching_hurtboxes", [] {
 		// The level tag and the boxes must tell the same story: a high hit cannot reach any fighter's crouching
 		// hurtbox (so crouching ducks it), mids, overheads and lows on the ground can, and lows sit at the legs.

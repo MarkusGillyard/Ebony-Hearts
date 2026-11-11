@@ -28,6 +28,16 @@ FEHMenuItem Choice(const FString& Label, TFunction<FString()> Value, TFunction<v
 	return I;
 }
 
+// A section label inside a menu: drawn smaller, never focused (navigation skips it), so adding one does not change
+// how many presses reach the items after it.
+FEHMenuItem Header(const FString& Label)
+{
+	FEHMenuItem I;
+	I.Label = Label;
+	I.bHeader = true;
+	return I;
+}
+
 FString OnOff(bool b) { return b ? TEXT("On") : TEXT("Off"); }
 
 const TArray<FIntPoint>& Resolutions()
@@ -58,6 +68,11 @@ void AEHGameDirector::GoTo(EEHScreen Next)
 	Screen = Next;
 	ScreenAge = 0.0f;
 	MenuIndex = 0;
+	if (Next == EEHScreen::MoveList)
+	{
+		MoveListPage = 0;
+		MoveListPageCount = 1;
+	}
 	BuildMenu();
 	AutoLogLine(FString::Printf(TEXT("screen %d"), static_cast<int32>(Next)));
 }
@@ -71,10 +86,11 @@ void AEHGameDirector::BuildMenu()
 	{
 	case EEHScreen::Main:
 		MenuTitle = TEXT("");
-		Menu.Add(Button(TEXT("Versus CPU"), [this] { BeginSelect(EEHMode::VersusCpu); }, TEXT("Fight a computer opponent.")));
+		Menu.Add(Button(TEXT("Versus CPU"), [this] { BeginSelect(EEHMode::VersusCpu); }, TEXT("Fight the computer: choose your fighter, its level and your side.")));
 		Menu.Add(Button(TEXT("Local Versus"), [this] { BeginSelect(EEHMode::Versus); }, TEXT("Two players on one machine.")));
 		Menu.Add(Button(TEXT("Training"), [this] { BeginSelect(EEHMode::Training); }, TEXT("Practice with frame data, hitboxes and input history.")));
 		Menu.Add(Button(TEXT("Lesson"), [this] { BeginSelect(EEHMode::Tutorial); }, TEXT("Learn the actions and how they counter each other.")));
+		Menu.Add(Header(FString()));   // a divider between the fight modes and the rest (skipped by navigation)
 		Menu.Add(Button(TEXT("Move List"), [this] { SettingsReturn = EEHScreen::Main; GoTo(EEHScreen::MoveList); }, TEXT("Both fighters' techniques.")));
 		Menu.Add(Button(TEXT("Settings"), [this] { SettingsReturn = EEHScreen::Main; SettingsPage = 0; GoTo(EEHScreen::Settings); }, TEXT("Controls, video, audio and accessibility.")));
 		Menu.Add(Button(TEXT("Credits"), [this] { GoTo(EEHScreen::Credits); }));
@@ -104,6 +120,7 @@ void AEHGameDirector::BuildMenu()
 	case EEHScreen::DisplayConfirm:
 		MenuTitle = TEXT("Keep these display settings?");
 		Menu.Add(Button(TEXT("Keep"), [this] { bSessionDisplayOverride = false; SaveSettings(); SettingsPage = 2; GoTo(EEHScreen::Settings); }));
+		Menu.Last().ConfirmSound = TEXT("UiApply");
 		Menu.Add(Button(TEXT("Revert"), [this] { Settings = DisplayRevert; ApplySettings(true); SaveSettings(); SettingsPage = 2; GoTo(EEHScreen::Settings); }));
 		DisplayConfirmLeft = 12.0f;
 		break;
@@ -127,6 +144,7 @@ void AEHGameDirector::BuildPauseMenu()
 	Menu.Add(Button(TEXT("Resume"), [this] { SetPaused(false, EHDeviceNone); }));
 	if (Mode == EEHMode::Training)
 	{
+		Menu.Add(Header(TEXT("Partner")));
 		Menu.Add(Choice(TEXT("Dummy"), [this] { return FString(DummyName(Dummy)); }, [this](int32 D) {
 			constexpr int32 Modes = static_cast<int32>(eh::DummyMode::Crouch) + 1;
 			int32 Next = (static_cast<int32>(Dummy) + D + Modes) % Modes;
@@ -144,8 +162,10 @@ void AEHGameDirector::BuildPauseMenu()
 			Cpu[DummySlot].Setup(DummySlot, static_cast<eh::CpuLevel>(CpuLevel), static_cast<uint32>(FPlatformTime::Cycles()));
 			Cpu[DummySlot].SetDummy(Dummy);
 		}, TEXT("Used when the dummy is set to CPU.")));
+		Menu.Add(Header(TEXT("Positions")));
 		Menu.Add(Choice(TEXT("Start position"), [this] { return FString(TrainingLayout == 0 ? TEXT("Centre") : (TrainingLayout == 1 ? TEXT("Opponent cornered") : TEXT("You cornered"))); }, [this](int32 D) { TrainingLayout = (TrainingLayout + D + 3) % 3; }, TEXT("Applied on reset.")));
 		Menu.Add(Button(TEXT("Reset positions"), [this] { Match->TrainingResetPositions(TrainingLayout); SetPaused(false, EHDeviceNone); }, TEXT("Also on the Reset button during play.")));
+		Menu.Add(Header(TEXT("Practice aids")));
 		Menu.Add(Choice(TEXT("Hitboxes"), [this] { return OnOff(bShowHitboxes); }, [this](int32) { bShowHitboxes = !bShowHitboxes; }));
 		Menu.Add(Choice(TEXT("Frame data"), [this] { return OnOff(bShowFrameData); }, [this](int32) { bShowFrameData = !bShowFrameData; }));
 		Menu.Add(Choice(TEXT("Input history"), [this] { return OnOff(bShowInputs); }, [this](int32) { bShowInputs = !bShowInputs; }));
@@ -160,10 +180,26 @@ void AEHGameDirector::BuildPauseMenu()
 	{
 		Menu.Add(Button(TEXT("Restart match"), [this] { Rematch(); }));
 	}
+	if (Mode == EEHMode::Training)
+	{
+		Menu.Add(Header(TEXT("More")));
+	}
 	Menu.Add(Button(TEXT("Move List"), [this] { SettingsReturn = EEHScreen::Match; GoTo(EEHScreen::MoveList); }));
 	Menu.Add(Button(TEXT("Settings"), [this] { SettingsReturn = EEHScreen::Match; SettingsPage = 0; GoTo(EEHScreen::Settings); }));
 	Menu.Add(Button(TEXT("Change Fighters"), [this] { const EEHMode M = Mode; LeaveMatch(EEHScreen::Main); BeginSelect(M); }));
 	Menu.Add(Button(TEXT("Main Menu"), [this] { LeaveMatch(EEHScreen::Main); }));
+}
+
+// Discards unapplied video changes: back to the values the Video page opened with (what is on screen). Reloading the
+// file instead would show the saved display while a launch flag (-safedisplay, -windowed, -ResX) overrides it.
+void AEHGameDirector::RestoreVideoSaved()
+{
+	Settings.WindowMode = VideoSaved.WindowMode;
+	Settings.Resolution = VideoSaved.Resolution;
+	Settings.Quality = VideoSaved.Quality;
+	Settings.RenderScale = VideoSaved.RenderScale;
+	Settings.FrameCap = VideoSaved.FrameCap;
+	Settings.bVSync = VideoSaved.bVSync;
 }
 
 void AEHGameDirector::BuildSettingsMenu(int32 Page)
@@ -227,6 +263,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 	}
 	case 2:
 		MenuTitle = TEXT("Video");
+		VideoSaved = Settings;
 		Menu.Add(Choice(TEXT("Display mode"), [this] { return FString(Settings.WindowMode == 0 ? TEXT("Fullscreen") : (Settings.WindowMode == 1 ? TEXT("Borderless") : TEXT("Windowed"))); }, [this](int32 D) { Settings.WindowMode = (Settings.WindowMode + D + 3) % 3; }));
 		Menu.Add(Choice(TEXT("Resolution"), [this] { return FString::Printf(TEXT("%d x %d"), Settings.Resolution.X, Settings.Resolution.Y); }, [this](int32 D) {
 			const TArray<FIntPoint>& R = Resolutions();
@@ -243,12 +280,36 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			Settings.FrameCap = Caps[(Index + D + 6) % 6];
 		}, TEXT("Combat always runs at 60 steps per second.")));
 		Menu.Add(Choice(TEXT("VSync"), [this] { return OnOff(Settings.bVSync); }, [this](int32) { Settings.bVSync = !Settings.bVSync; }));
+		{
+			// Mark what Apply would change (the first six rows, in order).
+			const TFunction<bool()> Differs[] = {
+				[this] { return Settings.WindowMode != VideoSaved.WindowMode; },
+				[this] { return Settings.Resolution != VideoSaved.Resolution; },
+				[this] { return Settings.Quality != VideoSaved.Quality; },
+				[this] { return Settings.RenderScale != VideoSaved.RenderScale; },
+				[this] { return Settings.FrameCap != VideoSaved.FrameCap; },
+				[this] { return Settings.bVSync != VideoSaved.bVSync; },
+			};
+			for (int32 i = 0; i < UE_ARRAY_COUNT(Differs); ++i)
+			{
+				Menu[i].Pending = Differs[i];
+			}
+		}
 		Menu.Add(Button(TEXT("Apply"), [this] {
 			DisplayRevert = FEHSettings::Load();
 			ApplySettings(true);
 			GoTo(EEHScreen::DisplayConfirm);
 		}, TEXT("Reverts automatically unless you confirm.")));
-		Menu.Add(Button(TEXT("Back"), [this] { Settings = FEHSettings::Load(); BuildSettingsMenu(0); }, TEXT("Discards unapplied video changes.")));
+		Menu.Last().ConfirmSound = TEXT("UiApply");
+		Menu.Last().Value = [this] {
+			int32 N = 0;
+			for (const FEHMenuItem& It : Menu)
+			{
+				N += It.Pending && It.Pending() ? 1 : 0;
+			}
+			return N == 0 ? FString() : FString::Printf(TEXT("%d unapplied"), N);
+		};
+		Menu.Add(Button(TEXT("Back"), [this] { RestoreVideoSaved(); BuildSettingsMenu(0); }, TEXT("Discards unapplied video changes.")));
 		break;
 	case 3:
 		MenuTitle = TEXT("Audio");
@@ -509,7 +570,8 @@ void AEHGameDirector::BeginSelect(EEHMode InMode)
 	SelectLocked[0] = SelectLocked[1] = false;
 	SelectCursor[0] = 0;
 	SelectCursor[1] = 1;
-	SelectDevice[0] = (InMode == EEHMode::Versus) ? EHDeviceNone : PrimaryDevice;
+	const FEHDevice* Primary = RouterPtr->FindDevice(PrimaryDevice);
+	SelectDevice[0] = (InMode == EEHMode::Versus || Primary == nullptr || !Primary->bConnected) ? EHDeviceNone : PrimaryDevice;
 	SelectDevice[1] = EHDeviceNone;
 	bPlayerOnRight = false;
 	GoTo(EEHScreen::Select);
@@ -533,6 +595,10 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 					SelectDevice[Slot] = E.Device;
 					Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
 				}
+				else
+				{
+					Audio.Play(TEXT("UiDenied"), EEHSoundCat::Ui);   // both places are taken
+				}
 			}
 			else if (bBack && SelectDevice[0] == EHDeviceNone && SelectDevice[1] == EHDeviceNone)
 			{
@@ -550,7 +616,7 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 			if (!SelectLocked[Slot])
 			{
 				SelectLocked[Slot] = true;
-				Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
+				Audio.Play(TEXT("UiLock"), EEHSoundCat::Ui);
 			}
 			else if (SelectLocked[0] && SelectLocked[1])
 			{
@@ -583,6 +649,19 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 	}
 
 	// Single-player flows are driven by the device that entered the screen.
+	if (SelectDevice[0] == EHDeviceNone)
+	{
+		if (bOk)
+		{
+			SelectDevice[0] = PrimaryDevice = E.Device;
+			Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
+		}
+		else if (bBack)
+		{
+			GoTo(EEHScreen::Main);
+		}
+		return;
+	}
 	if (E.Device != SelectDevice[0])
 	{
 		return;
@@ -633,7 +712,7 @@ void AEHGameDirector::HandleSelectNav(const FEHNavEvent& E)
 	{
 		return;
 	}
-	Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
+	Audio.Play(TEXT("UiLock"), EEHSoundCat::Ui);
 	if (Mode == EEHMode::Tutorial)
 	{
 		SelectCursor[1] = 1 - SelectCursor[0];
@@ -699,7 +778,7 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 		{
 			break;
 		}
-		Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui, 0.8f);
+		Audio.Play(Menu[MenuIndex].ConfirmSound.IsNone() ? FName(TEXT("UiConfirm")) : Menu[MenuIndex].ConfirmSound, EEHSoundCat::Ui, 0.8f);
 		if (Menu[MenuIndex].Activate)
 		{
 			TFunction<void()> Fn = Menu[MenuIndex].Activate;   // the menu may be rebuilt inside
@@ -727,7 +806,7 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 			{
 				if (SettingsPage == 2)
 				{
-					Settings = FEHSettings::Load();
+					RestoreVideoSaved();
 				}
 				SaveSettings();
 				BuildSettingsMenu(0);
@@ -813,7 +892,12 @@ void AEHGameDirector::HandleNav()
 {
 	if (Screen == EEHScreen::DisplayConfirm)
 	{
+		const float Before = DisplayConfirmLeft;
 		DisplayConfirmLeft -= GetWorld()->GetDeltaSeconds();
+		if (Before > 3.0f && DisplayConfirmLeft <= 3.0f)
+		{
+			Audio.Play(TEXT("UiWarn"), EEHSoundCat::Ui);
+		}
 		if (DisplayConfirmLeft <= 0.0f)
 		{
 			Menu.Last().Activate();   // revert
@@ -879,10 +963,21 @@ void AEHGameDirector::HandleNav()
 			HandleMatchNav(E);
 			break;
 		case EEHScreen::MoveList:
-			if (E.Nav == EEHNav::Left || E.Nav == EEHNav::Right)
+			if ((E.Nav == EEHNav::Left || E.Nav == EEHNav::Right) && !E.bRepeat)
 			{
 				SelectCursor[0] = 1 - SelectCursor[0];
+				MoveListPage = 0;
 				Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
+			}
+			else if ((E.Nav == EEHNav::Up || E.Nav == EEHNav::Down) && !E.bRepeat)
+			{
+				const int32 NextPage = FMath::Clamp(MoveListPage + (E.Nav == EEHNav::Up ? -1 : 1), 0, MoveListPageCount - 1);
+				if (NextPage != MoveListPage)
+				{
+					MoveListPage = NextPage;
+					AutoLogLine(FString::Printf(TEXT("move_list page=%d/%d fighter=%d"), MoveListPage + 1, MoveListPageCount, SelectCursor[0]));
+					Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.6f);
+				}
 			}
 			else if (bBackish || E.Nav == EEHNav::Confirm)
 			{

@@ -5,7 +5,7 @@
 # capture.py ... --start-on <evidence>/auto_log.txt:match_start for at most 38 s: the script quits about 42 s after
 # the first match starts, and a capture still running when the window closes is lost.
 wait 5
-press kbA Light
+goto_main
 wait 1
 training_gauge full
 match wren ashka training 0 left

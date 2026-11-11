@@ -81,6 +81,8 @@ def build_throws(a, data):
     victim_idle = load_idle_pose(os.path.join(anims, a.victim_char, "idle_pose.json"))
     thrower_idle = load_idle_pose(os.path.join(anims, a.char, "idle_pose.json"))
     for td in data["throws"]:
+        if a.only and td["attackerAnim"] not in a.only.split(","):
+            continue
         build = throws.THROWS[(a.char, td["id"])]
         t_keys, v_keys = build(throws.stance_of(a.victim_char), td)
         hold = td["holdX"] / 100.0

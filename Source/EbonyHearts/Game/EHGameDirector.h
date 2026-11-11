@@ -74,6 +74,10 @@ struct FEHMenuItem
 	TFunction<void(FEHPainter&, FVector2f, bool)> PaintValue;
 	FString Hint;
 	bool bHeader = false;
+	// Optional: true while the value differs from what is saved (shown marked until applied).
+	TFunction<bool()> Pending;
+	// Optional: the sound for confirming this item instead of the usual confirm (one sound per press).
+	FName ConfirmSound;
 };
 
 // One entry of a prompt row: a gameplay action or a menu command, and its label.
@@ -161,6 +165,8 @@ public:
 
 	void PaintUI(FEHPainter& P);
 	float UIScale() const { return Settings.UIScale; }
+	// CPU time spent building the interface's draw list, recorded between perf_begin and perf_end (milliseconds).
+	void RecordUiPaint(float Ms) { if (bRecordFrames) { UiPaintTimes.Add(Ms); } }
 
 	// Automation hooks (evaluation runs use the same router path as devices).
 	FEHInputRouter* Router() const { return RouterPtr.Get(); }
@@ -199,6 +205,8 @@ private:
 	int32 SelectDevice[2] = {EHDeviceNone, EHDeviceNone};
 	int32 SelectStage = 0;          // versus CPU: 0 pick yours, 1 pick CPU fighter, 2 difficulty/side
 	bool bPlayerOnRight = false;
+	int32 MoveListPage = 0;
+	int32 MoveListPageCount = 1;
 
 	// Match
 	TUniquePtr<eh::Match> Match;
@@ -227,6 +235,11 @@ private:
 	bool bShowFrameData = true;
 	bool bShowInputs = true;
 	bool bInfiniteMeter = false;
+	// The video settings as saved when the Video page opened; values that differ are shown as unapplied.
+	FEHSettings VideoSaved;
+	void RestoreVideoSaved();
+	// Automation only (`ui_hidden 1`): paint nothing, for clean captures of the stage and fighters (UI mockups, art review).
+	bool bAutoHideUI = false;
 	TArray<FEHInputLogEntry> InputLog[2];
 	FString LastMoveName[2];
 	FString LastMoveFrames[2];
@@ -246,9 +259,17 @@ private:
 	TObjectPtr<AEHVfx> Vfx;
 	UPROPERTY()
 	TObjectPtr<ACameraActor> Camera;
+	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
 	UPROPERTY()
 	TObjectPtr<UTexture2D> TitleTexture;
 	FSlateBrush TitleBrush;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LogoSmallTexture;
+	FSlateBrush LogoSmallBrush;
+	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
+	UPROPERTY()
+	TObjectPtr<UTexture2D> KeyArtTexture;
+	FSlateBrush KeyArtBrush;
 	FVector CamPos = FVector(0, 600, 140);
 	float CamShake = 0.0f;
 	float CamPunch = 0.0f;
@@ -284,6 +305,7 @@ private:
 	FString EvidenceDir;
 	TArray<FString> AutoLog;
 	TArray<float> FrameTimes;
+	TArray<float> UiPaintTimes;
 	bool bRecordFrames = false;
 	float InputLogLeft = 0.0f;       // automation: log every press and held-state change while > 0
 	TMap<int32, uint32> InputLogHeld;
@@ -366,7 +388,9 @@ private:
 	// UI painting
 	void PaintBackdrop(FEHPainter& P, float Dim);
 	void PaintTitle(FEHPainter& P);
-	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact);
+	// TopY >= 0 places a compact (centred) menu's top edge there instead of centring it vertically.
+	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact, float TopY = -1.0f);
+	void PaintMainMenuA(FEHPainter& P);
 	void PaintSelect(FEHPainter& P);
 	void PaintHUD(FEHPainter& P);
 	void PaintTraining(FEHPainter& P);

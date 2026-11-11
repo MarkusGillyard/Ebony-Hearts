@@ -1,4 +1,5 @@
 #include "EHGameDirector.h"
+#include "EHUIStyle.h"
 
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
@@ -9,6 +10,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/Texture2D.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Misc/ScopeExit.h"
 #include "GameFramework/GameUserSettings.h"
 #include "GameFramework/PlayerController.h"
 #include "GenericPlatform/GenericApplication.h"
@@ -116,15 +118,20 @@ void AEHGameDirector::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("EbonyHearts: fonts missing: %s"), *FontMissing);
 	}
-	TitleTexture = LoadObject<UTexture2D>(nullptr, TEXT("/Game/UI/T_TitleCard.T_TitleCard"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-	if (TitleTexture)
-	{
-		TitleBrush.SetResourceObject(TitleTexture);
-		// The imported size is the artwork's true aspect even before the texture's platform data has streamed in.
-		const FIntPoint Imported = TitleTexture->GetImportedSize();
-		TitleBrush.ImageSize = Imported.X > 0 && Imported.Y > 0 ? FVector2D(Imported.X, Imported.Y) : FVector2D(TitleTexture->GetSizeX(), TitleTexture->GetSizeY());
-		TitleBrush.DrawAs = ESlateBrushDrawType::Image;
-	}
+	auto LoadBrush = [](const TCHAR* Path, TObjectPtr<UTexture2D>& Tex, FSlateBrush& Brush) {
+		Tex = LoadObject<UTexture2D>(nullptr, Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (Tex)
+		{
+			Brush.SetResourceObject(Tex);
+			// The imported size is the artwork's true aspect even before the texture's platform data has streamed in.
+			const FIntPoint Imported = Tex->GetImportedSize();
+			Brush.ImageSize = Imported.X > 0 && Imported.Y > 0 ? FVector2D(Imported.X, Imported.Y) : FVector2D(Tex->GetSizeX(), Tex->GetSizeY());
+			Brush.DrawAs = ESlateBrushDrawType::Image;
+		}
+	};
+	LoadBrush(TEXT("/Game/UI/T_Logo.T_Logo"), TitleTexture, TitleBrush);
+	LoadBrush(TEXT("/Game/UI/T_LogoSmall.T_LogoSmall"), LogoSmallTexture, LogoSmallBrush);
+	LoadBrush(TEXT("/Game/UI/T_KeyArt.T_KeyArt"), KeyArtTexture, KeyArtBrush);
 	Audio.Init(GetWorld());
 	SpawnWorldActors();
 	ApplySettings(true);
@@ -523,12 +530,12 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::RoundIntro:
 		{
 			const bool bFinal = S.f[0].roundWins == Rules.roundsToWin - 1 && S.f[1].roundWins == Rules.roundsToWin - 1;
-			Banners.Add(FEHBanner{bFinal ? TEXT("FINAL ROUND") : FString::Printf(TEXT("ROUND %d"), E.value), FString(), 0.0f, 1.6f, FLinearColor(0.92f, 0.86f, 0.74f)});
+			Banners.Add(FEHBanner{bFinal ? TEXT("FINAL ROUND") : FString::Printf(TEXT("ROUND %d"), E.value), FString(), 0.0f, 1.6f, EHStyle::TextPrimary});
 			Audio.Play(TEXT("RoundBell"), EEHSoundCat::Effects, 0.9f);
 			break;
 		}
 		case eh::EventType::Fight:
-			Banners.Add(FEHBanner{TEXT("FIGHT"), FString(), 0.0f, 0.9f, FLinearColor(1.0f, 0.82f, 0.45f)});
+			Banners.Add(FEHBanner{TEXT("FIGHT"), FString(), 0.0f, 0.9f, EHStyle::FocusText});
 			Audio.Play(TEXT("FightStinger"), EEHSoundCat::Effects, 0.9f);
 			break;
 		case eh::EventType::MoveStart:
@@ -565,15 +572,15 @@ void AEHGameDirector::ProcessEvents()
 			LastHitAge[D] = 0.0f;
 			if (bCounter)
 			{
-				Callouts.Add(FEHCallout{TEXT("COUNTER"), A, 0.0f, 0.9f, FLinearColor(1.0f, 0.78f, 0.30f)});
+				Callouts.Add(FEHCallout{TEXT("COUNTER"), A, 0.0f, 0.9f, EHStyle::HealthLow});
 			}
 			else if (E.flags & eh::EvPunish)
 			{
-				Callouts.Add(FEHCallout{TEXT("PUNISH"), A, 0.0f, 0.9f, FLinearColor(0.95f, 0.35f, 0.30f)});
+				Callouts.Add(FEHCallout{TEXT("PUNISH"), A, 0.0f, 0.9f, EHStyle::Warning});
 			}
 			if (E.flags & eh::EvTrade)
 			{
-				Callouts.Add(FEHCallout{TEXT("TRADE"), A, 0.0f, 0.7f, FLinearColor(0.8f, 0.8f, 0.8f)});
+				Callouts.Add(FEHCallout{TEXT("TRADE"), A, 0.0f, 0.7f, EHStyle::TextSecondary});
 			}
 			break;
 		}
@@ -584,7 +591,7 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::Deflect:
 			Vfx->Block(At, S.f[A].facing, true);
 			Audio.Play(TEXT("Deflect"), EEHSoundCat::Effects, 0.9f);
-			Callouts.Add(FEHCallout{TEXT("DEFLECT"), 1 - A, 0.0f, 0.9f, FLinearColor(0.95f, 0.92f, 0.70f)});
+			Callouts.Add(FEHCallout{TEXT("DEFLECT"), 1 - A, 0.0f, 0.9f, EHStyle::Silver});
 			Stats.Deflects[1 - A] += 1;
 			break;
 		case eh::EventType::ThrowConnect:
@@ -600,23 +607,23 @@ void AEHGameDirector::ProcessEvents()
 		case eh::EventType::ThrowTech:
 			Vfx->Tech(At);
 			Audio.Play(TEXT("Tech"), EEHSoundCat::Effects, 0.85f);
-			Callouts.Add(FEHCallout{TEXT("ESCAPE"), 1 - A, 0.0f, 0.9f, FLinearColor(0.70f, 0.85f, 1.0f)});
+			Callouts.Add(FEHCallout{TEXT("ESCAPE"), 1 - A, 0.0f, 0.9f, EHStyle::FocusText});
 			break;
 		case eh::EventType::AuraStart:
 			Vfx->AuraFlash(SimToWorld(S.f[A].x, 110 * eh::kUnitsPerCm));
 			Audio.Play(TEXT("AuraIgnite"), EEHSoundCat::Effects, 0.9f);
-			Callouts.Add(FEHCallout{TEXT("SPIRIT ENHANCED"), A, 0.0f, 1.2f, FLinearColor(1.0f, 0.80f, 0.35f)});
+			Callouts.Add(FEHCallout{TEXT("SPIRIT ENHANCED"), A, 0.0f, 1.2f, EHStyle::WrenAccent});
 			break;
 		case eh::EventType::AuraEnd:
 			Audio.Play(TEXT("AuraFade"), EEHSoundCat::Effects, 0.5f);
 			break;
 		case eh::EventType::KO:
-			Banners.Add(FEHBanner{S.doubleKO ? TEXT("DOUBLE K.O.") : TEXT("K.O."), FString(), 0.0f, 1.8f, FLinearColor(0.85f, 0.12f, 0.10f)});
+			Banners.Add(FEHBanner{S.doubleKO ? TEXT("DOUBLE K.O.") : TEXT("K.O."), FString(), 0.0f, 1.8f, EHStyle::Warning});
 			Audio.Play(TEXT("KO"), EEHSoundCat::Effects, 1.0f);
 			CamShake = FMath::Max(CamShake, bReduceShake ? 0.4f : 1.4f);
 			break;
 		case eh::EventType::Timeout:
-			Banners.Add(FEHBanner{TEXT("TIME"), FString(), 0.0f, 1.6f, FLinearColor(0.9f, 0.85f, 0.75f)});
+			Banners.Add(FEHBanner{TEXT("TIME"), FString(), 0.0f, 1.6f, EHStyle::TextPrimary});
 			Audio.Play(TEXT("KO"), EEHSoundCat::Effects, 0.6f);
 			break;
 		case eh::EventType::RoundEnd:
@@ -871,6 +878,18 @@ void AEHGameDirector::HandleConnections()
 		static const TCHAR* Kinds[] = {TEXT("keyboard"), TEXT("playstation"), TEXT("xbox"), TEXT("generic")};
 		AutoLogLine(FString::Printf(TEXT("device %s key=%d name=%s kind=%s"), bConnected ? TEXT("connected") : TEXT("disconnected"), Device, *Name,
 			Kinds[static_cast<int32>(RouterPtr->KindOf(Device))]));
+		if (!bConnected && Screen == EEHScreen::Select)
+		{
+			for (int32 i = 0; i < 2; ++i)
+			{
+				if (SelectDevice[i] == Device)
+				{
+					SelectDevice[i] = EHDeviceNone;
+					SelectLocked[i] = false;
+					ShowToast(FString::Printf(TEXT("Player %d disconnected. Press Confirm on another device to join."), i + 1));
+				}
+			}
+		}
 		if (!bConnected && Screen == EEHScreen::Match && (SlotDevice[0] == Device || SlotDevice[1] == Device))
 		{
 			RefreshDisconnectNotice();
@@ -918,6 +937,14 @@ void AEHGameDirector::HandleConnections()
 
 void AEHGameDirector::RefreshDisconnectNotice()
 {
+	const bool bHadNotice = !DisconnectNotice.IsEmpty();
+	ON_SCOPE_EXIT
+	{
+		if (!bHadNotice && !DisconnectNotice.IsEmpty())
+		{
+			Audio.Play(TEXT("UiWarn"), EEHSoundCat::Ui);   // a controller was lost
+		}
+	};
 	DisconnectNotice.Reset();
 	for (int32 i = 0; i < 2; ++i)
 	{

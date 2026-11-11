@@ -109,6 +109,60 @@ def ui_close(c):
     return filt(tr, [("lp", 5500, 2)]), filt(body, [("lp", 5500, 2)]), dur, 0.1
 
 
+def ui_lock(c):
+    """Locking in a fighter: a low, round chord with a slow bloom under it (heavier than a confirm)."""
+    rng = dsp.rng_for("UiLock")
+    dur = 0.8
+    n = ns(0.95)
+    tr, body = np.zeros(n), np.zeros(n)
+    place(tr, felt(rng, 2500, 0.008) * 0.9, 0)
+    place(body, mallet(293.66, 0.75, 0.24, 0.7, rng=rng) * 0.8, 0)
+    place(body, mallet(440.0, 0.7, 0.2, 0.6, rng=rng) * 0.55, ns(0.012))
+    place(body, mallet(587.33, 0.6, 0.16, 0.4, rng=rng) * 0.3, ns(0.024))
+    tt = tvec(n)
+    bloom = np.sin(2 * np.pi * 146.83 * tt) * dsp.smoothstep(tt / 0.05) * np.exp(-tt / 0.28)
+    body += bloom * 0.18
+    return filt(tr, [("lp", 4000, 2)]), filt(body, [("lp", 4200, 2)]), dur, 0.16
+
+
+def ui_denied(c):
+    """Something that cannot be done: a short, dull knock, lower and drier than a move."""
+    rng = dsp.rng_for("UiDenied")
+    n = ns(0.2)
+    tr, body = np.zeros(n), np.zeros(n)
+    place(tr, felt(rng, 1500, 0.008) * 0.8, 0)
+    place(body, mallet(196.0, 0.16, 0.05, 0.25, rng=rng), 0)
+    place(body, mallet(185.0, 0.14, 0.045, 0.2, rng=rng) * 0.6, ns(0.006))
+    return filt(tr, [("lp", 2200, 2)]), filt(body, [("lp", 2000, 2)]), 0.16, 0.04
+
+
+def ui_apply(c):
+    """Applying settings: three rising mallet notes, quick and bright."""
+    rng = dsp.rng_for("UiApply")
+    dur = 0.7
+    n = ns(0.85)
+    tr, body = np.zeros(n), np.zeros(n)
+    for i, (f, amp) in enumerate(((440.0, 0.7), (587.33, 0.8), (880.0, 0.6))):
+        at = ns(0.06 * i)
+        place(tr, felt(rng, 4000) * 0.6, at)
+        place(body, mallet(f, 0.5, 0.15, 0.7, rng=rng) * amp, at)
+    return filt(tr, [("lp", 5500, 2)]), filt(body, [("lp", 5500, 2)]), dur, 0.15
+
+
+def ui_warn(c):
+    """A warning (a controller lost, a display change about to revert): two low, close notes."""
+    rng = dsp.rng_for("UiWarn")
+    dur = 0.45
+    n = ns(0.6)
+    tr, body = np.zeros(n), np.zeros(n)
+    place(tr, felt(rng, 2500) * 0.8, 0)
+    place(tr, felt(rng, 2500) * 0.8, ns(0.14))
+    place(body, mallet(220.0, 0.3, 0.1, 0.5, rng=rng) * 0.9, 0)
+    place(body, mallet(207.65, 0.32, 0.12, 0.5, rng=rng) * 0.9, ns(0.14))
+    return filt(tr, [("lp", 3500, 2)]), filt(body, [("lp", 3500, 2)]), dur, 0.12
+
+
 def builders():
     return [("UiMove", ui_move), ("UiConfirm", ui_confirm), ("UiBack", ui_back),
-            ("UiOpen", ui_open), ("UiClose", ui_close)]
+            ("UiOpen", ui_open), ("UiClose", ui_close), ("UiLock", ui_lock), ("UiDenied", ui_denied),
+            ("UiApply", ui_apply), ("UiWarn", ui_warn)]

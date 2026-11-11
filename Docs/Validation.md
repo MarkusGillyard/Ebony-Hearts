@@ -1,5 +1,43 @@
 # Validation report
 
+**Independent review update (2026-11-11).** The candidate records below are dated implementer evidence. The latest
+local Shipping review package is `sol-review-f3c5abd`, from source
+`f3c5abd7ee122f1292bb9f250915d20839c4b06a` and content
+`a584f666ecda667b4768855033041959d5effcfa94dfbebb093a93d86d95d269`; its archive SHA-256 is
+`989325086e28d35e0df8fb4bfc35f24c4f198b8dc7cfb9e3e5f2a648e9d60107`.
+Shipping BuildCookRun, cook/package, extraction and all 21 file hashes passed. The executable SHA-256 is identical
+to the `cec9493` package (`cf0a2da5c2b05fb581a8be06901e06ae79ef63cef6aee9cb31eb9c936b188240`);
+the changed packaged files are the cooked pak/IoStore containers, manifests and `VERSION.txt`. Editor Development and
+Game Shipping compilation passed at `cec9493`, whose C++ source is unchanged at `f3c5abd`. The 1,618-check Core
+suite, 10 package tests, five battery-verifier tests, three launcher tests, Python compilation, LFS fsck and
+move-table consistency passed at `05978ee`; the only later runtime source change through `cec9493` is the visual
+throw-depth handoff; `f3c5abd` changes the Ashka victim elbow pole generator and imports 12 paired animation assets,
+with Core, data, tests and config unchanged. Machine-driven packaged motion
+and 140% UI captures were inspected on `05978ee`. That package's 28-scenario battery passed a separate completeness verifier:
+all 12 best-of-three matrix matches ended, the full 14-step Lesson completed, virtual Xbox/DS4 paths ran, and fresh
+60 fps combat/jump captures were recorded. Its first process stopped during the matrix; the 15 previously completed
+scenario directories and a service-run matrix onward are explicitly combined in the evidence index, while both raw
+logs and the failed partial verifier are retained. At 1080p, V-Sync fight p99 was 16.751 ms over 3,602 frames and
+no-V-Sync fight p99 was 10.698 ms over 7,837 frames; native 3440×1440 default fight p99 was 16.746 ms over 3,601
+frames. Each had zero frames over 33 ms. The new `cec9493` package independently completed a 12-match matrix and
+12 further targeted scenarios, including 60 fps combat/jump capture, and its separate verifier passed all 13
+scenario exits, markers, asset checks and footage presence. At 1080p its V-Sync fight p99 was 16.718 ms over 3,601
+frames and no-V-Sync fight p99 was 8.142 ms over 8,348 frames; native 3440×1440 default fight p99 was 16.743 ms over
+3,602 frames. Each measured window had zero frames over 33 ms. The initial `cec9493` run was stopped by the HDD
+reserve guard before a launch; verified duplicate generated package directories were removed while archives and raw
+evidence were retained, and the succeeding run used the same hash-verified extracted package. This package also
+completed a 20/20 clean fresh-profile windowed start/platform-check/quit loop. The exact `f3c5abd` extracted package
+then passed three targeted combat/jump/art scenarios with four scripted throws, complete asset mapping, 60 fps motion
+captures and expected exits. A non-authoring Blender review of all 12 rebuilt clips found that only the two victim
+clips changed in pose, removing the frame-17 elbow flip. See [Review](Review.md) for the in-game visual review scope,
+creator feedback and PR gates. The full 28-scenario run belongs to `05978ee`; the 12-match matrix and 20-start loop
+belong to `cec9493`; their unchanged-path results are not represented as full `f3c5abd` reruns.
+
+The creator started the November 9 package but the controller failed after about a minute; the session was not a
+completed playtest. The creator identified animation transitions and throw appearance/feel as the first issues to
+address, with other issues to be handled gradually. Reported `dropped_sim_ticks` in the current JSON is a cumulative
+clock count at `perf_end`, not a delta over the measured frame-time window.
+
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
 `evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-84acb66/<run>` and

@@ -35,14 +35,15 @@ of each script for another machine.
 | 4. Animations | `Tools/Blender/anim/build_all.sh [--review]` | `sourceart/anims/<char>/A_*.fbx`, contact sheets |
 | 5. Audio | `<blender>/5.2/python/bin/python3.13 -I Tools/Audio/build_audio.py` | `sourceart/audio/<category>/S_*.wav` |
 | 6. Effect textures | `python3 Tools/Assets/make_vfx_textures.py <sourceart>/vfx` | `T_FX_*.png` |
-| 7. Unreal content | editor Python, in order: `Tools/Unreal/build_content.py`, `build_audio.py`, `build_characters.py` (headless commandlet); `build_level.py` (needs the full editor) | `/Game/...` assets and `/Game/Maps/DrownedChapel` |
-| 8. Game code | `Build.sh EbonyHeartsEditor Linux Development -Project=...` | editor module |
-| 9. Package | `RunUAT.sh BuildCookRun -project=... -platform=Linux -clientconfig=Shipping -build -cook -stage -package -pak -archive -archivedirectory=<dir> -installed -nocompileeditor -skipbuildeditor -unrealexe=UnrealEditor-Cmd` | standalone package |
-| 10. Release | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |
-| 11. Evaluation | launch the packaged game with `-EHAuto=<checkout>/Tests/Auto/<script>.txt -EHEvidence=<dir>` (absolute path; see below) | logs, perf JSON/CSV and screenshots |
-| 12. Move tables | `python3 Tools/Docs/move_tables.py` | regenerates the tables in `Docs/CombatContract.md` |
-| 13. Move matrix | `Tools/Docs/move_matrix.sh` | regenerates `Docs/MoveMatrix.md` by running every source/follow-up pair through the combat core |
-| 14. Clip audit | `<blender> -b --factory-startup -P Tools/Blender/anim/audit_clips.py -- <out.csv> <sourceart/anims/wren> <.../ashka> <.../wren/victim_wren> ...` | per-clip CSV: fastest joint step, pops, held frames, elbow/knee flips, floor contact, loop seams, head height |
+| 7. Interface source art | `python3 -I Tools/Assets/make_ui_textures.py <creator-supplied logo PNG> <sourceart>/ui`; copy the creator-supplied key art byte-for-byte to `<sourceart>/ui/T_KeyArt.jpg` (JPEG data despite its original `.png` name). Check both supplied hashes against `Docs/AssetLedger.md` before import | `sourceart/ui/T_Logo.png`, `T_LogoSmall.png`, `T_KeyArt.jpg` |
+| 8. Unreal content | editor Python, in order: `Tools/Unreal/build_content.py`, `build_audio.py`, `import_ui.py`, `build_characters.py` (headless commandlet); `build_level.py` (needs the full editor) | `/Game/...` assets and `/Game/Maps/DrownedChapel` |
+| 9. Game code | `Build.sh EbonyHeartsEditor Linux Development -Project=...` | editor module |
+| 10. Package | `RunUAT.sh BuildCookRun -project=... -platform=Linux -clientconfig=Shipping -build -cook -stage -package -pak -archive -archivedirectory=<dir> -installed -nocompileeditor -skipbuildeditor -unrealexe=UnrealEditor-Cmd` | standalone package |
+| 11. Release | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |
+| 12. Evaluation | launch the packaged game with `-EHAuto=<checkout>/Tests/Auto/<script>.txt -EHEvidence=<dir>` (absolute path; see below) | logs, perf JSON/CSV and screenshots |
+| 13. Move tables | `python3 Tools/Docs/move_tables.py` | regenerates the tables in `Docs/CombatContract.md` |
+| 14. Move matrix | `Tools/Docs/move_matrix.sh` | regenerates `Docs/MoveMatrix.md` by running every source/follow-up pair through the combat core |
+| 15. Clip audit | `<blender> -b --factory-startup -P Tools/Blender/anim/audit_clips.py -- <out.csv> <sourceart/anims/wren> <.../ashka> <.../wren/victim_wren> ...` | per-clip CSV: fastest joint step, pops, held frames, elbow/knee flips, floor contact, loop seams, head height |
 
 ### Evaluation scripts (`Tests/Auto`)
 
@@ -103,6 +104,11 @@ workspace, not this repository.
   replaces a pair with a capture (optional `anchors` retime it), and `victim_falls` gives a keyed throw a captured fall.
   The grab move's pose on its first active frame is where the throw starts, so a throw's entry (the double-leg's
   level change, the clinch's reach) belongs on the grab's active frames.
+  For a targeted review rebuild, generate FBXs to a separate `--out` tree and import with `EH_ANIM_ROOT` set to that
+  tree, `EH_ANIMS_ONLY=1`, `EH_CHARS` set to the affected skeletons, and an explicit comma-separated
+  `EH_ANIM_NAMES` list. The importer rejects missing requested FBXs and incomplete counts. Back up the selected
+  `.uasset` files and compare their hashes before and after import; an old asset can still be loaded if an individual
+  Unreal import task fails, so import logs and asset hashes are also required evidence.
 - **Character skeletons.** These use MPFB's game_engine skeleton (`root`, `pelvis`, `spine_01-03`, ... ) plus twist
   bones and secondary chains (braids, Ashka's ponytail on the former braid chain, face strands, and Ashka's coat
   tails: 12 cloth columns `coat_c01`..`coat_c12` simulated together as one cloth against the legs, `_step_coat_grid`

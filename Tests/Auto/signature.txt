@@ -1,7 +1,7 @@
 # Signature-move review in Training with the gauge always full: Wren's 720 Hook Kick and Spirit Enhanced Strikes
 # (golden aura), then Ashka's Flame Elbow, Flying Knee and Flame Burst (crimson flame). Stills plus capture.py footage.
 wait 5
-press kbA Light
+goto_main
 wait 1
 training_gauge full
 match wren ashka training 0 left

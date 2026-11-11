@@ -2,7 +2,7 @@
 # partner, one fighter after the other. For footage: capture.py ... --start-on <evidence>/auto_log.txt:match_start,
 # at most 70 s. Script waits are not frame-exact; the screenshots mark the moments to check.
 wait 5
-press kbA Light
+goto_main
 wait 1
 match wren ashka training 0 left
 wait 2.5

@@ -38,6 +38,8 @@ public:
 	FVector2f VirtualMin;  // virtual coordinates of the visible area's top-left (can be negative on wide screens)
 	FVector2f VirtualMax;
 	int32 Layer;
+	// Multiplies the alpha of everything drawn after it is set (screen fades); 1 = unchanged.
+	float Opacity = 1.0f;
 
 	void Fill(const FLinearColor& Color);                 // whole widget
 	void Rect(FVector2f Pos, FVector2f Size, const FLinearColor& Color);
@@ -56,6 +58,7 @@ private:
 	const FGeometry& Geo;
 	FSlateWindowElementList& Out;
 	FPaintGeometry Paint(FVector2f Pos, FVector2f Size) const;
+	FLinearColor Faded(const FLinearColor& C) const { return FLinearColor(C.R, C.G, C.B, C.A * Opacity); }
 };
 
 class SEHCanvas : public SLeafWidget

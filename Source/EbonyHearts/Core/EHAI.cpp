@@ -76,6 +76,35 @@ void CpuController::Setup(int player, CpuLevel level, uint32_t seed)
 	rng_ = seed != 0 ? seed : 0x9E3779B9u;
 }
 
+void CpuController::SetDummy(DummyMode mode)
+{
+	if (dummy_ == mode)
+	{
+		return;
+	}
+	dummy_ = mode;
+	ClearQueue();
+	pendingDir_ = 0;
+	held_ = 0;
+	lastHeld_ = 0;
+	walk_ = 0;
+	walkFrames_ = 0;
+	guardFrames_ = 0;
+	waitFrames_ = 0;
+	crouchGuard_ = false;
+	downNext_ = false;
+	defend_ = false;
+	decidedFor_ = -1;
+	techDecidedFor_ = -1;
+	afterHitFrames_ = 0;
+	lastHealth_ = -1;
+	antiAirFor_ = -1;
+	antiAirArmed_ = -1;
+	retreatFrames_ = 0;
+	airAttackFor_ = -1;
+	jumpNext_ = false;
+}
+
 uint32_t CpuController::Next()
 {
 	uint32_t x = rng_;

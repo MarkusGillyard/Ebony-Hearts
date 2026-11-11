@@ -4,6 +4,7 @@ Usage: python3 virtual_pad.py <scenario> [xbox|ds4]
   menu-and-fight  title -> Versus CPU -> fight with every default action, then quits through the menus.
   disconnect      fights, destroys the device mid-match (disconnect), recreates it (reconnect), takes the slot back
                   with Cross / A, fights again, then quits.
+  select-disconnect  disconnects during fighter select, joins with a new device, starts a fight, then quits.
   layout          presses every default button once (an analog R2 / RT hold, D-pad up and down) and the two buttons the
                   layout leaves free (R1 / RB, L2 / LT) while the game logs what each produced (pair it with an
                   automation script that runs log_input in Training).
@@ -252,6 +253,23 @@ def main():
             pad.press("start")         # pause menu from the new device
             pad.press("start")         # resume
             fight_inputs(pad)
+            pause_to_main(pad)
+            quit_from_main(pad)
+        elif scenario == "select-disconnect":
+            pad.press("bottom")        # title
+            time.sleep(1.0)
+            pad.press("bottom")        # Versus CPU: this pad owns fighter select
+            time.sleep(0.5)
+            replacement = Pad(kind, PADS[kind]["name"] + " 2" if kind == "xbox" else None)
+            pad.close()
+            log("joining pad destroyed during fighter select; replacement has a distinct device id")
+            time.sleep(2.0)
+            pad = replacement
+            pad.press("bottom")        # claim the vacant select slot
+            pad.press("bottom")        # choose Wren
+            pad.press("bottom")        # choose opponent
+            pad.press("bottom")        # choose difficulty/side and start
+            time.sleep(3.0)
             pause_to_main(pad)
             quit_from_main(pad)
         elif scenario == "layout":
