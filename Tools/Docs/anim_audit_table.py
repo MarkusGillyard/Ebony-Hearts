@@ -5,6 +5,7 @@ Every exported clip gets a row: how the game reaches it, where its motion comes 
 disposition. Clips the measurements flag need a written disposition in DISPOSITIONS (an unexplained flag fails).
 """
 import csv
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -28,8 +29,14 @@ DISPOSITIONS = {
     "A_Ashka_BH": "New (2026-11-09): keyed spinning elbow (sok klap). Through the turn the elbow point leads at about 36 cm/f "
                   "into contact while the folded fist and the shoulder stay near the spin axis, which trips the flip test; frames "
                   "11-16 checked: the forearm stays folded and the arm's plane does not flip.",
-    "A_Wren_Victim_AshkaThrowC": "New (2026-11-08): keyed clinch-trip fall. Arms follow the torso while falling (pelvis-relative); the left forearm's 21 cm step on frame 17 (the trip taking the legs) trips the flip test; fastest joint is the head landing (33 cm/f, frame 47).",
 }
+# This disposition applies only to the retained pre-repair CSV, never to a new audit.
+HISTORICAL_LABEL = "evidence/blocking-1109/anim-audit-cloth2"
+HISTORICAL_SHA256 = "7c4fe6814a4d5b1429d2977961b20aff317065631d086cb36fe71de975c55fc2"
+HISTORICAL_DISPOSITIONS = {
+    "A_Wren_Victim_AshkaThrowC": "Historical pre-f3c5abd measurement: the left forearm's 21 cm step at frame 17 was subsequently repaired (EH-SOL-10; see Review.md). This row is not the current clip's result.",
+}
+BEGIN, END = "<!-- animation-audit:begin -->", "<!-- animation-audit:end -->"
 HOLDS = {"Guard", "Crouch", "CrouchGuard", "KnockdownLie", "KnockdownLieRev", "JL", "CL", "BS", "ThrowF", "ThrowB", "U"}
 
 
@@ -98,18 +105,17 @@ def source(char, key):
 def main():
     rows = list(csv.DictReader(open(sys.argv[1])))
     label = sys.argv[2]
-    out = ["# Animation audit", "",
-           f"Every clip the build exports, measured from the exported FBX ({label}; `Tools/Blender/anim/audit_clips.py`, regenerated "
-           "by `Tools/Docs/anim_audit_table.py`). Units are cm per frame at 60 fps. *Fastest* is the largest single-frame step "
-           "of a main joint (a fist or foot peaks near 25-35 cm/f); *pops* are steps over 15 cm more than 3x their neighbours; "
-           "*held* is the share of frames with no joint moving 0.05 cm (frozen or duplicated samples show up here; deliberate "
-           "holds are marked); *flips* are elbows or knees moving 20 cm and 2.5x both neighbours; *floor* is the lowest point "
-           "of the body. A row is *checked* when nothing is flagged; flagged rows carry a disposition.", "",
-           "Runtime behaviour checked with these clips: samples are taken at the simulation frame plus the render alpha "
-           "(`EHFighterVisual`), frozen during hitstop; transitions are inertial offsets from what was last drawn "
-           "(`EHAnimInstance`), so a restart mid-transition stays continuous; facing flips cut without a blend by design. "
-           "Display pacing (V-Sync at a refresh the compositor does not match) is a separate cause of uneven motion and is "
-           "measured in `Docs/Validation.md`, not here.", "",
+    digest = hashlib.sha256(Path(sys.argv[1]).read_bytes()).hexdigest()
+    historical = label == HISTORICAL_LABEL and digest == HISTORICAL_SHA256
+    out = ["## Recorded clip measurements", "",
+           f"Input record: `{label}`; CSV SHA-256 `{digest}`. "
+           "Measurements describe that exported FBX set, not an inferred current repository revision. "
+           "Runtime-use and source columns are derived from the generator's checked-out combat data and clip configuration.", "",
+           "Units are cm per frame at 60 fps. Fastest is the largest single-frame main-joint step; pops are steps over "
+           "15 cm and 3x their neighbours; held is the percentage with no joint moving 0.05 cm; flips are elbow/knee "
+           "steps of at least 20 cm and 2.5x both neighbours; floor is the lowest sampled body point. Checked means "
+           "the numerical thresholds did not flag a row; it does not establish visual or creator acceptance.", "",
+           "" if not historical else "**Historical full export (2026-11-09).** Later targeted throw imports supersede affected rows; see the review chronology above.", "",
            "| Dir | Clip | Runtime use | Source | Frames | Fastest | Pops | Held % | Flips | Floor | Status |",
            "|---|---|---|---|---|---|---|---|---|---|---|"]
     unexplained = []
@@ -125,6 +131,8 @@ def main():
         if held >= 10 and key.split("_")[0] not in HOLDS:
             flagged = True
         disp = DISPOSITIONS.get(clip)
+        if historical:
+            disp = HISTORICAL_DISPOSITIONS.get(clip, disp)
         if flagged and not disp:
             unexplained.append(clip)
             status = "**FLAGGED, no disposition**"
@@ -135,7 +143,14 @@ def main():
         out.append(f"| {r['dir']} | `{clip}` | {use} | {src} | {r['frames']} | {r['fastest_cm']} ({r['fastest_joint']} f{r['fastest_frame']}) | "
                    f"{r['pops'] or '-'} | {held_note} | {r['flips'] or '-'} | {r['lowest_cm']} | {status} |")
     out += ["", f"{len(rows)} clips; {len(unexplained)} flagged without a disposition."]
-    DOC.write_text("\n".join(out) + "\n")
+    generated = "\n".join(out).strip() + "\n"
+    text = DOC.read_text() if DOC.exists() else "# Animation audit\n\n"
+    if BEGIN in text and END in text:
+        a, b = text.index(BEGIN) + len(BEGIN), text.index(END)
+        text = text[:a] + "\n" + generated + text[b:]
+    else:
+        text += "\n" + BEGIN + "\n" + generated + END + "\n"
+    DOC.write_text(text)
     print("wrote", DOC, len(rows), "unexplained:", unexplained)
     return 1 if unexplained else 0
 
