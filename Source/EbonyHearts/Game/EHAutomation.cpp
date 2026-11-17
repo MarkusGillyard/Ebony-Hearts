@@ -1065,6 +1065,12 @@ void AEHGameDirector::RunBindingsSelfTest()
 		}
 	}
 	Check(bSame, TEXT("custom layouts survive save and load ") + Warning);
+	const FString NumericPath = FPaths::Combine(Dir, TEXT("oversized-numbers.json"));
+	FFileHelper::SaveStringToFile(TEXT("{\"version\":5,\"masterVolume\":1e100,\"resX\":-1e100,\"uiScale\":1e100}"), *NumericPath);
+	const FEHSettings Numeric = FEHSettings::Load(nullptr, NumericPath);
+	Check(Numeric.MasterVolume == FEHSettings().MasterVolume && Numeric.Resolution.X == FEHSettings().Resolution.X,
+		TEXT("unrepresentable integer settings keep defaults before narrowing"));
+	Check(FMath::IsNearlyEqual(Numeric.UIScale, 1.4f), TEXT("oversized UI scale clamps before float narrowing"));
 	const FString V1Path = FPaths::Combine(Dir, TEXT("version1.json"));
 	FFileHelper::SaveStringToFile(TEXT("{\"version\":1,\"bindings\":{\"0.Light\":[\"U\",\"Enter\"],\"0.Pause\":[\"Escape\",\"\"],\"2.Light\":[\"Gamepad_FaceButton_Bottom\",\"\"],\"2.Grab\":[\"Gamepad_FaceButton_Left\",\"\"]}}"), *V1Path);
 	Warning.Reset();
