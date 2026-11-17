@@ -1,8 +1,82 @@
-# Review guide: combat, animation and character pass (2026-11-08), controls and Ashka (2026-11-09)
+# Engineering review and integration record
+
+## Repository audit (2026-11-17)
+
+**Disposition: IN PROGRESS.** Starting `main`: `5a51e96e72a7f678340cd191de42f36e45f92a47`.
+Runtime repairs: `a0445298e499bfc62abf6d3ddf7c9574926d425a` on `audit/reconcile-20261117`.
+The final integration and evidence disposition will be recorded here after qualification.
+This is engineering readiness, not a release or creator acceptance of animation, art, combat feel or balance.
+
+### Baseline and coverage
+
+Live GitHub inventory confirmed personal owner MarkusGillyard, public repository, default `main`, five remote branches,
+no open issues/PRs, no releases/tags, no rulesets and no main branch protection. PRs #1–#3 were merged on November 11;
+there were no inline review threads. Main push CI `43059694105` passed. These are the **initial audit** observations,
+not permanent repository guarantees. No security settings changed. Context-only README inspection of EbonyHeartsLegacy,
+Purple-vs-Green and Slopperfall-releases reinforced versioned validation/licensing boundaries; none was modified or
+made an active dependency. The tracked inventory contains 587 files: 45 source, 385 content, 76 tooling, 49 tests,
+23 documentation, four configuration and five repository/project metadata files. No submodules exist. Existing
+checkouts and unrelated work were preserved in a new worktree. Local ignored binaries, intermediates, caches,
+packages and original source art are external dependencies, not tracked source.
+
+| System | Inspection and verification boundary |
+|---|---|
+| Core / data | All Core implementations and headers, integer fixed-step simulation, clock, JSON/data validation, AI queues, contacts, guard heights, cancels, throws, round endings and Core regressions. Strict warning and sanitizer runs verify the repaired data path; no balance values changed. |
+| Unreal Game / Config | All gameplay sources/headers, targets/modules and config: object references/lifetime, input, settings migration, pause/ownership, match reset, animation sampling, bounded audio/VFX pools, UI and automation. Source findings are below; Unreal compile and package evidence are separately labeled in Validation. |
+| Linux | Entire custom SDL audio and XRandR guard module compared with installed UE lifecycle. The owned audio submission buffer and frame-boundary display deferral remain. Static review found no new confirmed runtime defect; device races require runtime coverage. |
+| Tests / CI / delivery | Every Auto scenario/helper, Package test, stage tool and workflow. Existing process ownership and incomplete-battery regressions remain; CI now includes Auto units. A clean wrapper exit is insufficient without the independent battery verifier. |
+| Assets / tooling | Content checkout/LFS integrity, production/import/generator tools, source provenance, creator image handling, notices, manifest hashes and generated-table drift. Binary asset interpretation uses Blender/source FBXs and engine cook/load, not filenames alone. |
+| Documentation / research | README and every tracked Docs file checked for responsibilities, current controls, branch chronology, external prerequisites and evidence labels. Historical reports and failures retained. Primary accessibility, engine, designer and licensing references rechecked; secondary game observations and unmeasured frame data explicitly retain historical/unverified status. |
+
+### Actual execution and authority
+
+`DefaultEngine.ini` selects DrownedChapel and `EHGameMode`; GameMode spawns `AEHGameDirector`. The director loads
+validated rules/fighters plus presentation/settings, installs the Slate input preprocessor and creates visuals,
+camera, VFX and canvas. `FEHInputRouter` owns device-held state and press latches, with fixed menu verbs separate from
+remappable gameplay. The director's `FixedStepClock` supplies 60 Hz ticks (maximum four catch-up ticks, with excess
+counted and dropped). Human routing, delayed-observation `CpuController`, and Lesson automation produce ordinary
+Core `InputFrame`s. `Match` exclusively owns integer combat state: input → timers → throws → actions → movement →
+contacts → round termination. Explicit Training controls occur between ticks.
+
+Visuals observe state and simulation frames; the animation proxy blends presentation offsets and planted feet.
+Events select audio, bounded VFX and HUD feedback. `EHDirectorFlow` owns select/pause/settings/rematch screens;
+`SEHCanvas`/`FEHPainter` paints the Still Water UI. Rematch reconstructs simulation, CPU state and statistics while
+retaining mode/fighters/devices. Core has no Unreal dependency. The Linux module is Linux-only; its build conditions
+do not establish Windows qualification. Packaging cooks referenced assets and stages raw Data/fonts with notices.
+
+### Findings and remediation
+
+| ID | Severity | Verified symptom / cause | Repair and verification |
+|---|---|---|---|
+| EH-AUD-01 | P2 | Core JSON accepted malformed numeric grammar and overflow; rejecting huge finite combat values cast out-of-range doubles to integers in diagnostics (UBSan reproduced). | Strict grammar, finite-result validation and safe diagnostics; 14 pre-fix failed regression checks; final 1,648 Core checks pass with strict warnings and undefined/float-cast-overflow sanitizers. |
+| EH-AUD-02 | P2 | Saved numeric settings narrowed arbitrary doubles before clamping. | Reject nonfinite/unrepresentable integer values before narrowing; clamp UI scale as double. Existing packaged bindings self-test gains two oversized-number checks; runtime result belongs in Validation. |
+| EH-AUD-03 | P2 | Startup loop accepted zero/negative attempt counts as success and invalid timeout/gap values reached I/O. | Validate parameters before output/process work; eight invalid-parameter cases fail before and pass after correction. |
+| EH-AUD-04 | P2 | CI omitted existing process-cleanup and battery-completeness unit suites. | Add Auto unittest discovery to CI; local nine-test suite passes, remote exact-head result recorded at integration. |
+| EH-AUD-05 | P2 | Source provenance validation missed whole required ledger items, paired-throw captures and shared XBot calibration. | Require all input IDs and capture roles; missing-source regressions and exact manifest regeneration recorded in Validation. |
+| EH-AUD-06 | P2 | README/handoff claimed merged PRs remained open; current combat contract listed obsolete controller bindings; historical evidence and accessibility targets could be read as current qualification. | Reconcile current navigation/status/format-5 controls, label historical records and unmet research targets, distinguish local packages and external build prerequisites. Source cross-check, generated tables and relative links checked. |
+| EH-AUD-07 | P3 | Manifest use descriptions retained captured guards/block reactions and obsolete eyebrow references; current asset-use counts drifted. | Reconcile generator and generated manifest with current config; retain historical provenance without describing it as active. Original input hashes and decoded meshes checked. |
+| EH-AUD-08 | P2 | Audio regeneration could report success for empty/missing requested sources, failed reimports returning stale assets, or failed saves. | Preflight complete source requests and raise on import/load/save failure; mocked Unreal regression tests include the successful path. No audio assets regenerated. |
+
+### Historical regression disposition
+
+EH-SOL-01 CPU mode changes still clear queued state; Core tests cover it. EH-SOL-02 UI pagination/bounds and
+EH-SOL-03 disconnect slot release/owner takeover remain in source, with runtime evidence recorded separately.
+EH-SOL-04 process cleanup and EH-SOL-06 battery completeness retain passing safety tests. EH-SOL-07 Adventure Mode
+remains clearly conceptual. EH-SOL-05/08/10 paired-throw contact, depth convergence and elbow-pole repairs remain in
+current source/content; current footage limits belong in Validation. EH-SOL-09 remains an evidence erratum, with no
+new defect established. Prior Linux workarounds remain; sampled clean launches cannot prove absence of all device races.
+
+### Review separation
+
+Source, validation/platform and production audits were separated by file ownership. An additional non-authoring
+reviewer inspects the final diff and surrounding code. This provides procedural technical challenge within one agent
+session, not a separate human or GitHub identity. The MarkusGillyard account authors the PR and cannot self-approve;
+formal approval will only be recorded if an eligible reviewer actually provides it. Normal GitHub merge checks apply.
+
 
 ## Independent review record (2026-11-11; integration completed)
 
-This section is the current independent review record. The implementer's earlier reviews and failed or superseded
+This historical section records the November 11 independent review. The implementer's earlier reviews and failed or superseded
 rounds remain below as dated history. The starting identities were PR #2 `bed7fb60d03704cf8e58a000b1fb284968690dc8`
 into `release/first-slice` `04714438f6901424ff1cdf6feae126123aae1b5e`, then PR #1 at that release head
 into `main` `9a34d030281f3321d41ac64e8a065f8a0336b6dc`. Both PRs were open at the review

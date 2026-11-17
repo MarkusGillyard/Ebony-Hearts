@@ -1,5 +1,10 @@
 # Elden Ring UI/UX research (Ebony Hearts reference)
 
+**Audit scope (2026-11-17).** This is historical November 9 research, not a current game specification.
+The original footage observations and secondary-source assertions were not independently remeasured in this audit.
+Only the primary-source rechecks recorded in [Research](../Research.md) are fresh. Recommendations below are
+references and proposals; current Ebony Hearts implementation and creator decisions take precedence.
+
 Scope: Elden Ring base game, 2022. Post-launch patch items are labelled. All sources accessed 2026-11-09.
 Footage method: I read YouTube storyboard thumbnails (160×90 or 320×180). Timecodes are only as precise as each video's thumbnail interval, noted per row. I checked one frame at full resolution (row 1).
 

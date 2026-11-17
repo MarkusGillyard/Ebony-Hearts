@@ -86,7 +86,7 @@ Frame times are unchanged in every scenario (median 16.67 ms, p99 ≤ 16.80 ms a
 - **Focus:** one visible focus per menu (a 55% violet band with a light-violet edge, plus bold primary text).
 - **Motion:** nothing blinks on its own for more than 5 s; no new flashing.
 
-## Not verified
+## Historical limits of the November 9 implementer package
 
 - **The creator's playtest.** On 2026-11-09 the creator started the `0126cac` build; after about a minute their
   controller died. They report many issues, not yet itemized. Until they are, this work has not passed a human
@@ -94,5 +94,5 @@ Frame times are unchanged in every scenario (median 16.67 ms, p99 ≤ 16.80 ms a
 - Hands-on play with a physical controller (simulated Xbox and DualShock 4 pads pass).
 - Listening to the four new sounds (generated at the house loudness and checked by measurement; this machine plays
   audio only through the TV or soundbar, which were not used).
-- At interface scales above 100% the HUD's outer ends and the bottom prompt row move off screen. This was already so
+- **Superseded by EH-SOL-02:** at interface scales above 100% the HUD's outer ends and the bottom prompt row moved off screen. This was already so
   before this work (the scale enlarges everything around the centre); menus now fit.

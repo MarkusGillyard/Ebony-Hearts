@@ -1,5 +1,10 @@
 # Mortal Kombat X / XL: UI and UX research for Ebony Hearts
 
+**Audit scope (2026-11-17).** This is historical November 9 research, not a current game specification.
+The original footage observations and secondary-source assertions were not independently remeasured in this audit.
+Only the primary-source rechecks recorded in [Research](../Research.md) are fresh. Recommendations below are
+references and proposals; current Ebony Hearts implementation and creator decisions take precedence.
+
 Scope: MKX (April 2015) and MKXL (March 2016) only. No MK11, MK1 or Mobile material. All sources accessed 2026-11-09. Footage timecodes were checked frame by frame. "Concept" means art that did not ship.
 
 ## Observations

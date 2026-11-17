@@ -8,33 +8,19 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**Independent review update (2026-11-10):** PR #1 and the stacked Still Water PR #2 remain open. The creator has
-identified animation transitions and the appearance and feel of throws as the first issues to address from the
-November 9 playtest. Focused review repairs and a fresh packaged validation are in progress; neither PR has a new
-technical approval or a completed human playtest. The owner has authorized normal integration if the review gates
-pass. See [Docs/Review.md](Docs/Review.md) for the current disposition. The candidate account below is historical.
+The first fighting slice and Still Water interface are integrated into `main`. PRs
+[#2](https://github.com/MarkusGillyard/Ebony-Hearts/pull/2),
+[#1](https://github.com/MarkusGillyard/Ebony-Hearts/pull/1), and
+[#3](https://github.com/MarkusGillyard/Ebony-Hearts/pull/3) merged on 2026-11-11.
+The repository audit began on 2026-11-17 at `5a51e96e72a7f678340cd191de42f36e45f92a47`;
+[Status](Docs/Status.md), [Review](Docs/Review.md), and [Validation](Docs/Validation.md) record its
+qualification and remaining limits. Integration does not establish creator acceptance of combat or animation feel.
+No GitHub release or tag exists as of the audit's initial inventory; review packages are local engineering artifacts.
 
-**Combat, animation and character pass (2026-11-08), the fighting-game control layout, Ashka refined to her character
-sheet (version 2 of 2026-11-09) and simple, natural guards for both fighters: candidate `84acb66` ready for independent
-review and the creator's playtest. Not merged.**
-- **This round** (made on `dev/combat-pass-1108` from PR #1's earlier head `ea3ddc6`, and added to PR #1 on
-  2026-11-09 at the creator's request) adds crouching and hit levels, uppercuts, standalone throws that also finish
-  combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit of every clip and every
-  move-to-move relationship, Wren's ankle wraps and materials, the controls, Lesson and CPU for all of it, the
-  MK-style default controls, and Ashka Rook to her 2026-11-09 character sheet (version 2: a Gothic-Victorian frock
-  coat with crimson lining, blouse, brocade waistcoat, crimson cravat, high-waisted trousers and ankle boots; a loose
-  crimson ponytail with a black ribbon; the flame lights her coat's lining; a front kick and a spinning elbow), and
-  the blocking animations rebuilt (one simple guard per fighter in front of the face, standing and crouching), with
-  Ashka's coat tails simulated as cloth so her legs stay under the coat.
-- **Candidate.** `EbonyHearts-Slice-84acb66.tar.gz` (Shipping, Linux), built from commit `84acb66`. Results on the
-  test machine are in `Docs/Validation.md` ("Current candidate").
-- **Pull request #1** (`release/first-slice` → `main`) carries this work. Its 2026-11-08 independent technical audit
-  applies to its earlier head `ea3ddc6` (`Docs/Review.md`, previous round, section 6).
-- **Still open.** An independent review of this candidate, the creator's playtest and the merge decision.
-- **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
-  The packaged game has no crash reporter.
-
-Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Status.md).
+The current priority is reliable, polished fighting mechanics. **Adventure Mode** (formerly Proto Mode) is a future
+concept for 3D exploration transitioning into 2.5D combat; it is not implemented. PC development and an eventual Steam
+release are intended. The game is intended to be free, has no fixed release deadline, and targets mature content;
+no ESRB rating has been awarded. Online play and console ports are outside the current slice.
 
 ## What is in the slice
 
@@ -101,7 +87,8 @@ anything the player changed stays. Details: [Docs/Controls.md](Docs/Controls.md)
 
 ## Running the packaged build
 
-Download or copy `EbonyHearts-Slice-<commit>.tar.gz`, check it against `SHA256SUMS`, extract it anywhere (paths with
+Obtain a local review package `EbonyHearts-Slice-<commit>.tar.gz` from the project owner (none is published on GitHub).
+Use the exact name supplied with its checksums; the commands below use a placeholder. Copy it, check it against `SHA256SUMS`, extract it anywhere (paths with
 spaces are fine) and start the launcher:
 
 ```bash
@@ -109,11 +96,11 @@ sha256sum -c SHA256SUMS
 ```
 
 ```bash
-tar -xzf EbonyHearts-Slice-4cee9c1.tar.gz
+tar -xzf "EbonyHearts-Slice-<commit>.tar.gz"
 ```
 
 ```bash
-EbonyHearts-Slice-4cee9c1/EbonyHearts.sh
+"EbonyHearts-Slice-<commit>/EbonyHearts.sh"
 ```
 
 The first launch opens borderless at the desktop resolution. `VERSION.txt` in the extracted folder names the source
@@ -129,8 +116,10 @@ defaults.
 
 ## Building from source
 
-Requirements: Unreal Engine 5.8.4 (installed build) with its bundled clang toolchain, Blender 5.2.2, and Python 3 with
-Pillow. The full asset rebuild order (combat tests, chapel, characters, animation, audio, effects, Unreal import,
+Requirements for code and packaging: Unreal Engine 5.8.4 (installed build) with its bundled clang toolchain,
+Git LFS, and a Linux Vulkan environment. Set `UE_ROOT` to the installed engine directory containing `Engine/`.
+Fetch the actual imported assets with `git lfs install` and `git lfs pull`; a pointer-only checkout cannot cook the game.
+Blender 5.2.2 and Python 3 with Pillow are additional requirements for rebuilding source art. The full asset rebuild order (combat tests, chapel, characters, animation, audio, effects, Unreal import,
 code and package) is in [Docs/Production.md](Docs/Production.md).
 
 Build only the code and package (assuming the imported `Content/` is present):
@@ -159,8 +148,7 @@ Tests/Core/run_core_tests.sh
   provenance, licences and notices.
 - [Docs/Research.md](Docs/Research.md): the design decisions taken from fighting-game references, and how each was tested.
 - [Docs/Validation.md](Docs/Validation.md): acceptance matrix, build identity, test results and performance.
-- [Docs/Review.md](Docs/Review.md): a guide for independent review of the latest round: what changed, where, and how
-  to check it.
+- [Docs/Review.md](Docs/Review.md): findings, review dispositions, architecture, and the dated integration record.
 - [Docs/Status.md](Docs/Status.md): where things stand and what is left for the creator.
 
 ## Known limitations
@@ -169,9 +157,9 @@ Tests/Core/run_core_tests.sh
   X11). On Linux the engine draws fullscreen and borderless as a desktop-sized window, so `-fullscreen` at a lower
   resolution costs as much GPU time as the native one. The game carries its own fixes for two engine/SDL defects
   (`Source/EbonyHeartsLinux`, see `Docs/Production.md`); Wayland sessions were not tested.
-- **Evaluation.** The creator played the `4cee9c1` candidate on 2026-11-07 and reported that combat smoothness and
-  jumping need refinement and the character models need work; this pass answers that. The creator began playing its
-  candidate on 2026-11-09; their feedback is not in yet. Automated checks do not settle gameplay feel, balance, or
+- **Evaluation.** The creator played `4cee9c1` on 2026-11-07 and began another playtest on 2026-11-09.
+  Their identified priorities are unrealistic animation transitions and broken-looking/feeling throws. Targeted
+  repairs were integrated, but overall movement and throw feel still require creator judgment. Automated checks do not settle gameplay feel, balance, or
   acceptance of the tuning values (see the combat contract). The creator verified TV audio on the earlier `060a75f`
   candidate; an independent listening check of this candidate has not been recorded.
 - **Controllers.** Gamepads were verified with simulated Xbox 360 and DualShock 4 pads, including disconnect, reconnect
@@ -183,18 +171,18 @@ Tests/Core/run_core_tests.sh
     shirt and Wren's ankle wraps are fixed geometry rather than simulated cloth.
   - Both fighters stand in researched stances (Wren MMA, Ashka Muay Thai; see `Docs/Research.md`). Most motion comes
     from motion capture (ACCAD and Mixamo):
-    - the idles, walks and held guards;
+    - the idles and walks;
     - Wren's jab, cross (and jab-to-cross string), four kicks and Spirit Enhanced Strikes;
     - Ashka's jab, both elbows, step-in knee, flying knee, body roundhouse and teep;
     - Wren's double-leg takedown and shoulder throw (both sides), and the falls in Ashka's older clinch throws;
     - both fighters' forward roll, jump and landing, and heavy jump attack;
     - both fighters' intros, wins and defeated poses;
-    - both fighters' hit reactions (by where each hit lands), block, knockdown, KO and get-ups.
+    - both fighters' hit reactions (by where each hit lands), knockdown, KO and get-ups.
 
-    The remaining moves are keyed by script on the same stances: both spinning elbows, Ashka's front kick, both
+    The guards and blocked-hit reactions are keyed since 2026-11-09. Other moves keyed by script on the same stances include: both spinning elbows, Ashka's front kick, both
     uppercuts and low kicks, the crouches and their reactions, the uppercut's launch, Ashka's Flame Burst and clinch
     trip (with its fall), the
-    back rolls, the older grabs (kept for when grappling returns) and the light jump attacks. Moves blend into each other with inertial transitions,
+    back rolls, the older grabs (dormant experiments; no return is scheduled) and the light jump attacks. Moves blend into each other with inertial transitions,
     the legs settling over their own time so a strike from a walk finishes the step. Braids and Ashka's ponytail are
     spring-simulated, and they can clip in the most extreme spins.
   - Only Wren's primary outfit is in the slice.
@@ -206,5 +194,5 @@ Tests/Core/run_core_tests.sh
 
 Ebony Hearts, its characters and its world belong to Markus Gillyard / Cinqic. All rights reserved. Third-party inputs
 and their licences are listed in [Docs/AssetLedger.md](Docs/AssetLedger.md). The packaged game ships
-`THIRD_PARTY_NOTICES.txt`. The title card was generated for the game by the creator with OpenAI's ChatGPT image
-generation and is used with the creator's authorization; the ledger records its origin and rights.
+`THIRD_PARTY_NOTICES.txt`. The current logo and key art were supplied by the creator; their creation methods are not verified. The retired
+title card has a separately recorded AI origin. The ledger preserves these provenance distinctions.

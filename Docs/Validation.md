@@ -1,7 +1,7 @@
 # Validation report
 
-**Independent review update (2026-11-11).** The candidate records below are dated implementer evidence. The latest
-local Shipping review package is `sol-review-f3c5abd`, from source
+**Independent review update (2026-11-11).** The candidate records below are dated implementer evidence. The November 11
+local Shipping review package was `sol-review-f3c5abd`, from source
 `f3c5abd7ee122f1292bb9f250915d20839c4b06a` and content
 `a584f666ecda667b4768855033041959d5effcfa94dfbebb093a93d86d95d269`; its archive SHA-256 is
 `989325086e28d35e0df8fb4bfc35f24c4f198b8dc7cfb9e3e5f2a648e9d60107`.
@@ -40,7 +40,7 @@ clock count at `perf_end`, not a delta over the measured frame-time window.
 
 Status of the first playable slice against the acceptance matrix. Each result names the evidence behind it. Evidence
 files (logs, screenshots, footage, frame-time captures, resource samples) are kept in the delivery workspace's
-`evidence/` folder, outside this repository. The current candidate's runs are under `evidence/rc-84acb66/<run>` and
+`evidence/` folder, outside this repository. The historical `84acb66` candidate's runs are under `evidence/rc-84acb66/<run>` and
 `evidence/blocking-1109/`; the previous candidates' under `evidence/rc-8c22521/<run>`, `evidence/rc-108455a/<run>`,
 `evidence/rc-0c8a9f5/<run>`,
 `evidence/rc-c6c0de2/<run>` and
@@ -50,7 +50,7 @@ files (logs, screenshots, footage, frame-time captures, resource samples) are ke
 `evidence/rc-6b65343/<run>` and `evidence/rc-5d5c316/<run>`,
 `evidence/rc-4cee9c1/<run>` and `evidence/rc-060a75f/<run>`, and the original release's under `evidence/rc-f3ae5ab/<run>`.
 
-## Current candidate `84acb66` (2026-11-09, Ashka's coat tails simulated as cloth)
+## Historical candidate `84acb66` (2026-11-09, Ashka's coat tails simulated as cloth)
 
 **Result: PASS on every objective check run.** This candidate is `8c22521` (below) with Ashka's coat tails rebuilt as a simulated cloth, which
 the creator authorized after `8c22521`'s report. Combat code and data are unchanged. This is the implementer's own
@@ -2386,7 +2386,11 @@ rolls, the grab and the three scripted throws):
   height with the body laid back. The smoke test, the controls self-tests, the 25-step journey and the 12-match
   matrix all passed, with 0 failures and 0 warnings (`anim-106`).
 
-## Known limitations
+## Historical limitations (earlier candidates)
+
+These statements describe the older rounds above, not the current feature inventory. In particular, crouching,
+lows, standalone throws and keyed guards were added later. Current limits belong in the dated audit results and
+[Status](Status.md); the original wording is retained as evidence.
 
 - **Checked by the creator (2026-11-07):** the PS4 controller and audio through the TV (on `060a75f`), and a playtest
   of everything in `4cee9c1`; they later identified combat smoothness, jumping feel, and placeholder models as areas

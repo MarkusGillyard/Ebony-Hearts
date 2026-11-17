@@ -20,7 +20,7 @@ which the game's jumps and block button already follow:
 Saved controls move to this layout where they were still on the old defaults; anything a player changed stays (loading
 rules, below).
 
-## Crouch and Throw (settings format 4)
+## Historical introduction: Crouch and Throw (settings format 4)
 
 The combat pass of 2026-11-08 added a held **Crouch** action and gave the standalone **Throw** its own buttons again
 (see the [Combat contract](CombatContract.md) for what they do). Defaults were chosen from keys and buttons no action
