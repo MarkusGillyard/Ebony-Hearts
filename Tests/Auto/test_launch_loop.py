@@ -34,6 +34,26 @@ class LaunchLoopSafetyTests(unittest.TestCase):
             popen.assert_not_called()
             kill.assert_not_called()
 
+    def test_invalid_run_parameters_abort_without_launching(self):
+        for option, value in (("--runs", "0"), ("--runs", "-1"),
+                              ("--timeout", "0"), ("--timeout", "nan"),
+                              ("--timeout", "inf"), ("--gap", "-1"),
+                              ("--gap", "nan"), ("--gap", "inf")):
+            with self.subTest(option=option, value=value), tempfile.TemporaryDirectory() as output:
+                args = ["launch_loop.py", "--launcher", "/does/not/exist", "--out", output,
+                        "--runs", "1", option, value]
+                with mock.patch.object(sys, "argv", args), \
+                     mock.patch.object(launch_loop.subprocess, "Popen", return_value=mock.Mock(pid=4242, **{"wait.return_value": 0})) as popen, \
+                     mock.patch.object(launch_loop, "device_state", return_value={}), \
+                     mock.patch.object(launch_loop, "wait_no_game", return_value=[]), \
+                     mock.patch.object(launch_loop.time, "sleep"), \
+                     mock.patch("sys.stderr"):
+                    with self.assertRaises(SystemExit) as raised:
+                        launch_loop.main()
+                    self.assertEqual(raised.exception.code, 2)
+                popen.assert_not_called()
+                self.assertEqual(list(Path(output).iterdir()), [])
+
     def test_cleanup_uses_launched_process_group(self):
         with tempfile.TemporaryDirectory() as output:
             args = ["launch_loop.py", "--launcher", "/does/not/exist", "--runs", "1", "--out", output, "--gap", "0"]
