@@ -5,6 +5,20 @@ Fighter 6 and Sekiro, made on 2026-11-02 before the rules were written. Other fi
 Rising, Guilty Gear Strive) were checked where they settle a specific question. Each rule below names its source, what
 Ebony Hearts does with it, and the core test that checks it (`Tests/Core/CoreTests.cpp`).
 
+## Evidence status checked 2026-11-17
+
+This document preserves historical design reasoning. The combat comparisons below are not a fresh measurement of
+other games. In particular, the numerical claims tagged [X] or [C] (deflect windows, throw escapes, counter rewards,
+input buffers) lack a directly reproducible primary citation here and remain **unverified external context**.
+They do not establish Ebony Hearts requirements. Its timing values are project choices, verified against
+`Content/Data`, the generated [combat contract](CombatContract.md), and the executable Core tests.
+The mathematical stance angles and bounce rates below are authored targets, not measured fighter biomechanics.
+No new combat balance or creative requirement follows from this audit.
+
+The Sekiro discussion below belongs to the initial November 2 design, before crouching and lows were implemented.
+The November 8 table records the later project decisions. The coaching descriptions are motion references;
+creator judgment and in-game visual inspection remain necessary for animation acceptance.
+
 Confidence tags:
 - **[P]** Official notes or a developer statement.
 - **[S]** A specialist source that was read in full.
@@ -39,7 +53,7 @@ crouching guard does not, and hit reward depends on contact height. The creator 
 Sekiro's deflect works because enemy strings are authored, learnable and do not adapt to the player. In a symmetrical
 fighter the attacker can delay and feint, so a timed block becomes a read rather than a reaction. It transfers safely
 only in a bounded form: a small window, a lockout against mashing, a payoff in frames only, and ordinary held blocking
-still working. Sekiro's posture break and its unblockable "perilous" attacks do not transfer. The game has a jump,
+still working. Sekiro's posture break and its unblockable "perilous" attacks do not transfer. At the time of this initial proposal the game had a jump,
 but no crouch or low attack; an unblockable designed to defeat jump would leave Dodge as the only answer.
 
 ## Rejected or deferred

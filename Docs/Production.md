@@ -25,6 +25,27 @@ The working layout used to build this slice keeps the engine, caches, downloads,
 dedicated drive outside the repository. Paths in the scripts follow that layout. Adjust the root constants at the top
 of each script for another machine.
 
+## Portable checkout and local prerequisites
+
+For a code build/cook from already imported content, install Git LFS and run `git lfs pull` in the checkout.
+`git lfs fsck` checks available object integrity; it does not replace an engine load/cook of the binary assets.
+Set `UE_ROOT` to the installed engine directory containing `Engine/`, and use the fully qualified commands in
+[README](../README.md#building-from-source). Blender, source-art downloads and the creator's original images are
+needed only for regeneration, not for cooking intact committed imported assets.
+
+`bin/package.sh`, `EH_REPO_OVERRIDE`, the whole-battery wrapper, and workspace `sourceart/`, `thirdparty/`,
+`evidence/` and `packages/` are external production resources. They are not supplied by cloning this repository.
+The source-art scripts contain task-specific absolute defaults: inspect their headers/environment overrides before
+running them on another machine. A missing private wrapper does not prevent the direct Unreal build/cook path.
+The original environment's wrapper also requires a 20 GiB storage-volume reserve. The November 17 audit moved
+its new ignored build directories and package outputs to the system SSD rather than delete unrelated work when
+that volume lacked space. Reserve enough space for intermediates, cooked data and an extracted package.
+
+The stage-release command below stages a **local review archive**; it does not publish a release, tag or deployment.
+Run packaged scenarios against a clean extraction and isolated `HOME`/XDG settings profile. XTest and virtual-pad
+automation require a controlled game display/focus; they can otherwise deliver events to another desktop window.
+Run `Tests/Auto/verify_battery.py --help` and check completeness separately from wrapper exit status.
+
 ## Order
 
 | Step | Command (from the repository root unless stated) | Output |
@@ -39,7 +60,7 @@ of each script for another machine.
 | 8. Unreal content | editor Python, in order: `Tools/Unreal/build_content.py`, `build_audio.py`, `import_ui.py`, `build_characters.py` (headless commandlet); `build_level.py` (needs the full editor) | `/Game/...` assets and `/Game/Maps/DrownedChapel` |
 | 9. Game code | `Build.sh EbonyHeartsEditor Linux Development -Project=...` | editor module |
 | 10. Package | `RunUAT.sh BuildCookRun -project=... -platform=Linux -clientconfig=Shipping -build -cook -stage -package -pak -archive -archivedirectory=<dir> -installed -nocompileeditor -skipbuildeditor -unrealexe=UnrealEditor-Cmd` | standalone package |
-| 11. Release | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |
+| 11. Local archive | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |
 | 12. Evaluation | launch the packaged game with `-EHAuto=<checkout>/Tests/Auto/<script>.txt -EHEvidence=<dir>` (absolute path; see below) | logs, perf JSON/CSV and screenshots |
 | 13. Move tables | `python3 Tools/Docs/move_tables.py` | regenerates the tables in `Docs/CombatContract.md` |
 | 14. Move matrix | `Tools/Docs/move_matrix.sh` | regenerates `Docs/MoveMatrix.md` by running every source/follow-up pair through the combat core |

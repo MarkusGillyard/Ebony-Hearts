@@ -1,10 +1,10 @@
 # Combat and art contract
 
-This is the shipped rule set for the first playable slice: Wren Ku and Ashka Rook in The Drowned Chapel. Every number lives
+This is the implemented rule set for the first playable slice: Wren Ku and Ashka Rook in The Drowned Chapel. Every number lives
 in `Content/Data` (`rules.json`, `Fighters/*.json`). The move tables below are generated from those files by
 `Tools/Docs/move_tables.py`, and `Tests/Core` checks the behaviour. Values are tuning proposals that pass the automated
 checks. The 2026-11-08 combat pass added crouching, guard heights, lows, the uppercuts, standalone combo-compatible throws
-and a retuned jump (decisions and sources: [Research](Research.md)); none of it has been played by the creator yet.
+and a retuned jump (decisions and sources: [Research](Research.md)); the creator has played earlier candidates, but has not accepted the overall movement or throw feel.
 
 ## Controls
 
@@ -13,14 +13,14 @@ Movement is left/right; up jumps and down crouches. There are six combat actions
 | Action | Keyboard (left side) | Keyboard (right side) | PlayStation | Xbox |
 |---|---|---|---|---|
 | Move | A / D | Left / Right arrows | Left stick / D-pad | Left stick / D-pad |
-| Jump | W, or I | Up arrow, Numpad 5, or ; | Cross, or left stick up / D-pad up | A, or left stick up / D-pad up |
+| Jump | W | Up arrow | Left stick up / D-pad up | Left stick up / D-pad up |
 | Crouch (hold) | S | Down arrow | Left stick down / D-pad down | Left stick down / D-pad down |
 | Light | J, or Enter | Numpad 1, or , | Square | X |
 | Heavy | K, or Backspace | Numpad 2, or . | Triangle | Y |
-| Special | L | Numpad 3, or / | R1 | RB |
-| Throw | U | Numpad 4, or M | L2 | LT |
+| Special | L | Numpad 3, or / | Cross | A |
+| Throw | U | Numpad 4, or M | L1 | LB |
 | Dodge | O | Numpad 6, or ' | Circle | B |
-| Block (hold) | Space | Numpad 0, or Right Shift | R2, or L1 | RT, or LB |
+| Block (hold) | Space | Numpad 0, or Right Shift | R2 | RT |
 | Pause | Escape | Numpad 9, or = | Options | Menu |
 | Training reset | R | Numpad 7, or - | Share | View |
 
@@ -35,6 +35,9 @@ buttons each; see [Controls](Controls.md).
 the stick says. The old grappling set (`"grappling": false`) stays in the data and code but out of play: directional
 throw variants (Wren's shoulder throw, Ashka's clinch knees and clinch turn), with their animations. Sustained grappling,
 clinch control and ground positions are not part of the game.
+
+The defaults above are settings format 5 (`FEHBindings::Defaults`). [Controls](Controls.md) records remapping,
+fixed menu controls, and migration from older formats; older layouts are historical.
 
 ## Timing model
 

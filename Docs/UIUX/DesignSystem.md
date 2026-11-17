@@ -82,7 +82,7 @@ glyphs are 40 px tall, so the letter inside is at the floor too. The interface-s
 
 ## Performance
 
-The interface's draw list costs 0.01–0.13 ms of CPU a frame on average, 0.3 ms at most at p99, before and after these
+Historical November 9 captures on FLOWBOX (Ryzen 7 5700G, RTX 2060) measured the interface's draw list at 0.01–0.13 ms of CPU a frame on average, approximately 0.3 ms at p99 (the move list reached 0.37 ms), before and after these
 changes (the move list 0.22 ms since it wraps long notes each frame) (`Tests/Auto/perf_ui.txt`, `ui_paint_*`). The budget is 1.0 ms mean and 2.0 ms p99.
 
 ## Still Water: ornament, motion, sound

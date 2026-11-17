@@ -538,7 +538,11 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	}
 	auto Int = [&Root](const TCHAR* Name, int32& Out) {
 		double V = 0;
-		if (Root->TryGetNumberField(Name, V)) Out = static_cast<int32>(V);
+		// Clamp() operates on int32 fields, so reject unrepresentable JSON numbers before narrowing.
+		if (Root->TryGetNumberField(Name, V) && FMath::IsFinite(V) && V >= MIN_int32 && V <= MAX_int32)
+		{
+			Out = static_cast<int32>(V);
+		}
 	};
 	auto Bool = [&Root](const TCHAR* Name, bool& Out) {
 		bool V = false;
@@ -559,7 +563,10 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Int(TEXT("effectsVolume"), S.EffectsVolume);
 	Int(TEXT("ambienceVolume"), S.AmbienceVolume);
 	double Scale = S.UIScale;
-	if (Root->TryGetNumberField(TEXT("uiScale"), Scale)) S.UIScale = static_cast<float>(Scale);
+	if (Root->TryGetNumberField(TEXT("uiScale"), Scale) && FMath::IsFinite(Scale))
+	{
+		S.UIScale = static_cast<float>(FMath::Clamp(Scale, 0.8, 1.4));
+	}
 	Bool(TEXT("reduceShake"), S.bReduceShake);
 	Bool(TEXT("reduceFlash"), S.bReduceFlash);
 	Bool(TEXT("inputHints"), S.bInputHints);

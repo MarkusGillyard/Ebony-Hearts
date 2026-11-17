@@ -1,10 +1,16 @@
 # Interface overhaul: handoff (for Markus)
 
-**Independent review update (2026-11-10).** PR #2 remains open. The creator has identified animation transitions and
-throw appearance and feel as the first issues to address from the November 9 playtest; the other issues will be
-handled gradually. This is not a completed human playtest or acceptance. The owner now authorizes normal integration
-if the independent technical gates pass. The original implementer handoff below remains dated history; see
-[`Docs/Review.md`](../Review.md) for the current PR disposition.
+**Integration update (2026-11-17).** Direction A, Still Water, is integrated: PR #2 merged into
+`release/first-slice` on November 11, PR #1 then merged into `main`, followed by documentation PR #3.
+See [Status](../Status.md) and [Review](../Review.md) for current findings, revisions and review limits.
+Creator acceptance of overall animation transitions and throws remains outstanding.
+
+## Historical implementer handoff (2026-11-09)
+
+The original handoff below preserves its date's PR state, package instructions and subjective questions.
+Its no-merge instructions and request for a merge decision were superseded by the authorized November 11 integrations.
+`bin/package.sh`, `packages/`, and `evidence/` are private delivery-workspace paths, not files in this checkout;
+use [Production](../Production.md) for repository build commands.
 
 **Where it stands (2026-11-09).** Done and tested on `dev/ui-ux-identity-overhaul`, in pull request #2 into
 `release/first-slice`, ready for your review. You chose direction **A, Still Water**, and it is applied to every

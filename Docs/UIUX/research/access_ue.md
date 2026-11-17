@@ -1,5 +1,25 @@
 # Ebony Hearts UI: accessibility and Slate acceptance criteria
 
+## Audit qualification (2026-11-17)
+
+This is a research target sheet, not a claim that every criterion was implemented or passed. Current code
+(`EHSettings.cpp`, `EHDirectorFlow.cpp`) offers **80–140% whole-interface scale**, reserves Pause/menu escape inputs,
+and has fixed wrapping and display-confirm timers. It does not provide 200% text-only scaling, a high-contrast
+mode, wrap disabling, hold toggles, or controls for every timer/background animation. These are documented
+accessibility gaps or proposals, not requirements authorized for implementation by this audit. No complete XAG or
+WCAG conformance, photosensitivity-tool pass, or accessibility certification is claimed.
+
+Primary-source recheck: [XAG 101](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/101)
+supports the console 26 px / PC 18 px 1080p minimums and 200% scaling guidance;
+[WCAG 2.2](https://www.w3.org/TR/WCAG22/) supports 4.5:1 ordinary-text contrast and 3:1 large-text contrast;
+[XAG 117](https://learn.microsoft.com/en-us/xbox/accessibility/xbox-accessibility-guidelines/117)
+recommends disabling/pausing/hiding distracting UI motion. The game uses these as design references, not as proof
+of implementation. [Epic's UMG optimization guide](https://dev.epicgames.com/documentation/en-us/unreal-engine/optimization-guidelines-for-umg-in-unreal-engine)
+supports invalidation caching, avoiding per-frame bound attributes and minimizing layout-changing animations.
+Its current page is labeled UE 5.9; commands must still be checked in the installed 5.8.4 engine.
+The performance limits below are project budgets, not Epic guarantees. No canvas rewrite is justified by these
+references alone; measure the existing canvas before proposing one.
+
 Accessed 2026-11-09. Versions:
 - **XAG**: Xbox Accessibility Guidelines v3.2 (published 2023-06-08; pages updated 2026-06-17).
 - **WCAG**: WCAG 2.2 Recommendation (12 Dec 2024).
@@ -41,7 +61,7 @@ Accessed 2026-11-09. Versions:
 
 **My inferences (not checked against the docs):** per-paint string or array allocation and gradient overdraw. Check them with the Insights `MemAlloc` channel and the GPU figure in `stat unit`.
 
-**OnPaint canvas vs widget tree:** caching works per widget. One leaf widget that paints the whole HUD repaints all of it on any change, and every frame if it is volatile. The fix:
+**OnPaint canvas vs widget tree:** caching works per widget. One leaf widget that paints the whole HUD repaints all of it on any change, and every frame if it is volatile. Possible optimization if measured cost exceeds budget (not implemented or required):
 - Split it into a cached static layer (frames, names, portraits).
 - Put health, gauge and timer in a volatile layer driven by events.
 - Re-shape the timer text only when its value changes.

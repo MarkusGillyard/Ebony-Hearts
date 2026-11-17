@@ -2,7 +2,8 @@
 (X server -> SDL -> Slate -> the game's input router). Captures the window between steps.
 
 Usage: python3 xinput_drive.py <window title> <out-dir>
-Requires python-xlib and PIL. Sends only to the game window it finds; never types into other applications.
+Requires python-xlib and PIL. Focuses the game once, then sends global XTest key events; do not change keyboard
+focus during the run. Use a controlled desktop session with no competing focus changes.
 """
 import os
 import subprocess

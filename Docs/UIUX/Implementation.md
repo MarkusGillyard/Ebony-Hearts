@@ -1,6 +1,6 @@
 # Implementation notes
 
-The working log of the overhaul's code changes on `dev/ui-ux-identity-overhaul`. The branch was cut from PR #1's head
+Historical working log (2026-11-09) of the overhaul's code changes on `dev/ui-ux-identity-overhaul`. The branch was cut from PR #1's head
 `0471443`.
 
 ## Architecture (kept)
@@ -9,7 +9,10 @@ The interface stays one painted Slate canvas (`SEHCanvas`, `FEHPainter`) driven 
 Measured, it costs a fraction of a millisecond, so there is no performance case for a widget rewrite. The router gives
 keyboard and pad identical navigation. Changes are made in place, screen by screen, behind the shared tokens.
 
-## Changes so far
+The branch integrated via PR #2 and PR #1 on November 11. Later review repairs and their evidence are in
+[Review](../Review.md); the measurements here retain their original scope.
+
+## Changes in that round
 
 | Area | Paths | What | Migration |
 |---|---|---|---|

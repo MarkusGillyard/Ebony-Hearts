@@ -21,6 +21,8 @@ jobs:
         run: python3 -m compileall -q Tools Tests/Auto Tests/Package
       - name: Packaging safety tests
         run: python3 -m unittest discover -s Tests/Package -p 'test_*.py'
+      - name: Automation harness safety tests
+        run: python3 -m unittest discover -s Tests/Auto -p 'test_*.py'
       - name: Generated move tables are current
         run: |
           python3 Tools/Docs/move_tables.py

@@ -1,4 +1,7 @@
-# UI audit of the current slice (baseline)
+# Historical UI audit (2026-11-09 baseline)
+
+The findings and before-state architecture below describe the pre-overhaul revision; their recorded fixes were
+integrated on November 11. [Review](../Review.md) contains subsequent regression verification.
 
 **Baseline:** the PR #1 head `0471443`, whose packaged build is candidate `84acb66` (Shipping, Linux; no code change
 since). The machine is FLOWBOX: AMD Ryzen 7 5700G, 32 GB RAM, NVIDIA GeForce RTX 2060 6 GB (driver 595.99.02),

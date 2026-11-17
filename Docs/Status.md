@@ -1,6 +1,23 @@
 # Status and handoff
 
-## Independent review update (2026-11-11)
+## Current engineering baseline (audit begun 2026-11-17)
+
+The audit started from integrated `main` `5a51e96e72a7f678340cd191de42f36e45f92a47`, including PR #3's final
+November 11 merge record. The active repair branch is `audit/reconcile-20261117`; numeric source repairs are at
+`a0445298e499bfc62abf6d3ddf7c9574926d425a`. Qualification is in progress; see [Review](Review.md) for findings and
+[Validation](Validation.md) for completed versus pending checks. No new release or creator acceptance is implied.
+
+Current implemented scope: Wren/Ashka, Drowned Chapel, fixed-step 2.5D combat, Versus CPU, Local Versus, Training,
+14-step Lesson, Still Water UI, remappable controls, settings and accessibility options. Linux x86-64/X11 is the
+qualified platform history; Windows, Wayland, online/rollback and consoles are not verified implementations.
+Current format-5 defaults are in [Controls](Controls.md); historical handoffs below do not override them.
+
+The next creative work remains creator-led transition/throw feel and other playtest feedback. Technical follow-up
+must preserve one-binary/one-machine determinism claims, source-art prerequisites and device/audio/display limits.
+Adventure Mode is future 3D exploration with transitions into 2.5D combat; it is not in this slice. Steam/free-release
+intent and a mature-rating target establish direction, not a release date or an awarded rating.
+
+## Historical integration summary (2026-11-11)
 
 PR #2 merged into `release/first-slice` as `964eeb8c95f38d2c35fee3dde3c8847705cf6bfb`; the freshly reviewed
 combined PR #1 then merged into `main` as `1fe9eec631d0d6f747d6248275feccbbf25713b0`. Both merge trees equal
@@ -19,12 +36,18 @@ in Destiny's Ark could transition into 2.5D combat, while Versus and Training re
 future architecture, not an implemented mode in this slice. The original stylized dark-fantasy game targets mature
 content and an ESRB M 17+ rating; no rating has been awarded.
 
+## Historical implementer handoff (2026-11-09)
+
+The following sections preserve the candidate record at that date. Their open-PR, no-merge, control and feedback
+statements are historical; the current baseline and unresolved work are above. Current defaults are in
+[Controls](Controls.md).
+
 Updated 2026-11-09 (combat, animation and character pass, the creator's fighting-game control layout, then Ashka Rook
 refined to her new character sheet and to its version 2, then the blocking animations and Ashka's coat tails, now
 simulated as cloth: candidate `84acb66` built and checked by the implementer; ready for independent review and the
 creator's playtest; nothing merged).
 
-## Where things stand
+### Where things stood
 
 - **This round's work** was made on branch `dev/combat-pass-1108` from the PR #1 head `ea3ddc6` and, at the creator's
   request on 2026-11-09, added to PR #1 (`release/first-slice`, a fast-forward). It answers the creator's 2026-11-08
@@ -43,7 +66,7 @@ creator's playtest; nothing merged).
   has been merged, tagged or released; merging needs the creator's explicit OK.
 - **Results:** [Validation](Validation.md), "Current candidate". **What to check and where:** [Review](Review.md).
 
-## What changed in this round
+### What changed in this round
 
 1. **Crouching.** Hold down (S, Down arrow, D-pad down). Jabs and other highs pass over you; lows must be blocked
    crouching (down + Block). Each fighter has a low kick (down + Light).
@@ -96,7 +119,7 @@ creator's playtest; nothing merged).
     cloth (12 columns round the coat that keep their spacing, stay out of her legs, ride on a raised thigh and fall off
     the knee), so in the crouch and in kicks the thighs no longer show through it.
 
-## How to test the candidate
+### How to test the candidate
 
 ```bash
 sha256sum -c SHA256SUMS
@@ -112,7 +135,7 @@ EbonyHearts-Slice-c6c0de2/EbonyHearts.sh
 
 It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHearts/Saved/EbonyHearts/Settings.json`.
 
-## Playtest checklist for the creator
+### Playtest checklist for the creator
 
 1. **Lesson, start to finish.** Does each step say clearly what to do, and does the crouch, throw and uppercut
    teaching make sense?
@@ -134,7 +157,7 @@ It starts in your saved display mode. Settings are in `~/.config/Epic/EbonyHeart
    guards look like trained fighters defending (no twisted arms or shoulders)? Is blocking as quick to come up as
    before? Do the standing and crouching guards read clearly apart?
 
-## Implemented, tested, observed and not verified
+### Implemented, tested, observed and not verified
 
 - **Implemented and tested by automation on the candidate** (Validation, "Current candidate" and "Candidate
   `5d5c316`"): combat core (53 cases, 1361 checks); packaging tests; the packaged battery, 28 runs (smoke, controls
