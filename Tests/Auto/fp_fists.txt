@@ -25,7 +25,7 @@ wait 0.8
 fp_expect dummy_hits eq 2
 fp_expect dummy_damage eq 18
 
-log == reactions: a straight to the head snaps it back; to the body it folds the torso forward
+log == reactions: a straight to the head snaps it back; to the body the chest leads
 fp_dummy_reset
 fp_teleport 0 -40 0 -90 -4
 wait 0.6
@@ -41,9 +41,11 @@ wait 0.6
 press kbA FPStraight
 wait 0.5
 fp_expect dummy_body eq 1
-fp_expect dummy_chestpeak lt -6
+fp_expect dummy_chestpeak gt 6
+log (every reaction goes away from the attacker and settles without swinging back toward them)
 wait 1.0
 fp_expect dummy_chestback near 0 1.5
+fp_expect dummy_chestback gt -0.5
 
 log == the straight does not cancel into a jab; a late jab press expires
 fp_dummy_reset

@@ -257,19 +257,20 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 	}
 	else if (Action == EEHFistAction::Shove)
 	{
-		// Both hands in the chest: the torso goes back first and the head whips after it.
-		K.ChestBack = 520.0f;
-		K.HeadBack = -180.0f;
+		// Both hands in the chest: the torso goes back and the head goes with it.
+		K.ChestBack = 560.0f;
+		K.HeadBack = 260.0f;
 		K.HeadSide = FMath::FRandRange(-60.0f, 60.0f);
 	}
 	else if (bLastBodyShot)
 	{
-		// To the body: the torso folds around the fist and the head drops toward the attacker.
+		// To the body: the chest is driven back and leads; the head follows less than on a head shot. Everything moves
+		// away from the attacker (folding toward them read as being pulled into the punch).
 		const bool bHeavy = Action == EEHFistAction::Straight;
-		K.ChestBack = bHeavy ? -560.0f : -240.0f;
-		K.HeadBack = bHeavy ? -320.0f : -140.0f;
-		K.ChestTwist = TwistSign * (bHeavy ? 260.0f : 120.0f);
-		K.Knock = bHeavy ? 200.0f : 70.0f;
+		K.ChestBack = bHeavy ? 620.0f : 300.0f;
+		K.HeadBack = bHeavy ? 300.0f : 140.0f;
+		K.ChestTwist = TwistSign * (bHeavy ? 300.0f : 140.0f);
+		K.Knock = bHeavy ? 240.0f : 90.0f;
 	}
 	else
 	{
@@ -467,7 +468,8 @@ void AEHTrainingDummy::UpdateReaction(float DeltaSeconds)
 		ChestSide.V += PendingKick.ChestSide;
 		Knockback += HitDir * PendingKick.Knock;
 	}
-	// Underdamped springs (a little rebound, as a neck and torso have): the head is quicker than the chest.
+	// Nearly critically damped springs: the blow drives the head and chest away and they settle back without swinging
+	// forward past the stance (a forward rebound read as moving into the punch). The head is quicker than the chest.
 	auto Integrate = [](FSpring& S, float Hz, float Zeta, float Dt) {
 		const float W = 2.0f * PI * Hz;
 		S.V += (-W * W * S.X - 2.0f * Zeta * W * S.V) * Dt;
@@ -478,12 +480,12 @@ void AEHTrainingDummy::UpdateReaction(float DeltaSeconds)
 	{
 		const float Dt = FMath::Min(Left, 1.0f / 240.0f);
 		Left -= Dt;
-		Integrate(HeadBack, 4.2f, 0.42f, Dt);
-		Integrate(HeadTwist, 3.8f, 0.45f, Dt);
-		Integrate(HeadSide, 4.2f, 0.45f, Dt);
-		Integrate(ChestBack, 2.8f, 0.5f, Dt);
-		Integrate(ChestTwist, 2.6f, 0.5f, Dt);
-		Integrate(ChestSide, 2.8f, 0.5f, Dt);
+		Integrate(HeadBack, 3.6f, 0.85f, Dt);
+		Integrate(HeadTwist, 3.4f, 0.85f, Dt);
+		Integrate(HeadSide, 3.6f, 0.85f, Dt);
+		Integrate(ChestBack, 2.6f, 0.9f, Dt);
+		Integrate(ChestTwist, 2.4f, 0.9f, Dt);
+		Integrate(ChestSide, 2.6f, 0.9f, Dt);
 	}
 	PeakHead = FMath::Abs(HeadBack.X) > FMath::Abs(PeakHead) ? HeadBack.X : PeakHead;
 	PeakChest = FMath::Abs(ChestBack.X) > FMath::Abs(PeakChest) ? ChestBack.X : PeakChest;

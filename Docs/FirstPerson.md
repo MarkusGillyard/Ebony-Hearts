@@ -128,11 +128,11 @@ The slice's Ashka test model stands in the nave 4.5 m in front of the start (`EH
 dummy switches it between **Stand** (takes every hit), **Guard** (blocks hits from its front, 70% stopped) and
 **Strikes back** (when the player is within 1.7 m and in front of it, a slow 24-frame wind-up into a 10-damage punch,
 then 70 frames before the next; a hit in the wind-up stops it). It turns to face the player and reacts physically rather than playing clips: damped springs on its head and chest
-are kicked along the line of the blow when the hitstop ends, on top of its stance. A jab snaps the head back and lets
-go; a straight snaps it hard, turns the shoulders with the punching hand and slides the body back about 35 cm (out of
-jab reach, so the straight ends a combination); a strike landing below the neck folds the torso around the fist and
-drops the head; a guarded strike moves only the arms and chest; the shove throws the chest back and the head whips
-after it, while the body slides 2 m along anything it meets. Above it a training readout counts hits, blocks and
+are kicked along the line of the blow when the hitstop ends, on top of its stance. Every reaction drives away from the attacker and settles back
+without swinging toward them. A jab snaps the head back and lets go; a straight snaps it hard, turns the shoulders with
+the punching hand and slides the body back about 35 cm (out of jab reach, so the straight ends a combination); a
+strike landing below the neck drives the chest back first, the head following less; a guarded strike moves only the
+arms and chest; the shove throws chest and head back while the body slides 2 m along anything it meets. Above it a training readout counts hits, blocks and
 damage. Reset the dummy puts it back with its count cleared.
 
 ## The Chapel in first person
