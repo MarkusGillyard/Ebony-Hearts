@@ -1,0 +1,9 @@
+# Companion of fp_virtual_pad.py: observes a virtual controller in first person (presses, held states, the player
+# once a second). Start the pad script at the same time as the game.
+wait 3
+log_input 60
+loop 45
+fp_state tick
+wait 1
+endloop
+quit

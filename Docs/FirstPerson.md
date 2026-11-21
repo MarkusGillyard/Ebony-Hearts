@@ -149,8 +149,10 @@ Scripts: `fp_movement.txt` (movement, Stamina, jump, crouch under a low ceiling,
 mouse look, water and steps, pause, focus loss, reset), `fp_controls_a.txt` and `fp_controls_b.txt` (remapping, then
 persistence across a relaunch), `fp_audit.txt`, `fp_presentation.txt`, `fp_reflection_perf.txt`, `fp_perf.txt` and
 `fp_perf_cold.txt` (a traversal route captured warm, after one pass, and cold, from start-up; inputs only, so they run
-in Shipping) and `fp_xinput.txt` with `fp_xinput_drive.py`
-(real X11 keyboard and mouse input, and a real focus loss).
+in Shipping) `fp_xinput.txt` with `fp_xinput_drive.py`
+(real X11 keyboard and mouse input, and a real focus loss), `fp_pad.txt` with `fp_virtual_pad.py` (a virtual uinput
+controller through SDL, including a disconnect), `fp_soak.txt` (the route eight times with pauses and settings
+round trips) and `fp_import.txt` (a profile that has only the slice's settings file).
 
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.

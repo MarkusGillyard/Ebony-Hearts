@@ -1,0 +1,8 @@
+# Slice settings import: run on a profile whose only settings file is a 2.5D slice Settings.json with master volume 35.
+wait 5
+expect_master_volume 35
+fp_expect fov eq 90
+fp_expect screen eq 12
+settings_roundtrip
+expect_master_volume 35
+quit

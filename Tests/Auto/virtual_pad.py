@@ -284,4 +284,5 @@ def main():
     log(f"virtual pad scenario done: {scenario} ({kind})")
 
 
-main()
+if __name__ == "__main__":
+    main()
