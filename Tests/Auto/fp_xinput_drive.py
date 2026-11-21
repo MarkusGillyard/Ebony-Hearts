@@ -14,6 +14,7 @@ import time
 from PIL import Image
 from Xlib import X, XK, display
 from Xlib.ext import xtest
+from Xlib.protocol import event
 
 NAME, OUT = sys.argv[1], sys.argv[2]
 os.makedirs(OUT, exist_ok=True)
@@ -54,6 +55,15 @@ def require_focus():
         time.sleep(0.8)
     if active_window() != WID:
         raise SystemExit("game window is not active; refusing to send input")
+
+
+def iconify():
+    """Asks the window manager to minimise the game window (ICCCM WM_CHANGE_STATE, IconicState)."""
+    w = d.create_resource_object("window", WID)
+    msg = event.ClientMessage(window=w, client_type=d.intern_atom("WM_CHANGE_STATE"), data=(32, [3, 0, 0, 0, 0]))
+    root.send_event(msg, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+    d.sync()
+    log("iconify")
 
 
 def kc(sym):
@@ -150,15 +160,14 @@ def main():
     log("phase focus loss: minimise while walking, then restore")
     key_down("w")
     time.sleep(0.5)
-    subprocess.run(["wmctrl", "-i", "-r", hex(WID), "-b", "add,hidden"], check=False)
-    time.sleep(0.2)
-    xtest.fake_input(d, X.KeyRelease, kc("w"))   # released while another window has focus
-    d.sync()
-    log("up w (while minimised)")
+    iconify()
     time.sleep(2.0)
-    subprocess.run(["wmctrl", "-i", "-r", hex(WID), "-b", "remove,hidden"], check=False)
+    log(f"active window while minimised: {hex(active_window() or 0)}")
     subprocess.run(["wmctrl", "-i", "-a", hex(WID)], check=False)
-    time.sleep(1.5)
+    time.sleep(1.0)
+    require_focus()
+    key_up("w")   # released only once the game has focus again
+    time.sleep(0.5)
     shot("x02_after_focus_return")
     tap("Escape")
     time.sleep(1.5)

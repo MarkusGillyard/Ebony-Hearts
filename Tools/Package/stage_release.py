@@ -138,7 +138,7 @@ def main():
         f.write(notices(package))
     built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(os.path.getmtime(os.path.join(package, "EbonyHearts.sh"))))
     with open(os.path.join(release, "VERSION.txt"), "w", encoding="utf-8") as f:
-        f.write(f"Ebony Hearts - first playable slice ({name})\n"
+        f.write(f"Ebony Hearts ({name})\n"
                 f"Source commit: {commit}\n"
                 f"Content hash (SHA-256 over the pak files): {content_hash(package)}\n"
                 f"Engine: Unreal Engine 5.8.4, {config}, Linux x86-64 (Vulkan SM6)\n"

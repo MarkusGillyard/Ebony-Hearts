@@ -36,6 +36,9 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
   default 90) applies immediately.
 - **Mouse buttons** can be bound to actions on the keyboard-and-mouse layout. Escape, F10 (reserved for the developer
   panel) and the console key cannot.
+- **Losing focus.** When another window takes focus, the game pauses and forgets every held key and stick, so
+  nothing keeps walking. It pauses once, at the moment focus is lost: Slate can report the game inactive for a moment
+  after the window returns, and the player can resume at once.
 - **Sprint rules.** Crouching wins over sprinting. A jump from a crouch stands up first. A jump pressed up to 0.15 s
   before landing still counts.
 

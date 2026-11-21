@@ -314,6 +314,7 @@ private:
 	TArray<FEHFirstPersonEvent> FPEvents;
 	FEHFirstPersonInput LastFPInput;
 	FVector FPMark = FVector::ZeroVector;   // automation: fp_mark / fp_expect moved
+	bool bHadFocus = true;
 	bool LoadFirstPersonData();
 	void BeginFirstPerson();
 	void TickFirstPerson(float DeltaSeconds);

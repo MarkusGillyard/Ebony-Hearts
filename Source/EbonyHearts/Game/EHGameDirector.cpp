@@ -401,13 +401,24 @@ void AEHGameDirector::Tick(float DeltaSeconds)
 	const bool bFocusLost = FSlateApplication::IsInitialized() && !FSlateApplication::Get().IsActive() && !FParse::Param(FCommandLine::Get(), TEXT("EHNoFocusPause"));
 	if (bFirstPersonMode)
 	{
-		if (Screen == EEHScreen::FirstPerson && bFocusLost && !bPaused)
+		// Acts on the moment focus is lost, not on every frame without it: after a window comes back, Slate can still
+		// report the game inactive for a while although it already receives input, and the player must be able to
+		// resume meanwhile.
+		if (bFocusLost && bHadFocus)
 		{
 			// Another window took focus: stop, and forget every held key and stick so nothing keeps walking.
 			RouterPtr->ResetHeld();
-			SetPaused(true, EHDeviceNone);
+			if (Screen == EEHScreen::FirstPerson && !bPaused)
+			{
+				SetPaused(true, EHDeviceNone);
+			}
 			AutoLogLine(TEXT("focus lost: paused"));
 		}
+		else if (!bFocusLost && !bHadFocus)
+		{
+			AutoLogLine(TEXT("focus regained"));
+		}
+		bHadFocus = !bFocusLost;
 		TickFirstPerson(DeltaSeconds);
 		return;
 	}
