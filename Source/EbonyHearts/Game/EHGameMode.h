@@ -5,7 +5,7 @@
 
 #include "EHGameMode.generated.h"
 
-// No pawns: the director drives every fighter and the camera.
+// The first-person player character is the default pawn; the director runs devices, menus and settings.
 UCLASS(NotBlueprintable)
 class AEHGameMode : public AGameModeBase
 {
@@ -14,4 +14,6 @@ class AEHGameMode : public AGameModeBase
 public:
 	AEHGameMode();
 	virtual void BeginPlay() override;
+	// The pawn always spawns; the director then places it at the start from Data/firstperson.json.
+	virtual APawn* SpawnDefaultPawnAtTransform_Implementation(AController* NewPlayer, const FTransform& SpawnTransform) override;
 };

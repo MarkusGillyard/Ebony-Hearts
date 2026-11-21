@@ -1,0 +1,36 @@
+# Reflection experiment (development builds): one fixed view over the basin water, measured without and with a planar
+# reflection. Run once on the project's renderer settings and once with
+#   -ini:Engine:[/Script/Engine.RendererSettings]:r.AllowGlobalClipPlane=1
+# (planar reflections need the global clip plane; it changes every shader, so its own cost is the first comparison).
+wait 8
+ui_hidden 1
+fp_teleport 0 -1000 0 -90 -20
+wait 4
+screenshot r01_view_default
+perf_begin
+wait 12
+perf_end r_view_default
+fp_planar on 50
+wait 6
+screenshot r02_view_planar50
+perf_begin
+wait 12
+perf_end r_view_planar50
+fp_planar on 100
+wait 6
+screenshot r03_view_planar100
+perf_begin
+wait 12
+perf_end r_view_planar100
+fp_planar off
+fp_teleport 0 -1000 0 -90 -55
+wait 3
+fp_body_visible 1
+fp_planar on 100
+wait 4
+screenshot r04_down_planar100_body_shown
+fp_body_visible 0
+wait 0.5
+screenshot r05_down_planar100_body_hidden
+fp_planar off
+quit

@@ -10,6 +10,7 @@
 #include "EHCombatData.h"
 #include "EHInputRouter.h"
 #include "EHMatch.h"
+#include "EHPlayerCharacter.h"
 #include "EHPresentation.h"
 #include "EHSettings.h"
 #include "EHUICanvas.h"
@@ -21,6 +22,7 @@
 
 class ACameraActor;
 class AEHFighterVisual;
+class AEHPlayerCharacter;
 class AEHVfx;
 class UTexture2D;
 
@@ -54,6 +56,7 @@ enum class EEHScreen : uint8
 	Credits,
 	QuitConfirm,
 	DisplayConfirm,
+	FirstPerson, // first-person play in the Chapel (the prototype's only mode)
 };
 
 enum class EEHMode : uint8
@@ -175,6 +178,24 @@ public:
 	bool IsPaused() const { return bPaused; }
 
 private:
+	// Object references come first: reflected property offsets must stay below 64 KiB, and the settings copies below are large.
+	UPROPERTY()
+	TObjectPtr<AEHFighterVisual> Visual[2];
+	UPROPERTY()
+	TObjectPtr<AEHVfx> Vfx;
+	UPROPERTY()
+	TObjectPtr<ACameraActor> Camera;
+	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
+	UPROPERTY()
+	TObjectPtr<UTexture2D> TitleTexture;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LogoSmallTexture;
+	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
+	UPROPERTY()
+	TObjectPtr<UTexture2D> KeyArtTexture;
+	UPROPERTY()
+	TObjectPtr<AEHPlayerCharacter> FPPlayer;
+
 	// Data
 	eh::Rules Rules;
 	eh::CharacterDef Chars[2];       // 0 Wren, 1 Ashka
@@ -253,22 +274,8 @@ private:
 	int8 LessonWalkDir = 0;
 
 	// Presentation
-	UPROPERTY()
-	TObjectPtr<AEHFighterVisual> Visual[2];
-	UPROPERTY()
-	TObjectPtr<AEHVfx> Vfx;
-	UPROPERTY()
-	TObjectPtr<ACameraActor> Camera;
-	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
-	UPROPERTY()
-	TObjectPtr<UTexture2D> TitleTexture;
 	FSlateBrush TitleBrush;
-	UPROPERTY()
-	TObjectPtr<UTexture2D> LogoSmallTexture;
 	FSlateBrush LogoSmallBrush;
-	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
-	UPROPERTY()
-	TObjectPtr<UTexture2D> KeyArtTexture;
 	FSlateBrush KeyArtBrush;
 	FVector CamPos = FVector(0, 600, 140);
 	float CamShake = 0.0f;
@@ -293,6 +300,32 @@ private:
 	float DisplayVerifyIn = 0.0f;
 	int32 DisplayReasserts = 0;
 	int32 TotalDisplayReasserts = 0;
+
+	// First person
+	bool bFirstPersonMode = true;
+	FEHFirstPersonTuning FPTuning;
+	bool bFPCrouchToggled = false;   // controller stick press, or the keyboard with toggle crouch
+	bool bFPSprintToggled = false;
+	bool bFPKeyCrouchHeld = false;
+	bool bFPKeySprintHeld = false;
+	int32 FPDevice = EHDeviceKeyboardA;   // the device the player last moved or looked with
+	float StaminaMeterAlpha = 0.0f;
+	int32 FPResets = 0;
+	TArray<FEHFirstPersonEvent> FPEvents;
+	FEHFirstPersonInput LastFPInput;
+	FVector FPMark = FVector::ZeroVector;   // automation: fp_mark / fp_expect moved
+	bool LoadFirstPersonData();
+	void BeginFirstPerson();
+	void TickFirstPerson(float DeltaSeconds);
+	FEHFirstPersonInput GatherFirstPersonInput(float DeltaSeconds);
+	void PlayFirstPersonEvents();
+	void ResetFirstPerson(const TCHAR* Why);
+	void BuildFirstPersonPause();
+	void HandleFirstPersonNav(const FEHNavEvent& E);
+	void PaintFirstPerson(FEHPainter& P);
+	void ApplyFieldOfView();
+	bool RunFirstPersonCommand(const TArray<FString>& T, const FString& Line);
+	FString DescribeFirstPerson() const;
 
 	// Automation
 	FString AutoScript;

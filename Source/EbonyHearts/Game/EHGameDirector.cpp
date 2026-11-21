@@ -111,7 +111,8 @@ void AEHGameDirector::BeginPlay()
 	bSessionDisplayOverride = Settings.WindowMode != DiskDisplay.WindowMode || Settings.Resolution != DiskDisplay.Resolution || Settings.bVSync != DiskDisplay.bVSync;
 	RouterPtr = MakeShared<FEHInputRouter>(&Settings.Bindings);
 	RouterPtr->Register();
-	const bool bDataOk = LoadData();
+	RouterPtr->SetFirstPerson(bFirstPersonMode);
+	const bool bDataOk = bFirstPersonMode ? LoadFirstPersonData() : LoadData();
 	FString FontMissing;
 	Fonts.Load(FontMissing);
 	if (!FontMissing.IsEmpty())
@@ -144,22 +145,32 @@ void AEHGameDirector::BeginPlay()
 	{
 		PC->bShowMouseCursor = false;
 		PC->SetInputMode(FInputModeGameOnly());
-		PC->SetViewTarget(Camera);
+		if (!bFirstPersonMode)
+		{
+			PC->SetViewTarget(Camera);
+		}
 	}
-	// A showcase match keeps both fighters idling in the Chapel behind the menus.
-	SlotChar[0] = 0;
-	SlotChar[1] = 1;
-	Match = MakeUnique<eh::Match>();
-	std::string Err;
-	if (bDataOk)
+	if (!bFirstPersonMode)
 	{
-		Match->Setup(Rules, Chars[0], Chars[1], eh::Mode::Training, Err);
-		ConfigureVisuals();
+		// A showcase match keeps both fighters idling in the Chapel behind the menus.
+		SlotChar[0] = 0;
+		SlotChar[1] = 1;
+		Match = MakeUnique<eh::Match>();
+		std::string Err;
+		if (bDataOk)
+		{
+			Match->Setup(Rules, Chars[0], Chars[1], eh::Mode::Training, Err);
+			ConfigureVisuals();
+		}
 	}
 	Audio.StartAmbience(TEXT("ChapelBed"));
-	Audio.StartMusic(TEXT("Theme"));
+	if (!bFirstPersonMode)
+	{
+		Audio.StartMusic(TEXT("Theme"));
+	}
 	InitAutomation();
-	GoTo(bDataOk ? EEHScreen::Title : EEHScreen::Error);
+	// First person starts in the Chapel itself: no title or menus before play.
+	GoTo(bDataOk ? (bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Title) : EEHScreen::Error);
 	if (!SettingsWarning.IsEmpty())
 	{
 		ShowToast(SettingsWarning);
@@ -190,12 +201,16 @@ void AEHGameDirector::SpawnWorldActors()
 {
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Vfx = GetWorld()->SpawnActor<AEHVfx>(AEHVfx::StaticClass(), FTransform::Identity, Params);
+	Vfx->Init(Settings.bReduceFlash);
+	if (bFirstPersonMode)
+	{
+		return;   // the player character is the camera; no fighters
+	}
 	for (int32 i = 0; i < 2; ++i)
 	{
 		Visual[i] = GetWorld()->SpawnActor<AEHFighterVisual>(AEHFighterVisual::StaticClass(), FTransform::Identity, Params);
 	}
-	Vfx = GetWorld()->SpawnActor<AEHVfx>(AEHVfx::StaticClass(), FTransform::Identity, Params);
-	Vfx->Init(Settings.bReduceFlash);
 	Camera = GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), FTransform(FRotator(0, -90, 0), CamPos), Params);
 	UCameraComponent* Cam = Camera->GetCameraComponent();
 	Cam->SetFieldOfView(HorizontalFov());
@@ -223,6 +238,7 @@ void AEHGameDirector::ApplySettings(bool bDisplay)
 	{
 		Vfx->SetReduceFlash(Settings.bReduceFlash);
 	}
+	ApplyFieldOfView();
 	CpuLevel = Settings.CpuLevel;
 	if (!bDisplay || GEngine == nullptr)
 	{
@@ -383,6 +399,18 @@ void AEHGameDirector::Tick(float DeltaSeconds)
 
 	float Alpha = 0.0f;
 	const bool bFocusLost = FSlateApplication::IsInitialized() && !FSlateApplication::Get().IsActive() && !FParse::Param(FCommandLine::Get(), TEXT("EHNoFocusPause"));
+	if (bFirstPersonMode)
+	{
+		if (Screen == EEHScreen::FirstPerson && bFocusLost && !bPaused)
+		{
+			// Another window took focus: stop, and forget every held key and stick so nothing keeps walking.
+			RouterPtr->ResetHeld();
+			SetPaused(true, EHDeviceNone);
+			AutoLogLine(TEXT("focus lost: paused"));
+		}
+		TickFirstPerson(DeltaSeconds);
+		return;
+	}
 	if (bMatchActive && Screen == EEHScreen::Match && bFocusLost && !bPaused && Mode != EEHMode::Training)
 	{
 		SetPaused(true, SlotDevice[0]);
@@ -855,9 +883,22 @@ void AEHGameDirector::SetPaused(bool bPause, int32 Owner)
 	PauseOwner = Owner;
 	Audio.SetMusicDuck(bPause ? 0.45f : 1.0f);
 	Audio.Play(bPause ? FName(TEXT("UiOpen")) : FName(TEXT("UiClose")), EEHSoundCat::Ui, 0.7f);
+	if (bFirstPersonMode)
+	{
+		// The world stops (movement, animation, physics); the director keeps ticking for the menus.
+		UGameplayStatics::SetGamePaused(this, bPause);
+		AutoLogLine(FString::Printf(TEXT("firstperson %s"), bPause ? TEXT("paused") : TEXT("resumed")));
+	}
 	if (bPause)
 	{
-		BuildPauseMenu();
+		if (Screen == EEHScreen::FirstPerson)
+		{
+			BuildFirstPersonPause();
+		}
+		else
+		{
+			BuildPauseMenu();
+		}
 	}
 	else
 	{
@@ -878,6 +919,16 @@ void AEHGameDirector::HandleConnections()
 		static const TCHAR* Kinds[] = {TEXT("keyboard"), TEXT("playstation"), TEXT("xbox"), TEXT("generic")};
 		AutoLogLine(FString::Printf(TEXT("device %s key=%d name=%s kind=%s"), bConnected ? TEXT("connected") : TEXT("disconnected"), Device, *Name,
 			Kinds[static_cast<int32>(RouterPtr->KindOf(Device))]));
+		if (!bConnected && bFirstPersonMode && Device == FPDevice)
+		{
+			// The controller the player was using went away: stop until they pick it up again or use another device.
+			FPDevice = EHDeviceKeyboardA;
+			if (Screen == EEHScreen::FirstPerson && !bPaused)
+			{
+				SetPaused(true, EHDeviceNone);
+			}
+			ShowToast(FString::Printf(TEXT("%s disconnected"), *Name));
+		}
 		if (!bConnected && Screen == EEHScreen::Select)
 		{
 			for (int32 i = 0; i < 2; ++i)

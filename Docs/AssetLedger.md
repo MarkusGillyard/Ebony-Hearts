@@ -50,6 +50,21 @@ Files deliberately excluded:
 - **Effects.** Effect textures (`Tools/Assets/make_vfx_textures.py`), effect materials and the drawn button prompts.
 - **Code and data.** All game code and data.
 
+## First-person prototype (2026-11-21)
+
+Placeholders only. The creator authors the final Chapel, characters and animation.
+
+| Asset | Kind | Made by | Notes |
+|---|---|---|---|
+| `PH_Blockout_WestWall` (map actor) and `/Game/Chapel/Placeholder/M_PH_Blockout` | Placeholder blockout and its grey 1 m grid material | Made with AI assistance (`Tools/Unreal/adapt_chapel_fp.py`) | Uses Unreal Engine's `/Engine/BasicShapes/Cube` (engine content, Unreal Engine EULA) |
+| Chapel meshes (`SM_Floor_*`, walls, piers, altar, pews, rubble, candle stands) | Collision added (render geometry as collision) | Made with AI assistance (`adapt_chapel_fp.py`) | Changes the existing original Chapel assets; no new geometry |
+| Chapel shell instances (vaults, upper walls, arcades, piers) | Two-sided shadow casting | Made with AI assistance (`adapt_chapel_fp.py`) | Map setting; no new assets |
+| Hidden first-person body | Placeholder | Existing slice assets reused unchanged | `SK_Wren`, `A_Wren_Idle`, `A_Wren_WalkF` (provenance above: MakeHuman CC0 base, ACCAD idle, Mixamo walk) |
+| Water footsteps and ripples | Existing slice assets reused | | `S_StepWater_01-03`, the effect ripple and splash |
+| `fp_box` test boxes | Development-only runtime test fixtures | | Never saved or cooked |
+
+No new third-party inputs were added.
+
 ## Creator-supplied
 
 - **Logo** (`/Game/UI/T_Logo`, `/Game/UI/T_LogoSmall`). Supplied by the creator on 2026-11-09 as `1000012869.png`,

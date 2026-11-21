@@ -43,6 +43,9 @@ struct FEHDevice
 	uint8 DigitalTriggerPresses = 0;   // digital trigger presses seen before any axis (a digital-only controller)
 	TArray<FKey> KeysDown;          // gameplay-bound keys held now: an action stays held while any of its keys is down
 	double LastActivity = 0.0;
+	// Raw analog sticks (left X, left Y, right X, right Y; up is positive), as last reported. First person reads them
+	// every frame; the dead zone is applied by the reader.
+	float Axes[4] = {0.0f, 0.0f, 0.0f, 0.0f};
 };
 
 // One press: the menu command and/or the gameplay action it produced on its device.
@@ -68,6 +71,11 @@ public:
 	virtual bool HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyEvent& InKeyEvent) override;
 	virtual bool HandleKeyUpEvent(FSlateApplication& SlateApp, const FKeyEvent& InKeyEvent) override;
 	virtual bool HandleAnalogInputEvent(FSlateApplication& SlateApp, const FAnalogInputEvent& InAnalogInputEvent) override;
+	virtual bool HandleMouseMoveEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent) override;
+	virtual bool HandleMouseButtonDownEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent) override;
+	virtual bool HandleMouseButtonUpEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent) override;
+	// Slate reports the second press of a quick pair as a double click instead of a down event.
+	virtual bool HandleMouseButtonDoubleClickEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent) override;
 	virtual const TCHAR* GetDebugName() const override { return TEXT("EbonyHeartsInput"); }
 
 	void Register();
@@ -83,6 +91,17 @@ public:
 	bool PopNav(FEHNavEvent& Out);
 	void ClearNav() { Nav.Reset(); }
 	bool IsHeld(int32 DeviceKey, EEHAction Action) const;
+
+	// First person: the keyboard (with the mouse) uses the FPKeyboard layout, every controller the
+	// FPController layout, and the right keyboard side is idle. Menu commands are unchanged.
+	void SetFirstPerson(bool bOn);
+	bool IsFirstPerson() const { return bFirstPerson; }
+	// Mouse movement since the last call, in mouse counts (+X right, +Y down), while first person is on.
+	FVector2D ConsumeMouseDelta();
+	// Presses of gameplay actions on a device since the last call (EEHAction bits); first person reads these instead
+	// of SampleForTick.
+	uint32 TakePresses(int32 DeviceKey);
+	uint32 HeldBits(int32 DeviceKey) const;
 
 	const TMap<int32, FEHDevice>& Devices() const { return DeviceMap; }
 	const FEHDevice* FindDevice(int32 DeviceKey) const { return DeviceMap.Find(DeviceKey); }
@@ -114,6 +133,8 @@ public:
 	void InjectKey(int32 DeviceKey, const FKey& Key, bool bDown);
 	// An analog axis (stick or trigger) on a gamepad.
 	void InjectAnalog(int32 DeviceKey, const FKey& Axis, float Value);
+	// Mouse movement in counts, as if from the device.
+	void InjectMouseMove(const FVector2D& Delta) { if (bFirstPerson) { MouseDelta += Delta; } }
 	// Removes a device created by injected input (self-tests), so it never shows up as a real controller.
 	void ForgetDevice(int32 DeviceKey);
 
@@ -128,6 +149,8 @@ private:
 	int32 LastDevice = EHDeviceKeyboardA;
 	int32 LastGamepad = EHDeviceNone;
 	bool bRegistered = false;
+	bool bFirstPerson = false;
+	FVector2D MouseDelta = FVector2D::ZeroVector;
 	bool bCapturing = false;
 	EEHBindingSet CaptureSet = EEHBindingSet::KeyboardA;
 	FKey CapturedKey;
@@ -150,6 +173,7 @@ private:
 	bool ActionStillHeld(const FEHDevice& Device, EEHBindingSet Set, EEHAction Action) const;
 	void ProcessKeyboardKey(const FKey& Key, bool bDown, int32 OnlyDevice = EHDeviceNone);
 	void ProcessAxis(FEHDevice& Device, const FKey& Axis, float Value);
+	bool OnMouseButton(const FKey& Key, bool bDown);
 	// The capture swallows the press; returns true if it did.
 	bool Capture(const FKey& Key, bool bGamepad);
 	void OnConnectionChange(EInputDeviceConnectionState State, FPlatformUserId User, FInputDeviceId DeviceId);

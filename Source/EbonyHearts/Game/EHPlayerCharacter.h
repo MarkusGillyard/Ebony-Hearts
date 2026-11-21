@@ -1,0 +1,142 @@
+// The first-person player: Unreal character movement and collision, a camera at eye height, Stamina
+// for sprinting, and a hidden full-body placeholder that only shadows and reflections show. The director samples the
+// devices and hands the pawn one FEHFirstPersonInput per frame, so movement and look follow the game's own remappable
+// input path.
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Character.h"
+
+#include "EHPlayerCharacter.generated.h"
+
+class UCameraComponent;
+class UAnimSequence;
+
+struct FEHFirstPersonTuning
+{
+	float WalkSpeed = 400.0f;
+	float SprintSpeed = 700.0f;
+	float CrouchSpeed = 200.0f;
+	float Acceleration = 2400.0f;
+	float BrakingDeceleration = 2400.0f;
+	float GroundFriction = 8.0f;
+	float AirControl = 0.35f;
+	float JumpVelocity = 420.0f;
+	float JumpBufferSeconds = 0.15f;
+	float GravityScale = 1.0f;
+	float StepHeight = 45.0f;
+	float WalkableFloorDegrees = 46.0f;
+	float CapsuleRadius = 34.0f;
+	float StandHeight = 180.0f;
+	float CrouchHeight = 116.0f;
+	float StandEyeHeight = 165.0f;
+	float CrouchEyeHeight = 100.0f;
+	float EyeBlendSeconds = 0.12f;
+	float StaminaMax = 100.0f;
+	float SprintSecondsFromFull = 6.0f;
+	float StaminaRecoverPerSecond = 25.0f;
+	float StaminaRecoverDelay = 0.8f;
+	float SprintRestartStamina = 20.0f;
+	float SprintForwardMin = 0.3f;
+	float StickDeadZone = 0.18f;
+	float StickYawDegPerSecond = 200.0f;
+	float StickPitchDegPerSecond = 140.0f;
+	float StickExponent = 2.0f;
+	float PitchLimit = 85.0f;
+	float WaterSurfaceZ = 3.0f;
+	float KillZ = -400.0f;
+	FVector Spawn = FVector(0, 300, 0);
+	float SpawnYaw = -90.0f;
+	float StepIntervalWalk = 0.52f;
+	float StepIntervalSprint = 0.36f;
+	float StepIntervalCrouch = 0.70f;
+
+	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
+	bool Load(const FString& Text, FString& OutError);
+	FString Describe() const;
+};
+
+struct FEHFirstPersonInput
+{
+	FVector2D Move = FVector2D::ZeroVector;   // X right, Y forward; length at most 1
+	FVector2D Look = FVector2D::ZeroVector;   // degrees this frame: X yaw right, Y pitch up
+	bool bJumpPressed = false;
+	bool bCrouch = false;                     // wanted posture (holds and toggles are resolved by the director)
+	bool bSprint = false;
+};
+
+// Something the presentation reacts to (sounds, ripples).
+struct FEHFirstPersonEvent
+{
+	enum class EKind : uint8 { Step, Jump, Land, Reset };
+	EKind Kind = EKind::Step;
+	FVector Location = FVector::ZeroVector;   // at the feet
+	float WaterDepth = 0.0f;                  // cm of water at the feet (0 when dry)
+	float Strength = 1.0f;                    // landing speed or step pace, 0..1
+};
+
+UCLASS(NotBlueprintable)
+class AEHPlayerCharacter : public ACharacter
+{
+	GENERATED_BODY()
+
+public:
+	AEHPlayerCharacter(const FObjectInitializer& ObjectInitializer);
+	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
+	virtual void Landed(const FHitResult& Hit) override;
+	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+
+	void ApplyTuning(const FEHFirstPersonTuning& InTuning);
+	void ApplyInput(const FEHFirstPersonInput& In, float DeltaSeconds);
+	void SetFieldOfView(float HorizontalDegrees);
+	// Back to the Chapel's start with full Stamina, standing, at rest.
+	void ResetToStart();
+	void TakeEvents(TArray<FEHFirstPersonEvent>& Out) { Out.Append(Events); Events.Reset(); }
+
+	float Stamina() const { return StaminaValue; }
+	float StaminaFraction() const { return Tuning.StaminaMax > 0.0f ? StaminaValue / Tuning.StaminaMax : 0.0f; }
+	float SecondsSinceStaminaChange() const { return StaminaIdle; }
+	bool IsSprinting() const { return bSprinting; }
+	bool IsExhausted() const { return bExhausted; }
+	float WaterDepthAtFeet() const { return WaterDepth; }
+	float EyeHeight() const { return EyeZ; }
+	FVector FeetLocation() const;
+	UCameraComponent* Camera() const { return CameraComp; }
+	const FEHFirstPersonTuning& GetTuning() const { return Tuning; }
+	// Development aid: shows the placeholder body to the player's own camera (shadow and reflection review).
+	void SetBodyVisibleToSelf(bool bVisible);
+	bool HasBodyPlaceholder() const;
+
+private:
+	UPROPERTY()
+	TObjectPtr<UCameraComponent> CameraComp;
+	UPROPERTY()
+	TObjectPtr<USkeletalMeshComponent> Body;
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> BodyIdle;
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> BodyWalk;
+
+	FEHFirstPersonTuning Tuning;
+	float StaminaValue = 100.0f;
+	float StaminaIdle = 10.0f;     // seconds since Stamina last changed
+	float SinceDrain = 10.0f;
+	bool bSprinting = false;
+	bool bExhausted = false;       // emptied by sprinting: no sprint until SprintRestartStamina
+	bool bWantCrouch = false;
+	float JumpBuffer = 0.0f;
+	float EyeZ = 165.0f;           // smoothed eye height above the feet
+	float WaterDepth = 0.0f;
+	float StepTimer = 0.0f;
+	float FallStartZ = 0.0f;
+	bool bWasFalling = false;
+	bool bBodyWalking = false;
+	TArray<FEHFirstPersonEvent> Events;
+
+	void UpdateWater();
+	void UpdateCamera(float DeltaSeconds);
+	void UpdateBody();
+	void Emit(FEHFirstPersonEvent::EKind Kind, float Strength);
+};

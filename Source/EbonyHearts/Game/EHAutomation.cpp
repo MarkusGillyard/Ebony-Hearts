@@ -183,10 +183,11 @@ bool AEHGameDirector::AutoKey(int32 Device, const FString& Name, FKey& OutKey) c
 		return OutKey.IsValid();
 	}
 	const EEHBindingSet Set = RouterPtr->SetFor(Device);
-	const EEHBindingSet MenuClass = EHIsKeyboardSet(Set) ? Set : EEHBindingSet::GamepadP1;
+	const EEHBindingSet MenuClass = EHMenuClass(Set);
 	const EEHNav N = ParseNav(Name);
 	const EEHAction A = ParseAction(Name);
-	if (N != EEHNav::Count && (A == EEHAction::Count || Screen != EEHScreen::Match))
+	const bool bPlaying = Screen == EEHScreen::Match || (Screen == EEHScreen::FirstPerson && !bPaused);
+	if (N != EEHNav::Count && (A == EEHAction::Count || !bPlaying))
 	{
 		OutKey = EHMenuKey(MenuClass, N);
 		return OutKey.IsValid();
@@ -469,7 +470,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			{
 				LeaveMatch(EEHScreen::Main);
 			}
-			SettingsReturn = EEHScreen::Main;
+			SettingsReturn = bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Main;
 			BindingSet = ParseSet(Arg(1, TEXT("controller1")));
 			BindingPage = 0;
 			BindingListIndex = 0;
@@ -752,7 +753,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 		else if (Cmd == TEXT("assets"))
 		{
 			FString Missing;
-			for (int32 i = 0; i < 2; ++i)
+			for (int32 i = 0; i < 2 && Visual[i]; ++i)
 			{
 				Missing += FString::Join(Visual[i]->MissingAnimations(), TEXT(","));
 				if (Visual[i]->UsesGraybox())
@@ -841,7 +842,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			UKismetSystemLibrary::QuitGame(this, GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, false);
 			return;
 		}
-		else
+		else if (!RunFirstPersonCommand(T, Line))
 		{
 			AutoLogLine(FString::Printf(TEXT("FAIL unknown command: %s"), *Line));
 		}
@@ -1139,6 +1140,50 @@ void AEHGameDirector::RunBindingsSelfTest()
 	const FEHSettings Bad = FEHSettings::Load(&Warning, BadPath);
 	Check(Bad.Bindings.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Left && Bad.Bindings.Get(S::GamepadP2, A::Light, 0) == EKeys::Gamepad_LeftThumbstick && !Warning.IsEmpty(),
 		TEXT("a conflicting layout resets alone; the other layout is kept"));
+
+	// First person (settings version 6): the proposed starting layout, mouse buttons, isolation from the
+	// fighting layouts, and files from the 2.5D slice gaining the layouts with their defaults.
+	Check(D.Get(S::FPKeyboard, A::FPForward, 0) == EKeys::W && D.Get(S::FPKeyboard, A::FPBack, 0) == EKeys::S && D.Get(S::FPKeyboard, A::FPLeft, 0) == EKeys::A &&
+		D.Get(S::FPKeyboard, A::FPRight, 0) == EKeys::D, TEXT("first person: W A S D move"));
+	Check(D.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::SpaceBar && D.Get(S::FPKeyboard, A::FPCrouch, 0) == EKeys::LeftControl && D.Get(S::FPKeyboard, A::FPSprint, 0) == EKeys::LeftShift,
+		TEXT("first person: Space jumps, Left Ctrl crouches, Left Shift sprints"));
+	Check(D.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Bottom && D.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_RightThumbstick &&
+		D.Get(S::FPController, A::FPSprint, 0) == EKeys::Gamepad_LeftThumbstick, TEXT("first person controller: A / Cross jumps, R3 crouches, L3 sprints"));
+	Check(!D.HasConflicts(&Report), TEXT("defaults have no conflicts: ") + Report);
+	Check(FEHBindings::IsBindable(S::FPKeyboard, EKeys::LeftMouseButton) && FEHBindings::IsBindable(S::FPKeyboard, EKeys::ThumbMouseButton) &&
+		!FEHBindings::IsBindable(S::KeyboardA, EKeys::LeftMouseButton) && !FEHBindings::IsBindable(S::FPKeyboard, EKeys::Escape) &&
+		!FEHBindings::IsBindable(S::FPKeyboard, EKeys::F10) && !FEHBindings::IsBindable(S::FPKeyboard, EKeys::MouseX) &&
+		!FEHBindings::IsBindable(S::FPKeyboard, EKeys::Gamepad_FaceButton_Bottom) && !FEHBindings::IsBindable(S::FPController, EKeys::LeftMouseButton),
+		TEXT("first person: mouse buttons bind on the keyboard layout only; Escape, F10, axes and other devices do not"));
+	{
+		FEHBindings FPT = D;
+		FPT.Assign(S::FPKeyboard, A::FPJump, 0, EKeys::W, EEHConflictResolve::Swap);
+		Check(FPT.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::W && FPT.Get(S::FPKeyboard, A::FPForward, 0) == EKeys::SpaceBar &&
+			FPT.Get(S::KeyboardA, A::Jump, 0) == EKeys::W, TEXT("first person: a swap stays inside its layout; the 2.5D layouts are untouched"));
+		const FEHBindingRef FPC = D.FindConflict(S::FPKeyboard, A::FPJump, 0, EKeys::J);
+		Check(!FPC.IsValid(), TEXT("first person: keys used only by the 2.5D layouts are free"));
+	}
+	{
+		const FString FPV5Path = FPaths::Combine(Dir, TEXT("slice_v5.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":5,\"masterVolume\":40,\"uiScale\":1.2,\"bindings\":{\"keyboard1\":{\"LightAttack\":[\"G\",\"\",\"\"]}}}"), *FPV5Path);
+		Warning.Reset();
+		const FEHSettings FPV5 = FEHSettings::Load(&Warning, FPV5Path);
+		Check(FPV5.MasterVolume == 40 && FMath::IsNearlyEqual(FPV5.UIScale, 1.2f) && FPV5.Bindings.Get(S::KeyboardA, A::Light, 0) == EKeys::G &&
+			FPV5.Bindings.Get(S::FPKeyboard, A::FPForward, 0) == EKeys::W && FPV5.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Bottom &&
+			FMath::IsNearlyEqual(FPV5.MouseSensitivity, 0.08f) && FPV5.FieldOfView == 90, TEXT("a version 5 file keeps its values and gains the first-person defaults"));
+		FEHSettings FPW6 = FPV5;
+		FPW6.MouseSensitivity = 0.13f;
+		FPW6.bInvertLook = true;
+		FPW6.FieldOfView = 100;
+		FPW6.bCrouchToggle = true;
+		FPW6.StaminaMeter = 2;
+		FPW6.Bindings.Assign(S::FPKeyboard, A::FPSprint, 0, EKeys::ThumbMouseButton, EEHConflictResolve::Replace);
+		const FString FPV6Path = FPaths::Combine(Dir, TEXT("fp_v6.json"));
+		Check(FPW6.Save(FPV6Path), TEXT("version 6 file written"));
+		const FEHSettings FPR6 = FEHSettings::Load(nullptr, FPV6Path);
+		Check(FPR6.LoadedVersion == 6 && FMath::IsNearlyEqual(FPR6.MouseSensitivity, 0.13f) && FPR6.bInvertLook && FPR6.FieldOfView == 100 && FPR6.bCrouchToggle && FPR6.StaminaMeter == 2 &&
+			FPR6.Bindings.Get(S::FPKeyboard, A::FPSprint, 0) == EKeys::ThumbMouseButton, TEXT("version 6 round trip: look, field of view, toggles, meter and a mouse binding"));
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 

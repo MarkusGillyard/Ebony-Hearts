@@ -23,6 +23,13 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::Block: return TEXT("Block");
 	case EEHAction::Reset: return TEXT("Reset");
 	case EEHAction::Down: return TEXT("Down");
+	case EEHAction::FPForward: return TEXT("FPForward");
+	case EEHAction::FPBack: return TEXT("FPBack");
+	case EEHAction::FPLeft: return TEXT("FPLeft");
+	case EEHAction::FPRight: return TEXT("FPRight");
+	case EEHAction::FPJump: return TEXT("FPJump");
+	case EEHAction::FPCrouch: return TEXT("FPCrouch");
+	case EEHAction::FPSprint: return TEXT("FPSprint");
 	default: return TEXT("?");
 	}
 }
@@ -42,6 +49,13 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::Block: return TEXT("Block");
 	case EEHAction::Reset: return TEXT("TrainingReset");
 	case EEHAction::Down: return TEXT("Crouch");
+	case EEHAction::FPForward: return TEXT("FirstPersonForward");
+	case EEHAction::FPBack: return TEXT("FirstPersonBack");
+	case EEHAction::FPLeft: return TEXT("FirstPersonLeft");
+	case EEHAction::FPRight: return TEXT("FirstPersonRight");
+	case EEHAction::FPJump: return TEXT("FirstPersonJump");
+	case EEHAction::FPCrouch: return TEXT("FirstPersonCrouch");
+	case EEHAction::FPSprint: return TEXT("FirstPersonSprint");
 	default: return TEXT("?");
 	}
 }
@@ -61,6 +75,13 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::Block: return TEXT("Block (hold)");
 	case EEHAction::Reset: return TEXT("Training reset");
 	case EEHAction::Down: return TEXT("Crouch (hold)");
+	case EEHAction::FPForward: return TEXT("Move forward");
+	case EEHAction::FPBack: return TEXT("Move back");
+	case EEHAction::FPLeft: return TEXT("Move left");
+	case EEHAction::FPRight: return TEXT("Move right");
+	case EEHAction::FPJump: return TEXT("Jump");
+	case EEHAction::FPCrouch: return TEXT("Crouch");
+	case EEHAction::FPSprint: return TEXT("Sprint");
 	default: return TEXT("?");
 	}
 }
@@ -88,6 +109,8 @@ const TCHAR* EHSetId(EEHBindingSet Set)
 	case EEHBindingSet::KeyboardB: return TEXT("keyboard2");
 	case EEHBindingSet::GamepadP1: return TEXT("controller1");
 	case EEHBindingSet::GamepadP2: return TEXT("controller2");
+	case EEHBindingSet::FPKeyboard: return TEXT("fpKeyboard");
+	case EEHBindingSet::FPController: return TEXT("fpController");
 	default: return TEXT("?");
 	}
 }
@@ -100,8 +123,25 @@ const TCHAR* EHSetLabel(EEHBindingSet Set)
 	case EEHBindingSet::KeyboardB: return TEXT("Keyboard - Player 2 (right side)");
 	case EEHBindingSet::GamepadP1: return TEXT("Controller - Player 1");
 	case EEHBindingSet::GamepadP2: return TEXT("Controller - Player 2");
+	case EEHBindingSet::FPKeyboard: return TEXT("Keyboard and mouse");
+	case EEHBindingSet::FPController: return TEXT("Controller");
 	default: return TEXT("?");
 	}
+}
+
+TArray<EEHAction> EHActionsFor(EEHBindingSet Set)
+{
+	using A = EEHAction;
+	if (Set == EEHBindingSet::FPKeyboard)
+	{
+		return {A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
+	}
+	if (Set == EEHBindingSet::FPController)
+	{
+		// The left stick always moves and the right stick always looks, so only buttons are listed.
+		return {A::FPJump, A::FPCrouch, A::FPSprint};
+	}
+	return {A::Light, A::Heavy, A::Dodge, A::Throw, A::Block, A::Special, A::Left, A::Right, A::Jump, A::Down, A::Reset};
 }
 
 namespace EHBindingDetail
@@ -109,7 +149,7 @@ namespace EHBindingDetail
 // Sets that share physical keys: both keyboard sides, or a controller layout on its own.
 TArray<EEHBindingSet> Context(EEHBindingSet Set)
 {
-	if (EHIsKeyboardSet(Set))
+	if (Set == EEHBindingSet::KeyboardA || Set == EEHBindingSet::KeyboardB)
 	{
 		return {EEHBindingSet::KeyboardA, EEHBindingSet::KeyboardB};
 	}
@@ -186,6 +226,19 @@ FEHBindings FEHBindings::Defaults()
 		Set(Pad, A::Down, EKeys::Gamepad_DPad_Down);   // the left stick's down also crouches (EHInputRouter)
 		Set(Pad, A::Throw, EKeys::Gamepad_LeftShoulder);
 	}
+
+	// First person: the proposed starting layout (2026-11-21). Look is always the mouse or the right
+	// stick and movement always the left stick, so neither is a binding.
+	Set(S::FPKeyboard, A::FPForward, EKeys::W, EKeys::Up);
+	Set(S::FPKeyboard, A::FPBack, EKeys::S, EKeys::Down);
+	Set(S::FPKeyboard, A::FPLeft, EKeys::A, EKeys::Left);
+	Set(S::FPKeyboard, A::FPRight, EKeys::D, EKeys::Right);
+	Set(S::FPKeyboard, A::FPJump, EKeys::SpaceBar);
+	Set(S::FPKeyboard, A::FPCrouch, EKeys::LeftControl, EKeys::C);
+	Set(S::FPKeyboard, A::FPSprint, EKeys::LeftShift);
+	Set(S::FPController, A::FPJump, EKeys::Gamepad_FaceButton_Bottom);
+	Set(S::FPController, A::FPCrouch, EKeys::Gamepad_RightThumbstick);
+	Set(S::FPController, A::FPSprint, EKeys::Gamepad_LeftThumbstick);
 	return B;
 }
 
@@ -349,6 +402,19 @@ void FEHBindings::ResetSet(EEHBindingSet Set)
 
 bool FEHBindings::IsBindable(EEHBindingSet Set, const FKey& Key)
 {
+	if (Set == EEHBindingSet::FPKeyboard)
+	{
+		// Mouse buttons are first-person keys. Escape pauses, F10 is kept for the developer panel and the console key
+		// opens the console in development builds.
+		const bool bMouse = Key == EKeys::LeftMouseButton || Key == EKeys::RightMouseButton || Key == EKeys::MiddleMouseButton ||
+			Key == EKeys::ThumbMouseButton || Key == EKeys::ThumbMouseButton2;
+		if (bMouse)
+		{
+			return true;
+		}
+		return Key.IsValid() && !Key.IsMouseButton() && !Key.IsAxis1D() && !Key.IsAxis2D() && !Key.IsAxis3D() && !Key.IsGamepadKey() &&
+			Key != EKeys::Escape && Key != EKeys::F10 && Key != EKeys::Tilde;
+	}
 	if (!Key.IsValid() || Key.IsMouseButton() || Key.IsAxis1D() || Key.IsAxis2D() || Key.IsAxis3D())
 	{
 		return false;
@@ -370,7 +436,8 @@ bool FEHBindings::IsBindable(EEHBindingSet Set, const FKey& Key)
 
 bool FEHBindings::HasConflicts(FString* OutReport, EEHBindingSet Only) const
 {
-	TArray<TArray<EEHBindingSet>> Groups = {{EEHBindingSet::KeyboardA, EEHBindingSet::KeyboardB}, {EEHBindingSet::GamepadP1}, {EEHBindingSet::GamepadP2}};
+	TArray<TArray<EEHBindingSet>> Groups = {{EEHBindingSet::KeyboardA, EEHBindingSet::KeyboardB}, {EEHBindingSet::GamepadP1}, {EEHBindingSet::GamepadP2},
+		{EEHBindingSet::FPKeyboard}, {EEHBindingSet::FPController}};
 	for (const TArray<EEHBindingSet>& Group : Groups)
 	{
 		if (Only != EEHBindingSet::Count && !Group.Contains(Only))
@@ -493,6 +560,11 @@ FKey EHMenuKey(EEHBindingSet Class, EEHNav Nav)
 
 FString FEHSettings::FilePath()
 {
+	return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("EbonyHearts"), TEXT("FirstPersonSettings.json"));
+}
+
+FString FEHSettings::SliceFilePath()
+{
 	return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("EbonyHearts"), TEXT("Settings.json"));
 }
 
@@ -510,6 +582,10 @@ void FEHSettings::Clamp()
 	AmbienceVolume = FMath::Clamp(AmbienceVolume, 0, 100);
 	UIScale = FMath::Clamp(UIScale, 0.8f, 1.4f);
 	CpuLevel = FMath::Clamp(CpuLevel, 0, 2);
+	MouseSensitivity = FMath::Clamp(MouseSensitivity, 0.01f, 0.5f);
+	StickSensitivity = FMath::Clamp(StickSensitivity, 0.3f, 3.0f);
+	FieldOfView = FMath::Clamp(FieldOfView, 70, 110);
+	StaminaMeter = FMath::Clamp(StaminaMeter, 0, 2);
 	if (static_cast<uint8>(PromptStyle) > static_cast<uint8>(EEHPromptStyle::Xbox))
 	{
 		PromptStyle = EEHPromptStyle::Auto;
@@ -520,16 +596,27 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 {
 	FEHSettings S;
 	FString Text;
-	const FString Path = PathOverride.IsEmpty() ? FilePath() : PathOverride;
+	FString Path = PathOverride.IsEmpty() ? FilePath() : PathOverride;
+	bool bFromSlice = false;
 	if (!FFileHelper::LoadFileToString(Text, *Path))
 	{
-		return S;
+		// A first launch starts from the 2.5D slice's file when there is one: its display, audio and accessibility
+		// values carry over, and that file is only read, never written.
+		if (!PathOverride.IsEmpty() || !FFileHelper::LoadFileToString(Text, *SliceFilePath()))
+		{
+			return S;
+		}
+		Path = SliceFilePath();
+		bFromSlice = true;
 	}
 	TSharedPtr<FJsonObject> Root;
 	const TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Text);
 	if (!FJsonSerializer::Deserialize(Reader, Root) || !Root.IsValid())
 	{
-		IFileManager::Get().Move(*(Path + TEXT(".bad")), *Path, true, true);
+		if (!bFromSlice)
+		{
+			IFileManager::Get().Move(*(Path + TEXT(".bad")), *Path, true, true);
+		}
 		if (OutWarning)
 		{
 			*OutWarning = TEXT("Settings file was unreadable; defaults restored.");
@@ -567,6 +654,18 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Int(TEXT("promptStyle"), Prompt);
 	S.PromptStyle = static_cast<EEHPromptStyle>(FMath::Clamp(Prompt, 0, 3));
 	Int(TEXT("cpuLevel"), S.CpuLevel);
+	auto Float = [&Root](const TCHAR* Name, float& Out) {
+		double V = 0;
+		if (Root->TryGetNumberField(Name, V)) Out = static_cast<float>(V);
+	};
+	Float(TEXT("mouseSensitivity"), S.MouseSensitivity);
+	Float(TEXT("stickSensitivity"), S.StickSensitivity);
+	Bool(TEXT("invertLook"), S.bInvertLook);
+	Int(TEXT("fieldOfView"), S.FieldOfView);
+	Bool(TEXT("sprintToggle"), S.bSprintToggle);
+	Bool(TEXT("crouchToggle"), S.bCrouchToggle);
+	Int(TEXT("staminaMeter"), S.StaminaMeter);
+	S.bImportedFromSlice = bFromSlice;
 
 	auto ReadSlots = [](const TArray<TSharedPtr<FJsonValue>>& Arr, FKey Out[EHKeysPerAction]) {
 		for (int32 K = 0; K < EHKeysPerAction; ++K)
@@ -586,7 +685,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 		{
 			// Crouch did not exist and Throw had no buttons of its own: both start unbound and get their defaults
 			// below only where those keys are free, so a layout the player made is never overridden.
-			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			for (int32 Set = 0; Set < EHFightSetCount; ++Set)
 			{
 				for (int32 K = 0; K < EHKeysPerAction; ++K)
 				{
@@ -650,7 +749,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 				return false;
 			};
 			bool bMoved = false;
-			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			for (int32 Set = 0; Set < EHFightSetCount; ++Set)
 			{
 				const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
 				for (int32 K = 0; K < EHKeysPerAction; ++K)
@@ -662,7 +761,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 					}
 				}
 			}
-			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			for (int32 Set = 0; Set < EHFightSetCount; ++Set)
 			{
 				const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
 				for (int32 A = 0; A < EHActionCount; ++A)
@@ -689,7 +788,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			// stays theirs: the new action is left without that key and the note says what to do.
 			const FEHBindings New = FEHBindings::DefaultsV4();
 			FString Taken;
-			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			for (int32 Set = 0; Set < EHFightSetCount; ++Set)
 			{
 				const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
 				for (EEHAction A : {EEHAction::Down, EEHAction::Throw})
@@ -735,7 +834,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			const FEHBindings Before = Loaded;
 			bool bMoved[EHSetCount][EHActionCount] = {};
 			bool bAny = false;
-			for (int32 Set = 0; Set < EHSetCount; ++Set)
+			for (int32 Set = 0; Set < EHFightSetCount; ++Set)
 			{
 				for (int32 A = 0; A < EHActionCount; ++A)
 				{
@@ -762,7 +861,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			for (bool bUndid = true; bUndid;)
 			{
 				bUndid = false;
-				for (int32 Set = 0; Set < EHSetCount && !bUndid; ++Set)
+				for (int32 Set = 0; Set < EHFightSetCount && !bUndid; ++Set)
 				{
 					const EEHBindingSet BS = static_cast<EEHBindingSet>(Set);
 					for (int32 A = 0; A < EHActionCount && !bUndid; ++A)
@@ -799,7 +898,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			}
 		}
 		// A layout with a duplicate or reserved key falls back to its defaults; the others are kept.
-		for (EEHBindingSet Set : {EEHBindingSet::KeyboardA, EEHBindingSet::GamepadP1, EEHBindingSet::GamepadP2})
+		for (EEHBindingSet Set : {EEHBindingSet::KeyboardA, EEHBindingSet::GamepadP1, EEHBindingSet::GamepadP2, EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
 		{
 			FString Report;
 			if (Loaded.HasConflicts(&Report, Set))
@@ -817,6 +916,11 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			}
 		}
 		S.Bindings = Loaded;
+	}
+	if (bFromSlice)
+	{
+		// The slice's controls notices are about its own layouts, which first person does not use.
+		Notes = TEXT("Display, audio and accessibility settings carried over from the 2.5D slice.");
 	}
 	if (OutWarning && !Notes.IsEmpty())
 	{
@@ -847,6 +951,13 @@ bool FEHSettings::Save(const FString& PathOverride) const
 	Root->SetBoolField(TEXT("inputHints"), bInputHints);
 	Root->SetNumberField(TEXT("promptStyle"), static_cast<int32>(PromptStyle));
 	Root->SetNumberField(TEXT("cpuLevel"), CpuLevel);
+	Root->SetNumberField(TEXT("mouseSensitivity"), MouseSensitivity);
+	Root->SetNumberField(TEXT("stickSensitivity"), StickSensitivity);
+	Root->SetBoolField(TEXT("invertLook"), bInvertLook);
+	Root->SetNumberField(TEXT("fieldOfView"), FieldOfView);
+	Root->SetBoolField(TEXT("sprintToggle"), bSprintToggle);
+	Root->SetBoolField(TEXT("crouchToggle"), bCrouchToggle);
+	Root->SetNumberField(TEXT("staminaMeter"), StaminaMeter);
 	TSharedRef<FJsonObject> BindingsObj = MakeShared<FJsonObject>();
 	for (int32 Set = 0; Set < EHSetCount; ++Set)
 	{
