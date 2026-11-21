@@ -84,6 +84,7 @@ struct FEHFirstPersonEvent
 	EEHFistAction Action = EEHFistAction::None;
 	float Damage = 0.0f;                      // dealt (Contact) or taken (Hurt, Guarded)
 	bool bBlocked = false;                    // Contact: the target guarded it
+	bool bBody = false;                       // Contact: landed on the body rather than the head
 };
 
 UCLASS(NotBlueprintable)
@@ -163,6 +164,8 @@ private:
 	float SinceHurt = 100.0f;
 	float ShakeScale = 1.0f;
 	float KickPitch = 0.0f;        // degrees, decaying camera kick
+	float KickRoll = 0.0f;         // degrees
+	float KickForward = 0.0f;      // cm along the view
 
 	void UpdateWater();
 	void UpdateCamera(float DeltaSeconds);
@@ -170,5 +173,5 @@ private:
 	void Emit(FEHFirstPersonEvent::EKind Kind, float Strength);
 	void StepFists();
 	void CheckContact(EEHFistAction Action);
-	void Kick(float Degrees);
+	void Kick(float PitchDegrees, float ForwardCm = 0.0f, float RollDegrees = 0.0f);
 };

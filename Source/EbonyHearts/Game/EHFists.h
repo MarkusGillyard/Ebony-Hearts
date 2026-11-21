@@ -68,8 +68,8 @@ public:
 	void SetBlockHeld(bool bHeld) { bBlockHeld = bHeld; }
 	// One 60 Hz frame. Events are appended.
 	void Step(TArray<FEHFistEvent>& OutEvents);
-	// Contact: holds the technique for its hitstop.
-	void OnContact();
+	// Contact: holds the technique for its hitstop (or the given number of frames).
+	void OnContact(int32 Frames = -1);
 
 	EEHFistAction Action() const { return Current; }
 	int32 Frame() const { return FrameIndex; }

@@ -191,6 +191,33 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		L = RestL;
 		R = RestR;
 	}
+	// Contact: the striking fist gives back a little into the arm and shudders while the hitstop holds, then eases out.
+	if (Action != EEHFistAction::None && Fists.HasConnected() && Fists.InHitstop())
+	{
+		if (Recoil < 0.99f)
+		{
+			ShudderTime = 0.0f;
+		}
+		Recoil = 1.0f;
+		ShudderTime += DeltaSeconds;
+	}
+	else
+	{
+		Recoil *= FMath::Exp(-DeltaSeconds / 0.05f);
+	}
+	if (Recoil > 0.01f && Action != EEHFistAction::None)
+	{
+		const float Shudder = Fists.InHitstop() ? FMath::Sin(ShudderTime * 2.0f * PI * 30.0f) * FMath::Exp(-ShudderTime * 12.0f) : 0.0f;
+		const FVector Give = FVector(-2.8f, 0.0f, 0.0f) * Recoil + FVector(0.0f, 0.5f, 0.7f) * Shudder;
+		if (Action == EEHFistAction::Jab || Action == EEHFistAction::Shove)
+		{
+			L += Give;
+		}
+		if (Action == EEHFistAction::Straight || Action == EEHFistAction::Shove)
+		{
+			R += Give;
+		}
+	}
 	ShownL = L;
 	ShownR = R;
 	const bool bShow = Visible > 0.01f || Action != EEHFistAction::None;

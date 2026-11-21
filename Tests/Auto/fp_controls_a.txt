@@ -14,6 +14,8 @@ remap fpController FPJump 0 Gamepad_FaceButton_Right
 expect_binding fpController FPJump 0 Gamepad_FaceButton_Right
 log == the new keys act; the old ones do not
 fp_reset
+log (turned along the entrance, clear of the training dummy ahead)
+look 1125 0
 wait 0.3
 hold kbA key:I
 wait 1.0

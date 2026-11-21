@@ -25,6 +25,14 @@
 
 class UAnimSequence;
 
+// A rotation added on top of the sampled pose, about the bone's own origin, given in component space. Used for
+// reactions driven by game state (a head snapping back from a hit) that no clip contains.
+struct FEHAdditiveRotation
+{
+	FName Bone;
+	FQuat Rotation = FQuat::Identity;
+};
+
 struct FEHAnimSample
 {
 	TObjectPtr<UAnimSequence> Sequence = nullptr;
@@ -77,12 +85,14 @@ struct FEHAnimProxy : public FAnimInstanceProxy
 	TArray<FTransform> Shown1;   // the pose displayed last frame
 	TArray<FTransform> Shown2;   // and the frame before
 	FEHLeg Legs[2];
+	TArray<FEHAdditiveRotation> Additive;   // parents before children
 	int32 LegsForBones = -1;     // bone count the leg indices were resolved for
 	float PlantedHeight = 0.0f;  // ankle height (component space) of the reference pose
 
 private:
 	void ResolveLegs(const FCompactPose& Pose);
 	void LockFeet(FCompactPose& Pose, FCSPose<FCompactPose>& Target, float Fade);
+	void ApplyAdditive(FCompactPose& Pose) const;
 };
 
 UCLASS(Transient, NotBlueprintable)
@@ -95,11 +105,14 @@ public:
 	// Starts a transition to the sequence set this frame. Seconds <= 0 cuts with no blend. LegSeconds (when longer)
 	// is the legs' own blend time.
 	void BeginTransition(float Seconds, float LegSeconds = 0.0f);
+	// Rotations added on top of the pose every frame until replaced; list parents before their children.
+	void SetAdditive(const TArray<FEHAdditiveRotation>& InAdditive) { Additive = InAdditive; }
 
 	FEHAnimSample Current;
 	int32 TransitionSerial = 0;
 	float TransitionSeconds = 0.0f;
 	float TransitionLegSeconds = 0.0f;
+	TArray<FEHAdditiveRotation> Additive;
 
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override { return new FEHAnimProxy(this); }

@@ -244,7 +244,7 @@ void AEHPlayerCharacter::ResetToStart()
 	FistAccum = 0.0f;
 	HealthValue = Tuning.PlayerHealth;
 	SinceHurt = 100.0f;
-	KickPitch = 0.0f;
+	KickPitch = KickRoll = KickForward = 0.0f;
 	if (Arms)
 	{
 		Arms->SnapHidden();
@@ -437,23 +437,39 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 	if (Target && !(bWall && Wall.Distance + 5.0f < TargetHit.Distance))
 	{
 		const FVector At = TargetHit.ImpactPoint.IsNearlyZero() ? Target->GetActorLocation() : FVector(TargetHit.ImpactPoint);
-		const FEHDummyHit R = Target->ReceiveHit(Action, D, Eye, At);
+		const float HandSide = Action == EEHFistAction::Jab ? -1.0f : (Action == EEHFistAction::Straight ? 1.0f : 0.0f);
+		const FEHDummyHit R = Target->ReceiveHit(Action, D, Eye, At, HandSide);
 		Fists.MarkConnected();
 		Fists.OnContact();
-		Kick(Action == EEHFistAction::Straight ? -0.7f : (Action == EEHFistAction::Jab ? -0.35f : -0.25f));
+		// The view follows the blow: a small push forward into the target and a roll with the punching hand.
+		const float Weight = R.bBlocked ? 0.6f : 1.0f;
+		if (Action == EEHFistAction::Straight)
+		{
+			Kick(-0.8f * Weight, 3.0f * Weight, 1.0f * Weight);
+		}
+		else if (Action == EEHFistAction::Jab)
+		{
+			Kick(-0.4f * Weight, 1.6f * Weight, -0.5f * Weight);
+		}
+		else
+		{
+			Kick(-0.3f, -1.5f, 0.0f);   // the shove pushes the shoulders back
+		}
 		FEHFirstPersonEvent Out;
 		Out.Kind = FEHFirstPersonEvent::EKind::Contact;
 		Out.Action = Action;
 		Out.Location = At;
 		Out.Damage = R.Damage;
 		Out.bBlocked = R.bBlocked;
+		Out.bBody = R.bBody;
 		Events.Add(Out);
 	}
 	else if (bWall)
 	{
-		// Knuckles on stone: the technique stops connecting for the rest of its active frames.
+		// Knuckles on stone: the technique stops connecting for the rest of its active frames, with a short jar.
 		Fists.MarkConnected();
-		Kick(-0.2f);
+		Fists.OnContact(2);
+		Kick(-0.25f, -1.0f, 0.0f);
 		FEHFirstPersonEvent Out;
 		Out.Kind = FEHFirstPersonEvent::EKind::Wall;
 		Out.Action = Action;
@@ -474,7 +490,7 @@ float AEHPlayerCharacter::ReceiveStrike(float Damage, const FVector& From)
 	const float Taken = bGuarded ? Damage * (1.0f - Tuning.Fists.BlockReduction) : Damage;
 	HealthValue = FMath::Max(0.0f, HealthValue - Taken);
 	SinceHurt = 0.0f;
-	Kick(bGuarded ? 0.6f : 1.6f);
+	Kick(bGuarded ? 0.6f : 1.8f, bGuarded ? -1.0f : -3.0f, FMath::FRandRange(-1.2f, 1.2f) * (bGuarded ? 0.3f : 1.0f));
 	FEHFirstPersonEvent Out;
 	Out.Kind = bGuarded ? FEHFirstPersonEvent::EKind::Guarded : FEHFirstPersonEvent::EKind::Hurt;
 	Out.Location = CameraComp->GetComponentLocation() + CameraComp->GetForwardVector() * 30.0f;
@@ -491,9 +507,11 @@ float AEHPlayerCharacter::ReceiveStrike(float Damage, const FVector& From)
 	return Taken;
 }
 
-void AEHPlayerCharacter::Kick(float Degrees)
+void AEHPlayerCharacter::Kick(float PitchDegrees, float ForwardCm, float RollDegrees)
 {
-	KickPitch = FMath::Clamp(KickPitch + Degrees * ShakeScale, -3.0f, 3.0f);
+	KickPitch = FMath::Clamp(KickPitch + PitchDegrees * ShakeScale, -3.0f, 3.0f);
+	KickForward = FMath::Clamp(KickForward + ForwardCm * ShakeScale, -6.0f, 6.0f);
+	KickRoll = FMath::Clamp(KickRoll + RollDegrees * ShakeScale, -3.0f, 3.0f);
 }
 
 void AEHPlayerCharacter::Tick(float DeltaSeconds)
@@ -504,11 +522,17 @@ void AEHPlayerCharacter::Tick(float DeltaSeconds)
 	UpdateCamera(DeltaSeconds);
 	// The kick tilts the view only (the aim, the control rotation, never moves) and settles exponentially, which
 	// stays stable at any frame time.
-	KickPitch *= FMath::Exp(-DeltaSeconds / 0.07f);
-	CameraComp->ClearAdditiveOffset();
-	if (FMath::Abs(KickPitch) > 0.001f)
+	// While the fists are held in hitstop the kick holds too, so the freeze reads as one solid moment.
+	if (!Fists.InHitstop())
 	{
-		CameraComp->AddAdditiveOffset(FTransform(FRotator(KickPitch, 0.0f, 0.0f)), 0.0f);
+		KickPitch *= FMath::Exp(-DeltaSeconds / 0.07f);
+		KickRoll *= FMath::Exp(-DeltaSeconds / 0.09f);
+		KickForward *= FMath::Exp(-DeltaSeconds / 0.06f);
+	}
+	CameraComp->ClearAdditiveOffset();
+	if (FMath::Abs(KickPitch) + FMath::Abs(KickRoll) + FMath::Abs(KickForward) > 0.001f)
+	{
+		CameraComp->AddAdditiveOffset(FTransform(FRotator(KickPitch, 0.0f, KickRoll), FVector(KickForward, 0.0f, 0.0f)), 0.0f);
 	}
 	if (Arms)
 	{

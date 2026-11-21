@@ -146,6 +146,9 @@ void AEHTrainingDummy::ResetDummy()
 	SinceHit = 100.0f;
 	Last.Reset();
 	ShownSeq = nullptr;
+	HeadBack = HeadTwist = HeadSide = ChestBack = ChestTwist = ChestSide = FSpring();
+	Knockback = FVector::ZeroVector;
+	bKickPending = false;
 }
 
 void AEHTrainingDummy::SetMode(EEHDummyMode InMode)
@@ -194,7 +197,7 @@ void AEHTrainingDummy::Enter(EState Next, int32 Length)
 	StateLength = Length;
 }
 
-FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDef& Def, const FVector& From, const FVector& At)
+FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDef& Def, const FVector& From, const FVector& At, float HandSide)
 {
 	FEHDummyHit Out;
 	Out.Action = Action;
@@ -231,6 +234,62 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 			StateLength = FMath::Max(StateLength, Def.PushFrames + 4);
 		}
 	}
+	// The physical reaction: how hard, where (head or body, by the height it landed), and which way (the attacker's
+	// line, and the side the fist came from twisting the body away from it).
+	FVector Dir = GetActorLocation() - From;
+	Dir.Z = 0.0f;
+	HitDir = Dir.GetSafeNormal(UE_SMALL_NUMBER, GetActorForwardVector() * -1.0f);
+	const float Feet = GetActorLocation().Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	// Below the neck (about 145 cm on this model) is the body.
+	bLastBodyShot = Action != EEHFistAction::Shove && (At.Z - Feet) < 145.0f;
+	const FVector Right = FVector::CrossProduct(FVector::UpVector, HitDir);   // the attacker's right, seen from them
+	const FVector Lever = Right * HandSide * 12.0f;
+	const float TwistSign = FMath::Sign(FVector::CrossProduct(Lever, HitDir).Z);
+	FEHDummyHit& R = Out;
+	R.bBody = bLastBodyShot;
+	FKick K;
+	if (R.bBlocked)
+	{
+		// The guard takes it: the arms and chest give a little, the head stays behind them.
+		K.ChestBack = Action == EEHFistAction::Straight ? 220.0f : 120.0f;
+		K.ChestTwist = TwistSign * 80.0f;
+		K.Knock = Action == EEHFistAction::Straight ? 110.0f : 60.0f;
+	}
+	else if (Action == EEHFistAction::Shove)
+	{
+		// Both hands in the chest: the torso goes back first and the head whips after it.
+		K.ChestBack = 520.0f;
+		K.HeadBack = -180.0f;
+		K.HeadSide = FMath::FRandRange(-60.0f, 60.0f);
+	}
+	else if (bLastBodyShot)
+	{
+		// To the body: the torso folds around the fist and the head drops toward the attacker.
+		const bool bHeavy = Action == EEHFistAction::Straight;
+		K.ChestBack = bHeavy ? -560.0f : -240.0f;
+		K.HeadBack = bHeavy ? -320.0f : -140.0f;
+		K.ChestTwist = TwistSign * (bHeavy ? 260.0f : 120.0f);
+		K.Knock = bHeavy ? 200.0f : 70.0f;
+	}
+	else
+	{
+		// To the head: a jab snaps it back and lets go; a straight snaps it hard, turns the shoulders with it and moves
+		// the body back a step.
+		const bool bHeavy = Action == EEHFistAction::Straight;
+		K.HeadBack = bHeavy ? 1350.0f : 780.0f;
+		K.HeadTwist = TwistSign * (bHeavy ? 520.0f : 320.0f);
+		K.HeadSide = TwistSign * (bHeavy ? 220.0f : 110.0f);
+		K.ChestBack = bHeavy ? 340.0f : 140.0f;
+		K.ChestTwist = TwistSign * (bHeavy ? 380.0f : 110.0f);
+		K.Knock = bHeavy ? 280.0f : 80.0f;
+	}
+	PendingKick = K;
+	bKickPending = true;
+	PeakHead = PeakChest = 0.0f;
+	if (Hitstop == 0)
+	{
+		UpdateReaction(0.0f);
+	}
 	Last = Out.bBlocked ? FString::Printf(TEXT("%s blocked: %.1f"), EHFistActionName(Action), Out.Damage)
 		: (Out.Damage > 0.0f ? FString::Printf(TEXT("%s: %.0f"), EHFistActionName(Action), Out.Damage) : FString(EHFistActionName(Action)));
 	if (Out.bBlocked == false && Cooldown < 30)
@@ -250,7 +309,9 @@ void AEHTrainingDummy::Tick(float DeltaSeconds)
 		Accum -= Step;
 		StepFrame();
 	}
+	UpdateReaction(DeltaSeconds);
 	UpdateAnimation();
+	ApplyReactionPose();
 }
 
 void AEHTrainingDummy::StepFrame()
@@ -260,6 +321,18 @@ void AEHTrainingDummy::StepFrame()
 		--Hitstop;
 		return;
 	}
+	// Knockback slides the body and bleeds off quickly, like feet catching the floor.
+	const FVector KnockStep = Knockback * Step;
+	if (!KnockStep.IsNearlyZero(0.01f))
+	{
+		FHitResult KnockHit;
+		AddActorWorldOffset(FVector(KnockStep.X, KnockStep.Y, 0.0f), true, &KnockHit);
+		if (KnockHit.bBlockingHit)
+		{
+			Knockback = FVector::ZeroVector;
+		}
+	}
+	Knockback *= FMath::Exp(-9.0f * Step);
 	if (PushLeft > 0)
 	{
 		FHitResult Hit;
@@ -335,19 +408,15 @@ void AEHTrainingDummy::UpdateAnimation()
 		const double L = static_cast<double>(S->GetPlayLength());
 		return FMath::Clamp(Frame / FMath::Max(1, Length), 0.0, 1.0) * L * 0.98;
 	};
+	(void)Spread;
 	switch (State)
 	{
 	case EState::Hit:
-		Seq = LastAction == EEHFistAction::Straight && AnimHitHeavy ? AnimHitHeavy.Get() : (AnimHitLight ? AnimHitLight.Get() : AnimIdle.Get());
-		Time = Spread(Seq, F, StateLength);
-		break;
 	case EState::Pushed:
-		Seq = AnimHitBody ? AnimHitBody.Get() : AnimIdle.Get();
-		Time = Spread(Seq, F, StateLength);
-		break;
 	case EState::Blocked:
-		Seq = AnimBlockHit ? AnimBlockHit.Get() : AnimIdle.Get();
-		Time = Spread(Seq, F, StateLength);
+		// Reactions are physical (springs and knockback) on top of the stance; the stance itself keeps playing.
+		Seq = Mode == EEHDummyMode::Stand ? AnimIdle.Get() : (AnimGuard ? AnimGuard.Get() : AnimIdle.Get());
+		Time = Looped(Seq, GetWorld()->GetTimeSeconds());
 		break;
 	case EState::Windup:
 	case EState::Recover:
@@ -379,4 +448,67 @@ void AEHTrainingDummy::UpdateAnimation()
 		A->BeginTransition(ShownSeq == nullptr ? 0.0f : 0.1f);
 		ShownSeq = Seq;
 	}
+}
+
+void AEHTrainingDummy::UpdateReaction(float DeltaSeconds)
+{
+	if (Hitstop > 0)
+	{
+		return;   // contact holds everything still
+	}
+	if (bKickPending)
+	{
+		bKickPending = false;
+		HeadBack.V += PendingKick.HeadBack;
+		HeadTwist.V += PendingKick.HeadTwist;
+		HeadSide.V += PendingKick.HeadSide;
+		ChestBack.V += PendingKick.ChestBack;
+		ChestTwist.V += PendingKick.ChestTwist;
+		ChestSide.V += PendingKick.ChestSide;
+		Knockback += HitDir * PendingKick.Knock;
+	}
+	// Underdamped springs (a little rebound, as a neck and torso have): the head is quicker than the chest.
+	auto Integrate = [](FSpring& S, float Hz, float Zeta, float Dt) {
+		const float W = 2.0f * PI * Hz;
+		S.V += (-W * W * S.X - 2.0f * Zeta * W * S.V) * Dt;
+		S.X += S.V * Dt;
+	};
+	float Left = FMath::Min(DeltaSeconds, 0.1f);
+	while (Left > 0.0f)
+	{
+		const float Dt = FMath::Min(Left, 1.0f / 240.0f);
+		Left -= Dt;
+		Integrate(HeadBack, 4.2f, 0.42f, Dt);
+		Integrate(HeadTwist, 3.8f, 0.45f, Dt);
+		Integrate(HeadSide, 4.2f, 0.45f, Dt);
+		Integrate(ChestBack, 2.8f, 0.5f, Dt);
+		Integrate(ChestTwist, 2.6f, 0.5f, Dt);
+		Integrate(ChestSide, 2.8f, 0.5f, Dt);
+	}
+	PeakHead = FMath::Abs(HeadBack.X) > FMath::Abs(PeakHead) ? HeadBack.X : PeakHead;
+	PeakChest = FMath::Abs(ChestBack.X) > FMath::Abs(PeakChest) ? ChestBack.X : PeakChest;
+}
+
+void AEHTrainingDummy::ApplyReactionPose()
+{
+	UEHAnimInstance* A = Anim();
+	if (A == nullptr)
+	{
+		return;
+	}
+	// World-space rotations about the hit's axes, turned into the mesh's component space.
+	const FVector Back = FVector::CrossProduct(FVector::UpVector, HitDir).GetSafeNormal();   // tilts up toward HitDir
+	const FQuat MeshRot = GetMesh()->GetComponentQuat();
+	auto ToComponent = [&MeshRot](const FQuat& World) { return MeshRot.Inverse() * World * MeshRot; };
+	auto Rot = [&](float BackDeg, float TwistDeg, float SideDeg) {
+		const FQuat Q = FQuat(Back, FMath::DegreesToRadians(BackDeg)) * FQuat(FVector::UpVector, FMath::DegreesToRadians(TwistDeg)) *
+			FQuat(HitDir, FMath::DegreesToRadians(SideDeg));
+		return ToComponent(Q);
+	};
+	TArray<FEHAdditiveRotation> Add;
+	Add.Add({TEXT("spine_02"), Rot(ChestBack.X * 0.45f, ChestTwist.X * 0.4f, ChestSide.X * 0.4f)});
+	Add.Add({TEXT("spine_03"), Rot(ChestBack.X * 0.55f, ChestTwist.X * 0.6f, ChestSide.X * 0.6f)});
+	Add.Add({TEXT("neck_01"), Rot(HeadBack.X * 0.4f, HeadTwist.X * 0.4f, HeadSide.X * 0.4f)});
+	Add.Add({TEXT("head"), Rot(HeadBack.X * 0.6f, HeadTwist.X * 0.6f, HeadSide.X * 0.6f)});
+	A->SetAdditive(Add);
 }

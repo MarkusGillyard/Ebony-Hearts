@@ -687,6 +687,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Bool(TEXT("sprintToggle"), S.bSprintToggle);
 	Bool(TEXT("crouchToggle"), S.bCrouchToggle);
 	Int(TEXT("staminaMeter"), S.StaminaMeter);
+	Bool(TEXT("vibration"), S.bVibration);
 	S.bImportedFromSlice = bFromSlice;
 
 	auto ReadSlots = [](const TArray<TSharedPtr<FJsonValue>>& Arr, FKey Out[EHKeysPerAction]) {
@@ -1010,6 +1011,7 @@ bool FEHSettings::Save(const FString& PathOverride) const
 	Root->SetBoolField(TEXT("sprintToggle"), bSprintToggle);
 	Root->SetBoolField(TEXT("crouchToggle"), bCrouchToggle);
 	Root->SetNumberField(TEXT("staminaMeter"), StaminaMeter);
+	Root->SetBoolField(TEXT("vibration"), bVibration);
 	TSharedRef<FJsonObject> BindingsObj = MakeShared<FJsonObject>();
 	for (int32 Set = 0; Set < EHSetCount; ++Set)
 	{

@@ -107,6 +107,26 @@ void AEHGameDirector::BeginFirstPerson()
 	UE_LOG(LogTemp, Display, TEXT("EbonyHearts: first-person tuning %s"), *FPTuning.Describe());
 }
 
+void AEHGameDirector::Rumble(float Large, float Small, float Seconds)
+{
+	if (!Settings.bVibration || FPDevice < EHDeviceGamepadBase)
+	{
+		return;
+	}
+	if (APlayerController* PC = GetWorld()->GetFirstPlayerController())
+	{
+		// Large motors on the left side, small on the right, as the engine names a pad's two motors.
+		PC->PlayDynamicForceFeedback(FMath::Max(Large, Small), Seconds, Large > 0.0f, Small > 0.0f, Large > 0.0f, Small > 0.0f, EDynamicForceFeedbackAction::Start);
+		++RumbleCount;
+	}
+}
+
+void AEHGameDirector::PlayImpact(const TCHAR* Base, int32 Variants, float Volume, float Pitch)
+{
+	const FString Name = Variants > 1 ? FString::Printf(TEXT("%s_%02d"), Base, FMath::RandRange(1, Variants)) : FString(Base);
+	Audio.Play(FName(*Name), EEHSoundCat::Effects, Volume, Pitch * FMath::FRandRange(0.96f, 1.04f));
+}
+
 void AEHGameDirector::ApplyFieldOfView()
 {
 	if (FPPlayer)
@@ -310,34 +330,55 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
 			break;
 		case FEHFirstPersonEvent::EKind::Contact:
+			// Layered impacts: a crack for the knuckles, a low thud for the weight behind them, pitched by technique and
+			// target (body shots duller), never twice the same.
 			if (E.bBlocked)
 			{
-				Audio.PlayVaried(TEXT("Block"), 2, EEHSoundCat::Effects, 0.85f);
+				PlayImpact(TEXT("Block"), 2, 0.85f, E.Action == EEHFistAction::Straight ? 0.9f : 1.05f);
+				PlayImpact(TEXT("BodyFall"), 2, 0.2f, 1.3f);
 				if (Vfx) { Vfx->Block(E.Location, 1, false); }
+				Rumble(0.0f, 0.35f, 0.07f);
 			}
 			else if (E.Action == EEHFistAction::Shove)
 			{
-				Audio.PlayVaried(TEXT("BodySlam"), 2, EEHSoundCat::Effects, 0.55f);
+				PlayImpact(TEXT("BodySlam"), 2, 0.6f, 1.05f);
+				PlayImpact(TEXT("Grab"), 1, 0.45f, 0.9f);
+				Rumble(0.5f, 0.2f, 0.18f);
+			}
+			else if (E.Action == EEHFistAction::Straight)
+			{
+				PlayImpact(TEXT("HitHeavy"), 3, 0.95f, E.bBody ? 0.86f : 1.0f);
+				PlayImpact(TEXT("BodySlam"), 2, E.bBody ? 0.45f : 0.3f, E.bBody ? 0.85f : 1.15f);
+				if (Vfx) { Vfx->Hit(E.Location, 1, true, false, false, false); }
+				Rumble(0.8f, 0.55f, E.bBody ? 0.16f : 0.13f);
 			}
 			else
 			{
-				Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight")), 3, EEHSoundCat::Effects, 0.9f);
-				if (Vfx) { Vfx->Hit(E.Location, 1, E.Action == EEHFistAction::Straight, false, false, false); }
+				PlayImpact(TEXT("HitLight"), 3, 0.9f, E.bBody ? 0.88f : 1.1f);
+				if (E.bBody)
+				{
+					PlayImpact(TEXT("BodyFall"), 2, 0.22f, 1.2f);
+				}
+				if (Vfx) { Vfx->Hit(E.Location, 1, false, false, false, false); }
+				Rumble(E.bBody ? 0.35f : 0.0f, 0.5f, 0.08f);
 			}
-			AutoLogLine(FString::Printf(TEXT("fp contact %s damage=%.1f blocked=%d"), EHFistActionName(E.Action), E.Damage, E.bBlocked ? 1 : 0));
+			AutoLogLine(FString::Printf(TEXT("fp contact %s damage=%.1f blocked=%d body=%d"), EHFistActionName(E.Action), E.Damage, E.bBlocked ? 1 : 0, E.bBody ? 1 : 0));
 			break;
 		case FEHFirstPersonEvent::EKind::Wall:
-			Audio.PlayVaried(TEXT("Block"), 2, EEHSoundCat::Effects, 0.4f);
+			PlayImpact(TEXT("Block"), 2, 0.45f, 0.7f);
+			Rumble(0.0f, 0.3f, 0.05f);
 			AutoLogLine(FString::Printf(TEXT("fp wall %s"), EHFistActionName(E.Action)));
 			break;
 		case FEHFirstPersonEvent::EKind::Guarded:
-			Audio.PlayVaried(TEXT("Block"), 2, EEHSoundCat::Effects, 0.9f);
+			PlayImpact(TEXT("Block"), 2, 0.9f, 0.95f);
+			Rumble(0.45f, 0.3f, 0.1f);
 			++FPGuardedCount;
 			AutoLogLine(FString::Printf(TEXT("fp guarded damage=%.1f"), E.Damage));
 			break;
 		case FEHFirstPersonEvent::EKind::Hurt:
-			Audio.PlayVaried(TEXT("HitLight"), 3, EEHSoundCat::Effects, 0.9f);
+			PlayImpact(TEXT("HitHeavy"), 3, 0.85f, 0.92f);
 			HurtFlash = Settings.bReduceFlash ? 0.35f : 1.0f;
+			Rumble(0.9f, 0.6f, 0.25f);
 			++FPHurtCount;
 			AutoLogLine(FString::Printf(TEXT("fp hurt damage=%.1f health=%.1f"), E.Damage, FPPlayer->Health()));
 			break;
@@ -573,6 +614,12 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("health")) V = FPPlayer->Health();
 		else if (Field == TEXT("deaths")) V = static_cast<float>(FPDeaths);
 		else if (Field == TEXT("guarded")) V = static_cast<float>(FPGuardedCount);
+		else if (Field == TEXT("rumbles")) V = static_cast<float>(RumbleCount);
+		else if (FPDummy && Field == TEXT("dummy_headback")) V = FPDummy->HeadBackDegrees();
+		else if (FPDummy && Field == TEXT("dummy_chestback")) V = FPDummy->ChestBackDegrees();
+		else if (FPDummy && Field == TEXT("dummy_body")) V = FPDummy->WasBodyShot() ? 1.0f : 0.0f;
+		else if (FPDummy && Field == TEXT("dummy_headpeak")) V = FPDummy->PeakHeadBack();
+		else if (FPDummy && Field == TEXT("dummy_chestpeak")) V = FPDummy->PeakChestBack();
 		else if (Field == TEXT("hurt")) V = static_cast<float>(FPHurtCount);
 		else if (Field == TEXT("action")) V = static_cast<float>(static_cast<int32>(FPPlayer->GetFists().Action()));
 		else if (Field == TEXT("guarding")) V = FPPlayer->GetFists().IsGuarding() ? 1.0f : 0.0f;

@@ -15,9 +15,9 @@ FEHFistTuning::FEHFistTuning()
 {
 	// Starting points: the jab is quick and short, the straight slower, longer and twice as strong, the shove a
 	// two-handed push that moves the target 2 m. Damage and push distance are the prototype draft's proposals.
-	Jab = {6, 3, 10, 95.0f, 18.0f, 6.0f, 3, 0.0f, 0, 0.8f};
-	Straight = {11, 3, 18, 115.0f, 18.0f, 12.0f, 5, 0.0f, 0, 0.7f};
-	Shove = {9, 4, 18, 100.0f, 26.0f, 0.0f, 2, 200.0f, 15, 0.7f};
+	Jab = {6, 3, 10, 95.0f, 18.0f, 6.0f, 4, 0.0f, 0, 0.8f};
+	Straight = {11, 3, 18, 115.0f, 18.0f, 12.0f, 7, 0.0f, 0, 0.7f};
+	Shove = {9, 4, 18, 100.0f, 26.0f, 0.0f, 4, 200.0f, 15, 0.7f};
 }
 
 const FEHStrikeDef& FEHFistTuning::Def(EEHFistAction Action) const
@@ -173,11 +173,11 @@ void FEHFists::Start(EEHFistAction Next, TArray<FEHFistEvent>& OutEvents)
 	OutEvents.Add({FEHFistEvent::EKind::Start, Current, 0});
 }
 
-void FEHFists::OnContact()
+void FEHFists::OnContact(int32 Frames)
 {
 	if (Current != EEHFistAction::None)
 	{
-		Hitstop = Tuning.Def(Current).Hitstop;
+		Hitstop = Frames >= 0 ? Frames : Tuning.Def(Current).Hitstop;
 	}
 }
 

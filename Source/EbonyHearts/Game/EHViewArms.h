@@ -54,6 +54,8 @@ private:
 	FVector StartR = FVector::ZeroVector;
 	EEHFistAction LastAction = EEHFistAction::None;
 	float Visible = 0.0f;                   // 0 lowered out of view .. 1 up
+	float Recoil = 0.0f;                    // 1 at contact, easing to 0 after the hitstop
+	float ShudderTime = 0.0f;
 	bool bShown = false;
 
 	void PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side);

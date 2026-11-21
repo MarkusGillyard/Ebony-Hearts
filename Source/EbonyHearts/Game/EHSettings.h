@@ -173,6 +173,7 @@ struct FEHSettings
 	bool bSprintToggle = false;      // keyboard: press to sprint instead of hold (a controller's stick press always toggles)
 	bool bCrouchToggle = false;      // keyboard: press to crouch instead of hold (a controller's stick press always toggles)
 	int32 StaminaMeter = 1;          // 0 never, 1 while it changes, 2 always
+	bool bVibration = true;          // controller rumble on contact and on being hit
 	// True when this profile was started from the 2.5D slice's settings file (display, audio and accessibility kept).
 	bool bImportedFromSlice = false;
 

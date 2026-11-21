@@ -23,17 +23,22 @@ press kbA FPStraight
 wait 1.0
 fp_expect dummy_hits eq 2
 fp_expect dummy_damage eq 18
+log (a straight knocks the dummy back out of reach; the reset brings it back to its place)
+fp_dummy_reset
+wait 0.6
 press kbA FPJab
 press kbA FPStraight
 wait 1.2
-fp_expect dummy_hits eq 4
-fp_expect dummy_damage eq 36
+fp_expect dummy_hits eq 2
+fp_expect dummy_damage eq 18
+fp_dummy_reset
+wait 0.6
 
 log == shove: the dummy is pushed about 2 m, then walks are needed to reach it again
 press kbA FPShove
 wait 1.2
 fp_expect dummy_dist gt 260
-fp_expect dummy_damage eq 36
+fp_expect dummy_damage eq 0
 fp_dummy_reset
 wait 1.0
 
@@ -76,6 +81,9 @@ axis pad7 Gamepad_RightTriggerAxis 1.0
 wait 0.1
 axis pad7 Gamepad_RightTriggerAxis 0.0
 wait 0.9
+fp_expect rumbles gt 0
+fp_dummy_reset
+wait 0.5
 hold pad7 FPBlock
 wait 0.3
 fp_expect guarding eq 1

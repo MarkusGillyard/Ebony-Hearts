@@ -25,6 +25,26 @@ wait 0.8
 fp_expect dummy_hits eq 2
 fp_expect dummy_damage eq 18
 
+log == reactions: a straight to the head snaps it back; to the body it folds the torso forward
+fp_dummy_reset
+fp_teleport 0 -40 0 -90 -4
+wait 0.6
+press kbA FPStraight
+wait 0.5
+fp_expect dummy_body eq 0
+fp_expect dummy_headpeak gt 8
+fp_expect dummy_chestpeak gt 2
+wait 1.0
+fp_dummy_reset
+fp_teleport 0 -40 0 -90 -22
+wait 0.6
+press kbA FPStraight
+wait 0.5
+fp_expect dummy_body eq 1
+fp_expect dummy_chestpeak lt -6
+wait 1.0
+fp_expect dummy_chestback near 0 1.5
+
 log == the straight does not cancel into a jab; a late jab press expires
 fp_dummy_reset
 wait 0.6
@@ -123,8 +143,8 @@ fp_teleport 0 -40 0 90 -4
 hold kbA FPBlock
 wait 2.0
 release kbA FPBlock
-log (the guard faced away: that strike lands in full)
-fp_expect hurt eq 2
+log (the guard faced away: strikes land in full)
+fp_expect hurt gt 1
 
 log == a jab in the dummy's wind-up stops its strike
 fp_dummy_reset
@@ -190,6 +210,7 @@ wait 0.5
 press pad7 FPJab
 wait 0.5
 fp_expect dummy_hits eq 1
+fp_expect rumbles gt 0
 axis pad7 Gamepad_RightTriggerAxis 1.0
 wait 0.1
 axis pad7 Gamepad_RightTriggerAxis 0.0

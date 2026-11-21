@@ -47,6 +47,7 @@ struct FEHDummyHit
 	EEHFistAction Action = EEHFistAction::None;
 	float Damage = 0.0f;          // after the guard
 	bool bBlocked = false;
+	bool bBody = false;           // landed below the neck
 	FVector Location = FVector::ZeroVector;
 };
 
@@ -64,8 +65,9 @@ public:
 	void ResetDummy();
 	void SetMode(EEHDummyMode InMode);
 	EEHDummyMode GetMode() const { return Mode; }
-	// A technique connecting. From is where it came from (the player's eyes).
-	FEHDummyHit ReceiveHit(EEHFistAction Action, const FEHStrikeDef& Def, const FVector& From, const FVector& At);
+	// A technique connecting. From is where it came from (the player's eyes), At where it landed, HandSide which of the
+	// player's hands threw it (-1 left, +1 right, 0 both).
+	FEHDummyHit ReceiveHit(EEHFistAction Action, const FEHStrikeDef& Def, const FVector& From, const FVector& At, float HandSide);
 	bool HasModel() const;
 
 	// Readouts for the display and automation.
@@ -76,6 +78,15 @@ public:
 	float SecondsSinceHit() const { return SinceHit; }
 	int32 StrikesThrown() const { return StrikeCount; }
 	bool IsWindingUp() const { return State == EState::Windup; }
+	// Reaction readouts (degrees, cm/s) for tests and evidence.
+	float HeadBackDegrees() const { return HeadBack.X; }
+	float ChestBackDegrees() const { return ChestBack.X; }
+	float TwistDegrees() const { return ChestTwist.X + HeadTwist.X; }
+	float KnockbackSpeed() const { return Knockback.Size(); }
+	bool WasBodyShot() const { return bLastBodyShot; }
+	// Largest swing since the last hit (signed: back is positive, folding forward negative).
+	float PeakHeadBack() const { return PeakHead; }
+	float PeakChestBack() const { return PeakChest; }
 	FString StateName() const;
 	FVector LabelLocation() const;
 
@@ -117,6 +128,29 @@ private:
 	float Total = 0.0f;
 	float SinceHit = 100.0f;
 	FString Last;
+
+	// Physical reaction: damped springs on the head and chest along the last hit's direction, and a sliding knockback.
+	// A hit's kick waits through its hitstop (the frozen moment of contact), then releases.
+	struct FSpring
+	{
+		float X = 0.0f;   // degrees
+		float V = 0.0f;   // degrees per second
+	};
+	FSpring HeadBack, HeadTwist, HeadSide, ChestBack, ChestTwist, ChestSide;
+	FVector HitDir = FVector::ForwardVector;   // horizontal, from the attacker through the dummy
+	FVector Knockback = FVector::ZeroVector;   // cm/s
+	struct FKick
+	{
+		float HeadBack = 0.0f, HeadTwist = 0.0f, HeadSide = 0.0f, ChestBack = 0.0f, ChestTwist = 0.0f, ChestSide = 0.0f;
+		float Knock = 0.0f;
+	};
+	FKick PendingKick;
+	bool bKickPending = false;
+	bool bLastBodyShot = false;
+	float PeakHead = 0.0f;
+	float PeakChest = 0.0f;
+	void UpdateReaction(float DeltaSeconds);
+	void ApplyReactionPose();
 
 	void StepFrame();
 	void Enter(EState Next, int32 Length);

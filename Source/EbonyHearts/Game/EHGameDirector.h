@@ -336,6 +336,11 @@ private:
 	void HandleFirstPersonNav(const FEHNavEvent& E);
 	void PaintFirstPerson(FEHPainter& P);
 	void ApplyFieldOfView();
+	// Rumble on the controller the player is using (when vibration is on). Large and small motor strengths 0..1.
+	void Rumble(float Large, float Small, float Seconds);
+	// One variant of a numbered sound (S_<Base>_01..N) at a pitch.
+	void PlayImpact(const TCHAR* Base, int32 Variants, float Volume, float Pitch);
+	int32 RumbleCount = 0;
 	bool RunFirstPersonCommand(const TArray<FString>& T, const FString& Line);
 	FString DescribeFirstPerson() const;
 

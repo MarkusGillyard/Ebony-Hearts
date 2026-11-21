@@ -172,6 +172,7 @@ void FEHAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds)
 	TransitionSerial = Instance->TransitionSerial;
 	TransitionSeconds = Instance->TransitionSeconds;
 	TransitionLegSeconds = Instance->TransitionLegSeconds;
+	Additive = Instance->Additive;
 	FrameDelta = FMath::Max(DeltaSeconds, 1e-4f);
 	Elapsed = FMath::Min(Elapsed + DeltaSeconds, 1.0e6f);
 }
@@ -307,12 +308,47 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 		Offsets.Reset();
 	}
 
-	// Remember what was shown for the next transition's offset and speed.
+	// Remember what was shown for the next transition's offset and speed (without the additive reactions, which decay
+	// on their own and must not be carried into a transition twice).
 	Swap(Shown1, Shown2);
 	Shown1.SetNum(NumBones, EAllowShrinking::No);
 	for (const FCompactPoseBoneIndex Bone : Pose.ForEachBoneIndex())
 	{
 		Shown1[Bone.GetInt()] = Pose[Bone];
 	}
+	ApplyAdditive(Pose);
 	return true;
+}
+
+void FEHAnimProxy::ApplyAdditive(FCompactPose& Pose) const
+{
+	const FBoneContainer& Bones = Pose.GetBoneContainer();
+	for (const FEHAdditiveRotation& A : Additive)
+	{
+		if (A.Rotation.Equals(FQuat::Identity, 1e-5))
+		{
+			continue;
+		}
+		const int32 SkeletonIndex = Bones.GetPoseBoneIndexForBoneName(A.Bone);
+		if (SkeletonIndex == INDEX_NONE)
+		{
+			continue;
+		}
+		const FCompactPoseBoneIndex Bone = Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(SkeletonIndex));
+		if (Bone == INDEX_NONE)
+		{
+			continue;
+		}
+		// Component-space delta D on the bone: its local rotation becomes ParentCS^-1 * D * ParentCS * Local.
+		FQuat ParentCS = FQuat::Identity;
+		const FCompactPoseBoneIndex Parent = Pose.GetParentBoneIndex(Bone);
+		if (Parent != INDEX_NONE)
+		{
+			FCSPose<FCompactPose> CS;
+			CS.InitPose(Pose);
+			ParentCS = CS.GetComponentSpaceTransform(Parent).GetRotation();
+		}
+		const FQuat LocalDelta = ParentCS.Inverse() * A.Rotation * ParentCS;
+		Pose[Bone].SetRotation((LocalDelta * Pose[Bone].GetRotation()).GetNormalized());
+	}
 }

@@ -259,6 +259,8 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 				TEXT("How fast the right stick turns the view at full tilt.")));
 			Menu.Add(Choice(TEXT("Invert look"), [this] { return OnOff(Settings.bInvertLook); }, [this](int32) { Settings.bInvertLook = !Settings.bInvertLook; },
 				TEXT("Up looks down, for the mouse and the right stick.")));
+			Menu.Add(Choice(TEXT("Controller vibration"), [this] { return OnOff(Settings.bVibration); }, [this](int32) { Settings.bVibration = !Settings.bVibration; },
+				TEXT("Rumble when a technique lands, is blocked, or you are hit.")));
 			Menu.Add(Header(TEXT("Keyboard")));
 			Menu.Add(Choice(TEXT("Sprint"), [this] { return FString(Settings.bSprintToggle ? TEXT("Toggle") : TEXT("Hold")); }, [this](int32) { Settings.bSprintToggle = !Settings.bSprintToggle; bFPSprintToggled = false; },
 				TEXT("A controller's stick press always toggles sprint.")));

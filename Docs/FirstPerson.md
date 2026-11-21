@@ -92,9 +92,9 @@ sounds and the arms all read that state, so what the player sees and what connec
 
 | Technique | Frames (startup / active / recovery) | Reach | Damage | Hitstop | Walking speed during it |
 |---|---|---|---|---|---|
-| Jab | 6 / 3 / 10 (0.32 s) | 95 cm | 6 | 3 frames | 80% |
-| Straight | 11 / 3 / 18 (0.53 s) | 115 cm | 12 | 5 frames | 70% |
-| Shove | 9 / 4 / 18 (0.52 s) | 100 cm, wider | 0; pushes 2 m over 15 frames | 2 frames | 70% |
+| Jab | 6 / 3 / 10 (0.32 s) | 95 cm | 6 | 4 frames | 80% |
+| Straight | 11 / 3 / 18 (0.53 s) | 115 cm | 12 | 7 frames | 70% |
+| Shove | 9 / 4 / 18 (0.52 s) | 100 cm, wider | 0; pushes 2 m over 15 frames | 4 frames | 70% |
 | Block (hold) | rises in 5 frames, lowers in 6 | | stops 70% from within 70° of the view | | 60% |
 
 Damage, the shove's 2 m and the guard's 70% are the prototype plan's proposed values; frames, reach, hitstop and
@@ -106,8 +106,11 @@ speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`
   into nothing. A press up to 8 frames before a technique allows it still counts; a later one is dropped.
 - **Guard.** While the guard is held no technique starts; one pressed while it lowers comes out as soon as it is down.
   Sprinting stops for any technique or the guard.
-- **Contact.** Hitstop holds the fist and the target together; the view tilts slightly (none with Reduce camera
-  shake); a small spark appears at the fist.
+- **Contact.** Hitstop holds the fist and the target together. Meanwhile the striking fist gives back about 3 cm into
+  the arm and shudders, and the view holds a small push into the blow with a roll toward the punching hand (none with
+  Reduce camera shake). Then everything releases at once. Each hit plays a crack and a low thud, varied in pitch
+  (body shots duller), and rumbles the controller (Settings > Controls > Controller vibration). Walls give a short
+  jar.
 - **Health and death.** The player has 100 Health. A blow that empties it resets the Chapel at once: the player at the
   entrance with full Health and Stamina, the dummy back in place, every technique and its effects cleared. A thin red
   line above Stamina shows Health after a hit (hidden with the Stamina meter set to Off).
@@ -124,8 +127,12 @@ last one. Each fist arrives at full extension exactly on the technique's first a
 The slice's Ashka test model stands in the nave 4.5 m in front of the start (`EHTrainingDummy.*`). Pause > Training
 dummy switches it between **Stand** (takes every hit), **Guard** (blocks hits from its front, 70% stopped) and
 **Strikes back** (when the player is within 1.7 m and in front of it, a slow 24-frame wind-up into a 10-damage punch,
-then 70 frames before the next; a hit in the wind-up stops it). It turns to face the player, reacts to each technique,
-and is pushed by the shove, sliding along anything it meets. Above it a training readout counts hits, blocks and
+then 70 frames before the next; a hit in the wind-up stops it). It turns to face the player and reacts physically rather than playing clips: damped springs on its head and chest
+are kicked along the line of the blow when the hitstop ends, on top of its stance. A jab snaps the head back and lets
+go; a straight snaps it hard, turns the shoulders with the punching hand and slides the body back about 35 cm (out of
+jab reach, so the straight ends a combination); a strike landing below the neck folds the torso around the fist and
+drops the head; a guarded strike moves only the arms and chest; the shove throws the chest back and the head whips
+after it, while the body slides 2 m along anything it meets. Above it a training readout counts hits, blocks and
 damage. Reset the dummy puts it back with its count cleared.
 
 ## The Chapel in first person
