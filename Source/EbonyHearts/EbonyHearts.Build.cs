@@ -5,6 +5,9 @@ public class EbonyHearts : ModuleRules
 	public EbonyHearts(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		// Each source file keeps file-local helpers (palettes, bit helpers) in namespaces it opens with "using"; unity
+		// blobs would merge those files and make the names collide, so every file compiles on its own.
+		bUseUnity = false;
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "AnimationCore", "InputCore", "ApplicationCore",
