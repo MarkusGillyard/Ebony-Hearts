@@ -7,15 +7,19 @@ fp_expect y near 300 5
 platform_check
 window_check
 assets
-log == walk, sprint, jump, crouch
-hold kbA FPForward
+log == walk, sprint, jump, crouch (across the entrance strip, clear of the training dummy ahead)
+hold kbA FPLeft
 wait 1.2
 fp_expect speed near 400 15
+release kbA FPLeft
+look 1125 0
+hold kbA FPForward
 hold kbA FPSprint
 wait 1.0
 fp_expect speed near 700 20
 release kbA FPSprint
 release kbA FPForward
+look -1125 0
 press kbA FPJump
 fp_expect falling eq 1
 wait 1.2
