@@ -1,6 +1,10 @@
 #include "EHViewArms.h"
 
+#include "Animation/AnimSequence.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "EHAnimInstance.h"
+#include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
@@ -70,6 +74,31 @@ UStaticMeshComponent* UEHViewArms::MakePart(UStaticMesh* Mesh, UMaterialInstance
 
 void UEHViewArms::Build()
 {
+	USkeletalMesh* ArmsAsset = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/FPArms/SK_FPArms_Wren.SK_FPArms_Wren"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	FistPose = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/Wren/Anims/A_Wren_Guard.A_Wren_Guard"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (ArmsAsset && FistPose)
+	{
+		ArmsMesh = NewObject<USkeletalMeshComponent>(GetOwner(), TEXT("FirstPersonArmsMesh"));
+		ArmsMesh->SetupAttachment(this);
+		ArmsMesh->SetSkeletalMesh(ArmsAsset);
+		ArmsMesh->SetAnimInstanceClass(UEHAnimInstance::StaticClass());
+		ArmsMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ArmsMesh->SetCastShadow(false);
+		// Without a physics asset its culling bounds come from the rest pose (arms out at the sides, below the eyes),
+		// not from the posed fists in front of the view; widened so the arms are never culled while in view.
+		ArmsMesh->SetBoundsScale(4.0f);
+		ArmsMesh->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+		ArmsMesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+		// The character model faces +Y; turned so it faces along the view.
+		ArmsMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		ArmsMesh->SetVisibility(false);
+		ArmsMesh->RegisterComponent();
+		if (UEHAnimInstance* A = Cast<UEHAnimInstance>(ArmsMesh->GetAnimInstance()))
+		{
+			A->SetSample(FistPose, 0.0);
+		}
+		return;
+	}
 	UStaticMesh* Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	UStaticMesh* Sphere = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	UMaterialInterface* Base = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
@@ -95,6 +124,70 @@ void UEHViewArms::SetFirstPersonRendering(bool bOn)
 	{
 		C->SetFirstPersonPrimitiveType(bOn ? EFirstPersonPrimitiveType::FirstPerson : EFirstPersonPrimitiveType::None);
 	}
+	if (ArmsMesh)
+	{
+		ArmsMesh->SetFirstPersonPrimitiveType(bOn ? EFirstPersonPrimitiveType::FirstPerson : EFirstPersonPrimitiveType::None);
+	}
+}
+
+FString UEHViewArms::Describe() const
+{
+	if (!ArmsMesh)
+	{
+		return TEXT("arms=shapes");
+	}
+	const FTransform Cam = GetComponentTransform();
+	auto Local = [&](FName Bone) { return Cam.InverseTransformPosition(ArmsMesh->GetBoneLocation(Bone, EBoneSpaces::WorldSpace)); };
+	const FBoxSphereBounds B = ArmsMesh->Bounds;
+	const FString Extra = FString::Printf(TEXT(" bounds=%s r=%.1f registered=%d renderstate=%d lod=%d hidden=%d mats=%d"), *Cam.InverseTransformPosition(B.Origin).ToCompactString(), B.SphereRadius,
+		ArmsMesh->IsRegistered() ? 1 : 0, ArmsMesh->IsRenderStateCreated() ? 1 : 0, ArmsMesh->GetPredictedLODLevel(), ArmsMesh->bHiddenInGame ? 1 : 0, ArmsMesh->GetNumMaterials());
+	return Extra + FString::Printf(TEXT(" arms=model visible=%d rel=%s head=%s upperarm_l=%s hand_l=%s hand_r=%s shownL=%s shownR=%s upperarm_r=%s lowerarm_r=%s"), ArmsMesh->IsVisible() ? 1 : 0,
+		*ArmsMesh->GetRelativeLocation().ToCompactString(), *Local(TEXT("head")).ToCompactString(), *Local(TEXT("upperarm_l")).ToCompactString(),
+		*Local(TEXT("hand_l")).ToCompactString(), *Local(TEXT("hand_r")).ToCompactString(), *ShownL.ToCompactString(), *ShownR.ToCompactString(),
+		*Local(TEXT("upperarm_r")).ToCompactString(), *Local(TEXT("lowerarm_r")).ToCompactString());
+}
+
+void UEHViewArms::ShowParts(bool bShow)
+{
+	for (UStaticMeshComponent* C : Parts)
+	{
+		C->SetVisibility(bShow);
+	}
+	if (ArmsMesh)
+	{
+		ArmsMesh->SetVisibility(bShow);
+	}
+}
+
+void UEHViewArms::PoseMeshArms(const FVector& L, const FVector& R)
+{
+	UEHAnimInstance* A = Cast<UEHAnimInstance>(ArmsMesh->GetAnimInstance());
+	if (A == nullptr)
+	{
+		return;
+	}
+	A->SetSample(FistPose, 0.0);
+	// The guard clip stands bladed, right shoulder back. Square the shoulders to the view, then turn them into each
+	// blow: the straight drives the right shoulder through, the jab brings the left forward a little.
+	const float ExtL = FMath::Clamp((L.X - ReadyL.X) / 22.0f, 0.0f, 1.0f);
+	const float ExtR = FMath::Clamp((R.X - ReadyR.X) / 22.0f, 0.0f, 1.0f);
+	const float Twist = -35.0f - 20.0f * Smooth(ExtR) + 10.0f * Smooth(ExtL);
+	const FQuat Half = FRotator(0.0f, Twist * 0.5f, 0.0f).Quaternion();
+	A->SetAdditive({{TEXT("spine_02"), Half}, {TEXT("spine_03"), Half}});
+	// Place the model so its head sits just behind and below the eyes: its own shoulders then land where the
+	// viewer's would.
+	const FVector HeadCS = ArmsMesh->GetBoneLocation(TEXT("head"), EBoneSpaces::ComponentSpace);
+	const FQuat RelRot = FRotator(0.0f, -90.0f, 0.0f).Quaternion();
+	const FVector EyeToHead(-4.0f, 0.0f, 1.0f);   // puts this model's shoulders about 20 cm below the eyes
+	const FVector RelLoc = EyeToHead - RelRot.RotateVector(HeadCS);
+	ArmsMesh->SetRelativeLocation(RelLoc);
+	auto ToCS = [&](const FVector& Cam) { return RelRot.UnrotateVector(Cam - RelLoc); };
+	// The hand bone is the wrist: aim it a fist's length short of where the knuckles go.
+	auto Wrist = [&](const FVector& Fist, const FVector& Shoulder) { return Fist - (Fist - Shoulder).GetSafeNormal() * 7.0f; };
+	TArray<FEHLimbIK> Limbs;
+	Limbs.Add({TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), ToCS(Wrist(L, ShoulderL)), RelRot.UnrotateVector(FVector(0.0f, -0.55f, -1.0f))});
+	Limbs.Add({TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), ToCS(Wrist(R, ShoulderR)), RelRot.UnrotateVector(FVector(0.0f, 0.55f, -1.0f))});
+	A->SetLimbIK(Limbs);
 }
 
 void UEHViewArms::SnapHidden()
@@ -104,10 +197,7 @@ void UEHViewArms::SnapHidden()
 	LastAction = EEHFistAction::None;
 	Visible = 0.0f;
 	bShown = false;
-	for (UStaticMeshComponent* C : Parts)
-	{
-		C->SetVisibility(false);
-	}
+	ShowParts(false);
 }
 
 void UEHViewArms::PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side)
@@ -224,12 +314,13 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 	if (bShow != bShown)
 	{
 		bShown = bShow;
-		for (UStaticMeshComponent* C : Parts)
-		{
-			C->SetVisibility(bShow);
-		}
+		ShowParts(bShow);
 	}
-	if (bShown)
+	if (bShown && ArmsMesh)
+	{
+		PoseMeshArms(L, R);
+	}
+	else if (bShown)
 	{
 		PoseArm(Arms[0], ShoulderL, L, -1.0f);
 		PoseArm(Arms[1], ShoulderR, R, 1.0f);

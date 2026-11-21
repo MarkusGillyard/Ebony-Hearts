@@ -33,6 +33,17 @@ struct FEHAdditiveRotation
 	FQuat Rotation = FQuat::Identity;
 };
 
+// Two-bone IK for one limb, in component space: the hand reaches Target (clamped to the limb's length) with the elbow
+// bending toward Pole. The hand keeps its pose relative to the forearm.
+struct FEHLimbIK
+{
+	FName Upper;
+	FName Lower;
+	FName End;
+	FVector Target = FVector::ZeroVector;
+	FVector Pole = FVector(0, 0, -1);
+};
+
 struct FEHAnimSample
 {
 	TObjectPtr<UAnimSequence> Sequence = nullptr;
@@ -86,6 +97,7 @@ struct FEHAnimProxy : public FAnimInstanceProxy
 	TArray<FTransform> Shown2;   // and the frame before
 	FEHLeg Legs[2];
 	TArray<FEHAdditiveRotation> Additive;   // parents before children
+	TArray<FEHLimbIK> LimbIK;
 	int32 LegsForBones = -1;     // bone count the leg indices were resolved for
 	float PlantedHeight = 0.0f;  // ankle height (component space) of the reference pose
 
@@ -93,6 +105,10 @@ private:
 	void ResolveLegs(const FCompactPose& Pose);
 	void LockFeet(FCompactPose& Pose, FCSPose<FCompactPose>& Target, float Fade);
 	void ApplyAdditive(FCompactPose& Pose) const;
+	void ApplyLimbIK(FCompactPose& Pose) const;
+	// Turns Bone about its own origin by a component-space rotation (its children follow).
+	static void RotateBoneCS(FCompactPose& Pose, const FCompactPoseBoneIndex Bone, const FQuat& DeltaCS);
+	static FCompactPoseBoneIndex FindBone(const FCompactPose& Pose, const FName Name);
 };
 
 UCLASS(Transient, NotBlueprintable)
@@ -107,12 +123,14 @@ public:
 	void BeginTransition(float Seconds, float LegSeconds = 0.0f);
 	// Rotations added on top of the pose every frame until replaced; list parents before their children.
 	void SetAdditive(const TArray<FEHAdditiveRotation>& InAdditive) { Additive = InAdditive; }
+	void SetLimbIK(const TArray<FEHLimbIK>& InLimbs) { LimbIK = InLimbs; }
 
 	FEHAnimSample Current;
 	int32 TransitionSerial = 0;
 	float TransitionSeconds = 0.0f;
 	float TransitionLegSeconds = 0.0f;
 	TArray<FEHAdditiveRotation> Additive;
+	TArray<FEHLimbIK> LimbIK;
 
 protected:
 	virtual FAnimInstanceProxy* CreateAnimInstanceProxy() override { return new FEHAnimProxy(this); }

@@ -702,6 +702,11 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, *DescribeFirstPerson()));
 		return true;
 	}
+	if (Cmd == TEXT("fp_arms_state"))
+	{
+		AutoLogLine(FString::Printf(TEXT("fp_arms_state %s"), FPPlayer && FPPlayer->ViewArms() ? *FPPlayer->ViewArms()->Describe() : TEXT("-")));
+		return true;
+	}
 	if (Cmd == TEXT("fp_arms_fp"))
 	{
 		// fp_arms_fp <0|1>: first-person primitives on or off for the arms.

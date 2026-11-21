@@ -117,10 +117,15 @@ speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`
 
 ### Arms
 
-Placeholder arms made of plain shapes (`EHViewArms.*`): shoulders, elbows by two-bone IK, fists. They are drawn as
-first-person primitives, with their own 72° field of view and pulled toward the eyes (first-person scale 0.6), so
-they never clip into walls, and they appear only while a technique or the guard needs them, staying up 0.6 s after the
-last one. Each fist arrives at full extension exactly on the technique's first active frame and holds through hitstop.
+Placeholder arms cut from the slice's Wren model (`SK_FPArms_Wren`: her upper arms, forearms and gloved hands, on her
+skeleton and with her materials; `Tools/Blender/fparms/cut_fp_arms.py` makes it from `SK_Wren.fbx`,
+`Tools/Unreal/import_fp_arms.py` imports it). `EHViewArms.*` holds the model's fists from her guard clip, squares her
+bladed shoulders to the view and turns them into each blow (the straight drives the right shoulder through), and
+reaches each wrist to the technique's fist position by two-bone IK in `EHAnimInstance` (elbows down and out). The arms
+are drawn as first-person primitives, with their own 72° field of view and pulled toward the eyes (first-person scale
+0.6), so they never clip into walls, and they appear only while a technique or the guard needs them, staying up 0.6 s
+after the last one. Each fist arrives at full extension exactly on the technique's first active frame and holds
+through hitstop. If the model cannot load, plain engine shapes stand in.
 
 ### Training dummy
 
@@ -166,7 +171,7 @@ placed across it.
   fighting-stance idle and walk) uses Unreal's first-person *world space representation*. It is never drawn to the
   player's own camera but casts shadows: standing in the rose window's moonlight, the player sees their own shadow
   on the floor.
-- **Limbs.** None yet. No action in this milestone calls for arms.
+- **Limbs.** The arms of milestone 3 (see Arms above) appear only for techniques and the guard.
 - **Reflections.** The project renders reflections with screen-space reflections (no Lumen, no virtual shadow
   maps). Screen-space reflections can only reflect what is on screen, so the hidden body never appears in the water.
   A bounded experiment measured the alternative:
@@ -201,6 +206,7 @@ path as a player. New commands:
 | `fp_dummy <stand\|guard\|strikes>`, `fp_dummy_reset` | all | what the pause menu's dummy controls do |
 | `fp_frames <count> <name>` | all | slows the world to 1/20 and saves one screenshot per combat frame |
 | `fp_teleport`, `fp_view`, `fp_box`, `fp_clear_boxes`, `fp_body_visible`, `fp_planar`, `fp_dummy_place`, `fp_health`, `fp_arms_fp` | development only | test positions, a blocking test box, the body and reflection experiments, placing the dummy, test Health, arms drawn as ordinary geometry |
+| `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 
 Scripts: `fp_movement.txt` (movement, Stamina, jump, crouch under a low ceiling, controller sticks and dead zone,
 mouse look, water and steps, pause, focus loss, reset), `fp_controls_a.txt` and `fp_controls_b.txt` (remapping, then
@@ -222,7 +228,7 @@ no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
 ## Known limits
 
-- Fists: the arms are plain shapes and the shove uses the same fists as the punches; final arms and animation are the
+- Fists: the arms are Wren's, cut from her test model, and the shove uses the same fists as the punches; final arms and animation are the
   creator's. The guard does not cost Stamina yet; stat scaling and anything gained from landed strikes come with the
   next milestone. The dummy's reactions and punch are the slice's fighting clips.
 

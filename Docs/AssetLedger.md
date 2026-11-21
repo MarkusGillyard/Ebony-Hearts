@@ -62,7 +62,8 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | Hidden first-person body | Placeholder | Existing slice assets reused unchanged | `SK_Wren`, `A_Wren_Idle`, `A_Wren_WalkF` (provenance above: MakeHuman CC0 base, ACCAD idle, Mixamo walk) |
 | Water footsteps and ripples | Existing slice assets reused | | `S_StepWater_01-03`, the effect ripple and splash |
 | `fp_box` test boxes | Development-only runtime test fixtures | | Never saved or cooked |
-| First-person arms (runtime) | Placeholder | Made with AI assistance (`EHViewArms.cpp`) | Unreal Engine's `/Engine/BasicShapes/Cylinder`, `Sphere` and `BasicShapeMaterial` (engine content) |
+| `/Game/Characters/FPArms/SK_FPArms_Wren` (first-person arms) | Placeholder, derived from an existing slice asset | Made with AI assistance (`Tools/Blender/fparms/cut_fp_arms.py`, `Tools/Unreal/import_fp_arms.py`) | Wren's own arms, forearms and gloved hands cut from `SK_Wren` (no new geometry), on `SK_Wren_Skeleton` with `MI_Wren_Skin`, `MI_Wren_Gloves`, `MI_Wren_Outfit`; posed from `A_Wren_Guard` plus runtime IK (provenance above) |
+| First-person arms fallback (runtime) | Placeholder | Made with AI assistance (`EHViewArms.cpp`) | Drawn only if the arms model fails to load: Unreal Engine's `/Engine/BasicShapes/Cylinder`, `Sphere` and `BasicShapeMaterial` (engine content) |
 | Training dummy | Placeholder | Existing slice assets reused unchanged | `SK_Ashka`; `A_Ashka_Idle`, `Guard`, `HitLight`, `HitHeadMedium`, `HitBody`, `BlockHit`, `L1` (provenance above) |
 | Technique sounds | Existing slice assets reused | | `S_WhooshLight`, `S_WhooshHeavy`, `S_HitLight`, `S_HitHeavy`, `S_Block`, `S_BodySlam` |
 

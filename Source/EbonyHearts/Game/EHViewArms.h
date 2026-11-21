@@ -10,7 +10,9 @@
 
 #include "EHViewArms.generated.h"
 
+class UAnimSequence;
 class UMaterialInstanceDynamic;
+class USkeletalMeshComponent;
 class UStaticMeshComponent;
 
 UCLASS(NotBlueprintable)
@@ -40,6 +42,12 @@ private:
 
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMeshComponent>> Parts;
+	// Placeholder arms cut from a character model (Tools/Blender/fparms), posed by the guard clip for the fists and by
+	// two-bone IK for the reach. Without that asset the arms fall back to plain shapes.
+	UPROPERTY()
+	TObjectPtr<USkeletalMeshComponent> ArmsMesh;
+	UPROPERTY()
+	TObjectPtr<UAnimSequence> FistPose;
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> SkinMaterial;
 	UPROPERTY()
@@ -59,5 +67,10 @@ private:
 	bool bShown = false;
 
 	void PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side);
+	void PoseMeshArms(const FVector& L, const FVector& R);
+	void ShowParts(bool bShow);
+public:
+	bool UsesModelArms() const { return ArmsMesh != nullptr; }
+	FString Describe() const;
 	UStaticMeshComponent* MakePart(UStaticMesh* Mesh, UMaterialInstanceDynamic* Material);
 };
