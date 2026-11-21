@@ -8,7 +8,10 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EHPlayerCharacter.h"
+#include "EHViewArms.h"
 #include "EHVfx.h"
+#include "Kismet/GameplayStatics.h"
+#include "UnrealClient.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
@@ -30,6 +33,14 @@ FEHMenuItem FPButton(const FString& Label, TFunction<void()> Activate, const FSt
 	I.Label = Label;
 	I.Activate = MoveTemp(Activate);
 	I.Hint = Hint;
+	return I;
+}
+
+FEHMenuItem FPHeader(const FString& Label)
+{
+	FEHMenuItem I;
+	I.Label = Label;
+	I.bHeader = true;
 	return I;
 }
 
@@ -82,10 +93,17 @@ void AEHGameDirector::BeginFirstPerson()
 	FPPlayer->ApplyTuning(FPTuning);
 	ApplyFieldOfView();
 	FPPlayer->ResetToStart();
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	FPDummy = GetWorld()->SpawnActor<AEHTrainingDummy>(AEHTrainingDummy::StaticClass(), FTransform(FRotator(0, FPTuning.Dummy.SpawnYaw, 0), FPTuning.Dummy.Spawn + FVector(0, 0, 92.0f)), Params);
+	if (FPDummy)
+	{
+		FPDummy->Setup(FPTuning.Dummy, FPTuning.Fists, FPPlayer);
+	}
 	PC->SetViewTarget(FPPlayer);
 	PC->bShowMouseCursor = false;
 	PC->SetInputMode(FInputModeGameOnly());
-	AutoLogLine(FString::Printf(TEXT("firstperson start body=%d tuning: %s"), FPPlayer->HasBodyPlaceholder() ? 1 : 0, *FPTuning.Describe()));
+	AutoLogLine(FString::Printf(TEXT("firstperson start body=%d dummy=%d tuning: %s"), FPPlayer->HasBodyPlaceholder() ? 1 : 0, FPDummy && FPDummy->HasModel() ? 1 : 0, *FPTuning.Describe()));
 	UE_LOG(LogTemp, Display, TEXT("EbonyHearts: first-person tuning %s"), *FPTuning.Describe());
 }
 
@@ -94,6 +112,7 @@ void AEHGameDirector::ApplyFieldOfView()
 	if (FPPlayer)
 	{
 		FPPlayer->SetFieldOfView(static_cast<float>(Settings.FieldOfView));
+		FPPlayer->SetShakeScale(Settings.bReduceShake ? 0.0f : 1.0f);
 	}
 }
 
@@ -105,6 +124,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	uint32 Presses = RouterPtr->TakePresses(EHDeviceKeyboardA);
 	const uint32 KeyHeld = RouterPtr->HeldBits(EHDeviceKeyboardA);
 	uint32 PadPresses = 0;
+	uint32 PadHeld = 0;
 	FVector2D PadMove = FVector2D::ZeroVector;
 	FVector2D PadLook = FVector2D::ZeroVector;
 	for (const TPair<int32, FEHDevice>& Pair : RouterPtr->Devices())
@@ -121,6 +141,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 			FPDevice = Pair.Key;
 		}
 		PadPresses |= P;
+		PadHeld |= Pair.Value.Held;
 		if (M.SizeSquared() > PadMove.SizeSquared()) PadMove = M;
 		if (L.SizeSquared() > PadLook.SizeSquared()) PadLook = L;
 	}
@@ -189,6 +210,17 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	}
 	In.bCrouch = bKeyCrouch || bFPCrouchToggled;
 	In.bSprint = (bKeySprint || bFPSprintToggled) && !In.bCrouch;
+
+	// Techniques: one press per frame reaches the fists (the straight first, so a jab-straight pressed together
+	// still ends on the committed hit); the guard is held on any device.
+	const uint32 AnyPress = Presses | PadPresses;
+	In.FistPress = (AnyPress & Bit(EEHAction::FPStraight)) ? EEHFistAction::Straight
+		: ((AnyPress & Bit(EEHAction::FPJab)) ? EEHFistAction::Jab : ((AnyPress & Bit(EEHAction::FPShove)) ? EEHFistAction::Shove : EEHFistAction::None));
+	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
+	if (In.FistPress != EEHFistAction::None || In.bBlock)
+	{
+		bFPSprintToggled = false;
+	}
 	return In;
 }
 
@@ -205,6 +237,27 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 		return;
 	}
 	FPPlayer->ApplyInput(In, DeltaSeconds);
+	if (Vfx)
+	{
+		Vfx->SetViewPoint(FPPlayer->Camera()->GetComponentLocation());
+		Vfx->SetImpactScale(0.3f, 0.5f);
+	}
+	HurtFlash = FMath::Max(0.0f, HurtFlash - DeltaSeconds * 2.5f);
+	if (FrameCaptureLeft > 0)
+	{
+		// Frame-by-frame review: the world runs at 1/20 speed and one screenshot is taken per combat frame (1/60 s of
+		// game time), each when the previous one has been written.
+		const double GameTime = GetWorld()->GetTimeSeconds();
+		if (GameTime >= FrameCaptureNext && !FScreenshotRequest::IsScreenshotRequested())
+		{
+			FScreenshotRequest::RequestScreenshot(FPaths::Combine(EvidenceDir, FString::Printf(TEXT("%s_%03d.png"), *FrameCaptureName, FrameCaptureIndex++)), true, false);
+			FrameCaptureNext = GameTime + 1.0 / 60.0;
+			if (--FrameCaptureLeft == 0)
+			{
+				UGameplayStatics::SetGlobalTimeDilation(this, 1.0f);
+			}
+		}
+	}
 	PlayFirstPersonEvents();
 	// The Stamina line fades in while it changes and out a moment after it is full again.
 	const bool bShow = Settings.StaminaMeter == 2 || (Settings.StaminaMeter == 1 && (FPPlayer->StaminaFraction() < 0.999f || FPPlayer->SecondsSinceStaminaChange() < 1.0f));
@@ -251,11 +304,58 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			}
 			AutoLogLine(FString::Printf(TEXT("fp land strength=%.2f water=%.1f"), E.Strength, E.WaterDepth));
 			break;
+		case FEHFirstPersonEvent::EKind::Swing:
+			Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("WhooshHeavy")) : FName(TEXT("WhooshLight")), 3, EEHSoundCat::Effects,
+				E.Action == EEHFistAction::Shove ? 0.45f : 0.7f);
+			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
+			break;
+		case FEHFirstPersonEvent::EKind::Contact:
+			if (E.bBlocked)
+			{
+				Audio.PlayVaried(TEXT("Block"), 2, EEHSoundCat::Effects, 0.85f);
+				if (Vfx) { Vfx->Block(E.Location, 1, false); }
+			}
+			else if (E.Action == EEHFistAction::Shove)
+			{
+				Audio.PlayVaried(TEXT("BodySlam"), 2, EEHSoundCat::Effects, 0.55f);
+			}
+			else
+			{
+				Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("HitHeavy")) : FName(TEXT("HitLight")), 3, EEHSoundCat::Effects, 0.9f);
+				if (Vfx) { Vfx->Hit(E.Location, 1, E.Action == EEHFistAction::Straight, false, false, false); }
+			}
+			AutoLogLine(FString::Printf(TEXT("fp contact %s damage=%.1f blocked=%d"), EHFistActionName(E.Action), E.Damage, E.bBlocked ? 1 : 0));
+			break;
+		case FEHFirstPersonEvent::EKind::Wall:
+			Audio.PlayVaried(TEXT("Block"), 2, EEHSoundCat::Effects, 0.4f);
+			AutoLogLine(FString::Printf(TEXT("fp wall %s"), EHFistActionName(E.Action)));
+			break;
+		case FEHFirstPersonEvent::EKind::Guarded:
+			Audio.PlayVaried(TEXT("Block"), 2, EEHSoundCat::Effects, 0.9f);
+			++FPGuardedCount;
+			AutoLogLine(FString::Printf(TEXT("fp guarded damage=%.1f"), E.Damage));
+			break;
+		case FEHFirstPersonEvent::EKind::Hurt:
+			Audio.PlayVaried(TEXT("HitLight"), 3, EEHSoundCat::Effects, 0.9f);
+			HurtFlash = Settings.bReduceFlash ? 0.35f : 1.0f;
+			++FPHurtCount;
+			AutoLogLine(FString::Printf(TEXT("fp hurt damage=%.1f health=%.1f"), E.Damage, FPPlayer->Health()));
+			break;
+		case FEHFirstPersonEvent::EKind::Died:
+			++FPDeaths;
+			AutoLogLine(TEXT("fp died: instant reset"));
+			break;
 		case FEHFirstPersonEvent::EKind::Reset:
 			break;
 		}
 	}
+	const bool bDied = FPEvents.ContainsByPredicate([](const FEHFirstPersonEvent& E) { return E.Kind == FEHFirstPersonEvent::EKind::Died; });
 	FPEvents.Reset();
+	if (bDied)
+	{
+		// The prototype's death: straight back to the start, everything restored.
+		ResetFirstPerson(TEXT("death"));
+	}
 }
 
 void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
@@ -269,6 +369,11 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 		FPPlayer->TakeEvents(FPEvents);
 		FPEvents.Reset();
 	}
+	if (FPDummy)
+	{
+		FPDummy->ResetDummy();
+	}
+	HurtFlash = 0.0f;
 	++FPResets;
 	AutoLogLine(FString::Printf(TEXT("firstperson reset (%s) %s"), Why, *DescribeFirstPerson()));
 }
@@ -285,6 +390,29 @@ void AEHGameDirector::BuildFirstPersonPause()
 		ResetFirstPerson(TEXT("menu"));
 	}, TEXT("Back to the Chapel entrance.")));
 	Menu.Add(FPButton(TEXT("Settings"), [this] { SettingsReturn = EEHScreen::FirstPerson; SettingsPage = 0; GoTo(EEHScreen::Settings); }, TEXT("Controls, video, audio and accessibility.")));
+	Menu.Add(FPHeader(TEXT("Training dummy")));
+	{
+		FEHMenuItem DummyItem;
+		DummyItem.Label = TEXT("Dummy");
+		DummyItem.Value = [this] { return FString(FPDummy ? EHDummyModeName(FPDummy->GetMode()) : TEXT("-")); };
+		DummyItem.Change = [this](int32 D) {
+			if (FPDummy)
+			{
+				constexpr int32 N = static_cast<int32>(EEHDummyMode::Count);
+				FPDummy->SetMode(static_cast<EEHDummyMode>((static_cast<int32>(FPDummy->GetMode()) + D + N) % N));
+			}
+		};
+		DummyItem.Hint = TEXT("Stand takes every hit, Guard blocks from the front, Strikes back throws a slow punch when you are close.");
+		Menu.Add(DummyItem);
+	}
+	Menu.Add(FPButton(TEXT("Reset the dummy"), [this] {
+		if (FPDummy)
+		{
+			FPDummy->ResetDummy();
+		}
+		SetPaused(false, EHDeviceNone);
+	}, TEXT("Back to its place, its count cleared.")));
+	Menu.Add(FPHeader(FString()));
 	Menu.Add(FPButton(TEXT("Quit to desktop"), [this] { GoTo(EEHScreen::QuitConfirm); }));
 }
 
@@ -313,6 +441,41 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		const FLinearColor Fill = FPPlayer->IsExhausted() ? EHStyle::Alpha(EHStyle::HealthLow, 0.85f * StaminaMeterAlpha) : EHStyle::Alpha(EHStyle::TextPrimary, 0.75f * StaminaMeterAlpha);
 		P.Rect(FVector2f(960.0f - W * 0.5f * Frac, Pos.Y), FVector2f(W * Frac, 4.0f), Fill);
 	}
+	if (FPPlayer && !bPaused)
+	{
+		// Health: the same thin line, above Stamina, only after being hurt (a playtest readout like Stamina's).
+		const float HealthAlpha = FPPlayer->HealthFraction() < 0.999f ? FMath::Clamp(3.0f - FPPlayer->SecondsSinceHurt() * 0.25f, 0.35f, 1.0f) : 0.0f;
+		if (HealthAlpha > 0.0f && Settings.StaminaMeter > 0)
+		{
+			const float W = 280.0f;
+			const float Frac = FPPlayer->HealthFraction();
+			P.Rect(FVector2f(960.0f - W * 0.5f, 994.0f), FVector2f(W, 4.0f), EHStyle::Alpha(EHStyle::Abyss, 0.45f * HealthAlpha));
+			P.Rect(FVector2f(960.0f - W * 0.5f * Frac, 994.0f), FVector2f(W * Frac, 4.0f), EHStyle::Alpha(EHStyle::HealthLow, 0.85f * HealthAlpha));
+		}
+		if (HurtFlash > 0.0f)
+		{
+			// A brief darkening at the edges when a strike lands.
+			const float A = 0.45f * HurtFlash;
+			P.Gradient(FVector2f(P.VirtualMin.X, P.VirtualMin.Y), FVector2f(P.VirtualMax.X - P.VirtualMin.X, 160.0f), FLinearColor(0.25f, 0, 0, A), FLinearColor(0.25f, 0, 0, 0));
+			P.Gradient(FVector2f(P.VirtualMin.X, P.VirtualMax.Y - 160.0f), FVector2f(P.VirtualMax.X - P.VirtualMin.X, 160.0f), FLinearColor(0.25f, 0, 0, 0), FLinearColor(0.25f, 0, 0, A));
+		}
+		// The dummy's count, above its head: a training readout, placeholder text.
+		APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		FVector2D Screen2D;
+		if (FPDummy && PC && FVector::Dist(FPDummy->GetActorLocation(), FPPlayer->GetActorLocation()) < 1500.0f &&
+			PC->ProjectWorldLocationToScreen(FPDummy->LabelLocation(), Screen2D, true))
+		{
+			const FVector2f At = P.ToVirtual(FVector2f(Screen2D.X, Screen2D.Y) / FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale()));
+			const FString Head = FString::Printf(TEXT("Training dummy · %s"), EHDummyModeName(FPDummy->GetMode()));
+			const FString Count = FString::Printf(TEXT("Hits %d · Blocked %d · Damage %.0f"), FPDummy->Hits(), FPDummy->Blocks(), FPDummy->TotalDamage());
+			P.Text(Head, At, Fonts.Sized(Fonts.BodyMedium, 20), EHStyle::Alpha(EHStyle::TextPrimary, 0.8f), 0.5f, 1.0f);
+			P.Text(Count, At + FVector2f(0, 4), Fonts.Sized(Fonts.Body, 18), EHStyle::Alpha(EHStyle::TextSecondary, 0.8f), 0.5f, 0.0f);
+			if (FPDummy->SecondsSinceHit() < 1.5f && !FPDummy->LastText().IsEmpty())
+			{
+				P.Text(FPDummy->LastText(), At + FVector2f(0, 30), Fonts.Sized(Fonts.Body, 18), EHStyle::Alpha(EHStyle::TextPrimary, 0.9f * (1.0f - FPDummy->SecondsSinceHit() / 1.5f)), 0.5f, 0.0f);
+			}
+		}
+	}
 	// Every piece of art in this build is a stand-in; say so where a reviewer will see it.
 	P.Text(TEXT("First-person prototype - placeholder art and animation"), FVector2f(P.VirtualMin.X + 28.0f, P.VirtualMax.Y - 24.0f),
 		Fonts.Sized(Fonts.Body, 20), EHStyle::Alpha(EHStyle::TextSecondary, 0.55f), 0.0f, 1.0f, false);
@@ -334,10 +497,19 @@ FString AEHGameDirector::DescribeFirstPerson() const
 	const UCharacterMovementComponent* Move = FPPlayer->GetCharacterMovement();
 	const FVector Feet = FPPlayer->FeetLocation();
 	const FRotator R = FPPlayer->GetControlRotation();
-	return FString::Printf(TEXT("feet=(%.1f,%.1f,%.1f) yaw=%.1f pitch=%.1f speed=%.1f vz=%.1f mode=%d crouched=%d sprinting=%d stamina=%.1f exhausted=%d water=%.1f eye=%.1f cam_z=%.1f resets=%d"),
+	const FEHFists& Fi = FPPlayer->GetFists();
+	FString Out = FString::Printf(TEXT("feet=(%.1f,%.1f,%.1f) yaw=%.1f pitch=%.1f speed=%.1f vz=%.1f mode=%d crouched=%d sprinting=%d stamina=%.1f exhausted=%d water=%.1f eye=%.1f cam_z=%.1f resets=%d"),
 		Feet.X, Feet.Y, Feet.Z, FRotator::NormalizeAxis(R.Yaw), FRotator::NormalizeAxis(R.Pitch), FPPlayer->GetVelocity().Size2D(), FPPlayer->GetVelocity().Z,
 		static_cast<int32>(Move->MovementMode.GetValue()), FPPlayer->bIsCrouched ? 1 : 0, FPPlayer->IsSprinting() ? 1 : 0, FPPlayer->Stamina(), FPPlayer->IsExhausted() ? 1 : 0,
 		FPPlayer->WaterDepthAtFeet(), FPPlayer->EyeHeight(), FPPlayer->Camera()->GetComponentLocation().Z, FPResets);
+	Out += FString::Printf(TEXT(" health=%.1f action=%s frame=%d guard=%.2f arms=%d deaths=%d"), FPPlayer->Health(), EHFistActionName(Fi.Action()), Fi.Frame(), Fi.GuardLevel(),
+		FPPlayer->ViewArms() && FPPlayer->ViewArms()->AreShown() ? 1 : 0, FPDeaths);
+	if (FPDummy)
+	{
+		Out += FString::Printf(TEXT(" dummy=(%.1f,%.1f) %s %s hits=%d blocks=%d damage=%.1f strikes=%d"), FPDummy->GetActorLocation().X, FPDummy->GetActorLocation().Y,
+			EHDummyModeName(FPDummy->GetMode()), *FPDummy->StateName(), FPDummy->Hits(), FPDummy->Blocks(), FPDummy->TotalDamage(), FPDummy->StrikesThrown());
+	}
+	return Out;
 }
 
 bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FString& Line)
@@ -398,6 +570,19 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("screen")) V = static_cast<float>(static_cast<int32>(Screen));
 		else if (Field == TEXT("fov")) V = FPPlayer->Camera()->FieldOfView;
 		else if (Field == TEXT("moved")) V = FVector::Dist(FPPlayer->FeetLocation(), FPMark);
+		else if (Field == TEXT("health")) V = FPPlayer->Health();
+		else if (Field == TEXT("deaths")) V = static_cast<float>(FPDeaths);
+		else if (Field == TEXT("guarded")) V = static_cast<float>(FPGuardedCount);
+		else if (Field == TEXT("hurt")) V = static_cast<float>(FPHurtCount);
+		else if (Field == TEXT("action")) V = static_cast<float>(static_cast<int32>(FPPlayer->GetFists().Action()));
+		else if (Field == TEXT("guarding")) V = FPPlayer->GetFists().IsGuarding() ? 1.0f : 0.0f;
+		else if (Field == TEXT("arms")) V = FPPlayer->ViewArms() && FPPlayer->ViewArms()->AreShown() ? 1.0f : 0.0f;
+		else if (FPDummy && Field == TEXT("dummy_hits")) V = static_cast<float>(FPDummy->Hits());
+		else if (FPDummy && Field == TEXT("dummy_blocks")) V = static_cast<float>(FPDummy->Blocks());
+		else if (FPDummy && Field == TEXT("dummy_damage")) V = FPDummy->TotalDamage();
+		else if (FPDummy && Field == TEXT("dummy_strikes")) V = static_cast<float>(FPDummy->StrikesThrown());
+		else if (FPDummy && Field == TEXT("dummy_dist")) V = FVector::Dist2D(FPDummy->GetActorLocation(), FPPlayer->GetActorLocation());
+		else if (FPDummy && Field == TEXT("dummy_moved")) V = FVector::Dist2D(FPDummy->GetActorLocation(), FPTuning.Dummy.Spawn);
 		else
 		{
 			AutoLogLine(FString::Printf(TEXT("FAIL %s (unknown field)"), *Line));
@@ -408,6 +593,37 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		const float Tol = F(4, 0.5f);
 		const bool bOk = Op == TEXT("lt") ? V < Want : (Op == TEXT("gt") ? V > Want : (Op == TEXT("near") ? FMath::Abs(V - Want) <= Tol : FMath::IsNearlyEqual(V, Want, 0.01f)));
 		AutoLogLine(FString::Printf(TEXT("%s %s (is %.2f)"), bOk ? TEXT("ok") : TEXT("FAIL"), *Line, V));
+		return true;
+	}
+	if (Cmd == TEXT("fp_dummy"))
+	{
+		// fp_dummy <stand|guard|strikes>
+		const FString M = Arg(1, TEXT("stand"));
+		if (FPDummy)
+		{
+			FPDummy->SetMode(M == TEXT("guard") ? EEHDummyMode::Guard : (M == TEXT("strikes") ? EEHDummyMode::Strikes : EEHDummyMode::Stand));
+		}
+		AutoLogLine(FString::Printf(TEXT("%s%s"), FPDummy ? TEXT("") : TEXT("FAIL "), *Line));
+		return true;
+	}
+	if (Cmd == TEXT("fp_dummy_reset"))
+	{
+		if (FPDummy)
+		{
+			FPDummy->ResetDummy();
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_frames"))
+	{
+		// fp_frames <count> <name>: one screenshot per rendered frame, starting next frame.
+		FrameCaptureLeft = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("30"))), 1, 600);
+		FrameCaptureName = Arg(2, TEXT("frame"));
+		FrameCaptureIndex = 0;
+		FrameCaptureNext = 0.0;
+		UGameplayStatics::SetGlobalTimeDilation(this, 0.05f);
+		AutoLogLine(Line);
 		return true;
 	}
 	if (Cmd == TEXT("fp_focus_lost"))
@@ -437,6 +653,35 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 			}
 		}
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, *DescribeFirstPerson()));
+		return true;
+	}
+	if (Cmd == TEXT("fp_arms_fp"))
+	{
+		// fp_arms_fp <0|1>: first-person primitives on or off for the arms.
+		if (FPPlayer && FPPlayer->ViewArms())
+		{
+			FPPlayer->ViewArms()->SetFirstPersonRendering(Arg(1, TEXT("1")) != TEXT("0"));
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_health"))
+	{
+		if (FPPlayer)
+		{
+			FPPlayer->SetHealthForTest(F(1, 100.0f));
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_dummy_place"))
+	{
+		// fp_dummy_place <x> <y> <yaw>
+		if (FPDummy)
+		{
+			FPDummy->TeleportTo(FVector(F(1, 0.0f), F(2, -150.0f), 92.0f), FRotator(0, F(3, 90.0f), 0), false, true);
+		}
+		AutoLogLine(Line);
 		return true;
 	}
 	if (Cmd == TEXT("fp_view"))

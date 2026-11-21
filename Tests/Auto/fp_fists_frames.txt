@@ -1,0 +1,29 @@
+# Frame-by-frame review of each technique against the training dummy (development builds: teleports).
+wait 6
+ui_hidden 1
+fp_dummy stand
+fp_teleport 0 -40 0 -90 -4
+wait 1.0
+screenshot f00_dummy_ready
+fp_frames 24 f_jab
+press kbA FPJab
+wait 1.2
+fp_frames 36 f_straight
+press kbA FPStraight
+wait 1.2
+fp_frames 34 f_shove
+press kbA FPShove
+wait 1.5
+fp_dummy_reset
+wait 0.5
+fp_frames 14 f_block
+hold kbA FPBlock
+wait 0.6
+release kbA FPBlock
+wait 0.4
+fp_dummy guard
+fp_frames 24 f_jab_blocked
+press kbA FPJab
+wait 1.0
+fp_state end
+quit

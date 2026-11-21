@@ -1,7 +1,9 @@
 # First-person movement battery (development builds: uses fp_teleport and test boxes). Every check logs ok/FAIL.
-# Inputs go through the router as device presses (keyboard A, a virtual controller pad0, injected mouse counts).
+# Inputs go through the router as device presses (keyboard A, a virtual controller pad7, injected mouse counts).
 wait 6
 ui_hidden 0
+log (the training dummy is moved out of the nave's central aisle)
+fp_dummy_place 600 -1500 90
 log == spawn
 fp_expect screen eq 12
 fp_expect y near 300 5
@@ -167,50 +169,50 @@ fp_expect crouched eq 0
 log == controller: left stick moves, dead zone holds still, right stick turns
 fp_teleport 0 350 0 -90 0
 wait 0.3
-axis pad0 Gamepad_LeftY 1.0
+axis pad7 Gamepad_LeftY 1.0
 wait 1.2
 fp_expect speed near 400 15
-axis pad0 Gamepad_LeftY 0.12
+axis pad7 Gamepad_LeftY 0.12
 wait 0.6
 fp_expect speed lt 5
-axis pad0 Gamepad_LeftY 0.5
+axis pad7 Gamepad_LeftY 0.5
 wait 1.0
 fp_expect speed gt 100
 fp_expect speed lt 300
-axis pad0 Gamepad_LeftY 0
+axis pad7 Gamepad_LeftY 0
 wait 0.5
 fp_teleport 0 300 0 -90 0
-axis pad0 Gamepad_RightX 1.0
+axis pad7 Gamepad_RightX 1.0
 wait 1.0
-axis pad0 Gamepad_RightX 0
+axis pad7 Gamepad_RightX 0
 fp_state stick_turn
 fp_expect yaw near 110 30
-axis pad0 Gamepad_RightX 0.1
+axis pad7 Gamepad_RightX 0.1
 wait 0.5
 fp_expect yaw near 110 30
-axis pad0 Gamepad_RightX 0
+axis pad7 Gamepad_RightX 0
 
 log == controller: stick-press sprint toggles until the player stops; crouch toggles
 fp_teleport 0 350 0 -90 0
 wait 0.3
-axis pad0 Gamepad_LeftY 1.0
-press pad0 FPSprint
+axis pad7 Gamepad_LeftY 1.0
+press pad7 FPSprint
 wait 1.0
 fp_expect sprinting eq 1
 fp_expect speed near 700 20
-axis pad0 Gamepad_LeftY 0
+axis pad7 Gamepad_LeftY 0
 wait 0.4
-axis pad0 Gamepad_LeftY 1.0
+axis pad7 Gamepad_LeftY 1.0
 wait 0.6
 fp_expect sprinting eq 0
-axis pad0 Gamepad_LeftY 0
-press pad0 FPCrouch
+axis pad7 Gamepad_LeftY 0
+press pad7 FPCrouch
 wait 0.4
 fp_expect crouched eq 1
-press pad0 FPCrouch
+press pad7 FPCrouch
 wait 0.4
 fp_expect crouched eq 0
-press pad0 FPJump
+press pad7 FPJump
 wait 0.2
 fp_expect falling eq 1
 wait 1.0

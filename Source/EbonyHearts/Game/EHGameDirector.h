@@ -23,6 +23,7 @@
 class ACameraActor;
 class AEHFighterVisual;
 class AEHPlayerCharacter;
+class AEHTrainingDummy;
 class AEHVfx;
 class UTexture2D;
 
@@ -195,6 +196,8 @@ private:
 	TObjectPtr<UTexture2D> KeyArtTexture;
 	UPROPERTY()
 	TObjectPtr<AEHPlayerCharacter> FPPlayer;
+	UPROPERTY()
+	TObjectPtr<AEHTrainingDummy> FPDummy;
 
 	// Data
 	eh::Rules Rules;
@@ -315,6 +318,14 @@ private:
 	FEHFirstPersonInput LastFPInput;
 	FVector FPMark = FVector::ZeroVector;   // automation: fp_mark / fp_expect moved
 	bool bHadFocus = true;
+	float HurtFlash = 0.0f;
+	int32 FPDeaths = 0;
+	int32 FPGuardedCount = 0;
+	int32 FPHurtCount = 0;
+	int32 FrameCaptureLeft = 0;     // automation: fp_frames screenshots every rendered frame
+	int32 FrameCaptureIndex = 0;
+	double FrameCaptureNext = 0.0;
+	FString FrameCaptureName;
 	bool LoadFirstPersonData();
 	void BeginFirstPerson();
 	void TickFirstPerson(float DeltaSeconds);

@@ -30,6 +30,10 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::FPJump: return TEXT("FPJump");
 	case EEHAction::FPCrouch: return TEXT("FPCrouch");
 	case EEHAction::FPSprint: return TEXT("FPSprint");
+	case EEHAction::FPJab: return TEXT("FPJab");
+	case EEHAction::FPStraight: return TEXT("FPStraight");
+	case EEHAction::FPShove: return TEXT("FPShove");
+	case EEHAction::FPBlock: return TEXT("FPBlock");
 	default: return TEXT("?");
 	}
 }
@@ -56,6 +60,10 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::FPJump: return TEXT("FirstPersonJump");
 	case EEHAction::FPCrouch: return TEXT("FirstPersonCrouch");
 	case EEHAction::FPSprint: return TEXT("FirstPersonSprint");
+	case EEHAction::FPJab: return TEXT("FirstPersonJab");
+	case EEHAction::FPStraight: return TEXT("FirstPersonStraight");
+	case EEHAction::FPShove: return TEXT("FirstPersonShove");
+	case EEHAction::FPBlock: return TEXT("FirstPersonBlock");
 	default: return TEXT("?");
 	}
 }
@@ -82,6 +90,10 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::FPJump: return TEXT("Jump");
 	case EEHAction::FPCrouch: return TEXT("Crouch");
 	case EEHAction::FPSprint: return TEXT("Sprint");
+	case EEHAction::FPJab: return TEXT("Jab");
+	case EEHAction::FPStraight: return TEXT("Straight");
+	case EEHAction::FPShove: return TEXT("Shove");
+	case EEHAction::FPBlock: return TEXT("Block (hold)");
 	default: return TEXT("?");
 	}
 }
@@ -134,12 +146,12 @@ TArray<EEHAction> EHActionsFor(EEHBindingSet Set)
 	using A = EEHAction;
 	if (Set == EEHBindingSet::FPKeyboard)
 	{
-		return {A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPShove, A::FPBlock, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	if (Set == EEHBindingSet::FPController)
 	{
 		// The left stick always moves and the right stick always looks, so only buttons are listed.
-		return {A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPShove, A::FPBlock, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	return {A::Light, A::Heavy, A::Dodge, A::Throw, A::Block, A::Special, A::Left, A::Right, A::Jump, A::Down, A::Reset};
 }
@@ -239,6 +251,16 @@ FEHBindings FEHBindings::Defaults()
 	Set(S::FPController, A::FPJump, EKeys::Gamepad_FaceButton_Bottom);
 	Set(S::FPController, A::FPCrouch, EKeys::Gamepad_RightThumbstick);
 	Set(S::FPController, A::FPSprint, EKeys::Gamepad_LeftThumbstick);
+	// Physical techniques (2026-11-21): the right hand holds both punches and the left holds block, so strikes and
+	// stick movement mix without moving a thumb.
+	Set(S::FPKeyboard, A::FPJab, EKeys::LeftMouseButton);
+	Set(S::FPKeyboard, A::FPStraight, EKeys::RightMouseButton);
+	Set(S::FPKeyboard, A::FPShove, EKeys::E);
+	Set(S::FPKeyboard, A::FPBlock, EKeys::Q);
+	Set(S::FPController, A::FPJab, EKeys::Gamepad_RightShoulder);
+	Set(S::FPController, A::FPStraight, EKeys::Gamepad_RightTrigger);
+	Set(S::FPController, A::FPShove, EKeys::Gamepad_FaceButton_Right);
+	Set(S::FPController, A::FPBlock, EKeys::Gamepad_LeftShoulder);
 	return B;
 }
 
@@ -895,6 +917,36 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			if (!Kept.IsEmpty())
 			{
 				Notes += FString::Printf(TEXT(" Kept as you had them, because the new button is one of yours: %s."), *Kept);
+			}
+		}
+		if (Version < 7)
+		{
+			// Version 7 added the physical techniques to the first-person layouts. Their defaults go wherever the key is
+			// free; a key the player already gave another action stays theirs, and the technique is left without it.
+			FString Taken;
+			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
+			{
+				for (EEHAction A : {EEHAction::FPJab, EEHAction::FPStraight, EEHAction::FPShove, EEHAction::FPBlock})
+				{
+					for (int32 K = 0; K < EHKeysPerAction; ++K)
+					{
+						const FKey Key = Loaded.Keys[Idx(BS)][Idx(A)][K];
+						const FEHBindingRef C = Key.IsValid() ? Loaded.FindConflict(BS, A, K, Key) : FEHBindingRef();
+						if (C.IsValid() && C.Action != A)
+						{
+							Loaded.Keys[Idx(BS)][Idx(A)][K] = EKeys::Invalid;
+							Taken += FString::Printf(TEXT("%s%s (%s) is used by %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), *Key.GetDisplayName(false).ToString(), EHActionLabel(A), EHActionLabel(C.Action));
+						}
+					}
+				}
+			}
+			if (Version == 6)
+			{
+				Notes += FString::Printf(TEXT("%sNew: Jab, Straight, Shove and Block have their own buttons."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				if (!Taken.IsEmpty())
+				{
+					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
+				}
 			}
 		}
 		// A layout with a duplicate or reserved key falls back to its defaults; the others are kept.

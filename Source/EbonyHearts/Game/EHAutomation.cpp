@@ -1181,8 +1181,24 @@ void AEHGameDirector::RunBindingsSelfTest()
 		const FString FPV6Path = FPaths::Combine(Dir, TEXT("fp_v6.json"));
 		Check(FPW6.Save(FPV6Path), TEXT("version 6 file written"));
 		const FEHSettings FPR6 = FEHSettings::Load(nullptr, FPV6Path);
-		Check(FPR6.LoadedVersion == 6 && FMath::IsNearlyEqual(FPR6.MouseSensitivity, 0.13f) && FPR6.bInvertLook && FPR6.FieldOfView == 100 && FPR6.bCrouchToggle && FPR6.StaminaMeter == 2 &&
+		Check(FPR6.LoadedVersion == EHSettingsVersion && FMath::IsNearlyEqual(FPR6.MouseSensitivity, 0.13f) && FPR6.bInvertLook && FPR6.FieldOfView == 100 && FPR6.bCrouchToggle && FPR6.StaminaMeter == 2 &&
 			FPR6.Bindings.Get(S::FPKeyboard, A::FPSprint, 0) == EKeys::ThumbMouseButton, TEXT("version 6 round trip: look, field of view, toggles, meter and a mouse binding"));
+	}
+	// Physical techniques (settings version 7).
+	Check(D.Get(S::FPKeyboard, A::FPJab, 0) == EKeys::LeftMouseButton && D.Get(S::FPKeyboard, A::FPStraight, 0) == EKeys::RightMouseButton &&
+		D.Get(S::FPKeyboard, A::FPShove, 0) == EKeys::E && D.Get(S::FPKeyboard, A::FPBlock, 0) == EKeys::Q, TEXT("techniques: left and right mouse buttons, E, Q"));
+	Check(D.Get(S::FPController, A::FPJab, 0) == EKeys::Gamepad_RightShoulder && D.Get(S::FPController, A::FPStraight, 0) == EKeys::Gamepad_RightTrigger &&
+		D.Get(S::FPController, A::FPShove, 0) == EKeys::Gamepad_FaceButton_Right && D.Get(S::FPController, A::FPBlock, 0) == EKeys::Gamepad_LeftShoulder,
+		TEXT("techniques on a controller: R1 / RB, R2 / RT, Circle / B, L1 / LB"));
+	{
+		const FString V6Path = FPaths::Combine(Dir, TEXT("fp_v6_jump_on_mouse.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":6,\"bindings\":{\"fpKeyboard\":{\"FirstPersonJump\":[\"LeftMouseButton\",\"SpaceBar\",\"\"]}}}"), *V6Path);
+		Warning.Reset();
+		const FEHSettings V6 = FEHSettings::Load(&Warning, V6Path);
+		FString V6Report;
+		Check(V6.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::LeftMouseButton && V6.Bindings.IsUnbound(S::FPKeyboard, A::FPJab) &&
+			V6.Bindings.Get(S::FPKeyboard, A::FPStraight, 0) == EKeys::RightMouseButton && !V6.Bindings.HasConflicts(&V6Report) && Warning.Contains(TEXT("Jab")),
+			TEXT("version 6 to 7: the player's own mouse binding stays; the jab is left without it and the notice says so ") + Warning);
 	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }

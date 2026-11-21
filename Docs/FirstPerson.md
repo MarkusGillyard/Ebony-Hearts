@@ -1,7 +1,8 @@
-# First-person prototype: Walk the Chapel
+# First-person prototype
 
-This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space: the player walks, sprints,
-jumps and crouches through the flooded nave. The game starts straight in the Chapel, with no title screen or menus
+This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space. Milestone 2, Walk the Chapel:
+the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
+shove and a held block, practised on a training dummy. The game starts straight in the Chapel, with no title screen or menus
 before play. The 2.5D slice stays intact in `main`'s history. Its fighting code is still compiled here but is not
 reachable from the first-person flow.
 
@@ -28,6 +29,10 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Jump | Space | A / Cross |
 | Crouch | Left Ctrl (and C); hold | Right stick press; toggles |
 | Sprint | Left Shift; hold | Left stick press; toggles until you stop moving forward |
+| Jab | Left mouse button | R1 / RB |
+| Straight | Right mouse button | R2 / RT |
+| Shove | E | Circle / B |
+| Block (hold) | Q | L1 / LB |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -79,6 +84,49 @@ second table are starting points too; the creator's playtest decides all of them
 The player-facing Stamina readout is a thin line below the centre of the view. By default it shows only while
 Stamina changes (Settings > Accessibility > Stamina meter: Off, While it changes, Always). It is a placeholder for
 the playtest; the creator decides how Stamina is shown.
+
+## Physical techniques
+
+The techniques are game state stepped at 60 frames per second (`EHFists.*`). Hit detection, the dummy's reactions, the
+sounds and the arms all read that state, so what the player sees and what connects come from one place.
+
+| Technique | Frames (startup / active / recovery) | Reach | Damage | Hitstop | Walking speed during it |
+|---|---|---|---|---|---|
+| Jab | 6 / 3 / 10 (0.32 s) | 95 cm | 6 | 3 frames | 80% |
+| Straight | 11 / 3 / 18 (0.53 s) | 115 cm | 12 | 5 frames | 70% |
+| Shove | 9 / 4 / 18 (0.52 s) | 100 cm, wider | 0; pushes 2 m over 15 frames | 2 frames | 70% |
+| Block (hold) | rises in 5 frames, lowers in 6 | | stops 70% from within 70° of the view | | 60% |
+
+Damage, the shove's 2 m and the guard's 70% are the prototype plan's proposed values; frames, reach, hitstop and
+speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`).
+
+- **Aim.** A strike sweeps a sphere along the view from the eyes. A wall or pier in between stops it (a knock on stone,
+  no hit).
+- **Combos.** The jab chains into the straight as soon as its active frames end, hit or miss. The straight chains
+  into nothing. A press up to 8 frames before a technique allows it still counts; a later one is dropped.
+- **Guard.** While the guard is held no technique starts; one pressed while it lowers comes out as soon as it is down.
+  Sprinting stops for any technique or the guard.
+- **Contact.** Hitstop holds the fist and the target together; the view tilts slightly (none with Reduce camera
+  shake); a small spark appears at the fist.
+- **Health and death.** The player has 100 Health. A blow that empties it resets the Chapel at once: the player at the
+  entrance with full Health and Stamina, the dummy back in place, every technique and its effects cleared. A thin red
+  line above Stamina shows Health after a hit (hidden with the Stamina meter set to Off).
+
+### Arms
+
+Placeholder arms made of plain shapes (`EHViewArms.*`): shoulders, elbows by two-bone IK, fists. They are drawn as
+first-person primitives, with their own 72° field of view and pulled toward the eyes (first-person scale 0.6), so
+they never clip into walls, and they appear only while a technique or the guard needs them, staying up 0.6 s after the
+last one. Each fist arrives at full extension exactly on the technique's first active frame and holds through hitstop.
+
+### Training dummy
+
+The slice's Ashka test model stands in the nave 4.5 m in front of the start (`EHTrainingDummy.*`). Pause > Training
+dummy switches it between **Stand** (takes every hit), **Guard** (blocks hits from its front, 70% stopped) and
+**Strikes back** (when the player is within 1.7 m and in front of it, a slow 24-frame wind-up into a 10-damage punch,
+then 70 frames before the next; a hit in the wind-up stops it). It turns to face the player, reacts to each technique,
+and is pushed by the shove, sliding along anything it meets. Above it a training readout counts hits, blocks and
+damage. Reset the dummy puts it back with its count cleared.
 
 ## The Chapel in first person
 
@@ -139,11 +187,13 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
-| `fp_teleport`, `fp_view`, `fp_box`, `fp_clear_boxes`, `fp_body_visible`, `fp_planar` | development only | test positions, a blocking test box, the body and reflection experiments |
+| `fp_dummy <stand\|guard\|strikes>`, `fp_dummy_reset` | all | what the pause menu's dummy controls do |
+| `fp_frames <count> <name>` | all | slows the world to 1/20 and saves one screenshot per combat frame |
+| `fp_teleport`, `fp_view`, `fp_box`, `fp_clear_boxes`, `fp_body_visible`, `fp_planar`, `fp_dummy_place`, `fp_health`, `fp_arms_fp` | development only | test positions, a blocking test box, the body and reflection experiments, placing the dummy, test Health, arms drawn as ordinary geometry |
 
 Scripts: `fp_movement.txt` (movement, Stamina, jump, crouch under a low ceiling, controller sticks and dead zone,
 mouse look, water and steps, pause, focus loss, reset), `fp_controls_a.txt` and `fp_controls_b.txt` (remapping, then
@@ -152,12 +202,22 @@ persistence across a relaunch), `fp_audit.txt`, `fp_presentation.txt`, `fp_refle
 in Shipping) `fp_xinput.txt` with `fp_xinput_drive.py`
 (real X11 keyboard and mouse input, and a real focus loss), `fp_pad.txt` with `fp_virtual_pad.py` (a virtual uinput
 controller through SDL, including a disconnect), `fp_soak.txt` (the route eight times with pauses and settings
-round trips) and `fp_import.txt` (a profile that has only the slice's settings file).
+round trips), `fp_import.txt` (a profile that has only the slice's settings file), `fp_fists.txt` (every technique,
+chain, buffer, whiff, wall, shove, the dummy's guard from the front and behind, its strike against the guard, a
+wind-up interrupted, death, pause and reset mid-technique, the controller), `fp_ship_fists.txt` (the same ground
+with inputs only, for Shipping and for footage) and `fp_fists_frames.txt` (frame-by-frame captures).
+
+Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
+would override injected stick values on `pad0`.
 
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
 ## Known limits
+
+- Fists: the arms are plain shapes and the shove uses the same fists as the punches; final arms and animation are the
+  creator's. The guard does not cost Stamina yet; stat scaling and anything gained from landed strikes come with the
+  next milestone. The dummy's reactions and punch are the slice's fighting clips.
 
 - Footsteps sound only in water (`S_StepWater`). Dry surfaces (pews, altar steps, rubble) are silent; there is no dry
   step sound yet.

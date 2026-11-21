@@ -6,6 +6,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Dom/JsonObject.h"
 #include "Engine/SkeletalMesh.h"
+#include "EHViewArms.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -71,6 +72,17 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	Num(TEXT("stepIntervalWalk"), StepIntervalWalk, 0.1f, 3);
 	Num(TEXT("stepIntervalSprint"), StepIntervalSprint, 0.1f, 3);
 	Num(TEXT("stepIntervalCrouch"), StepIntervalCrouch, 0.1f, 3);
+	Num(TEXT("playerHealth"), PlayerHealth, 1, 10000);
+	const TSharedPtr<FJsonObject>* FistsObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("fists"), FistsObj) && !Fists.Load(*FistsObj, OutError))
+	{
+		return false;
+	}
+	const TSharedPtr<FJsonObject>* DummyObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("dummy"), DummyObj) && !Dummy.Load(*DummyObj, OutError))
+	{
+		return false;
+	}
 	const TArray<TSharedPtr<FJsonValue>>* SpawnArr = nullptr;
 	if (Root->TryGetArrayField(TEXT("spawn"), SpawnArr))
 	{
@@ -94,7 +106,8 @@ FString FEHFirstPersonTuning::Describe() const
 	return FString::Printf(TEXT("walk=%.0f sprint=%.0f crouch=%.0f accel=%.0f brake=%.0f friction=%.1f air=%.2f jump=%.0f buffer=%.2f gravity=%.2f step=%.0f floor=%.0f capsule=r%.0f/h%.0f/c%.0f eyes=%.0f/%.0f stamina=%.0f sprint_s=%.1f recover=%.0f/s after %.1fs restart=%.0f deadzone=%.2f stick=%.0f/%.0f exp=%.1f pitch=%.0f water_z=%.1f"),
 		WalkSpeed, SprintSpeed, CrouchSpeed, Acceleration, BrakingDeceleration, GroundFriction, AirControl, JumpVelocity, JumpBufferSeconds, GravityScale, StepHeight,
 		WalkableFloorDegrees, CapsuleRadius, StandHeight, CrouchHeight, StandEyeHeight, CrouchEyeHeight, StaminaMax, SprintSecondsFromFull, StaminaRecoverPerSecond,
-		StaminaRecoverDelay, SprintRestartStamina, StickDeadZone, StickYawDegPerSecond, StickPitchDegPerSecond, StickExponent, PitchLimit, WaterSurfaceZ);
+		StaminaRecoverDelay, SprintRestartStamina, StickDeadZone, StickYawDegPerSecond, StickPitchDegPerSecond, StickExponent, PitchLimit, WaterSurfaceZ)
+		+ FString::Printf(TEXT(" health=%.0f fists: %s"), PlayerHealth, *Fists.Describe());
 }
 
 AEHPlayerCharacter::AEHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -110,6 +123,14 @@ AEHPlayerCharacter::AEHPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	CameraComp->SetupAttachment(GetCapsuleComponent());
 	CameraComp->bUsePawnControlRotation = true;
 	CameraComp->SetConstraintAspectRatio(false);
+	// Arms are drawn with their own field of view, pulled toward the eye so they never reach into walls.
+	CameraComp->SetEnableFirstPersonFieldOfView(true);
+	CameraComp->SetFirstPersonFieldOfView(72.0f);
+	CameraComp->SetEnableFirstPersonScale(true);
+	// 0.6 keeps the nearest fist (about 20 cm from the eyes) beyond the 10 cm near clip plane.
+	CameraComp->SetFirstPersonScale(0.6f);
+	Arms = CreateDefaultSubobject<UEHViewArms>(TEXT("ViewArms"));
+	Arms->SetupAttachment(CameraComp);
 
 	// The hidden body: never drawn to its own player's camera, still in shadows (and in other views).
 	Body = GetMesh();
@@ -144,6 +165,7 @@ void AEHPlayerCharacter::BeginPlay()
 			Body->PlayAnimation(BodyIdle, true);
 		}
 	}
+	Arms->Build();
 	ApplyTuning(Tuning);
 	ResetToStart();
 }
@@ -181,6 +203,8 @@ void AEHPlayerCharacter::ApplyTuning(const FEHFirstPersonTuning& InTuning)
 	BaseEyeHeight = Tuning.StandEyeHeight - Tuning.StandHeight * 0.5f;
 	CrouchedEyeHeight = Tuning.CrouchEyeHeight - Tuning.CrouchHeight * 0.5f;
 	StaminaValue = FMath::Min(StaminaValue, Tuning.StaminaMax);
+	Fists.Configure(Tuning.Fists);
+	HealthValue = FMath::Min(HealthValue, Tuning.PlayerHealth);
 }
 
 void AEHPlayerCharacter::SetFieldOfView(float HorizontalDegrees)
@@ -216,6 +240,15 @@ void AEHPlayerCharacter::ResetToStart()
 	EyeZ = Tuning.StandEyeHeight;
 	StepTimer = 0.0f;
 	bWasFalling = false;
+	Fists.Reset();
+	FistAccum = 0.0f;
+	HealthValue = Tuning.PlayerHealth;
+	SinceHurt = 100.0f;
+	KickPitch = 0.0f;
+	if (Arms)
+	{
+		Arms->SnapHidden();
+	}
 	Emit(FEHFirstPersonEvent::EKind::Reset, 0.0f);
 }
 
@@ -258,16 +291,31 @@ void AEHPlayerCharacter::ApplyInput(const FEHFirstPersonInput& In, float DeltaSe
 		UnCrouch();
 	}
 
+	// Techniques: presses and the guard go to the fixed-step state; it runs before movement reads its speed limit.
+	Fists.SetBlockHeld(In.bBlock);
+	if (In.FistPress != EEHFistAction::None)
+	{
+		Fists.Press(In.FistPress);
+	}
+	FistAccum = FMath::Min(FistAccum + DeltaSeconds, 0.25f);
+	while (FistAccum >= 1.0f / 60.0f)
+	{
+		FistAccum -= 1.0f / 60.0f;
+		StepFists();
+	}
+	const bool bBusy = Fists.Action() != EEHFistAction::None || Fists.IsBlockHeld();
+
 	// Sprint: forward, on the ground, standing, with Stamina; an emptied bar must refill to the restart level.
 	const FVector2D MoveIn = In.Move.GetSafeNormal() * FMath::Min(In.Move.Size(), 1.0f);
 	if (bExhausted && StaminaValue >= Tuning.SprintRestartStamina)
 	{
 		bExhausted = false;
 	}
-	const bool bCanSprint = In.bSprint && !bWantCrouch && !bIsCrouched && MoveIn.Y >= Tuning.SprintForwardMin && !bExhausted && StaminaValue > 0.0f;
+	const bool bCanSprint = In.bSprint && !bBusy && !bWantCrouch && !bIsCrouched && MoveIn.Y >= Tuning.SprintForwardMin && !bExhausted && StaminaValue > 0.0f;
 	// Keep sprinting through a jump; only start one on the ground.
 	bSprinting = bCanSprint && (bGrounded || bSprinting);
-	Move->MaxWalkSpeed = bSprinting ? Tuning.SprintSpeed : Tuning.WalkSpeed;
+	Move->MaxWalkSpeed = (bSprinting ? Tuning.SprintSpeed : Tuning.WalkSpeed) * Fists.MoveScale();
+	Move->MaxWalkSpeedCrouched = Tuning.CrouchSpeed * Fists.MoveScale();
 
 	const FRotator YawOnly(0.0f, R.Yaw, 0.0f);
 	const FVector Forward = YawOnly.Vector();
@@ -339,11 +387,133 @@ void AEHPlayerCharacter::ApplyInput(const FEHFirstPersonInput& In, float DeltaSe
 	}
 }
 
+void AEHPlayerCharacter::StepFists()
+{
+	TArray<FEHFistEvent> FistEvents;
+	Fists.Step(FistEvents);
+	for (const FEHFistEvent& E : FistEvents)
+	{
+		if (E.Kind == FEHFistEvent::EKind::Start)
+		{
+			FEHFirstPersonEvent Out;
+			Out.Kind = FEHFirstPersonEvent::EKind::Swing;
+			Out.Action = E.Action;
+			Out.Location = CameraComp->GetComponentLocation();
+			Events.Add(Out);
+		}
+		// A technique that chained into the next one in this step has handed over; its frame is not checked again.
+		else if (E.Kind == FEHFistEvent::EKind::Active && E.Action == Fists.Action() && !Fists.HasConnected())
+		{
+			CheckContact(E.Action);
+		}
+	}
+}
+
+void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
+{
+	// The strike reaches along the aim from the eyes: a sphere for the target, a line for walls in between.
+	const FEHStrikeDef& D = Tuning.Fists.Def(Action);
+	const FVector Eye = CameraComp->GetComponentLocation();
+	const FVector Aim = CameraComp->GetForwardVector();
+	const FVector End = Eye + Aim * D.Reach;
+	FCollisionQueryParams Params(TEXT("EHFist"), false, this);
+	TArray<FHitResult> Hits;
+	GetWorld()->SweepMultiByObjectType(Hits, Eye + Aim * 10.0f, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(D.Radius), Params);
+	AEHTrainingDummy* Target = nullptr;
+	FHitResult TargetHit;
+	for (const FHitResult& H : Hits)
+	{
+		if (AEHTrainingDummy* Dm = Cast<AEHTrainingDummy>(H.GetActor()))
+		{
+			if (Target == nullptr || H.Distance < TargetHit.Distance)
+			{
+				Target = Dm;
+				TargetHit = H;
+			}
+		}
+	}
+	FHitResult Wall;
+	const bool bWall = GetWorld()->LineTraceSingleByChannel(Wall, Eye, End, ECC_Visibility, Params) && Cast<AEHTrainingDummy>(Wall.GetActor()) == nullptr;
+	if (Target && !(bWall && Wall.Distance + 5.0f < TargetHit.Distance))
+	{
+		const FVector At = TargetHit.ImpactPoint.IsNearlyZero() ? Target->GetActorLocation() : FVector(TargetHit.ImpactPoint);
+		const FEHDummyHit R = Target->ReceiveHit(Action, D, Eye, At);
+		Fists.MarkConnected();
+		Fists.OnContact();
+		Kick(Action == EEHFistAction::Straight ? -0.7f : (Action == EEHFistAction::Jab ? -0.35f : -0.25f));
+		FEHFirstPersonEvent Out;
+		Out.Kind = FEHFirstPersonEvent::EKind::Contact;
+		Out.Action = Action;
+		Out.Location = At;
+		Out.Damage = R.Damage;
+		Out.bBlocked = R.bBlocked;
+		Events.Add(Out);
+	}
+	else if (bWall)
+	{
+		// Knuckles on stone: the technique stops connecting for the rest of its active frames.
+		Fists.MarkConnected();
+		Kick(-0.2f);
+		FEHFirstPersonEvent Out;
+		Out.Kind = FEHFirstPersonEvent::EKind::Wall;
+		Out.Action = Action;
+		Out.Location = Wall.ImpactPoint;
+		Events.Add(Out);
+	}
+}
+
+float AEHPlayerCharacter::ReceiveStrike(float Damage, const FVector& From)
+{
+	// The guard covers the front of the view; anything else lands in full.
+	FVector ToAttacker = From - GetActorLocation();
+	ToAttacker.Z = 0.0f;
+	FVector Facing = CameraComp->GetForwardVector();
+	Facing.Z = 0.0f;
+	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToAttacker.GetSafeNormal(), Facing.GetSafeNormal()), -1.0f, 1.0f)));
+	const bool bGuarded = Fists.IsGuarding() && Angle <= Tuning.Fists.BlockAngle;
+	const float Taken = bGuarded ? Damage * (1.0f - Tuning.Fists.BlockReduction) : Damage;
+	HealthValue = FMath::Max(0.0f, HealthValue - Taken);
+	SinceHurt = 0.0f;
+	Kick(bGuarded ? 0.6f : 1.6f);
+	FEHFirstPersonEvent Out;
+	Out.Kind = bGuarded ? FEHFirstPersonEvent::EKind::Guarded : FEHFirstPersonEvent::EKind::Hurt;
+	Out.Location = CameraComp->GetComponentLocation() + CameraComp->GetForwardVector() * 30.0f;
+	Out.Damage = Taken;
+	Out.bBlocked = bGuarded;
+	Events.Add(Out);
+	if (HealthValue <= 0.0f)
+	{
+		FEHFirstPersonEvent DeathEvent;
+		DeathEvent.Kind = FEHFirstPersonEvent::EKind::Died;
+		DeathEvent.Location = FeetLocation();
+		Events.Add(DeathEvent);
+	}
+	return Taken;
+}
+
+void AEHPlayerCharacter::Kick(float Degrees)
+{
+	KickPitch = FMath::Clamp(KickPitch + Degrees * ShakeScale, -3.0f, 3.0f);
+}
+
 void AEHPlayerCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	SinceHurt += DeltaSeconds;
 	UpdateWater();
 	UpdateCamera(DeltaSeconds);
+	// The kick tilts the view only (the aim, the control rotation, never moves) and settles exponentially, which
+	// stays stable at any frame time.
+	KickPitch *= FMath::Exp(-DeltaSeconds / 0.07f);
+	CameraComp->ClearAdditiveOffset();
+	if (FMath::Abs(KickPitch) > 0.001f)
+	{
+		CameraComp->AddAdditiveOffset(FTransform(FRotator(KickPitch, 0.0f, 0.0f)), 0.0f);
+	}
+	if (Arms)
+	{
+		Arms->UpdateArms(Fists, FistAccum * 60.0f, DeltaSeconds);
+	}
 	UpdateBody();
 	const bool bFalling = GetCharacterMovement()->IsFalling();
 	if (bFalling && !bWasFalling)

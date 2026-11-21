@@ -27,6 +27,11 @@ enum class EEHAction : uint8
 	FPJump,
 	FPCrouch,
 	FPSprint,
+	// Physical techniques (settings version 7).
+	FPJab,
+	FPStraight,
+	FPShove,
+	FPBlock,
 	Count
 };
 
@@ -188,7 +193,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 6;
+constexpr int32 EHSettingsVersion = 7;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

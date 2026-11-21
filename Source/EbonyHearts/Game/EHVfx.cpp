@@ -129,7 +129,8 @@ AEHVfx::FParticle& AEHVfx::Spawn(EEHFxTex Tex, const FVector& Pos, float Life, f
 	P.Size0 = Size0;
 	P.Size1 = Size1;
 	P.Color = Color;
-	P.Intensity = bReduceFlash ? Intensity * 0.45f : Intensity;
+	P.Intensity = (bReduceFlash ? Intensity * 0.45f : Intensity) * (bImpact ? ImpactBrightness : 1.0f);
+	P.Scale = bImpact ? ImpactSize : 1.0f;
 	UMaterialInstanceDynamic* M = Materials[Index];
 	const int32 T = static_cast<int32>(Tex);
 	if (Textures.IsValidIndex(T) && Textures[T])
@@ -189,14 +190,20 @@ void AEHVfx::TickPool(TArray<FParticle>& List, TArray<TObjectPtr<UStaticMeshComp
 		}
 		const float T = P.Age / P.Life;
 		P.Vel.Z -= P.Gravity * DeltaSeconds;
-		P.Pos += P.Vel * DeltaSeconds;
-		const float Size = FMath::Lerp(P.Size0, P.Size1, 1.0f - FMath::Square(1.0f - T));
+		P.Pos += P.Vel * DeltaSeconds * P.Scale;
+		const float Size = FMath::Lerp(P.Size0, P.Size1, 1.0f - FMath::Square(1.0f - T)) * P.Scale;
 		// A flame tongue fades in over its first frames and burns out through its flipbook; sprites fade from birth.
 		const float Fade = P.bFire ? FMath::Min(1.0f, T * 10.0f) : (1.0f - T) * (1.0f - T);
 		FQuat Q;
 		if (P.bGround)
 		{
 			Q = FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(P.Angle));
+		}
+		else if (bFaceView)
+		{
+			// Plane normal (+Z) turned toward the eyes, then spun about it.
+			const FVector ToView = (ViewPoint - P.Pos).GetSafeNormal();
+			Q = FRotationMatrix::MakeFromZ(ToView.IsNearlyZero() ? FVector(0, 1, 0) : ToView).ToQuat() * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(P.Angle));
 		}
 		else
 		{
@@ -215,6 +222,7 @@ void AEHVfx::TickPool(TArray<FParticle>& List, TArray<TObjectPtr<UStaticMeshComp
 
 void AEHVfx::Hit(const FVector& At, int32 Facing, bool bHeavy, bool bEnergy, bool bAura, bool bCounter)
 {
+	TGuardValue<bool> ScaleImpact(bImpact, true);
 	if (!BaseMaterial)
 	{
 		return;
@@ -248,6 +256,7 @@ void AEHVfx::Hit(const FVector& At, int32 Facing, bool bHeavy, bool bEnergy, boo
 
 void AEHVfx::Block(const FVector& At, int32 Facing, bool bDeflect)
 {
+	TGuardValue<bool> ScaleImpact(bImpact, true);
 	if (!BaseMaterial)
 	{
 		return;

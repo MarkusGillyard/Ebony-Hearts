@@ -29,7 +29,7 @@ fp_expect falling eq 1
 wait 1.2
 press kbA key:SpaceBar
 fp_expect falling eq 0
-press pad0 key:Gamepad_FaceButton_Right
+press pad7 key:Gamepad_FaceButton_Right
 fp_expect falling eq 1
 wait 1.2
 hold kbA key:I

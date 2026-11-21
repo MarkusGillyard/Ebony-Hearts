@@ -31,9 +31,74 @@
   "pitchLimit": 85,
   "waterSurfaceZ": 3.0,
   "killZ": -400,
-  "spawn": [0, 300, 0],
+  "spawn": [
+    0,
+    300,
+    0
+  ],
   "spawnYaw": -90,
   "stepIntervalWalk": 0.52,
   "stepIntervalSprint": 0.36,
-  "stepIntervalCrouch": 0.70
+  "stepIntervalCrouch": 0.7,
+  "playerHealth": 100,
+  "fists": {
+    "jab": {
+      "startup": 6,
+      "active": 3,
+      "recovery": 10,
+      "reach": 95,
+      "radius": 18,
+      "damage": 6,
+      "hitstop": 3,
+      "moveScale": 0.8
+    },
+    "straight": {
+      "startup": 11,
+      "active": 3,
+      "recovery": 18,
+      "reach": 115,
+      "radius": 18,
+      "damage": 12,
+      "hitstop": 5,
+      "moveScale": 0.7
+    },
+    "shove": {
+      "startup": 9,
+      "active": 4,
+      "recovery": 18,
+      "reach": 100,
+      "radius": 26,
+      "damage": 0,
+      "hitstop": 2,
+      "push": 200,
+      "pushFrames": 15,
+      "moveScale": 0.7
+    },
+    "bufferFrames": 8,
+    "blockRaiseFrames": 5,
+    "blockLowerFrames": 6,
+    "blockReduction": 0.7,
+    "blockAngle": 70,
+    "blockMoveScale": 0.6,
+    "armsLinger": 0.6
+  },
+  "dummy": {
+    "strikeDamage": 10,
+    "windupFrames": 24,
+    "strikeRecovery": 16,
+    "strikeCooldown": 70,
+    "strikeRange": 170,
+    "strikeReach": 165,
+    "strikeArc": 50,
+    "hitstunLight": 16,
+    "hitstunHeavy": 22,
+    "blockstun": 12,
+    "turnRate": 300,
+    "spawn": [
+      0,
+      -150,
+      0
+    ],
+    "spawnYaw": 90
+  }
 }

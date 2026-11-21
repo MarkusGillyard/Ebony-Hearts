@@ -5,12 +5,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EHFists.h"
+#include "EHTrainingDummy.h"
 #include "GameFramework/Character.h"
 
 #include "EHPlayerCharacter.generated.h"
 
 class UCameraComponent;
 class UAnimSequence;
+class UEHViewArms;
 
 struct FEHFirstPersonTuning
 {
@@ -50,6 +53,9 @@ struct FEHFirstPersonTuning
 	float StepIntervalWalk = 0.52f;
 	float StepIntervalSprint = 0.36f;
 	float StepIntervalCrouch = 0.70f;
+	float PlayerHealth = 100.0f;
+	FEHFistTuning Fists;
+	FEHDummyTuning Dummy;
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);
@@ -63,16 +69,21 @@ struct FEHFirstPersonInput
 	bool bJumpPressed = false;
 	bool bCrouch = false;                     // wanted posture (holds and toggles are resolved by the director)
 	bool bSprint = false;
+	EEHFistAction FistPress = EEHFistAction::None;   // the technique pressed this frame, if any
+	bool bBlock = false;                             // the guard button is held
 };
 
 // Something the presentation reacts to (sounds, ripples).
 struct FEHFirstPersonEvent
 {
-	enum class EKind : uint8 { Step, Jump, Land, Reset };
+	enum class EKind : uint8 { Step, Jump, Land, Reset, Swing, Contact, Wall, Hurt, Guarded, Died };
 	EKind Kind = EKind::Step;
 	FVector Location = FVector::ZeroVector;   // at the feet
 	float WaterDepth = 0.0f;                  // cm of water at the feet (0 when dry)
 	float Strength = 1.0f;                    // landing speed or step pace, 0..1
+	EEHFistAction Action = EEHFistAction::None;
+	float Damage = 0.0f;                      // dealt (Contact) or taken (Hurt, Guarded)
+	bool bBlocked = false;                    // Contact: the target guarded it
 };
 
 UCLASS(NotBlueprintable)
@@ -91,6 +102,16 @@ public:
 	void ApplyTuning(const FEHFirstPersonTuning& InTuning);
 	void ApplyInput(const FEHFirstPersonInput& In, float DeltaSeconds);
 	void SetFieldOfView(float HorizontalDegrees);
+	// Camera kicks from contact and hits are scaled by this (0 with Reduce camera shake).
+	void SetShakeScale(float Scale) { ShakeScale = Scale; }
+	// A strike against the player from World location From. Returns the damage taken (after the guard).
+	float ReceiveStrike(float Damage, const FVector& From);
+	float Health() const { return HealthValue; }
+	void SetHealthForTest(float Value) { HealthValue = FMath::Clamp(Value, 1.0f, Tuning.PlayerHealth); }
+	float HealthFraction() const { return Tuning.PlayerHealth > 0.0f ? HealthValue / Tuning.PlayerHealth : 0.0f; }
+	float SecondsSinceHurt() const { return SinceHurt; }
+	const FEHFists& GetFists() const { return Fists; }
+	UEHViewArms* ViewArms() const { return Arms; }
 	// Back to the Chapel's start with full Stamina, standing, at rest.
 	void ResetToStart();
 	void TakeEvents(TArray<FEHFirstPersonEvent>& Out) { Out.Append(Events); Events.Reset(); }
@@ -115,6 +136,8 @@ private:
 	UPROPERTY()
 	TObjectPtr<USkeletalMeshComponent> Body;
 	UPROPERTY()
+	TObjectPtr<UEHViewArms> Arms;
+	UPROPERTY()
 	TObjectPtr<UAnimSequence> BodyIdle;
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> BodyWalk;
@@ -134,9 +157,18 @@ private:
 	bool bWasFalling = false;
 	bool bBodyWalking = false;
 	TArray<FEHFirstPersonEvent> Events;
+	FEHFists Fists;
+	float FistAccum = 0.0f;
+	float HealthValue = 100.0f;
+	float SinceHurt = 100.0f;
+	float ShakeScale = 1.0f;
+	float KickPitch = 0.0f;        // degrees, decaying camera kick
 
 	void UpdateWater();
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateBody();
 	void Emit(FEHFirstPersonEvent::EKind Kind, float Strength);
+	void StepFists();
+	void CheckContact(EEHFistAction Action);
+	void Kick(float Degrees);
 };

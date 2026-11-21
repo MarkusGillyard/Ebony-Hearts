@@ -62,6 +62,9 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | Hidden first-person body | Placeholder | Existing slice assets reused unchanged | `SK_Wren`, `A_Wren_Idle`, `A_Wren_WalkF` (provenance above: MakeHuman CC0 base, ACCAD idle, Mixamo walk) |
 | Water footsteps and ripples | Existing slice assets reused | | `S_StepWater_01-03`, the effect ripple and splash |
 | `fp_box` test boxes | Development-only runtime test fixtures | | Never saved or cooked |
+| First-person arms (runtime) | Placeholder | Made with AI assistance (`EHViewArms.cpp`) | Unreal Engine's `/Engine/BasicShapes/Cylinder`, `Sphere` and `BasicShapeMaterial` (engine content) |
+| Training dummy | Placeholder | Existing slice assets reused unchanged | `SK_Ashka`; `A_Ashka_Idle`, `Guard`, `HitLight`, `HitHeadMedium`, `HitBody`, `BlockHit`, `L1` (provenance above) |
+| Technique sounds | Existing slice assets reused | | `S_WhooshLight`, `S_WhooshHeavy`, `S_HitLight`, `S_HitHeavy`, `S_Block`, `S_BodySlam` |
 
 No new third-party inputs were added.
 

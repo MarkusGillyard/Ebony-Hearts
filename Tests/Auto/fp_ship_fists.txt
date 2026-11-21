@@ -1,0 +1,102 @@
+# Physical techniques in any build, Shipping included: device inputs and observation only (no teleports). From the
+# start the player walks up to the training dummy, then runs every technique, the guard, the dummy's modes, pause and
+# reset. Also the review footage's script: record with capture.py --start-on <evidence>/auto_log.txt:review_start.
+wait 5
+fp_expect screen eq 12
+fp_expect arms eq 0
+hold kbA FPForward
+wait 0.82
+release kbA FPForward
+wait 0.6
+fp_state at_dummy
+fp_expect dummy_dist lt 140
+fp_expect dummy_dist gt 90
+log review_start
+wait 1.0
+
+log == jab, straight, jab into straight
+press kbA FPJab
+wait 0.8
+fp_expect dummy_hits eq 1
+fp_expect dummy_damage eq 6
+press kbA FPStraight
+wait 1.0
+fp_expect dummy_hits eq 2
+fp_expect dummy_damage eq 18
+press kbA FPJab
+press kbA FPStraight
+wait 1.2
+fp_expect dummy_hits eq 4
+fp_expect dummy_damage eq 36
+
+log == shove: the dummy is pushed about 2 m, then walks are needed to reach it again
+press kbA FPShove
+wait 1.2
+fp_expect dummy_dist gt 260
+fp_expect dummy_damage eq 36
+fp_dummy_reset
+wait 1.0
+
+log == guard dummy blocks from the front
+fp_dummy guard
+wait 0.6
+press kbA FPJab
+wait 0.7
+press kbA FPStraight
+wait 1.0
+fp_expect dummy_blocks eq 2
+fp_expect dummy_damage near 5.4 0.05
+
+log == the dummy strikes back; the held guard takes 3 of its 10
+fp_dummy strikes
+wait 2.6
+fp_expect hurt eq 1
+fp_expect health near 90 0.1
+hold kbA FPBlock
+wait 2.0
+release kbA FPBlock
+fp_expect guarded gt 0
+wait 0.5
+log == jabs interrupt its wind-up
+press kbA FPJab
+wait 0.25
+press kbA FPJab
+wait 0.25
+press kbA FPJab
+wait 0.25
+press kbA FPJab
+wait 0.6
+fp_dummy stand
+wait 1.0
+
+log == controller: RB jab, RT straight, B shove, LB guard
+press pad7 FPJab
+wait 0.7
+axis pad7 Gamepad_RightTriggerAxis 1.0
+wait 0.1
+axis pad7 Gamepad_RightTriggerAxis 0.0
+wait 0.9
+hold pad7 FPBlock
+wait 0.3
+fp_expect guarding eq 1
+release pad7 FPBlock
+wait 0.4
+press pad7 FPShove
+wait 1.2
+fp_expect dummy_dist gt 260
+log review_end
+
+log == pause mid-technique, then Return to the start clears everything
+fp_dummy_reset
+wait 0.5
+press kbA FPStraight
+press kbA Pause
+fp_expect action eq 2
+press kbA Down
+press kbA Confirm
+wait 0.4
+fp_expect action eq 0
+fp_expect arms eq 0
+fp_expect health eq 100
+fp_expect y near 300 5
+quit
