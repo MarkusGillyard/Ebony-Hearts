@@ -99,4 +99,6 @@ fp_expect action eq 0
 fp_expect arms eq 0
 fp_expect health eq 100
 fp_expect y near 300 5
+# Footage capture runs slower than real time; the window stays open until it has every frame.
+wait 12
 quit
