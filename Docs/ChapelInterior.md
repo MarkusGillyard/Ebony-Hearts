@@ -99,7 +99,7 @@ The stair's parapet starts three steps up, at a newel post, so the stair can be 
   - **Sanctuary:**
     - the kneeler: a kneeling board, and a desk carrying a cracked heart;
     - a white-to-black inlay of nine stones at the platform's edge;
-    - two veiled statues flanking the altar.
+    - one veiled statue behind the altar, beneath the rose window.
   - **Forge:**
     - a hearth with a stone hood and embers, and a bellows;
     - an anvil on a stump, a quench trough, a counter with goods, and a rack of plain blades;

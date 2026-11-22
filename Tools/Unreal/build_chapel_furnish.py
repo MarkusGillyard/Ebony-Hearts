@@ -3,8 +3,8 @@
 then the navigation stage (EH_FP_STAGE=nav Tools/Unreal/adapt_chapel_fp.py). Run after build_chapel_interior.py.
 
 It makes the few material instances the kit lacks (cloth tints, an ember glow, faintly lime-green water, a red flare),
-imports the pieces made by Tools/Blender/chapel/chapel_furnish.py, and places them: the kneeler, the two veiled
-statues, the forge (hearth, anvil, trough, counter, rack, Dwar's stand-in), the Hall of the Six's six alcoves with
+imports the pieces made by Tools/Blender/chapel/chapel_furnish.py, and places them: the kneeler, the Ebony
+Saintess behind the altar, the forge (hearth, anvil, trough, counter, rack, Dwar's stand-in), the Hall of the Six's six alcoves with
 their traces and the blank mural, two devotional boards on the piers, the camp, and a few of the kit's own candles.
 Re-running it replaces its own actors (labels FX_*, FXL_*).
 """
@@ -179,6 +179,9 @@ def place(eas, mesh, label, loc, yaw=0.0, scale=unreal.Vector(1, 1, 1)):
 
 def main():
     report = json.load(open(os.path.join(SRC, "furnish.json")))
+    # the two flanking statues of the first stage-2 build were replaced by the one Saintess (Markus, 2026-11-22)
+    if eal.does_asset_exist(f"{DIR}/SM_IX_Statue"):
+        eal.delete_asset(f"{DIR}/SM_IX_Statue")
     extra = make_materials()
     meshes = import_pieces(report, extra)
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -195,8 +198,8 @@ def main():
     V = unreal.Vector
     for n in ("SM_IX_Kneeler", "SM_IX_ForgeHearth", "SM_IX_ForgeWork", "SM_IX_ForgeWater", "SM_IX_Dwar", "SM_IX_Mural", "SM_IX_Camp"):
         place(eas, meshes[n], "FX_" + n[6:], V(0, 0, 0))
-    for side in (-1, 1):
-        place(eas, meshes["SM_IX_Statue"], f"FX_Statue_{'N' if side < 0 else 'S'}", V(side * 390, -1945, 44))
+    # the Ebony Saintess: one veiled figure behind the altar, beneath the rose window
+    place(eas, meshes["SM_IX_Saintess"], "FX_Saintess", V(0, -1980, 44))
     for wall, y, yaw, inward in (("W", -440, 180.0, -25.0), ("E", -1160, 0.0, 25.0)):
         for x in HALL_X:
             place(eas, meshes["SM_IX_Alcove"], f"FX_Alcove_{wall}{x}", V(x, y, 45), yaw)

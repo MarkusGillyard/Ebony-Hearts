@@ -12,7 +12,7 @@ World pieces (Blender metres, the nave's frame; Unreal = (x, -y, z) * 100), plac
   SM_IX_Mural        the Hall of the Six's end-wall panel (blank, framed: an illustration slot)
   SM_IX_Camp         the present occupants' camp: bedrolls, a brazier with embers, crates, a sack, a pot
 Local pieces (origin given per piece; placed by Tools/Unreal/build_chapel_interior.py):
-  SM_IX_Statue       a veiled figure on a plinth (origin: plinth base centre; faces -Y)
+  SM_IX_Saintess     the Ebony Saintess: one veiled figure on a slim plinth (origin: plinth base centre; faces -Y)
   SM_IX_Alcove       one of the Hall of the Six's alcoves (origin: on the floor at the wall face; the room is -Y)
   SM_IX_Trace_*      the traces in the alcoves (origin: the plinth top's centre): Wren, Ashka, Mirela, Nix, Bram
   SM_IX_Board        a devotional board (origin: its bottom centre at the wall; faces -Y): an illustration slot
@@ -104,28 +104,35 @@ def kneeler():
     return p
 
 
-def statue():
-    """A veiled figure, faceless, hands folded under the veil; on a plinth. Faces -Y."""
-    p = Piece("SM_IX_Statue")
-    p.add(box(-0.5, 0.5, -0.5, 0.5, 0.0, 0.55, 0.04), DRS, UV_BOX)
-    p.add(box(-0.56, 0.56, -0.56, 0.56, 0.5, 0.6, 0.03), DRS, UV_BOX)
-    base = 0.6
+def saintess():
+    """The Ebony Saintess: one veiled figure, faceless, hands folded under the veil, on a slim plinth behind the altar
+    and beneath the rose window (the space there is about half a metre deep, so she is flattened front to back).
+    Origin: the plinth's base centre on the sanctuary platform. Faces -Y."""
+    p = Piece("SM_IX_Saintess")
+    p.add(box(-0.45, 0.45, -0.22, 0.22, 0.0, 1.15, 0.03), DRS, UV_BOX)
+    p.add(box(-0.5, 0.5, -0.25, 0.25, 1.1, 1.2, 0.03), DRS, UV_BOX)
+    figure(p, 1.2, depth=0.62)
+    return p
+
+
+def figure(p, base, depth=1.0):
+    """The veiled figure from base upward, its depth (Y) scaled."""
+    sy = depth
     # robe: a lathe from the hem up to the shoulders, slightly flared and pleated
     prof = [(0.36, 0.0), (0.33, 0.25), (0.27, 0.9), (0.23, 1.35), (0.24, 1.6), (0.2, 1.75), (0.11, 1.82)]
     rings = []
     for (r, h) in prof:
-        rings.append(G.ring(lambda a, r=r: r * (1.0 + 0.04 * math.sin(a * 9)) * (1.0 + 0.12 * max(0.0, -math.sin(a))),
-                            base + h, 18))
+        ring = G.ring(lambda a, r=r: r * (1.0 + 0.04 * math.sin(a * 9)) * (1.0 + 0.12 * max(0.0, -math.sin(a))), base + h, 18)
+        rings.append([(x, y * sy, z) for (x, y, z) in ring])
     p.add(G.bm_loft(rings), DRS, UV_CYL)
     # head under the veil, the veil falling to the shoulders and the back
     p.add(G.bm_lathe([(0.0, base + 1.8), (0.11, base + 1.84), (0.13, base + 1.96), (0.12, base + 2.08), (0.07, base + 2.16),
-                      (0.0, base + 2.18)], 14), DRS, UV_CYL)
+                      (0.0, base + 2.18)], 14), DRS, UV_CYL, matrix=G.mat_s(1.0, max(sy, 0.85), 1.0))
     veil = [(0.0, base + 2.22), (0.15, base + 2.12), (0.19, base + 1.96), (0.25, base + 1.78), (0.31, base + 1.55),
             (0.33, base + 1.2)]
-    p.add(G.bm_lathe(veil, 16), DRS, UV_CYL, matrix=mat_t(0, 0.03, 0))
+    p.add(G.bm_lathe(veil, 16), DRS, UV_CYL, matrix=mat_t(0, 0.03 * sy, 0) @ G.mat_s(1.0, sy, 1.0))
     # folded hands, a fold of the veil across the chest
-    p.add(box(-0.13, 0.13, -0.3, -0.18, base + 1.12, base + 1.3, 0.05), DRS, UV_BOX)
-    return p
+    p.add(box(-0.13, 0.13, -0.3 * sy, -0.18 * sy, base + 1.12, base + 1.3, 0.05), DRS, UV_BOX)
 
 
 # ------------------------------------------------------------------ the forge (north transept, -X)
@@ -381,7 +388,7 @@ def export(piece, report):
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 report = {}
-for build in (kneeler, statue, forge_hearth, forge_work, forge_water, dwar, alcove, trace_wren, trace_ashka, trace_mirela,
+for build in (kneeler, saintess, forge_hearth, forge_work, forge_water, dwar, alcove, trace_wren, trace_ashka, trace_mirela,
               trace_nix, trace_bram, mural, board, camp):
     export(build(), report)
 json.dump(report, open(os.path.join(OUT, "furnish.json"), "w"), indent=1)
