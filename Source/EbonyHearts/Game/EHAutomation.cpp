@@ -1186,10 +1186,10 @@ void AEHGameDirector::RunBindingsSelfTest()
 	}
 	// Physical techniques (settings version 7).
 	Check(D.Get(S::FPKeyboard, A::FPJab, 0) == EKeys::LeftMouseButton && D.Get(S::FPKeyboard, A::FPStraight, 0) == EKeys::RightMouseButton &&
-		D.Get(S::FPKeyboard, A::FPShove, 0) == EKeys::E && D.Get(S::FPKeyboard, A::FPBlock, 0) == EKeys::Q, TEXT("techniques: left and right mouse buttons, E, Q"));
+		D.Get(S::FPKeyboard, A::FPBlock, 0) == EKeys::Q, TEXT("techniques: left and right mouse buttons, Q"));
 	Check(D.Get(S::FPController, A::FPJab, 0) == EKeys::Gamepad_RightShoulder && D.Get(S::FPController, A::FPStraight, 0) == EKeys::Gamepad_RightTrigger &&
-		D.Get(S::FPController, A::FPShove, 0) == EKeys::Gamepad_FaceButton_Right && D.Get(S::FPController, A::FPBlock, 0) == EKeys::Gamepad_LeftShoulder,
-		TEXT("techniques on a controller: R1 / RB, R2 / RT, Circle / B, L1 / LB"));
+		D.Get(S::FPController, A::FPBlock, 0) == EKeys::Gamepad_LeftShoulder,
+		TEXT("techniques on a controller: R1 / RB, R2 / RT, L1 / LB"));
 	{
 		const FString V6Path = FPaths::Combine(Dir, TEXT("fp_v6_jump_on_mouse.json"));
 		FFileHelper::SaveStringToFile(TEXT("{\"version\":6,\"bindings\":{\"fpKeyboard\":{\"FirstPersonJump\":[\"LeftMouseButton\",\"SpaceBar\",\"\"]}}}"), *V6Path);
@@ -1206,15 +1206,30 @@ void AEHGameDirector::RunBindingsSelfTest()
 		TEXT("spells: F and R; L2 / LT and Triangle / Y"));
 	{
 		const FString V7Path = FPaths::Combine(Dir, TEXT("fp_v7_jump_on_f.json"));
-		FFileHelper::SaveStringToFile(TEXT("{\"version\":7,\"bindings\":{\"fpKeyboard\":{\"FirstPersonShove\":[\"F\",\"\",\"\"]},\"fpController\":{\"FirstPersonJump\":[\"Gamepad_FaceButton_Top\",\"\",\"\"]}}}"), *V7Path);
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":7,\"bindings\":{\"fpKeyboard\":{\"FirstPersonBlock\":[\"F\",\"\",\"\"]},\"fpController\":{\"FirstPersonJump\":[\"Gamepad_FaceButton_Top\",\"\",\"\"]}}}"), *V7Path);
 		Warning.Reset();
 		const FEHSettings V7 = FEHSettings::Load(&Warning, V7Path);
 		FString V7Report;
-		Check(V7.Bindings.Get(S::FPKeyboard, A::FPShove, 0) == EKeys::F && V7.Bindings.IsUnbound(S::FPKeyboard, A::FPFireball) &&
+		Check(V7.Bindings.Get(S::FPKeyboard, A::FPBlock, 0) == EKeys::F && V7.Bindings.IsUnbound(S::FPKeyboard, A::FPFireball) &&
 			V7.Bindings.Get(S::FPKeyboard, A::FPIceWall, 0) == EKeys::R && V7.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Top &&
 			V7.Bindings.IsUnbound(S::FPController, A::FPIceWall) && V7.Bindings.Get(S::FPController, A::FPFireball, 0) == EKeys::Gamepad_LeftTrigger &&
 			!V7.Bindings.HasConflicts(&V7Report) && Warning.Contains(TEXT("Fireball")) && Warning.Contains(TEXT("Ice Wall")),
 			TEXT("version 7 to 8: the player's own F and Triangle stay theirs; the spells are left without them and the notice says so ") + Warning);
+	}
+	// Spell selector; the shove removed (settings version 9).
+	Check(D.Get(S::FPKeyboard, A::FPSpellSelect, 0) == EKeys::Tab && D.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
+		D.Find(S::FPKeyboard, EKeys::E) == A::Count && D.Find(S::FPController, EKeys::Gamepad_FaceButton_Right) == A::Count,
+		TEXT("spell selector: Tab and Square / X; E and Circle / B are free"));
+	{
+		const FString V8Path = FPaths::Combine(Dir, TEXT("fp_v8_shove_and_tab.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":8,\"spellSelector\":1,\"bindings\":{\"fpKeyboard\":{\"FirstPersonShove\":[\"E\",\"\",\"\"],\"FirstPersonJump\":[\"Tab\",\"SpaceBar\",\"\"]}}}"), *V8Path);
+		Warning.Reset();
+		const FEHSettings V8 = FEHSettings::Load(&Warning, V8Path);
+		FString V8Report;
+		Check(V8.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::Tab && V8.Bindings.IsUnbound(S::FPKeyboard, A::FPSpellSelect) &&
+			V8.Bindings.Find(S::FPKeyboard, EKeys::E) == A::Count && V8.Bindings.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
+			V8.SpellSelector == 1 && !V8.Bindings.HasConflicts(&V8Report) && Warning.Contains(TEXT("shove")),
+			TEXT("version 8 to 9: the shove's key is dropped, the player's Tab stays theirs and the notice says so ") + Warning);
 	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }

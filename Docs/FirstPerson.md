@@ -2,7 +2,7 @@
 
 This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space. Milestone 2, Walk the Chapel:
 the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
-shove and a held block, practised on a training dummy. Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
+and a held block, practised on a training dummy (the shove was removed on 2026-11-22: quality over quantity). Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
 Wall, with the wall's water freeze and Fireball's melt. The game starts straight in the Chapel, with no title screen or menus
 before play. The 2.5D slice stays intact in `main`'s history. Its fighting code is still compiled here but is not
 reachable from the first-person flow.
@@ -32,10 +32,10 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Sprint | Left Shift; hold | Left stick press; toggles until you stop moving forward |
 | Jab | Left mouse button | R1 / RB |
 | Straight | Right mouse button | R2 / RT |
-| Shove | E | Circle / B |
 | Block (hold) | Q | L1 / LB |
 | Fireball | F | L2 / LT |
 | Ice Wall | R | Triangle / Y |
+| Choose a spell (hold) | Tab | Square / X |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -52,13 +52,14 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 8), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 9), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
 first-person action. Version 6 adds the two first-person layouts (`fpKeyboard`, `fpController`) and the look,
 field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techniques and Controller vibration;
-version 8 Fireball and Ice Wall. Each new action takes its default key only where the player has not already used
+version 8 Fireball and Ice Wall; version 9 removed the shove (its keys are simply free) and added Choose a spell
+and the Spell selector setting. Each new action takes its default key only where the player has not already used
 that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
@@ -99,10 +100,9 @@ sounds and the arms all read that state, so what the player sees and what connec
 |---|---|---|---|---|---|
 | Jab | 6 / 3 / 10 (0.32 s) | 95 cm | 6 | 4 frames | 80% |
 | Straight | 11 / 3 / 18 (0.53 s) | 115 cm | 12 | 7 frames | 70% |
-| Shove | 9 / 4 / 18 (0.52 s) | 100 cm, wider | 0; pushes 2 m over 15 frames | 4 frames | 70% |
 | Block (hold) | rises in 5 frames, lowers in 6 | | stops 70% from within 70° of the view | | 60% |
 
-Damage, the shove's 2 m and the guard's 70% are the prototype plan's proposed values; frames, reach, hitstop and
+Damage and the guard's 70% are the prototype plan's proposed values; frames, reach, hitstop and
 speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`).
 
 - **Aim.** A strike sweeps a sphere along the view from the eyes. A wall or pier in between stops it (a knock on stone,
@@ -143,7 +143,7 @@ are kicked along the line of the blow when the hitstop ends, on top of its stanc
 without swinging toward them. A jab snaps the head back and lets go; a straight snaps it hard, turns the shoulders with
 the punching hand and slides the body back about 35 cm (out of jab reach, so the straight ends a combination); a
 strike landing below the neck drives the chest back first, the head following less; a guarded strike moves only the
-arms and chest; the shove throws chest and head back while the body slides 2 m along anything it meets. Above it a training readout counts hits, blocks and
+arms and chest. Above it a training readout counts hits, blocks and
 damage. Reset the dummy puts it back with its count cleared.
 
 ## Magic
@@ -161,7 +161,7 @@ are pools; the other four act through simple shares, measured from a base of 10 
 | Intelligence | 10 | each point above 10 speeds Qhi regeneration by 5% |
 | Faith | 10 | each point above 10 speeds Qhi regeneration by 5% |
 | Dexterity | 10 | each point above 10 speeds Stamina recovery by 5% |
-| Martial Prowess | 10 | each point above 10 adds 5% to all four techniques' damage and the shove's distance |
+| Martial Prowess | 10 | each point above 10 adds 5% to the jab's and the straight's damage |
 
 - **Regeneration.** 5 Qhi per second at base Intelligence and Faith, starting 0.5 s after the last cast.
 - **Strikes feed Qhi.** A technique that lands restores 4 Qhi; one the target guards does not.
@@ -176,7 +176,7 @@ are pools; the other four act through simple shares, measured from a base of 10 
 ### Spells
 
 Casts are part of the same 60 Hz technique state as the strikes, so the buffer, the walking speed and the arms work
-the same way. The recovery of any strike hands over to a cast, and the recovery of a cast to a strike, so a shove can
+the same way. The recovery of any strike hands over to a cast, and the recovery of a cast to a strike, so a straight can
 go straight into a Fireball and a Fireball straight into a straight.
 
 | Spell | Cost | Cast (wind-up / release / recovery) | Effect |
@@ -186,24 +186,40 @@ go straight into a Fireball and a Fireball straight into a straight.
 
 - **Fireball** hits the first thing in its path: the dummy (a heavy reaction, knocked back about a step; the Guard
   mode stops 70% from the front), an Ice Wall, which melts at once in a burst of steam, or stone. The wind-up is the
-  risk: next to a target, the shove makes room first.
+  risk: next to a target, a jab or straight comes first.
 - **Ice Wall** blocks the player, the dummy, strikes and Fireballs (until one melts it). It stands across the view's
   heading, stopping short of any wall or pier in the way; with less than 1.1 m of room it is refused and costs
-  nothing. A dummy standing where it rises is pushed out of the ice on the side it stood on. It ends after 8 s (melting
-  down over 0.5 s), at once when a Fireball strikes it, or shattered by 60 damage of strikes (five straights).
+  nothing. A dummy standing where it rises is pushed out of the ice on the side it stood on. When its 8 s are up it turns
+  to water over 1.6 s: the frost goes, the ice clears and runs wet, the shards thin and shorten where they stand,
+  water drips and ripples around the foot, and a glossy puddle spreads under it, drying away over 4 s. The way is open
+  the moment it starts to melt. A Fireball melts it the same way in 0.6 s, in a burst of steam. 60 damage of strikes
+  (five straights) shatters it instead.
 - **Water freeze.** If the wall rises in water, the water within 2.8 m freezes into a sheet. An opponent whose feet
-  are in that water at any moment of the 0.3 s rise is trapped for 2 s: it cannot slide, be pushed or turn, though it
+  are in that water at any moment of the 0.3 s rise is trapped for 2 s: it cannot slide or turn, though it
   can still strike. On dry floor nothing freezes.
 - **Look.** Plain placeholders: a glow gathers in the casting hand (fire in the left, frost in both for the wall); the
   Fireball is a glowing card with a trail of glow sprites and a point light. The wall is a ridge of leaning,
-  faceted crystal shards that pushes up out of the floor in a burst of frost and mist and slumps back into it when it
-  melts; a faint cold light inside it lights the ice and the floor. The frozen water is an irregular floe and frozen
+  faceted crystal shards that pushes up out of the floor in a burst of frost and mist; a faint cold light inside it lights the ice and the floor. The frozen water is an irregular floe and frozen
   feet get a ring of small shards (meshes from `Tools/Blender/magic/make_ice.py`). The ice material
   (`/Game/Magic/M_PH_Ice`, `Tools/Unreal/make_magic_materials.py`) is clear blue, refractive, glossy and frosted at
   its feet and in streaks. The sounds are the slice's (flame ignite,
-  roar and hit for Fireball; aura charge, deflect and a body slam for the wall).
+  roar and hit for Fireball; aura charge, deflect and a body slam for the wall; water steps and a fading hiss as it melts).
 - **Navigation.** The wall's blocking box is marked to affect navigation for the wolves of milestone 5; nothing
   navigates yet.
+
+### Spell selector
+
+Hold Choose a spell (Tab, Square / X) to open every spell; the world slows to a quarter speed while it is open, and
+the mouse and right stick choose instead of looking. Settings > Controls > Spell selector picks the form:
+
+- **Wheel** (default): the spells sit around a ring (Fireball left, Ice Wall right). Move the mouse or tilt the right
+  stick toward one and let go to cast it; letting go at the centre casts nothing.
+- **List**: the spells in a column beside the centre, the first lit. Move the mouse up or down, flick the right stick,
+  or press W / S or the D-pad to move; let go to cast the lit one.
+
+Each entry shows the spell's cost and its button when it has one, so a spell left without a button (Settings >
+Controls) is still one press away. A spell the Qhi cannot pay for is dimmed and is refused like a button press.
+Pausing or the reset closes the selector without casting.
 
 ### Developer panel (development builds only)
 
@@ -270,7 +286,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, dev_panel, dummy_frozen, dummy_freezes |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -279,6 +295,7 @@ path as a player. New commands:
 | `fp_teleport`, `fp_view`, `fp_box`, `fp_clear_boxes`, `fp_body_visible`, `fp_planar`, `fp_dummy_place`, `fp_health`, `fp_arms_fp` | development only | test positions, a blocking test box, the body and reflection experiments, placing the dummy, test Health, arms drawn as ordinary geometry |
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 | `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |
+| `fp_selector <wheel\|list>` | all | what Settings > Controls > Spell selector does |
 | `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
 
 Scripts: `fp_movement.txt` (movement, Stamina, jump, crouch under a low ceiling, controller sticks and dead zone,
@@ -289,13 +306,13 @@ in Shipping) `fp_xinput.txt` with `fp_xinput_drive.py`
 (real X11 keyboard and mouse input, and a real focus loss), `fp_pad.txt` with `fp_virtual_pad.py` (a virtual uinput
 controller through SDL, including a disconnect), `fp_soak.txt` (the route eight times with pauses and settings
 round trips), `fp_import.txt` (a profile that has only the slice's settings file), `fp_fists.txt` (every technique,
-chain, buffer, whiff, wall, shove, the dummy's guard from the front and behind, its strike against the guard, a
+chain, buffer, whiff, wall, the dummy's guard from the front and behind, its strike against the guard, a
 wind-up interrupted, death, pause and reset mid-technique, the controller), `fp_ship_fists.txt` (the same ground
 with inputs only, for Shipping and for footage), `fp_fists_frames.txt` (frame-by-frame captures), `fp_magic.txt`
 (stats, Qhi and both spells: one payment per cast, refusal, clamping, regeneration by stat, Qhi from strikes,
 Dexterity and Martial Prowess, the wall blocking, freezing in and out of water, melting, obstruction, expiry,
-breaking, both proximities, casts before and after strikes, the controller, pause, reset, death, the developer
-panel), `fp_ship_magic.txt` (the spells with inputs only, for Shipping and for footage; it expects F10 to do nothing)
+breaking, both proximities, casts before and after strikes, the controller, pause, reset, death, the meltwater,
+the spell wheel and list with mouse, stick and keys, the developer panel), `fp_ship_magic.txt` (the spells with inputs only, for Shipping and for footage; it expects F10 to do nothing)
 and `fp_perf_magic.txt` (a warm frame-time capture with walls and Fireballs in play).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
@@ -306,7 +323,7 @@ no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
 ## Known limits
 
-- Fists: the arms are Wren's, cut from her test model, and the shove and both casts use the same fists as the punches;
+- Fists: the arms are Wren's, cut from her test model, and both casts use the same fists as the punches;
   final arms and animation are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
   fighting clip.
 - Magic: the stat shares are engineering guesses; the ice, fire and their sounds are placeholders; the frozen sheet is

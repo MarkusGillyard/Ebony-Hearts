@@ -6,7 +6,6 @@ const TCHAR* EHFistActionName(EEHFistAction Action)
 	{
 	case EEHFistAction::Jab: return TEXT("Jab");
 	case EEHFistAction::Straight: return TEXT("Straight");
-	case EEHFistAction::Shove: return TEXT("Shove");
 	case EEHFistAction::Fireball: return TEXT("Fireball");
 	case EEHFistAction::IceWall: return TEXT("Ice Wall");
 	default: return TEXT("None");
@@ -15,14 +14,13 @@ const TCHAR* EHFistActionName(EEHFistAction Action)
 
 FEHFistTuning::FEHFistTuning()
 {
-	// Starting points: the jab is quick and short, the straight slower, longer and twice as strong, the shove a
-	// two-handed push that moves the target 2 m. Damage and push distance are the prototype draft's proposals.
-	Jab = {6, 3, 10, 95.0f, 18.0f, 6.0f, 4, 0.0f, 0, 0.8f};
-	Straight = {11, 3, 18, 115.0f, 18.0f, 12.0f, 7, 0.0f, 0, 0.7f};
-	Shove = {9, 4, 18, 100.0f, 26.0f, 0.0f, 4, 200.0f, 15, 0.7f};
-	// Casts: a short wind-up (casting next to a target is a risk the shove answers), one release frame, recovery.
-	Fireball = {12, 1, 16, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0, 0.6f};
-	IceWall = {14, 1, 20, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0, 0.5f};
+	// Starting points: the jab is quick and short, the straight slower, longer and twice as strong. Damage is the
+	// prototype draft's proposal.
+	Jab = {6, 3, 10, 95.0f, 18.0f, 6.0f, 4, 0.8f};
+	Straight = {11, 3, 18, 115.0f, 18.0f, 12.0f, 7, 0.7f};
+	// Casts: a short wind-up (casting next to a target is a risk), one release frame, recovery.
+	Fireball = {12, 1, 16, 0.0f, 0.0f, 0.0f, 0, 0.6f};
+	IceWall = {14, 1, 20, 0.0f, 0.0f, 0.0f, 0, 0.5f};
 }
 
 const FEHStrikeDef& FEHFistTuning::Def(EEHFistAction Action) const
@@ -30,7 +28,6 @@ const FEHStrikeDef& FEHFistTuning::Def(EEHFistAction Action) const
 	switch (Action)
 	{
 	case EEHFistAction::Straight: return Straight;
-	case EEHFistAction::Shove: return Shove;
 	case EEHFistAction::Fireball: return Fireball;
 	case EEHFistAction::IceWall: return IceWall;
 	default: return Jab;
@@ -77,13 +74,10 @@ bool FEHFistTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
 		Num(*S, P, TEXT("radius"), D.Radius, 2, 80);
 		Num(*S, P, TEXT("damage"), D.Damage, 0, 1000);
 		Int(*S, P, TEXT("hitstop"), D.Hitstop, 0, 20);
-		Num(*S, P, TEXT("push"), D.Push, 0, 1000);
-		Int(*S, P, TEXT("pushFrames"), D.PushFrames, 0, 120);
 		Num(*S, P, TEXT("moveScale"), D.MoveScale, 0, 1);
 	};
 	Strike(TEXT("jab"), Jab);
 	Strike(TEXT("straight"), Straight);
-	Strike(TEXT("shove"), Shove);
 	Strike(TEXT("fireballCast"), Fireball);
 	Strike(TEXT("iceWallCast"), IceWall);
 	Int(Obj, FString(), TEXT("bufferFrames"), BufferFrames, 0, 30);
@@ -99,10 +93,10 @@ bool FEHFistTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
 FString FEHFistTuning::Describe() const
 {
 	auto D = [](const TCHAR* N, const FEHStrikeDef& S) {
-		return FString::Printf(TEXT("%s %d/%d/%d reach=%.0f r=%.0f dmg=%.0f stop=%d push=%.0f/%d move=%.2f"), N, S.Startup, S.Active, S.Recovery, S.Reach, S.Radius, S.Damage, S.Hitstop, S.Push, S.PushFrames, S.MoveScale);
+		return FString::Printf(TEXT("%s %d/%d/%d reach=%.0f r=%.0f dmg=%.0f stop=%d move=%.2f"), N, S.Startup, S.Active, S.Recovery, S.Reach, S.Radius, S.Damage, S.Hitstop, S.MoveScale);
 	};
-	return FString::Printf(TEXT("%s; %s; %s; fireball cast %d/%d/%d move=%.2f; ice wall cast %d/%d/%d move=%.2f; buffer=%d block raise=%d lower=%d stop=%.0f%% front=%.0f move=%.2f linger=%.2f"),
-		*D(TEXT("jab"), Jab), *D(TEXT("straight"), Straight), *D(TEXT("shove"), Shove), Fireball.Startup, Fireball.Active, Fireball.Recovery,
+	return FString::Printf(TEXT("%s; %s; fireball cast %d/%d/%d move=%.2f; ice wall cast %d/%d/%d move=%.2f; buffer=%d block raise=%d lower=%d stop=%.0f%% front=%.0f move=%.2f linger=%.2f"),
+		*D(TEXT("jab"), Jab), *D(TEXT("straight"), Straight), Fireball.Startup, Fireball.Active, Fireball.Recovery,
 		Fireball.MoveScale, IceWall.Startup, IceWall.Active, IceWall.Recovery, IceWall.MoveScale, BufferFrames, BlockRaiseFrames, BlockLowerFrames,
 		BlockReduction * 100.0f, BlockAngle, BlockMoveScale, ArmsLinger);
 }

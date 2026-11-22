@@ -62,18 +62,6 @@
       "hitstop": 7,
       "moveScale": 0.7
     },
-    "shove": {
-      "startup": 9,
-      "active": 4,
-      "recovery": 18,
-      "reach": 100,
-      "radius": 26,
-      "damage": 0,
-      "hitstop": 4,
-      "push": 200,
-      "pushFrames": 15,
-      "moveScale": 0.7
-    },
     "bufferFrames": 8,
     "blockRaiseFrames": 5,
     "blockLowerFrames": 6,
@@ -147,7 +135,9 @@
     "height": 240,
     "thickness": 60,
     "riseSeconds": 0.3,
-    "meltSeconds": 0.5,
+    "meltSeconds": 1.6,
+    "fireMeltSeconds": 0.6,
+    "puddleSeconds": 4,
     "health": 60,
     "freezeRadius": 280,
     "freezeSeconds": 2

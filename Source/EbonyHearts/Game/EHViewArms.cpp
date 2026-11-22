@@ -24,8 +24,6 @@ const FVector ReadyL(40.0f, -12.0f, -15.0f), ReadyR(35.0f, 12.0f, -18.0f);
 const FVector GuardL(34.0f, -7.0f, -2.0f), GuardR(32.0f, 7.0f, -3.0f);
 const FVector JabLoad(33.0f, -13.0f, -14.0f), JabOut(60.0f, -4.0f, -5.0f);
 const FVector StraightLoad(27.0f, 15.0f, -18.0f), StraightOut(62.0f, 1.0f, -5.0f);
-const FVector ShoveLoadL(29.0f, -14.0f, -16.0f), ShoveLoadR(29.0f, 14.0f, -16.0f);
-const FVector ShoveOutL(56.0f, -12.0f, -12.0f), ShoveOutR(56.0f, 12.0f, -12.0f);
 // Casts. Fireball: the left hand draws back beside the face while the fire gathers, then throws it forward.
 // Ice Wall: both hands sink low and drive forward and up, raising the wall.
 const FVector FireLoad(24.0f, -17.0f, -6.0f), FireOut(60.0f, -7.0f, -6.0f);
@@ -327,13 +325,9 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 			L = StrikePath(StartL, FireLoad, FireOut, ReadyL, F, D);
 			R = FMath::Lerp(StartR, ReadyR, GuardIn);
 			break;
-		case EEHFistAction::IceWall:
+		default:
 			L = StrikePath(StartL, IceLoadL, IceOutL, ReadyL, F, D);
 			R = StrikePath(StartR, IceLoadR, IceOutR, ReadyR, F, D);
-			break;
-		default:
-			L = StrikePath(StartL, ShoveLoadL, ShoveOutL, ReadyL, F, D);
-			R = StrikePath(StartR, ShoveLoadR, ShoveOutR, ReadyR, F, D);
 			break;
 		}
 		// The spell gathers in the hand through the wind-up and leaves it on release.
@@ -380,11 +374,11 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 	{
 		const float Shudder = Fists.InHitstop() ? FMath::Sin(ShudderTime * 2.0f * PI * 30.0f) * FMath::Exp(-ShudderTime * 12.0f) : 0.0f;
 		const FVector Give = FVector(-2.8f, 0.0f, 0.0f) * Recoil + FVector(0.0f, 0.5f, 0.7f) * Shudder;
-		if (Action == EEHFistAction::Jab || Action == EEHFistAction::Shove)
+		if (Action == EEHFistAction::Jab)
 		{
 			L += Give;
 		}
-		if (Action == EEHFistAction::Straight || Action == EEHFistAction::Shove)
+		if (Action == EEHFistAction::Straight)
 		{
 			R += Give;
 		}

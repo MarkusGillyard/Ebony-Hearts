@@ -163,7 +163,6 @@ void AEHTrainingDummy::ResetDummy()
 	StateLength = 0;
 	Hitstop = 0;
 	Cooldown = 60;
-	PushLeft = 0;
 	Accum = 0.0f;
 	HitCount = 0;
 	BlockCount = 0;
@@ -196,7 +195,6 @@ FString AEHTrainingDummy::StateName() const
 	{
 	case EState::Hit: return TEXT("hit");
 	case EState::Blocked: return TEXT("blocked");
-	case EState::Pushed: return TEXT("pushed");
 	case EState::Windup: return TEXT("windup");
 	case EState::Recover: return TEXT("recover");
 	default: return TEXT("idle");
@@ -222,7 +220,6 @@ void AEHTrainingDummy::Freeze(float Seconds)
 	FrozenLeft = FMath::Max(FrozenLeft, Seconds);
 	++FreezeCount;
 	Knockback = FVector::ZeroVector;
-	PushLeft = 0;
 	IceCuff->SetVisibility(true);
 }
 
@@ -268,7 +265,7 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 	FVector ToAttacker = From - GetActorLocation();
 	ToAttacker.Z = 0.0f;
 	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(ToAttacker.GetSafeNormal(), GetActorForwardVector())));
-	Out.bBlocked = Mode == EEHDummyMode::Guard && Angle <= Fists.BlockAngle && State != EState::Hit && State != EState::Pushed;
+	Out.bBlocked = Mode == EEHDummyMode::Guard && Angle <= Fists.BlockAngle && State != EState::Hit;
 	Out.Damage = Out.bBlocked ? Def.Damage * (1.0f - Fists.BlockReduction) : Def.Damage;
 	Total += Out.Damage;
 	SinceHit = 0.0f;
@@ -283,18 +280,7 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 		++HitCount;
 		// A hit interrupts a strike in its wind-up: that is the jab's job.
 		const bool bHeavy = Action == EEHFistAction::Straight || Action == EEHFistAction::Fireball;
-		Enter(Action == EEHFistAction::Shove ? EState::Pushed : EState::Hit, bHeavy ? Tuning.HitstunHeavy : Tuning.HitstunLight);
-	}
-	if (Action == EEHFistAction::Shove && Def.Push > 0.0f && Def.PushFrames > 0)
-	{
-		FVector Dir = GetActorLocation() - From;
-		Dir.Z = 0.0f;
-		PushPerFrame = Dir.GetSafeNormal() * (Def.Push / Def.PushFrames);
-		PushLeft = Def.PushFrames;
-		if (State == EState::Pushed)
-		{
-			StateLength = FMath::Max(StateLength, Def.PushFrames + 4);
-		}
+		Enter(EState::Hit, bHeavy ? Tuning.HitstunHeavy : Tuning.HitstunLight);
 	}
 	// The physical reaction: how hard, where (head or body, by the height it landed), and which way (the attacker's
 	// line, and the side the fist came from twisting the body away from it).
@@ -303,7 +289,7 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 	HitDir = Dir.GetSafeNormal(UE_SMALL_NUMBER, GetActorForwardVector() * -1.0f);
 	const float Feet = GetActorLocation().Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	// Below the neck (about 145 cm on this model) is the body.
-	bLastBodyShot = Action != EEHFistAction::Shove && Action != EEHFistAction::Fireball && (At.Z - Feet) < 145.0f;
+	bLastBodyShot = Action != EEHFistAction::Fireball && (At.Z - Feet) < 145.0f;
 	const FVector Right = FVector::CrossProduct(FVector::UpVector, HitDir);   // the attacker's right, seen from them
 	const FVector Lever = Right * HandSide * 12.0f;
 	const float TwistSign = FMath::Sign(FVector::CrossProduct(Lever, HitDir).Z);
@@ -324,13 +310,6 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 		K.HeadBack = 520.0f;
 		K.HeadSide = FMath::FRandRange(-90.0f, 90.0f);
 		K.Knock = 260.0f;
-	}
-	else if (Action == EEHFistAction::Shove)
-	{
-		// Both hands in the chest: the torso goes back and the head goes with it.
-		K.ChestBack = 560.0f;
-		K.HeadBack = 260.0f;
-		K.HeadSide = FMath::FRandRange(-60.0f, 60.0f);
 	}
 	else if (bLastBodyShot)
 	{
@@ -397,7 +376,6 @@ void AEHTrainingDummy::StepFrame()
 		// Feet held in the ice: no slide, no push, no turning.
 		FrozenLeft = FMath::Max(0.0f, FrozenLeft - Step);
 		Knockback = FVector::ZeroVector;
-		PushLeft = 0;
 		IceCuff->SetVisibility(FrozenLeft > 0.0f);
 	}
 	// Knockback slides the body and bleeds off quickly, like feet catching the floor.
@@ -412,23 +390,11 @@ void AEHTrainingDummy::StepFrame()
 		}
 	}
 	Knockback *= FMath::Exp(-9.0f * Step);
-	if (PushLeft > 0)
-	{
-		FHitResult Hit;
-		AddActorWorldOffset(PushPerFrame, true, &Hit);
-		if (Hit.bBlockingHit)
-		{
-			// Slide along whatever stopped it (a pier, a pew) instead of sticking to it.
-			const FVector Slide = FVector::VectorPlaneProject(PushPerFrame * (1.0f - Hit.Time), Hit.Normal);
-			AddActorWorldOffset(FVector(Slide.X, Slide.Y, 0.0f), true);
-		}
-		--PushLeft;
-	}
 	if (Cooldown > 0)
 	{
 		--Cooldown;
 	}
-	const bool bReacting = State == EState::Hit || State == EState::Blocked || State == EState::Pushed;
+	const bool bReacting = State == EState::Hit || State == EState::Blocked;
 	// Turn toward the player except while reeling.
 	const FVector To = ToPlayer2D();
 	if (!bReacting && !To.IsNearlyZero() && FrozenLeft <= 0.0f)
@@ -464,7 +430,7 @@ void AEHTrainingDummy::StepFrame()
 		}
 		break;
 	default:
-		if (StateFrame >= StateLength && PushLeft == 0)
+		if (StateFrame >= StateLength)
 		{
 			Enter(EState::Idle, 0);
 		}
@@ -491,7 +457,6 @@ void AEHTrainingDummy::UpdateAnimation()
 	switch (State)
 	{
 	case EState::Hit:
-	case EState::Pushed:
 	case EState::Blocked:
 		// Reactions are physical (springs and knockback) on top of the stance; the stance itself keeps playing.
 		Seq = Mode == EEHDummyMode::Stand ? AnimIdle.Get() : (AnimGuard ? AnimGuard.Get() : AnimIdle.Get());

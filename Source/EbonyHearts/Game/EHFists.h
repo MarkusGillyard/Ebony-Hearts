@@ -1,4 +1,4 @@
-// The first-person techniques as plain game state: jab, straight, shove, a held block and the two spells' casts,
+// The first-person techniques as plain game state: jab, straight, a held block and the two spells' casts,
 // stepped at a fixed 60 frames per second. Hit detection, casting, reactions and the arms all read this state, so
 // timing, contact and what the player sees come from one place. Frame counts are combat frames (1/60 s).
 #pragma once
@@ -11,7 +11,6 @@ enum class EEHFistAction : uint8
 	None,
 	Jab,
 	Straight,
-	Shove,
 	Fireball,   // a cast: its single active frame releases the spell
 	IceWall,
 };
@@ -29,8 +28,6 @@ struct FEHStrikeDef
 	float Radius = 18.0f;     // cm, the swept sphere
 	float Damage = 6.0f;
 	int32 Hitstop = 3;        // frames both sides hold on contact
-	float Push = 0.0f;        // cm the target is pushed (shove)
-	int32 PushFrames = 0;
 	float MoveScale = 0.75f;  // walking speed multiplier during the technique
 	int32 Total() const { return Startup + Active + Recovery; }
 };
@@ -39,7 +36,6 @@ struct FEHFistTuning
 {
 	FEHStrikeDef Jab;
 	FEHStrikeDef Straight;
-	FEHStrikeDef Shove;
 	FEHStrikeDef Fireball;   // casts: startup, one release frame, recovery and walking speed; the rest is unused
 	FEHStrikeDef IceWall;
 	int32 BufferFrames = 8;       // a press this many frames before the current technique allows it still counts

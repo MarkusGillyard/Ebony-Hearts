@@ -14,7 +14,7 @@ fp_stat intelligence 0
 fp_stat faith 0
 press kbA FPFireball
 wait 0.1
-fp_expect action eq 4
+fp_expect action eq 3
 fp_expect qhi eq 80
 wait 1.4
 fp_expect qhi eq 80
@@ -101,18 +101,12 @@ fp_dummy stand
 fp_dummy_reset
 wait 0.5
 
-log == Martial Prowess: 20 adds half again to strikes and the shove
+log == Martial Prowess: 20 adds half again to strikes
 fp_teleport 0 -30 0 -90 0
 fp_stat martial 20
 press kbA FPJab
 wait 0.8
 fp_expect dummy_damage eq 9
-fp_dummy_reset
-fp_teleport 0 -30 0 -90 0
-wait 0.5
-press kbA FPShove
-wait 1.3
-fp_expect dummy_moved near 300 25
 fp_stat martial 10
 fp_dummy_reset
 wait 0.5
@@ -177,7 +171,7 @@ fp_teleport 0 300 0 -90 0
 fp_dummy_reset
 wait 0.5
 
-log == frozen feet: beside the wall the dummy cannot be shoved until the ice lets go
+log == frozen feet: beside the wall a straight cannot knock the dummy back until the ice lets go
 fp_qhi 100
 fp_dummy_place 230 150 -90
 wait 0.5
@@ -186,15 +180,15 @@ wait 0.5
 fp_expect dummy_frozen eq 1
 fp_teleport 230 260 0 -90 0
 wait 0.1
-press kbA FPShove
+press kbA FPStraight
 wait 0.8
-fp_expect dummy_dist lt 140
+fp_expect dummy_dist near 110 4
 fp_expect dummy_hits eq 1
 wait 1.2
 fp_expect dummy_frozen eq 0
-press kbA FPShove
+press kbA FPStraight
 wait 1.3
-fp_expect dummy_dist gt 250
+fp_expect dummy_dist gt 125
 fp_reset
 wait 0.5
 
@@ -252,6 +246,8 @@ press kbA FPIceWall
 wait 9.2
 fp_expect walls eq 0
 fp_expect walls_expired eq 1
+log it has turned to water: a puddle where it stood, dry again a few seconds later
+fp_expect puddles eq 1
 hold kbA FPForward
 wait 1.0
 release kbA FPForward
@@ -282,13 +278,13 @@ fp_expect walls_shattered eq 1
 fp_reset
 wait 0.5
 
-log == casts straight before and after strikes: shove into Fireball, Fireball into straight, jab into Ice Wall
+log == casts straight before and after strikes: straight into Fireball, Fireball into straight, jab into Ice Wall
 fp_mark
-press kbA FPShove
+press kbA FPStraight
 wait 0.25
 press kbA FPFireball
 wait 0.05
-fp_expect action eq 4
+fp_expect action eq 3
 wait 1.2
 fp_expect fireball_hits eq 1
 fp_dummy_reset
@@ -309,7 +305,7 @@ press kbA FPJab
 wait 0.2
 press kbA FPIceWall
 wait 0.05
-fp_expect action eq 5
+fp_expect action eq 4
 wait 0.6
 fp_expect walls eq 1
 fp_reset
@@ -332,7 +328,7 @@ log == pause mid-cast, then Return to the start clears every spell
 press kbA FPFireball
 wait 0.1
 press kbA Pause
-fp_expect action eq 4
+fp_expect action eq 3
 press kbA Down
 press kbA Confirm
 wait 0.4
@@ -355,6 +351,111 @@ fp_expect walls eq 0
 fp_expect qhi eq 100
 fp_expect health eq 100
 fp_dummy stand
+
+log == spell selector, wheel: hold Tab, the world slows; point left at Fireball and let go to cast it
+fp_reset
+wait 0.5
+fp_selector wheel
+hold kbA FPSpellSelect
+wait 0.1
+fp_expect selecting eq 1
+fp_expect time_dilation near 0.25 0.01
+fp_expect select_highlight eq -1
+look -150 0
+wait 0.1
+fp_expect select_highlight eq 0
+fp_expect action eq 0
+release kbA FPSpellSelect
+wait 0.1
+fp_expect selecting eq 0
+fp_expect time_dilation eq 1
+fp_expect action eq 3
+fp_expect select_casts eq 1
+wait 1.4
+fp_expect fireball_hits eq 1
+log right is Ice Wall
+hold kbA FPSpellSelect
+wait 0.1
+look 150 0
+wait 0.1
+fp_expect select_highlight eq 1
+release kbA FPSpellSelect
+wait 0.6
+fp_expect walls eq 1
+log letting go at the centre casts nothing
+fp_reset
+wait 0.5
+hold kbA FPSpellSelect
+wait 0.2
+release kbA FPSpellSelect
+wait 0.3
+fp_expect select_casts eq 2
+fp_expect action eq 0
+fp_expect walls eq 0
+log controller: Square / X and the right stick
+hold pad7 FPSpellSelect
+wait 0.1
+axis pad7 Gamepad_RightX -1.0
+wait 0.1
+fp_expect select_highlight eq 0
+axis pad7 Gamepad_RightX 0.0
+release pad7 FPSpellSelect
+wait 1.4
+fp_expect fireball_hits eq 1
+fp_dummy_reset
+log not enough Qhi: chosen, then refused like a button press
+fp_qhi 10
+hold kbA FPSpellSelect
+wait 0.1
+look -150 0
+wait 0.1
+release kbA FPSpellSelect
+wait 0.3
+fp_expect refused_qhi eq 1
+fp_expect qhi eq 10
+log pausing cancels the choice and restores time
+hold kbA FPSpellSelect
+wait 0.1
+press kbA Pause
+wait 0.1
+fp_expect selecting eq 0
+fp_expect time_dilation eq 1
+press kbA Pause
+release kbA FPSpellSelect
+wait 0.3
+fp_reset
+wait 0.5
+
+log == spell selector, list: the first spell is lit; Down (or the mouse, or the stick) moves to the next
+fp_selector list
+hold kbA FPSpellSelect
+wait 0.1
+fp_expect select_highlight eq 0
+press kbA key:S
+fp_expect select_highlight eq 1
+look 0 -100
+wait 0.1
+fp_expect select_highlight eq 0
+look 0 100
+wait 0.1
+fp_expect select_highlight eq 1
+release kbA FPSpellSelect
+wait 0.6
+fp_expect walls eq 1
+fp_reset
+wait 0.5
+hold pad7 FPSpellSelect
+wait 0.1
+axis pad7 Gamepad_RightY -1.0
+wait 0.1
+axis pad7 Gamepad_RightY 0.0
+fp_expect select_highlight eq 1
+release pad7 FPSpellSelect
+wait 0.6
+fp_expect walls eq 1
+fp_selector wheel
+fp_reset
+wait 0.5
 
 log == the developer panel (F10) opens in development builds
 fp_devkey

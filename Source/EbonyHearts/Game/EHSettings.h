@@ -30,11 +30,12 @@ enum class EEHAction : uint8
 	// Physical techniques (settings version 7).
 	FPJab,
 	FPStraight,
-	FPShove,
-	FPBlock,
+	FPBlock,             // (version 7 also had a shove; version 9 removed it)
 	// Spells (settings version 8).
 	FPFireball,
 	FPIceWall,
+	// Hold to choose a spell from the wheel or list, release to cast it (settings version 9).
+	FPSpellSelect,
 	Count
 };
 
@@ -177,6 +178,7 @@ struct FEHSettings
 	bool bCrouchToggle = false;      // keyboard: press to crouch instead of hold (a controller's stick press always toggles)
 	int32 StaminaMeter = 1;          // 0 never, 1 while it changes, 2 always
 	bool bVibration = true;          // controller rumble on contact and on being hit
+	int32 SpellSelector = 0;         // 0 wheel, 1 list (settings version 9)
 	// True when this profile was started from the 2.5D slice's settings file (display, audio and accessibility kept).
 	bool bImportedFromSlice = false;
 
@@ -197,7 +199,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 8;
+constexpr int32 EHSettingsVersion = 9;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

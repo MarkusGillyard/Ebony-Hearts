@@ -34,14 +34,6 @@ fp_expect dummy_damage eq 18
 fp_dummy_reset
 wait 0.6
 
-log == shove: the dummy is pushed about 2 m, then walks are needed to reach it again
-press kbA FPShove
-wait 1.2
-fp_expect dummy_dist gt 260
-fp_expect dummy_damage eq 0
-fp_dummy_reset
-wait 1.0
-
 log == guard dummy blocks from the front
 fp_dummy guard
 wait 0.6
@@ -74,7 +66,7 @@ wait 0.6
 fp_dummy stand
 wait 1.0
 
-log == controller: RB jab, RT straight, B shove, LB guard
+log == controller: RB jab, RT straight, LB guard
 press pad7 FPJab
 wait 0.7
 axis pad7 Gamepad_RightTriggerAxis 1.0
@@ -89,9 +81,7 @@ wait 0.3
 fp_expect guarding eq 1
 release pad7 FPBlock
 wait 0.4
-press pad7 FPShove
-wait 1.2
-fp_expect dummy_dist gt 260
+fp_expect guarding eq 0
 log review_end
 
 log == pause mid-technique, then Return to the start clears everything

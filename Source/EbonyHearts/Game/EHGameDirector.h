@@ -338,6 +338,18 @@ private:
 	int32 FPRefusedNoQhi = 0;
 	int32 FPRefusedNoRoom = 0;
 	bool bDevPanel = false;          // development builds: F10 panel (stats, resources, dummy)
+	// The spell selector (hold FPSpellSelect): a wheel or a list of every spell; release casts the highlighted one.
+	bool bSpellSelect = false;
+	int32 SpellHighlight = -1;       // index into the spell list, -1 none (the wheel's centre)
+	FVector2D SpellPointer = FVector2D::ZeroVector;   // wheel: where the mouse or stick points (unit circle)
+	float SpellListScroll = 0.0f;    // list: mouse travel toward the next row
+	bool bSpellStickHeld = false;    // list: the stick's flick already moved one row
+	float SpellSelectAlpha = 0.0f;
+	int32 SpellSelectCasts = 0;
+	void OpenSpellSelect();
+	// Closes the selector; with bCast, returns the highlighted spell to cast (None to cancel).
+	EEHFistAction CloseSpellSelect(bool bCast);
+	void PaintSpellSelect(FEHPainter& P);
 	void TickSpells(float DeltaSeconds);
 	void ClearSpells();
 	void BuildDeveloperPanel();

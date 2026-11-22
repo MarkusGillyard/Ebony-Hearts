@@ -73,7 +73,9 @@ bool FEHMagicTuning::Load(const TSharedPtr<FJsonObject>& Root, FString& OutError
 	Num(W, TEXT("iceWall."), TEXT("height"), IceWallHeight, 50, 1000);
 	Num(W, TEXT("iceWall."), TEXT("thickness"), IceWallThickness, 5, 200);
 	Num(W, TEXT("iceWall."), TEXT("riseSeconds"), IceWallRiseSeconds, 0.02f, 5);
-	Num(W, TEXT("iceWall."), TEXT("meltSeconds"), IceWallMeltSeconds, 0.02f, 5);
+	Num(W, TEXT("iceWall."), TEXT("meltSeconds"), IceWallMeltSeconds, 0.02f, 10);
+	Num(W, TEXT("iceWall."), TEXT("fireMeltSeconds"), IceWallFireMeltSeconds, 0.02f, 10);
+	Num(W, TEXT("iceWall."), TEXT("puddleSeconds"), PuddleSeconds, 0, 60);
 	Num(W, TEXT("iceWall."), TEXT("health"), IceWallHealth, 1, 10000);
 	Num(W, TEXT("iceWall."), TEXT("freezeRadius"), FreezeRadius, 0, 2000);
 	Num(W, TEXT("iceWall."), TEXT("freezeSeconds"), FreezeSeconds, 0, 30);
@@ -264,6 +266,15 @@ AEHIceWall::AEHIceWall()
 	Sheet->SetCastShadow(false);
 	Sheet->SetCanEverAffectNavigation(false);
 	Sheet->SetVisibility(false);
+	Puddle = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Meltwater"));
+	Puddle->SetupAttachment(Box);
+	Puddle->SetUsingAbsoluteRotation(true);
+	Puddle->SetUsingAbsoluteScale(true);
+	Puddle->SetUsingAbsoluteLocation(true);
+	Puddle->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	Puddle->SetCastShadow(false);
+	Puddle->SetCanEverAffectNavigation(false);
+	Puddle->SetVisibility(false);
 	Glow = CreateDefaultSubobject<UPointLightComponent>(TEXT("ColdLight"));
 	Glow->SetupAttachment(Box);
 	Glow->SetCastShadows(false);
@@ -307,10 +318,23 @@ void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, 
 	if (UStaticMesh* WallMesh = Shards ? Shards : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
 	{
 		Mesh->SetStaticMesh(WallMesh);
-		Mesh->SetMaterial(0, Ice);
+		IceMat = UMaterialInstanceDynamic::Create(Ice, this);
+		Mesh->SetMaterial(0, IceMat);
 		Mesh->SetRelativeRotation(FRotator(0.0f, bShards ? 90.0f : 0.0f, 0.0f));
 	}
 	UStaticMesh* Disc = Floe ? Floe : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	BaseAt = Base;
+	MeltSeconds = Tuning.IceWallMeltSeconds;
+	if (Floe)
+	{
+		// The meltwater: the floe mesh as a clear, glassy sheet on the floor (or just above the water).
+		Puddle->SetStaticMesh(Floe);
+		PuddleMat = UMaterialInstanceDynamic::Create(Ice, this);
+		PuddleMat->SetScalarParameterValue(TEXT("Wet"), 1.0f);
+		PuddleMat->SetScalarParameterValue(TEXT("Glow"), 0.0f);
+		PuddleMat->SetScalarParameterValue(TEXT("Opacity"), 0.0f);
+		Puddle->SetMaterial(0, PuddleMat);
+	}
 	// Water within reach freezes into a sheet just above the surface, for as long as anything caught stays trapped.
 	const FVector Feet(Base.X, Base.Y, Base.Z);
 	bSheet = Tuning.FreezeRadius > 0.0f && Water.DepthAt(GetWorld(), Feet, this) > 0.5f;
@@ -413,12 +437,27 @@ void AEHIceWall::Tick(float DeltaSeconds)
 		break;
 	case EPhase::Melting:
 	{
-		const float T = FMath::Clamp(PhaseAge / FMath::Max(0.01f, Tuning.IceWallMeltSeconds), 0.0f, 1.0f);
-		SetHeightFraction(1.0f - T);
+		const float T = FMath::Clamp(PhaseAge / FMath::Max(0.01f, MeltSeconds), 0.0f, 1.0f);
+		if (End == EEnd::Shattered)
+		{
+			SetHeightFraction(1.0f - T);   // broken: the pieces drop away at once
+		}
+		else if (PhaseAge - DeltaSeconds < MeltSeconds)
+		{
+			UpdateMelt(T, DeltaSeconds);   // until (and including) the frame it is all water
+		}
 		if (T >= 1.0f)
 		{
 			Mesh->SetVisibility(false);
-			if (!bSheet || SheetLeft <= 0.0f)
+			// The meltwater lingers, then dries away.
+			if (PuddleAlpha > 0.0f)
+			{
+				PuddleAge += DeltaSeconds;
+				PuddleAlpha = FMath::Clamp(1.0f - PuddleAge / FMath::Max(0.01f, Tuning.PuddleSeconds), 0.0f, 1.0f);
+				PuddleMat->SetScalarParameterValue(TEXT("Opacity"), 0.9f * PuddleAlpha);
+				Puddle->SetVisibility(PuddleAlpha > 0.01f);
+			}
+			if ((!bSheet || SheetLeft <= 0.0f) && PuddleAlpha <= 0.01f)
 			{
 				Phase = EPhase::Done;
 			}
@@ -427,6 +466,60 @@ void AEHIceWall::Tick(float DeltaSeconds)
 	}
 	default:
 		break;
+	}
+}
+
+void AEHIceWall::UpdateMelt(float T, float DeltaSeconds)
+{
+	// Melting: the frost goes first and the ice turns clear and wet; the shards thin and shorten where they stand
+	// (rather than sinking) while water runs off them and spreads into a puddle around the foot.
+	Wet = FMath::SmoothStep(0.0f, 0.6f, T);
+	if (IceMat)
+	{
+		IceMat->SetScalarParameterValue(TEXT("Wet"), Wet);
+		IceMat->SetScalarParameterValue(TEXT("Glow"), 1.0f - T);
+		IceMat->SetScalarParameterValue(TEXT("Opacity"), 1.0f - 0.25f * T);
+	}
+	Glow->SetIntensity(5.0f * (1.0f - T));
+	if (bShards)
+	{
+		const float Half = Tuning.IceWallHeight * 0.5f;
+		const float Shrink = 1.0f - FMath::SmoothStep(0.1f, 1.0f, T);
+		Mesh->SetRelativeScale3D(FVector(Tuning.IceWallWidth / 300.0f * (1.0f - 0.35f * T), Tuning.IceWallThickness / 60.0f * (1.0f - 0.55f * T),
+			Tuning.IceWallHeight / 240.0f * FMath::Max(0.02f, FMath::Pow(Shrink, 0.85f))));
+		Mesh->SetRelativeLocation(FVector(0, 0, -Half + 10.0f - 12.0f * T));
+	}
+	else
+	{
+		SetHeightFraction(1.0f - T);
+	}
+	if (Puddle->GetStaticMesh() && PuddleMat)
+	{
+		// The puddle spreads across the wall's width and out to either side.
+		const float Spread = FMath::SmoothStep(0.0f, 1.0f, T);
+		const float WaterZ = Water.DepthAt(GetWorld(), BaseAt, this) > 0.5f ? Water.SurfaceZ + 0.4f : BaseAt.Z + 0.6f;
+		Puddle->SetWorldLocationAndRotation(FVector(BaseAt.X, BaseAt.Y, WaterZ), GetActorRotation());
+		Puddle->SetWorldScale3D(FVector((0.5f + 1.3f * Spread) * Tuning.IceWallThickness / 60.0f, (0.6f + 1.4f * Spread) * Tuning.IceWallWidth / 180.0f, 1.0f));
+		PuddleAlpha = FMath::Max(PuddleAlpha, FMath::Min(1.0f, T * 4.0f));
+		PuddleMat->SetScalarParameterValue(TEXT("Opacity"), 0.9f * PuddleAlpha);
+		Puddle->SetVisibility(true);
+	}
+	// Drops running off and landing around the foot.
+	DripTimer -= DeltaSeconds;
+	if (Vfx.IsValid() && T < 0.95f)
+	{
+		while (DripTimer <= 0.0f)
+		{
+			DripTimer += 0.045f;
+			const FVector Across = GetActorRightVector() * FMath::FRandRange(-0.5f, 0.5f) * Tuning.IceWallWidth * (1.0f - 0.3f * T);
+			const FVector Out = GetActorForwardVector() * FMath::FRandRange(-0.6f, 0.6f) * Tuning.IceWallThickness;
+			const FVector Foot(BaseAt.X, BaseAt.Y, BaseAt.Z + 2.0f);
+			Vfx->Splash(Foot + Across + Out, 0.22f);
+			if (FMath::FRand() < 0.4f)
+			{
+				Vfx->Ripple(Foot + Across + Out * 2.0f, 0.35f);
+			}
+		}
 	}
 }
 
@@ -441,12 +534,19 @@ void AEHIceWall::StartMelt(EEnd Why, float Seconds)
 	Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Phase = EPhase::Melting;
 	PhaseAge = 0.0f;
-	Tuning.IceWallMeltSeconds = Seconds;
+	MeltSeconds = Seconds;
+	bMeltStarted = Why != EEnd::Shattered;
+	bEndNew = true;
+}
+
+void AEHIceWall::SetVfx(AEHVfx* InVfx)
+{
+	Vfx = InVfx;
 }
 
 void AEHIceWall::Melt()
 {
-	StartMelt(EEnd::Melted, Tuning.IceWallMeltSeconds);
+	StartMelt(EEnd::Melted, Tuning.IceWallFireMeltSeconds);
 }
 
 bool AEHIceWall::Damage(float Amount)

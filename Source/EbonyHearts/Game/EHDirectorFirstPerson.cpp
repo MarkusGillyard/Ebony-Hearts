@@ -59,6 +59,22 @@ FVector2D StickValue(float X, float Y, float DeadZone)
 }
 
 uint32 Bit(EEHAction A) { return 1u << static_cast<uint32>(A); }
+
+// The player's spells, in the selector's order (the wheel puts the first on the left).
+struct FEHSpellEntry
+{
+	EEHFistAction Action;
+	EEHAction Binding;
+	const TCHAR* Name;
+	FLinearColor Color;
+};
+const FEHSpellEntry Spells[] = {
+	{EEHFistAction::Fireball, EEHAction::FPFireball, TEXT("Fireball"), FLinearColor(1.0f, 0.5f, 0.16f)},
+	{EEHFistAction::IceWall, EEHAction::FPIceWall, TEXT("Ice Wall"), FLinearColor(0.45f, 0.75f, 1.0f)},
+};
+constexpr int32 SpellCount = UE_ARRAY_COUNT(Spells);
+// Wheel: the centre angle of spell I (degrees, 0 = right, counter-clockwise); two spells sit left and right.
+float WheelAngle(int32 I) { return SpellCount == 2 ? (I == 0 ? 180.0f : 0.0f) : 90.0f - I * 360.0f / SpellCount; }
 }
 using namespace EHFirstPersonDetail;
 
@@ -193,10 +209,76 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	KeyMove = KeyMove.GetSafeNormal();
 	In.Move = KeyMove.SizeSquared() > 0.0f ? KeyMove : PadMove;
 
+	// The spell selector: held, it takes the mouse and the right stick for choosing instead of looking.
+	const bool bSelectHeld = ((KeyHeld | PadHeld) & Bit(EEHAction::FPSpellSelect)) != 0;
+	EEHFistAction SelectedSpell = EEHFistAction::None;
+	if (bSelectHeld && !bSpellSelect)
+	{
+		OpenSpellSelect();
+	}
+	if (bSpellSelect)
+	{
+		if (Settings.SpellSelector == 0)
+		{
+			// Wheel: the mouse moves a pointer (about 120 counts to the rim); a tilted stick points directly.
+			SpellPointer += FVector2D(Mouse.X, -Mouse.Y) / 120.0f;
+			if (PadLook.Size() > 0.5f)
+			{
+				SpellPointer = FVector2D(PadLook.X, PadLook.Y);
+			}
+			if (SpellPointer.Size() > 1.0f)
+			{
+				SpellPointer = SpellPointer.GetSafeNormal();
+			}
+			SpellHighlight = -1;
+			if (SpellPointer.Size() > 0.35f)
+			{
+				const float A = FMath::RadiansToDegrees(FMath::Atan2(SpellPointer.Y, SpellPointer.X));
+				float Best = 1000.0f;
+				for (int32 I = 0; I < SpellCount; ++I)
+				{
+					const float D = FMath::Abs(FMath::FindDeltaAngleDegrees(A, WheelAngle(I)));
+					if (D < Best)
+					{
+						Best = D;
+						SpellHighlight = I;
+					}
+				}
+			}
+		}
+		else
+		{
+			// List: the mouse scrolls a row per 60 counts; a flick of the stick moves one row.
+			SpellListScroll += Mouse.Y;
+			while (SpellListScroll >= 60.0f) { SpellListScroll -= 60.0f; SpellHighlight = FMath::Min(SpellHighlight + 1, SpellCount - 1); }
+			while (SpellListScroll <= -60.0f) { SpellListScroll += 60.0f; SpellHighlight = FMath::Max(SpellHighlight - 1, 0); }
+			if (SpellHighlight == 0 && SpellListScroll < 0.0f) { SpellListScroll = 0.0f; }
+			if (SpellHighlight == SpellCount - 1 && SpellListScroll > 0.0f) { SpellListScroll = 0.0f; }
+			if (FMath::Abs(PadLook.Y) > 0.6f && !bSpellStickHeld)
+			{
+				SpellHighlight = FMath::Clamp(SpellHighlight + (PadLook.Y > 0.0f ? -1 : 1), 0, SpellCount - 1);
+				bSpellStickHeld = true;
+			}
+			else if (FMath::Abs(PadLook.Y) < 0.3f)
+			{
+				bSpellStickHeld = false;
+			}
+		}
+		if (!bSelectHeld)
+		{
+			SelectedSpell = CloseSpellSelect(true);
+		}
+	}
+	const FVector2D LookMouse = bSpellSelect ? FVector2D::ZeroVector : Mouse;
+	if (bSpellSelect)
+	{
+		PadLook = FVector2D::ZeroVector;
+	}
+
 	// Look: the mouse in degrees per count; the stick as a turn rate with a response curve, scaled by frame time.
 	const float Invert = Settings.bInvertLook ? -1.0f : 1.0f;
-	In.Look.X = static_cast<float>(Mouse.X) * Settings.MouseSensitivity;
-	In.Look.Y = -static_cast<float>(Mouse.Y) * Settings.MouseSensitivity * Invert;
+	In.Look.X = static_cast<float>(LookMouse.X) * Settings.MouseSensitivity;
+	In.Look.Y = -static_cast<float>(LookMouse.Y) * Settings.MouseSensitivity * Invert;
 	if (PadLook.SizeSquared() > 0.0f)
 	{
 		const float Mag = PadLook.Size();
@@ -249,9 +331,16 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	const uint32 AnyPress = Presses | PadPresses;
 	In.FistPress = (AnyPress & Bit(EEHAction::FPStraight)) ? EEHFistAction::Straight
 		: (AnyPress & Bit(EEHAction::FPJab)) ? EEHFistAction::Jab
-		: (AnyPress & Bit(EEHAction::FPShove)) ? EEHFistAction::Shove
 		: (AnyPress & Bit(EEHAction::FPFireball)) ? EEHFistAction::Fireball
 		: (AnyPress & Bit(EEHAction::FPIceWall)) ? EEHFistAction::IceWall : EEHFistAction::None;
+	if (bSpellSelect)
+	{
+		In.FistPress = EEHFistAction::None;   // choosing: nothing else starts
+	}
+	else if (SelectedSpell != EEHFistAction::None)
+	{
+		In.FistPress = SelectedSpell;          // released on a spell: cast it now
+	}
 	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
 	if (In.FistPress != EEHFistAction::None || In.bBlock)
 	{
@@ -291,6 +380,11 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	{
 		bDevPanel = false;
 	}
+	else if (bSpellSelect)
+	{
+		CloseSpellSelect(false);   // pausing cancels the choice
+	}
+	SpellSelectAlpha = FMath::FInterpConstantTo(SpellSelectAlpha, bSpellSelect ? 1.0f : 0.0f, FApp::GetDeltaTime(), 10.0f);
 	if (FPPlayer == nullptr || Screen != EEHScreen::FirstPerson || bPaused)
 	{
 		return;
@@ -369,7 +463,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			break;
 		case FEHFirstPersonEvent::EKind::Swing:
 			Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("WhooshHeavy")) : FName(TEXT("WhooshLight")), 3, EEHSoundCat::Effects,
-				E.Action == EEHFistAction::Shove ? 0.45f : 0.7f);
+				0.7f);
 			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
 			break;
 		case FEHFirstPersonEvent::EKind::Contact:
@@ -381,12 +475,6 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				PlayImpact(TEXT("BodyFall"), 2, 0.2f, 1.3f);
 				if (Vfx) { Vfx->Block(E.Location, 1, false); }
 				Rumble(0.0f, 0.35f, 0.07f);
-			}
-			else if (E.Action == EEHFistAction::Shove)
-			{
-				PlayImpact(TEXT("BodySlam"), 2, 0.6f, 1.05f);
-				PlayImpact(TEXT("Grab"), 1, 0.45f, 0.9f);
-				Rumble(0.5f, 0.2f, 0.18f);
 			}
 			else if (E.Action == EEHFistAction::Straight)
 			{
@@ -466,6 +554,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				{
 					Opponents.Add(FPDummy);
 				}
+				Wall->SetVfx(Vfx);
 				Wall->Raise(FPTuning.Magic, FPWater, E.Location, E.Direction, Opponents);
 				// Anyone standing where it rises is pushed out of the ice to the side they stood on.
 				if (FPDummy)
@@ -605,18 +694,154 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 			FPWalls.RemoveAt(i);
 			continue;
 		}
-		if (W->IsDone())
+		if (W->TakeMeltStarted())
 		{
+			// Turning to water: a trickle and the hiss of thawing ice.
+			PlayImpact(TEXT("StepWater"), 3, 0.55f, 0.8f);
+			PlayImpact(TEXT("AuraFade"), 1, 0.45f, 0.6f);
+			AutoLogLine(TEXT("fp ice_wall melting into water"));
+		}
+		if (W->TakeEnded())
+		{
+			// Counted the moment it stops being a wall (its water lingers a while after).
 			switch (W->EndReason())
 			{
 			case AEHIceWall::EEnd::Melted: ++FPWallsMelted; break;
 			case AEHIceWall::EEnd::Shattered: ++FPWallsShattered; break;
 			default: ++FPWallsExpired; break;
 			}
-			AutoLogLine(FString::Printf(TEXT("fp ice_wall gone (%s)"), W->EndReason() == AEHIceWall::EEnd::Melted ? TEXT("melted") : (W->EndReason() == AEHIceWall::EEnd::Shattered ? TEXT("shattered") : TEXT("expired"))));
+			AutoLogLine(FString::Printf(TEXT("fp ice_wall ends (%s)"), W->EndReason() == AEHIceWall::EEnd::Melted ? TEXT("melted") : (W->EndReason() == AEHIceWall::EEnd::Shattered ? TEXT("shattered") : TEXT("expired"))));
+		}
+		if (W->IsDone())
+		{
 			W->Destroy();
 			FPWalls.RemoveAt(i);
 		}
+	}
+}
+
+void AEHGameDirector::OpenSpellSelect()
+{
+	// The world slows to a crawl while the player chooses (it does not stop: choosing still has a cost).
+	bSpellSelect = true;
+	SpellPointer = FVector2D::ZeroVector;
+	SpellListScroll = 0.0f;
+	bSpellStickHeld = false;
+	SpellHighlight = Settings.SpellSelector == 1 ? 0 : -1;
+	UGameplayStatics::SetGlobalTimeDilation(this, 0.25f);
+	Audio.Play(TEXT("UiOpen"), EEHSoundCat::Ui, 0.5f);
+	AutoLogLine(FString::Printf(TEXT("fp spell_select open (%s)"), Settings.SpellSelector == 1 ? TEXT("list") : TEXT("wheel")));
+}
+
+EEHFistAction AEHGameDirector::CloseSpellSelect(bool bCast)
+{
+	if (!bSpellSelect)
+	{
+		return EEHFistAction::None;
+	}
+	bSpellSelect = false;
+	UGameplayStatics::SetGlobalTimeDilation(this, 1.0f);
+	const EEHFistAction Chosen = bCast && SpellHighlight >= 0 && SpellHighlight < SpellCount ? Spells[SpellHighlight].Action : EEHFistAction::None;
+	if (Chosen != EEHFistAction::None)
+	{
+		++SpellSelectCasts;
+	}
+	else
+	{
+		Audio.Play(TEXT("UiClose"), EEHSoundCat::Ui, 0.4f);
+	}
+	AutoLogLine(FString::Printf(TEXT("fp spell_select close -> %s"), EHFistActionName(Chosen)));
+	return Chosen;
+}
+
+void AEHGameDirector::PaintSpellSelect(FEHPainter& P)
+{
+	if (SpellSelectAlpha <= 0.01f || FPPlayer == nullptr)
+	{
+		return;
+	}
+	const float A = SpellSelectAlpha;
+	const FVector2f C(960.0f, 540.0f);
+	// The world dims behind the choice (it is still moving, slowly).
+	P.Fill(FLinearColor(0.0f, 0.0f, 0.02f, 0.4f * A));
+	const EEHDeviceKind Kind = PromptKind(FPDevice);
+	const EEHBindingSet Set = FPDevice >= EHDeviceGamepadBase ? EEHBindingSet::FPController : EEHBindingSet::FPKeyboard;
+	auto CostOf = [this](EEHFistAction S) { return S == EEHFistAction::Fireball ? FPTuning.Magic.FireballCost : FPTuning.Magic.IceWallCost; };
+	// One entry: the spell's name in its colour, its cost, and its button if it has one.
+	auto Entry = [&](int32 I, FVector2f At, float AlignX, bool bLit) {
+		const FEHSpellEntry& S = Spells[I];
+		const bool bAfford = FPPlayer->Qhi() + 0.001f >= CostOf(S.Action);
+		const float Dim = bAfford ? 1.0f : 0.45f;
+		const FLinearColor Name = bLit ? FLinearColor(S.Color.R, S.Color.G, S.Color.B, A * Dim) : EHStyle::Alpha(EHStyle::TextPrimary, 0.75f * A * Dim);
+		P.Text(S.Name, At, Fonts.Sized(Fonts.Display, bLit ? 34.0f : 30.0f), Name, AlignX, 0.5f);
+		const FString Cost = bAfford ? FString::Printf(TEXT("%.0f Qhi"), CostOf(S.Action)) : FString::Printf(TEXT("%.0f Qhi - not enough"), CostOf(S.Action));
+		P.Text(Cost, At + FVector2f(0.0f, 30.0f), Fonts.Sized(Fonts.Body, 20.0f), EHStyle::Alpha(bAfford ? EHStyle::TextSecondary : EHStyle::Warning, 0.9f * A), AlignX, 0.5f);
+		const FKey Key = Settings.Bindings.Get(Set, S.Binding, 0);
+		if (Key.IsValid())
+		{
+			const float W = PaintKeyGlyph(P, FVector2f::ZeroVector, Kind, Key, 26.0f, true);
+			PaintKeyGlyph(P, At + FVector2f(-W * AlignX, 50.0f), Kind, Key, 26.0f);
+		}
+	};
+	if (Settings.SpellSelector == 0)
+	{
+		// The wheel: a dark ring, a lit sector toward the highlighted spell, a pointer from the centre.
+		const float R = 210.0f;
+		TArray<FVector2f> Ring;
+		for (int32 k = 0; k <= 64; ++k)
+		{
+			const float T = k / 64.0f * 2.0f * PI;
+			Ring.Add(C + FVector2f(FMath::Cos(T), -FMath::Sin(T)) * R);
+		}
+		P.Line(Ring, EHStyle::Alpha(EHStyle::Abyss, 0.55f * A), 120.0f);
+		P.Line(Ring, EHStyle::Alpha(EHStyle::Silver, 0.25f * A), 2.0f);
+		for (int32 I = 0; I < SpellCount; ++I)
+		{
+			const float Ang = FMath::DegreesToRadians(WheelAngle(I));
+			const bool bLit = I == SpellHighlight;
+			if (bLit)
+			{
+				TArray<FVector2f> Arc;
+				const float Half = FMath::DegreesToRadians(180.0f / SpellCount) * 0.9f;
+				for (int32 k = 0; k <= 24; ++k)
+				{
+					const float T = Ang - Half + 2.0f * Half * k / 24.0f;
+					Arc.Add(C + FVector2f(FMath::Cos(T), -FMath::Sin(T)) * R);
+				}
+				P.Line(Arc, FLinearColor(Spells[I].Color.R, Spells[I].Color.G, Spells[I].Color.B, 0.35f * A), 120.0f);
+				P.Line(Arc, FLinearColor(Spells[I].Color.R, Spells[I].Color.G, Spells[I].Color.B, 0.9f * A), 3.0f);
+			}
+			const FVector2f Dir(FMath::Cos(Ang), -FMath::Sin(Ang));
+			const FVector2f At = C + Dir * (R + 110.0f);
+			Entry(I, At - FVector2f(0.0f, 28.0f), Dir.X < -0.3f ? 1.0f : (Dir.X > 0.3f ? 0.0f : 0.5f), bLit);
+		}
+		// The pointer, and the centre (letting go there cancels).
+		if (SpellPointer.Size() > 0.05f)
+		{
+			P.Line({C, C + FVector2f(SpellPointer.X, -SpellPointer.Y) * (R - 70.0f)}, EHStyle::Alpha(EHStyle::TextPrimary, 0.6f * A), 3.0f);
+		}
+		P.Text(FString::Printf(TEXT("Qhi %.0f"), FPPlayer->Qhi()), C, Fonts.Sized(Fonts.BodyMedium, 26.0f), EHStyle::Alpha(EHStyle::TextPrimary, 0.9f * A), 0.5f, 0.5f);
+		P.Text(SpellHighlight < 0 ? TEXT("Point to a spell, let go to cast") : TEXT("Let go to cast"), C + FVector2f(0.0f, 34.0f), Fonts.Sized(Fonts.Body, 18.0f),
+			EHStyle::Alpha(EHStyle::TextSecondary, 0.8f * A), 0.5f, 0.5f);
+	}
+	else
+	{
+		// The list: one row per spell beside the centre of the view, the highlighted one lit.
+		const float RowH = 118.0f;
+		const FVector2f Top(C.X + 160.0f, C.Y - RowH * SpellCount * 0.5f);
+		P.Round(Top - FVector2f(24.0f, 20.0f), FVector2f(420.0f, RowH * SpellCount + 70.0f), EHStyle::Alpha(EHStyle::Abyss, 0.6f * A), 10.0f);
+		for (int32 I = 0; I < SpellCount; ++I)
+		{
+			const FVector2f Row = Top + FVector2f(0.0f, RowH * I);
+			const bool bLit = I == SpellHighlight;
+			if (bLit)
+			{
+				P.Round(Row - FVector2f(12.0f, 8.0f), FVector2f(396.0f, RowH - 8.0f), FLinearColor(Spells[I].Color.R, Spells[I].Color.G, Spells[I].Color.B, 0.22f * A), 8.0f);
+			}
+			Entry(I, Row + FVector2f(8.0f, 22.0f), 0.0f, bLit);
+		}
+		P.Text(FString::Printf(TEXT("Qhi %.0f  ·  let go to cast"), FPPlayer->Qhi()), Top + FVector2f(8.0f, RowH * SpellCount + 18.0f), Fonts.Sized(Fonts.Body, 18.0f),
+			EHStyle::Alpha(EHStyle::TextSecondary, 0.8f * A), 0.0f, 0.5f);
 	}
 }
 
@@ -681,7 +906,7 @@ void AEHGameDirector::BuildDeveloperPanel()
 	StatItem(TEXT("Intelligence"), 3, TEXT("Each point above 10 speeds Qhi regeneration by 5%."));
 	StatItem(TEXT("Faith"), 4, TEXT("Each point above 10 speeds Qhi regeneration by 5%."));
 	StatItem(TEXT("Dexterity"), 5, TEXT("Each point above 10 speeds Stamina recovery by 5%."));
-	StatItem(TEXT("Martial Prowess"), 6, TEXT("Each point above 10 adds 5% to strike damage and shove distance."));
+	StatItem(TEXT("Martial Prowess"), 6, TEXT("Each point above 10 adds 5% to strike damage."));
 	Menu.Add(FPHeader(TEXT("Now")));
 	{
 		FEHMenuItem I;
@@ -703,6 +928,7 @@ void AEHGameDirector::BuildDeveloperPanel()
 void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 {
 	ClearSpells();
+	CloseSpellSelect(false);
 	// The spell counts are per attempt (automation reads them after each reset).
 	FPFireballHits = FPWallsMelted = FPWallsShattered = FPWallsExpired = FPWallsRaised = FPFizzles = FPRefusedNoQhi = FPRefusedNoRoom = 0;
 	bFPCrouchToggled = false;
@@ -768,6 +994,13 @@ void AEHGameDirector::HandleFirstPersonNav(const FEHNavEvent& E)
 		HandleMenuNav(E);
 		return;
 	}
+	if (bSpellSelect && Settings.SpellSelector == 1 && (E.Nav == EEHNav::Up || E.Nav == EEHNav::Down))
+	{
+		// The list also steps with the D-pad and W / S.
+		SpellHighlight = FMath::Clamp(SpellHighlight + (E.Nav == EEHNav::Down ? 1 : -1), 0, SpellCount - 1);
+		Audio.Play(TEXT("UiMove"), EEHSoundCat::Ui, 0.4f);
+		return;
+	}
 	if (E.Nav == EEHNav::Pause && !E.bRepeat)
 	{
 		SetPaused(true, E.Device);
@@ -817,7 +1050,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		// The dummy's count, above its head: a training readout, placeholder text.
 		APlayerController* PC = GetWorld()->GetFirstPlayerController();
 		FVector2D Screen2D;
-		if (FPDummy && PC && FVector::Dist(FPDummy->GetActorLocation(), FPPlayer->GetActorLocation()) < 1500.0f &&
+		if (FPDummy && PC && SpellSelectAlpha < 0.01f && FVector::Dist(FPDummy->GetActorLocation(), FPPlayer->GetActorLocation()) < 1500.0f &&
 			PC->ProjectWorldLocationToScreen(FPDummy->LabelLocation(), Screen2D, true))
 		{
 			const FVector2f At = P.ToVirtual(FVector2f(Screen2D.X, Screen2D.Y) / FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale()));
@@ -830,6 +1063,10 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 				P.Text(FPDummy->LastText(), At + FVector2f(0, 30), Fonts.Sized(Fonts.Body, 18), EHStyle::Alpha(EHStyle::TextPrimary, 0.9f * (1.0f - FPDummy->SecondsSinceHit() / 1.5f)), 0.5f, 0.0f);
 			}
 		}
+	}
+	if (!bPaused)
+	{
+		PaintSpellSelect(P);
 	}
 	// Every piece of art in this build is a stand-in; say so where a reviewer will see it.
 	P.Text(TEXT("First-person prototype - placeholder art and animation"), FVector2f(P.VirtualMin.X + 28.0f, P.VirtualMax.Y - 24.0f),
@@ -955,7 +1192,8 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("fizzles")) V = static_cast<float>(FPFizzles);
 		else if (Field == TEXT("fireballs")) V = static_cast<float>(FPFireballs.Num());
 		else if (Field == TEXT("fireball_hits")) V = static_cast<float>(FPFireballHits);
-		else if (Field == TEXT("walls")) V = static_cast<float>(FPWalls.Num());
+		else if (Field == TEXT("walls")) V = static_cast<float>(FPWalls.FilterByPredicate([](const AEHIceWall* W) { return W && W->IsSolid(); }).Num());
+		else if (Field == TEXT("puddles")) V = static_cast<float>(FPWalls.FilterByPredicate([](const AEHIceWall* W) { return W && W->HasPuddle(); }).Num());
 		else if (Field == TEXT("walls_raised")) V = static_cast<float>(FPWallsRaised);
 		else if (Field == TEXT("walls_melted")) V = static_cast<float>(FPWallsMelted);
 		else if (Field == TEXT("walls_shattered")) V = static_cast<float>(FPWallsShattered);
@@ -965,6 +1203,10 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("wall_ice_water")) V = FPWalls.Num() > 0 && FPWalls.Last() && FPWalls.Last()->FroseWater() ? 1.0f : 0.0f;
 		else if (Field == TEXT("wall_dist")) V = FPWalls.Num() > 0 && FPWalls.Last() ? FVector::Dist2D(FPWalls.Last()->GetActorLocation(), FPPlayer->GetActorLocation()) : 0.0f;
 		else if (Field == TEXT("dev_panel")) V = bDevPanel ? 1.0f : 0.0f;
+		else if (Field == TEXT("selecting")) V = bSpellSelect ? 1.0f : 0.0f;
+		else if (Field == TEXT("select_highlight")) V = static_cast<float>(SpellHighlight);
+		else if (Field == TEXT("select_casts")) V = static_cast<float>(SpellSelectCasts);
+		else if (Field == TEXT("time_dilation")) V = UGameplayStatics::GetGlobalTimeDilation(this);
 		else if (FPDummy && Field == TEXT("dummy_frozen")) V = FPDummy->IsFrozen() ? 1.0f : 0.0f;
 		else if (FPDummy && Field == TEXT("dummy_freezes")) V = static_cast<float>(FPDummy->TimesFrozen());
 		else if (Field == TEXT("action")) V = static_cast<float>(static_cast<int32>(FPPlayer->GetFists().Action()));
@@ -1016,6 +1258,13 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		FrameCaptureIndex = 0;
 		FrameCaptureNext = 0.0;
 		UGameplayStatics::SetGlobalTimeDilation(this, 0.05f);
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_selector"))
+	{
+		// fp_selector <wheel|list>: what Settings > Controls > Spell selector does.
+		Settings.SpellSelector = Arg(1, TEXT("wheel")) == TEXT("list") ? 1 : 0;
 		AutoLogLine(Line);
 		return true;
 	}

@@ -1,4 +1,4 @@
-// A standing training partner for the physical techniques: it takes hits, guards from the front, gets pushed, and can
+// A standing training partner for the physical techniques: it takes hits, guards from the front, is knocked back, and can
 // strike back on a slow, readable rhythm so the player's block has something to stop. Stepped at 60 frames per second
 // like the techniques. Placeholder model: the 2.5D slice's Ashka test model and her animations, used only as a
 // stand-in.
@@ -90,7 +90,7 @@ public:
 	FString StateName() const;
 	FVector LabelLocation() const;
 	FVector FeetLocation() const;
-	// Ice Wall: frozen water holds its feet for Seconds (it cannot slide, be pushed or turn; it can still strike).
+	// Ice Wall: frozen water holds its feet for Seconds (it cannot slide or turn; it can still strike).
 	void Freeze(float Seconds);
 	bool IsFrozen() const { return FrozenLeft > 0.0f; }
 	float FrozenSeconds() const { return FrozenLeft; }
@@ -100,7 +100,7 @@ public:
 	void Displace(const FVector& Offset, AActor* Ignore = nullptr);
 
 private:
-	enum class EState : uint8 { Idle, Hit, Blocked, Pushed, Windup, Recover };
+	enum class EState : uint8 { Idle, Hit, Blocked, Windup, Recover };
 
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> AnimIdle;
@@ -131,8 +131,6 @@ private:
 	EEHFistAction LastAction = EEHFistAction::None;
 	int32 Hitstop = 0;
 	int32 Cooldown = 0;
-	FVector PushPerFrame = FVector::ZeroVector;
-	int32 PushLeft = 0;
 	float Accum = 0.0f;
 	UAnimSequence* ShownSeq = nullptr;
 	int32 HitCount = 0;

@@ -41,7 +41,7 @@ struct FEHMagicTuning
 	float QhiRegenDelay = 0.5f;         // seconds after a cast before Qhi flows back
 	float QhiPerStrike = 4.0f;          // a physical technique that lands (not guarded)
 	float StaminaPerDexterity = 0.05f;  // share of Stamina recovery per point of Dexterity
-	float PhysicalPerProwess = 0.05f;   // share of physical damage and shove distance per point of Martial Prowess
+	float PhysicalPerProwess = 0.05f;   // share of physical damage per point of Martial Prowess
 
 	float FireballCost = 20.0f;
 	float FireballDamage = 25.0f;
@@ -58,7 +58,9 @@ struct FEHMagicTuning
 	float IceWallHeight = 240.0f;
 	float IceWallThickness = 60.0f;
 	float IceWallRiseSeconds = 0.3f;    // the start-up that freezes the water
-	float IceWallMeltSeconds = 0.5f;
+	float IceWallMeltSeconds = 1.6f;    // when its time is up: the ice turns to water and runs off
+	float IceWallFireMeltSeconds = 0.6f; // struck by a Fireball
+	float PuddleSeconds = 4.0f;         // the meltwater lingers, then dries away
 	float IceWallHealth = 60.0f;        // physical damage that shatters it
 	float FreezeRadius = 280.0f;        // water within this distance of the wall freezes
 	float FreezeSeconds = 2.0f;
@@ -124,7 +126,14 @@ public:
 	// Raised at Base (on the floor) facing Facing; Water decides what freezes; Opponents caught near it in water
 	// while it rises are frozen.
 	void Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, const FVector& Base, const FVector& Facing, const TArray<AEHTrainingDummy*>& Opponents);
-	void Melt();                       // Fireball: gone at once, steam
+	void Melt();                       // Fireball: melts fast, in steam
+	void SetVfx(AEHVfx* InVfx);
+	// True once, the frame melting into water starts (expired or Fireball); the director plays its sound.
+	bool TakeMeltStarted() { const bool b = bMeltStarted; bMeltStarted = false; return b; }
+	// True once, the frame it stops being a wall (expired, melted or shattered).
+	bool TakeEnded() { const bool b = bEndNew; bEndNew = false; return b; }
+	float WetAmount() const { return Wet; }
+	bool HasPuddle() const { return PuddleAlpha > 0.01f; }
 	bool Damage(float Amount);         // physical strikes; true when it shatters
 	bool IsSolid() const { return Phase == EPhase::Rising || Phase == EPhase::Standing; }
 	bool IsDone() const { return Phase == EPhase::Done; }
@@ -146,6 +155,22 @@ private:
 	TObjectPtr<UStaticMeshComponent> Sheet;
 	UPROPERTY()
 	TObjectPtr<UPointLightComponent> Glow;   // the spell's cold light inside the ice
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> Puddle; // the meltwater it leaves
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> IceMat;
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> PuddleMat;
+	TWeakObjectPtr<AEHVfx> Vfx;
+	FVector BaseAt = FVector::ZeroVector;
+	float MeltSeconds = 1.6f;
+	float Wet = 0.0f;
+	float PuddleAlpha = 0.0f;
+	float PuddleAge = 0.0f;
+	float DripTimer = 0.0f;
+	bool bMeltStarted = false;
+	bool bEndNew = false;
+	void UpdateMelt(float T, float DeltaSeconds);
 	FEHMagicTuning Tuning;
 	FEHWater Water;
 	TArray<TWeakObjectPtr<AEHTrainingDummy>> Opponents;

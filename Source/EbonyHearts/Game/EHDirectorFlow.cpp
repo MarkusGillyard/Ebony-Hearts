@@ -261,6 +261,10 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 				TEXT("Up looks down, for the mouse and the right stick.")));
 			Menu.Add(Choice(TEXT("Controller vibration"), [this] { return OnOff(Settings.bVibration); }, [this](int32) { Settings.bVibration = !Settings.bVibration; },
 				TEXT("Rumble when a technique lands, is blocked, or you are hit.")));
+			Menu.Add(Header(TEXT("Spells")));
+			Menu.Add(Choice(TEXT("Spell selector"), [this] { return FString(Settings.SpellSelector == 1 ? TEXT("List") : TEXT("Wheel")); },
+				[this](int32) { Settings.SpellSelector = Settings.SpellSelector == 1 ? 0 : 1; },
+				TEXT("Hold Choose a spell to open your spells; point or scroll to one and let go to cast it.")));
 			Menu.Add(Header(TEXT("Keyboard")));
 			Menu.Add(Choice(TEXT("Sprint"), [this] { return FString(Settings.bSprintToggle ? TEXT("Toggle") : TEXT("Hold")); }, [this](int32) { Settings.bSprintToggle = !Settings.bSprintToggle; bFPSprintToggled = false; },
 				TEXT("A controller's stick press always toggles sprint.")));

@@ -11,9 +11,6 @@ wait 1.2
 fp_frames 36 f_straight
 press kbA FPStraight
 wait 1.2
-fp_frames 34 f_shove
-press kbA FPShove
-wait 1.5
 fp_dummy_reset
 wait 0.5
 fp_frames 14 f_block

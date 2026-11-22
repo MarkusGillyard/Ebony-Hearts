@@ -32,7 +32,7 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::FPSprint: return TEXT("FPSprint");
 	case EEHAction::FPJab: return TEXT("FPJab");
 	case EEHAction::FPStraight: return TEXT("FPStraight");
-	case EEHAction::FPShove: return TEXT("FPShove");
+	case EEHAction::FPSpellSelect: return TEXT("FPSpellSelect");
 	case EEHAction::FPBlock: return TEXT("FPBlock");
 	case EEHAction::FPFireball: return TEXT("FPFireball");
 	case EEHAction::FPIceWall: return TEXT("FPIceWall");
@@ -64,7 +64,7 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::FPSprint: return TEXT("FirstPersonSprint");
 	case EEHAction::FPJab: return TEXT("FirstPersonJab");
 	case EEHAction::FPStraight: return TEXT("FirstPersonStraight");
-	case EEHAction::FPShove: return TEXT("FirstPersonShove");
+	case EEHAction::FPSpellSelect: return TEXT("FirstPersonSpellSelect");
 	case EEHAction::FPBlock: return TEXT("FirstPersonBlock");
 	case EEHAction::FPFireball: return TEXT("FirstPersonFireball");
 	case EEHAction::FPIceWall: return TEXT("FirstPersonIceWall");
@@ -96,7 +96,7 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::FPSprint: return TEXT("Sprint");
 	case EEHAction::FPJab: return TEXT("Jab");
 	case EEHAction::FPStraight: return TEXT("Straight");
-	case EEHAction::FPShove: return TEXT("Shove");
+	case EEHAction::FPSpellSelect: return TEXT("Choose a spell (hold)");
 	case EEHAction::FPBlock: return TEXT("Block (hold)");
 	case EEHAction::FPFireball: return TEXT("Fireball");
 	case EEHAction::FPIceWall: return TEXT("Ice Wall");
@@ -152,12 +152,12 @@ TArray<EEHAction> EHActionsFor(EEHBindingSet Set)
 	using A = EEHAction;
 	if (Set == EEHBindingSet::FPKeyboard)
 	{
-		return {A::FPJab, A::FPStraight, A::FPShove, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	if (Set == EEHBindingSet::FPController)
 	{
 		// The left stick always moves and the right stick always looks, so only buttons are listed.
-		return {A::FPJab, A::FPStraight, A::FPShove, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	return {A::Light, A::Heavy, A::Dodge, A::Throw, A::Block, A::Special, A::Left, A::Right, A::Jump, A::Down, A::Reset};
 }
@@ -261,17 +261,19 @@ FEHBindings FEHBindings::Defaults()
 	// stick movement mix without moving a thumb.
 	Set(S::FPKeyboard, A::FPJab, EKeys::LeftMouseButton);
 	Set(S::FPKeyboard, A::FPStraight, EKeys::RightMouseButton);
-	Set(S::FPKeyboard, A::FPShove, EKeys::E);
 	Set(S::FPKeyboard, A::FPBlock, EKeys::Q);
 	Set(S::FPController, A::FPJab, EKeys::Gamepad_RightShoulder);
 	Set(S::FPController, A::FPStraight, EKeys::Gamepad_RightTrigger);
-	Set(S::FPController, A::FPShove, EKeys::Gamepad_FaceButton_Right);
 	Set(S::FPController, A::FPBlock, EKeys::Gamepad_LeftShoulder);
 	// Spells (2026-11-21): the left hand holds block and Fireball, so strikes and spells mix on the triggers.
 	Set(S::FPKeyboard, A::FPFireball, EKeys::F);
 	Set(S::FPKeyboard, A::FPIceWall, EKeys::R);
 	Set(S::FPController, A::FPFireball, EKeys::Gamepad_LeftTrigger);
 	Set(S::FPController, A::FPIceWall, EKeys::Gamepad_FaceButton_Top);
+	// The spell selector (2026-11-22): held, it opens every spell; Tab beside the left hand, Square / X under the right
+	// thumb.
+	Set(S::FPKeyboard, A::FPSpellSelect, EKeys::Tab);
+	Set(S::FPController, A::FPSpellSelect, EKeys::Gamepad_FaceButton_Left);
 	return B;
 }
 
@@ -619,6 +621,7 @@ void FEHSettings::Clamp()
 	StickSensitivity = FMath::Clamp(StickSensitivity, 0.3f, 3.0f);
 	FieldOfView = FMath::Clamp(FieldOfView, 70, 110);
 	StaminaMeter = FMath::Clamp(StaminaMeter, 0, 2);
+	SpellSelector = FMath::Clamp(SpellSelector, 0, 1);
 	if (static_cast<uint8>(PromptStyle) > static_cast<uint8>(EEHPromptStyle::Xbox))
 	{
 		PromptStyle = EEHPromptStyle::Auto;
@@ -698,6 +701,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Bool(TEXT("sprintToggle"), S.bSprintToggle);
 	Bool(TEXT("crouchToggle"), S.bCrouchToggle);
 	Int(TEXT("staminaMeter"), S.StaminaMeter);
+	Int(TEXT("spellSelector"), S.SpellSelector);
 	Bool(TEXT("vibration"), S.bVibration);
 	S.bImportedFromSlice = bFromSlice;
 
@@ -938,7 +942,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			FString Taken;
 			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
 			{
-				for (EEHAction A : {EEHAction::FPJab, EEHAction::FPStraight, EEHAction::FPShove, EEHAction::FPBlock})
+				for (EEHAction A : {EEHAction::FPJab, EEHAction::FPStraight, EEHAction::FPBlock})
 				{
 					for (int32 K = 0; K < EHKeysPerAction; ++K)
 					{
@@ -954,7 +958,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			}
 			if (Version == 6)
 			{
-				Notes += FString::Printf(TEXT("%sNew: Jab, Straight, Shove and Block have their own buttons."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				Notes += FString::Printf(TEXT("%sNew: Jab, Straight and Block have their own buttons."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
 				if (!Taken.IsEmpty())
 				{
 					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
@@ -984,6 +988,34 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			if (Version >= 6)
 			{
 				Notes += FString::Printf(TEXT("%sNew: Fireball and Ice Wall have their own buttons."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				if (!Taken.IsEmpty())
+				{
+					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
+				}
+			}
+		}
+		if (Version < 9)
+		{
+			// Version 9 removed the shove (its keys are simply free now) and added the spell selector, which takes its
+			// default key only where the player has not used it for something else.
+			FString Taken;
+			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
+			{
+				const EEHAction A = EEHAction::FPSpellSelect;
+				for (int32 K = 0; K < EHKeysPerAction; ++K)
+				{
+					const FKey Key = Loaded.Keys[Idx(BS)][Idx(A)][K];
+					const FEHBindingRef C = Key.IsValid() ? Loaded.FindConflict(BS, A, K, Key) : FEHBindingRef();
+					if (C.IsValid() && C.Action != A)
+					{
+						Loaded.Keys[Idx(BS)][Idx(A)][K] = EKeys::Invalid;
+						Taken += FString::Printf(TEXT("%s%s (%s) is used by %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), *Key.GetDisplayName(false).ToString(), EHActionLabel(A), EHActionLabel(C.Action));
+					}
+				}
+			}
+			if (Version >= 6)
+			{
+				Notes += FString::Printf(TEXT("%sThe shove is gone. New: hold to choose a spell (Tab, Square / X)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
 				if (!Taken.IsEmpty())
 				{
 					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
@@ -1051,6 +1083,7 @@ bool FEHSettings::Save(const FString& PathOverride) const
 	Root->SetBoolField(TEXT("sprintToggle"), bSprintToggle);
 	Root->SetBoolField(TEXT("crouchToggle"), bCrouchToggle);
 	Root->SetNumberField(TEXT("staminaMeter"), StaminaMeter);
+	Root->SetNumberField(TEXT("spellSelector"), SpellSelector);
 	Root->SetBoolField(TEXT("vibration"), bVibration);
 	TSharedRef<FJsonObject> BindingsObj = MakeShared<FJsonObject>();
 	for (int32 Set = 0; Set < EHSetCount; ++Set)

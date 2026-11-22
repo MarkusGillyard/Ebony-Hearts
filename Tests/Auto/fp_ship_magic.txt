@@ -65,7 +65,7 @@ wait 0.7
 fp_expect dummy_hits eq 2
 fp_dummy_reset
 wait 3.0
-press kbA FPShove
+press kbA FPStraight
 wait 0.25
 press kbA FPFireball
 wait 1.2
@@ -85,6 +85,18 @@ wait 0.8
 press pad7 FPIceWall
 wait 1.5
 fp_expect walls eq 1
+log == the spell wheel: hold Tab, point left, let go: Fireball
+fp_reset
+wait 1.0
+hold kbA FPSpellSelect
+wait 0.4
+fp_expect selecting eq 1
+look -150 0
+wait 0.6
+release kbA FPSpellSelect
+wait 1.4
+fp_expect select_casts eq 1
+fp_expect fireball_hits eq 1
 log review_end
 
 log == F10 opens nothing in Shipping (the developer panel exists only in development builds)
@@ -97,7 +109,7 @@ log == pause mid-cast, then Return to the start clears every spell
 press kbA FPFireball
 wait 0.1
 press kbA Pause
-fp_expect action eq 4
+fp_expect action eq 3
 press kbA Down
 press kbA Confirm
 wait 0.4

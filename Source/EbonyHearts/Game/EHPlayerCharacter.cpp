@@ -569,11 +569,10 @@ void AEHPlayerCharacter::StepFists()
 void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 {
 	// The strike reaches along the aim from the eyes: a sphere for the target, a line for walls in between. Martial
-	// Prowess scales its damage and the shove's distance.
+	// Prowess scales its damage.
 	FEHStrikeDef D = Tuning.Fists.Def(Action);
 	const float Physical = Tuning.Magic.PhysicalScale(Stats);
 	D.Damage *= Physical;
-	D.Push *= Physical;
 	const FVector Eye = CameraComp->GetComponentLocation();
 	const FVector Aim = CameraComp->GetForwardVector();
 	const FVector End = Eye + Aim * D.Reach;
@@ -598,7 +597,7 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 	if (Target && !(bWall && Wall.Distance + 5.0f < TargetHit.Distance))
 	{
 		const FVector At = TargetHit.ImpactPoint.IsNearlyZero() ? Target->GetActorLocation() : FVector(TargetHit.ImpactPoint);
-		const float HandSide = Action == EEHFistAction::Jab ? -1.0f : (Action == EEHFistAction::Straight ? 1.0f : 0.0f);
+		const float HandSide = Action == EEHFistAction::Jab ? -1.0f : 1.0f;
 		const FEHDummyHit R = Target->ReceiveHit(Action, D, Eye, At, HandSide);
 		Fists.MarkConnected();
 		Fists.OnContact();
@@ -612,13 +611,9 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 		{
 			Kick(-0.8f * Weight, 3.0f * Weight, 1.0f * Weight);
 		}
-		else if (Action == EEHFistAction::Jab)
-		{
-			Kick(-0.4f * Weight, 1.6f * Weight, -0.5f * Weight);
-		}
 		else
 		{
-			Kick(-0.3f, -1.5f, 0.0f);   // the shove pushes the shoulders back
+			Kick(-0.4f * Weight, 1.6f * Weight, -0.5f * Weight);
 		}
 		FEHFirstPersonEvent Out;
 		Out.Kind = FEHFirstPersonEvent::EKind::Contact;
@@ -641,7 +636,7 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 		Out.Location = Wall.ImpactPoint;
 		if (AEHIceWall* Ice = Cast<AEHIceWall>(Wall.GetActor()))
 		{
-			// Ice gives way to enough blows (the shove only pushes against it).
+			// Ice gives way to enough blows.
 			Out.bIce = true;
 			Out.bShattered = Ice->Damage(D.Damage);
 			Out.Damage = D.Damage;
