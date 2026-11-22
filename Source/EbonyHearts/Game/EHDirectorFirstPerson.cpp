@@ -5,6 +5,7 @@
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/LightComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EHMagic.h"
@@ -1540,6 +1541,38 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		// fp_align <0..8>: the developer selector's alignment tier (0 Hero of Humanity, 4 Platonic, 8 Forsaken).
 		FPAlignment = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("4"))), 0, EHAlign::Count - 1);
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, EHAlign::Name(FPAlignment)));
+		return true;
+	}
+	if (Cmd == TEXT("fp_hide"))
+	{
+		// fp_hide <mesh name prefix | lights> <0|1>: hides static meshes whose mesh name starts with the prefix, or
+		// switches off the interior's lights (tagged EHInterior); for measuring what a view's frame time is made of.
+		const FString What = Arg(1, TEXT(""));
+		const bool bHide = F(2, 1.0f) > 0.5f;
+		int32 N = 0;
+		for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+		{
+			if (What == TEXT("lights"))
+			{
+				if (It->ActorHasTag(TEXT("EHInterior")))
+				{
+					for (ULightComponent* L : TInlineComponentArray<ULightComponent*>(*It))
+					{
+						L->SetVisibility(!bHide);
+						++N;
+					}
+				}
+				continue;
+			}
+			const AStaticMeshActor* SMA = Cast<AStaticMeshActor>(*It);
+			const UStaticMesh* M = SMA && SMA->GetStaticMeshComponent() ? SMA->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
+			if (M && M->GetName().StartsWith(What))
+			{
+				It->SetActorHiddenInGame(bHide);
+				++N;
+			}
+		}
+		AutoLogLine(FString::Printf(TEXT("%s -> %d"), *Line, N));
 		return true;
 	}
 	if (Cmd == TEXT("fp_wolf_place"))

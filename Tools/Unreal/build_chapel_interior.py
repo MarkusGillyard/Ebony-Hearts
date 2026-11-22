@@ -106,7 +106,7 @@ def clear(eas):
         lab = a.get_actor_label()
         m = mesh_of(a)
         l = a.get_actor_location()
-        kill = lab.startswith("IX_") or lab == "PH_Blockout_WestWall"
+        kill = lab.startswith("IX_") or lab.startswith("IXL_") or lab == "PH_Blockout_WestWall"
         if m == "SM_AisleWallBay":
             for key in TRANS_BAYS + [DOWN_BAY]:
                 if near(a, key[0], key[1], 40):

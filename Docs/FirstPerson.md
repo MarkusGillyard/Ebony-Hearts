@@ -354,6 +354,7 @@ path as a player. New commands:
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 | `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |
 | `fp_selector <wheel\|list>` | all | what Settings > Controls > Spell selector does |
+| `fp_hide <mesh name prefix \| lights> <0\|1>` | development only | hides static meshes by mesh name, or switches off the interior's lights, to measure what a view's frame time is made of |
 | `fp_wolf_reset` | all | what the pause menu's Reset the wolf does |
 | `fp_align <0..8>`, `fp_wolf_place <x> <y> [yaw] [health]` | development only | the developer panel's alignment; a test position (and Health) for the wolf |
 | `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
