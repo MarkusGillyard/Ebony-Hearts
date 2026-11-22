@@ -1,0 +1,59 @@
+# The Chapel wolf in the Shipping package: device inputs and observation only (no teleports, no alignment selector,
+# no stat changes). The player starts Platonic (Neutral): the wolf rests at the right of the altar end and keeps its
+# distance as the player walks down the aisle; a jab into the air well away from it is no threat; the pause menu's
+# Reset the wolf puts it back at its rest; walking out to the entrance strip leaves it calm. The bands, harm, the
+# Hero bond and the Ice Wall rerouting are covered in the development build (fp_wolf.txt).
+wait 5
+fp_expect screen eq 12
+fp_expect alignment eq 4
+fp_expect wolf_state eq 0
+fp_expect wolf_hostile eq 0
+fp_expect wolf_home_dist lt 60
+
+log == down the aisle past the dummy: the wolf stays calm and keeps its distance
+hold kbA FPLeft
+wait 0.7
+release kbA FPLeft
+hold kbA FPForward
+wait 3.5
+release kbA FPForward
+wait 1.0
+fp_state aisle
+fp_expect y lt -400
+fp_expect wolf_hostile eq 0
+fp_expect wolf_provoked eq 0
+fp_expect wolf_dist gt 380
+fp_expect health eq 100
+
+log == a jab into the air far from it is no threat
+press kbA FPJab
+wait 0.8
+fp_expect wolf_disengages eq 0
+fp_expect wolf_provoked eq 0
+fp_expect alignment eq 4
+
+log == pause, Reset the wolf: back at its rest, calm
+press kbA Pause
+wait 0.2
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Down
+press kbA Confirm
+wait 0.5
+fp_expect paused eq 0
+fp_expect wolf_state eq 0
+fp_expect wolf_home_dist lt 60
+fp_expect wolf_health eq 60
+
+log == back out to the entrance strip: still calm
+hold kbA FPBack
+wait 4.0
+release kbA FPBack
+wait 1.0
+fp_state entrance
+fp_expect wolf_hostile eq 0
+fp_expect alignment eq 4
+fp_expect wolf_dead eq 0
+quit

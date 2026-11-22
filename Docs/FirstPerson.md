@@ -3,7 +3,8 @@
 This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space. Milestone 2, Walk the Chapel:
 the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
 and a held block, practised on a training dummy (the shove was removed on 2026-11-22: quality over quantity). Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
-Wall, with the wall's water freeze and Fireball's melt. The game starts straight in the Chapel, with no title screen or menus
+Wall, with the wall's water freeze and Fireball's melt. Milestone 5, One Wolf: a Chapel wolf that treats the player by
+their alignment (nine tiers), with navigation through the Chapel. The game starts straight in the Chapel, with no title screen or menus
 before play. The 2.5D slice stays intact in `main`'s history. Its fighting code is still compiled here but is not
 reachable from the first-person flow.
 
@@ -227,6 +228,62 @@ F10 opens a panel with the seven stats (left and right change them live), the cu
 Qhi, Default stats and Return to the start. Stat changes last until the game closes and survive the death reset, so a
 case can be repeated. Shipping builds compile the panel out; F10 does nothing there.
 
+## The Chapel wolf
+
+One wolf rests at the right of the altar end (`wolf.home` in `firstperson.json`). It is a guardian first, and how it
+treats the player follows the player's alignment.
+
+### Alignment
+
+Nine tiers, three in each band, built around the three anchors of the creator's design: Hero of Humanity (the
+highest good), Platonic (the most middling neutral) and Forsaken (the lowest evil). The other six names are working
+names (`Source/EbonyHearts/Game/EHAlignment.h`).
+
+| Band | Tiers (best to worst) |
+|---|---|
+| Good | Hero of Humanity, Honorable, Kindhearted |
+| Neutral | Well-meaning, Platonic (the start), Self-serving |
+| Evil | Ruthless, Malevolent, Forsaken |
+
+The prototype has no alignment meter yet. The developer panel (development builds) sets the tier directly, and the
+wolf moves it: harming the wolf pushes the player one tier toward evil, and killing it drops them to at least
+Malevolent (one tier deeper if they are already evil). The alignment lasts until the game closes; Return to the start
+and the death reset keep it.
+
+### Behaviour
+
+- **Good:** friendly. It follows about 2.4 m behind and goes for anything striking at the player: when the training
+  dummy (Strikes back) winds up a punch, the wolf bites it.
+- **Neutral:** wary. It keeps at least 4.6 m away and walks back to its rest when the player leaves.
+- **Evil:** hostile. It senses the menacing aura: it closes, circles at about 3.3 m, then bites (8 damage) or lunges
+  from 3 to 6 m away (12 damage). Both have a wind-up the player can read: a crouch, then the head drawn back.
+- **A threat is not harm.** A jab, straight or cast aimed at the wolf within 4.8 m that does not connect makes it back
+  off for 3 seconds, unprovoked. The player can stop there.
+- **Real harm** (a strike or Fireball that connects) provokes it: hostile whatever the band, until the player leaves
+  the Chapel's floor. The entrance strip counts as outside. After 3 seconds outside it calms, and back inside it
+  treats the player by their band again.
+- **Hero of Humanity** cannot harm a guardian: a blow at the wolf lands on the player instead. A wolf within 10 m
+  takes the blows meant for the player (it is never brought below 1 Health doing so).
+- **Ice Wall:** the wall blocks the wolf's path. It walks the long way round (in the test, 4.7 m becomes 21 m by the
+  side aisle) until the wall melts. A wall rising in water freezes the wolf's feet, like the dummy's.
+
+Strikes reach the wolf even though it stands below the line of a punch: a second sweep at its body's height finds it
+within the same reach. The pause menu has Reset the wolf; the alignment stays.
+
+### Navigation
+
+The wolf moves on a Recast navigation mesh built when first person starts (about 7 ms). The Chapel's collision is
+its render geometry (complex as simple), which navigation does not read, so 85 invisible boxes (`EH_NavProxy_*`,
+no collision, navigation only) stand in for the floors, steps, piers, pews and the altar. `EH_FP_STAGE=nav
+Tools/Unreal/adapt_chapel_fp.py` places them and the navigation bounds. Ice Walls update the mesh when they rise and
+when they start to melt.
+
+### Placeholder body
+
+The body is a low-poly wolf in parts (body, head, four legs, tail; `Tools/Blender/wolf/make_wolf.py`, imported by
+`Tools/Unreal/import_wolf.py`) posed and animated in code: a walk and run cycle, a crouch before attacks, the head
+turning toward the player, a wagging tail when friendly, and a fall when killed. Its sounds reuse the slice's effects.
+
 ## The Chapel in first person
 
 The slice built the Chapel for a camera looking down the nave from one side. Walking it from eye height
@@ -286,7 +343,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -296,6 +353,8 @@ path as a player. New commands:
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 | `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |
 | `fp_selector <wheel\|list>` | all | what Settings > Controls > Spell selector does |
+| `fp_wolf_reset` | all | what the pause menu's Reset the wolf does |
+| `fp_align <0..8>`, `fp_wolf_place <x> <y> [yaw] [health]` | development only | the developer panel's alignment; a test position (and Health) for the wolf |
 | `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
 
 Scripts: `fp_movement.txt` (movement, Stamina, jump, crouch under a low ceiling, controller sticks and dead zone,
@@ -313,7 +372,10 @@ with inputs only, for Shipping and for footage), `fp_fists_frames.txt` (frame-by
 Dexterity and Martial Prowess, the wall blocking, freezing in and out of water, melting, obstruction, expiry,
 breaking, both proximities, casts before and after strikes, the controller, pause, reset, death, the meltwater,
 the spell wheel and list with mouse, stick and keys, the developer panel), `fp_ship_magic.txt` (the spells with inputs only, for Shipping and for footage; it expects F10 to do nothing)
-and `fp_perf_magic.txt` (a warm frame-time capture with walls and Fireballs in play).
+`fp_perf_magic.txt` (a warm frame-time capture with walls and Fireballs in play), `fp_wolf.txt` (every band,
+a threat against real harm, leaving and returning, the evil wolf's attacks, a kill, the reset keeping the alignment,
+Hero of Humanity's bond, the friendly wolf protecting the player, the Ice Wall rerouting and freezing it) and
+`fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.
@@ -327,8 +389,13 @@ no longer shows. The combat core tests (`Tests/Core`) are unchanged.
   final arms and animation are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
   fighting clip.
 - Magic: the stat shares are engineering guesses; the ice, fire and their sounds are placeholders; the frozen sheet is
-  a plain disc that can reach over a dry edge; nothing navigates around the wall until the wolves arrive. Enchanted
+  a plain disc that can reach over a dry edge; Enchanted
   strikes and lesser ice spells that strengthen the wall wait for their own specs.
+
+- Wolf: the body is placeholder parts with code animation, so it slides a little on turns and has no fur. The
+  harm and kill shifts and the six new tier names are the prototype's reading of the design. The alignment has no
+  meter; only the developer panel and the wolf change it. One wolf only: the pack is milestone 6. The navigation
+  proxies must be re-placed if the Chapel's layout changes.
 
 - Footsteps sound only in water (`S_StepWater`). Dry surfaces (pews, altar steps, rubble) are silent; there is no dry
   step sound yet.

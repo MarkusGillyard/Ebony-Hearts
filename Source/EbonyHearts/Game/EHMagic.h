@@ -94,7 +94,7 @@ public:
 
 	enum class EResult : uint8 { Flying, Target, Wall, World, Expired };
 	EResult Result() const { return State; }
-	TWeakObjectPtr<AEHTrainingDummy> HitTarget;
+	TWeakObjectPtr<AActor> HitTarget;   // the training dummy or a wolf
 	TWeakObjectPtr<AEHIceWall> HitWall;
 	FVector HitAt = FVector::ZeroVector;
 	bool bHandled = false;   // the director has played the result
@@ -125,7 +125,7 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	// Raised at Base (on the floor) facing Facing; Water decides what freezes; Opponents caught near it in water
 	// while it rises are frozen.
-	void Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, const FVector& Base, const FVector& Facing, const TArray<AEHTrainingDummy*>& Opponents);
+	void Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, const FVector& Base, const FVector& Facing, const TArray<AActor*>& Opponents);
 	void Melt();                       // Fireball: melts fast, in steam
 	void SetVfx(AEHVfx* InVfx);
 	// True once, the frame melting into water starts (expired or Fireball); the director plays its sound.
@@ -173,7 +173,7 @@ private:
 	void UpdateMelt(float T, float DeltaSeconds);
 	FEHMagicTuning Tuning;
 	FEHWater Water;
-	TArray<TWeakObjectPtr<AEHTrainingDummy>> Opponents;
+	TArray<TWeakObjectPtr<AActor>> Opponents;   // dummies and wolves
 	EPhase Phase = EPhase::Rising;
 	EEnd End = EEnd::None;
 	float Age = 0.0f;

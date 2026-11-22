@@ -3,6 +3,7 @@
 Environment:
     EH_FP_STAGE=collision   only gives the walkable and blocking pieces collision (the audit's "before" map)
     EH_FP_STAGE=full        also places the labelled placeholder blockouts (default)
+    EH_FP_STAGE=nav         only (re)places the navigation bounds the wolves walk inside (milestone 5)
     EH_FP_REPORT=<file>     writes every actor's label, mesh, collision and bounds as JSON
 
 The 2.5D slice imported every Chapel piece without collision (the fighters stood on a fixed plane). First person
@@ -173,6 +174,84 @@ def place_blockouts(eas):
     log(f"blockouts {len(BLOCKOUTS)}")
 
 
+# Where the wolves can walk: the whole nave, aisles, basin and altar, floor to well above head height. The navigation
+# mesh itself is generated at run time (RecastNavMesh RuntimeGeneration=Dynamic, Config/DefaultEngine.ini), so an Ice
+# Wall cuts it the moment it rises and gives the way back when it melts.
+NAV_BOUNDS = ("EH_NavBounds_Chapel", (0.0, -950.0, 100.0), (1320.0, 1400.0, 260.0))
+
+
+def place_nav_bounds(eas):
+    label, centre, half = NAV_BOUNDS
+    for old in [x for x in eas.get_all_level_actors() if x.get_actor_label() == label]:
+        eas.destroy_actor(old)
+    vol = eas.spawn_actor_from_class(unreal.NavMeshBoundsVolume, unreal.Vector(*centre), unreal.Rotator(0, 0, 0))
+    vol.set_actor_label(label)
+    # The default brush is a 200 cm cube.
+    vol.set_actor_scale3d(unreal.Vector(half[0] / 100.0, half[1] / 100.0, half[2] / 100.0))
+    log(f"nav bounds {centre} half {half}")
+    # The navigation data actor the game fills in at run time (its tiles are generated as the level loads).
+    if not [x for x in eas.get_all_level_actors() if isinstance(x, unreal.RecastNavMesh)]:
+        nav = eas.spawn_actor_from_class(unreal.RecastNavMesh, unreal.Vector(0, 0, 0), unreal.Rotator(0, 0, 0))
+        nav.set_actor_label("EH_RecastNavMesh")
+        log("navigation data actor placed")
+
+
+# Navigation proxies. The Chapel's pieces collide with their render geometry (complex as simple), which this engine
+# does not hand to the navigation mesh at run time, so every walkable or blocking piece gets an invisible box that only
+# navigation sees: hidden in game, never drawn, blocking only the unused vehicle channel. Floors become slabs at their walking
+# height; anything standing on the floor becomes a box from the floor up to 2.2 m. Flat debris is left out: walked over.
+NAV_FLOORS = {"SM_Floor_Strip": 0.0, "SM_Floor_Basin": -12.0, "SM_AltarSteps": None}
+NAV_SKIP_BELOW = 15.0   # pieces lower than this (planks) are walked over
+
+
+def place_nav_proxies(eas, actors):
+    for old in [x for x in eas.get_all_level_actors() if x.get_actor_label().startswith("EH_NavProxy_")]:
+        eas.destroy_actor(old)
+    cube = unreal.load_asset("/Engine/BasicShapes/Cube")
+    count = 0
+    for a in actors:
+        name = mesh_of(a)
+        if name not in SOLID:
+            continue
+        origin, extent = a.get_actor_bounds(False)
+        if name in NAV_FLOORS:
+            top = NAV_FLOORS[name] if NAV_FLOORS[name] is not None else origin.z + extent.z
+            lo, hi = top - 20.0, top
+        else:
+            if extent.z * 2.0 < NAV_SKIP_BELOW:
+                continue
+            lo, hi = max(origin.z - extent.z, -45.0), min(origin.z + extent.z, 220.0)
+            if hi <= lo:
+                continue
+        centre = unreal.Vector(origin.x, origin.y, (lo + hi) / 2.0)
+        p = eas.spawn_actor_from_class(unreal.StaticMeshActor, centre, unreal.Rotator(0, 0, 0))
+        if p is None:
+            log(f"WARN proxy for {name} not spawned")
+            continue
+        p.static_mesh_component.set_static_mesh(cube)
+        count += 1
+        p.set_actor_label(f"EH_NavProxy_{count:03d}_{name}")
+        p.set_actor_scale3d(unreal.Vector(max(extent.x, 5.0) / 50.0, max(extent.y, 5.0) / 50.0, (hi - lo) / 100.0))
+        p.set_actor_hidden_in_game(True)
+        comp = p.static_mesh_component
+        comp.set_mobility(unreal.ComponentMobility.STATIC)
+        # The cube's own collision profile (block all) would otherwise win over the settings below.
+        setp(comp, "use_default_collision", False)
+        comp.set_collision_profile_name("Custom")
+        comp.set_collision_enabled(unreal.CollisionEnabled.QUERY_ONLY)
+        # A type no game probe asks for (the floor, wall and water probes query world static and dynamic objects).
+        comp.set_collision_object_type(unreal.CollisionChannel.ECC_VEHICLE)
+        comp.set_collision_response_to_all_channels(unreal.CollisionResponseType.ECR_IGNORE)
+        # Navigation only reads pieces that block pawns or vehicles: block the vehicle channel, which nothing in the game
+        # moves or traces on, so the player, the wolf and every probe pass through.
+        comp.set_collision_response_to_channel(unreal.CollisionChannel.ECC_VEHICLE, unreal.CollisionResponseType.ECR_BLOCK)
+        setp(comp, "can_ever_affect_navigation", True)
+        setp(comp, "cast_shadow", False)
+        setp(comp, "visible", False)
+        p.tags = [unreal.Name("EHNavProxy")]
+    log(f"nav proxies {count}")
+
+
 def report(actors, path):
     rows = []
     for a in actors:
@@ -196,7 +275,15 @@ def main():
     if not les.load_level(MAP):
         raise RuntimeError("load_level failed")
     actors = eas.get_all_level_actors()
+    if STAGE == "nav":
+        place_nav_bounds(eas)
+        place_nav_proxies(eas, actors)
+        if not les.save_current_level():
+            raise RuntimeError("save failed")
+        log("DONE nav")
+        return
     enable_collision(actors)
+    place_nav_bounds(eas)
     if STAGE == "full":
         seal_shell_shadows(actors)
         place_blockouts(eas)

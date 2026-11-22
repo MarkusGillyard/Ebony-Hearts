@@ -69,7 +69,11 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | `/Game/Magic/SM_PH_IceWall`, `SM_PH_IceSheet`, `SM_PH_IceCuff` (Ice Wall shards, frozen water, ice around frozen feet) | Placeholder meshes | Made with AI assistance (`Tools/Blender/magic/make_ice.py`, procedural, fixed seed) | No source art; imported by `Tools/Unreal/make_magic_materials.py` |
 | `/Game/Magic/M_PH_Ice` | Placeholder material | Made with AI assistance (`Tools/Unreal/make_magic_materials.py`) | Samples the slice's `T_FX_Noise` and the Chapel's `T_Water_N` (provenance above); a cold point light in the wall |
 | Fireball, hand glows, steam and ice bursts (runtime) | Placeholder effects | Made with AI assistance (`EHMagic.cpp`, `EHVfx.cpp`, `EHViewArms.cpp`) | The slice's `M_VFX_Additive`, `T_FX_Glow`, `T_FX_Ring`, `T_FX_Spark` on Unreal Engine's `/Engine/BasicShapes/Plane`; a point light |
+| `/Game/Wolf/SM_PH_Wolf_Body`, `_Head`, `_Leg`, `_Tail` (the Chapel wolf, in parts) | Placeholder meshes | Made with AI assistance (`Tools/Blender/wolf/make_wolf.py`, procedural, fixed seeds) | No source art; imported by `Tools/Unreal/import_wolf.py`; the creator authors the real wolf |
+| `/Game/Wolf/M_PH_Wolf` | Placeholder material | Made with AI assistance (`Tools/Unreal/import_wolf.py`) | Dark back and pale belly by surface direction, broken up by the slice's `T_FX_Noise` |
+| `EH_NavProxy_*` in `DrownedChapel` (85 hidden boxes, navigation only) | Level data | Made with AI assistance (`Tools/Unreal/adapt_chapel_fp.py`, `EH_FP_STAGE=nav`) | Unreal Engine's `/Engine/BasicShapes/Cube`; never drawn, no collision |
 | Spell sounds | Existing slice assets reused | | `S_FlameIgnite`, `S_FlameRoar_01-03`, `S_FlameHit`, `S_AuraCharge_01-03`, `S_AuraFade`, `S_Deflect`, `S_BodySlam`, `S_StepWater_01-03` (melting), `S_UiDenied`, `S_UiOpen`, `S_UiClose`, `S_UiMove` (spell selector) |
+| Wolf sounds (placeholder voice) | Existing slice assets reused | | `S_AuraCharge_01-03` (pitched down: the wind-up growl), `S_WhooshHeavy_01-03` (the lunge), `S_Grab` (the bite) |
 
 No new third-party inputs were added.
 

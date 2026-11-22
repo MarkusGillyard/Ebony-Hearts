@@ -8,6 +8,10 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EHMagic.h"
+#include "EHAlignment.h"
+#include "EHWolf.h"
+#include "NavigationSystem.h"
+#include "NavigationPath.h"
 #include "EHPlayerCharacter.h"
 #include "EHViewArms.h"
 #include "EHVfx.h"
@@ -117,6 +121,26 @@ void AEHGameDirector::BeginFirstPerson()
 	{
 		FPDummy->Setup(FPTuning.Dummy, FPTuning.Fists, FPPlayer);
 	}
+	// The wolves' navigation: built once now from the Chapel's navigation proxies (the map carries no prebuilt
+	// tiles); afterwards it updates itself around anything that changes, such as an Ice Wall.
+	if (UNavigationSystemV1* NS = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld()))
+	{
+		const double T0 = FPlatformTime::Seconds();
+		NS->Build();
+		AutoLogLine(FString::Printf(TEXT("firstperson navigation built in %.0f ms"), (FPlatformTime::Seconds() - T0) * 1000.0));
+	}
+	SpawnWolf();
+	// A Hero of Humanity is protected by the Chapel's wolves: one close by takes the blows meant for them.
+	FPPlayer->SetAbsorber([this](float Damage, const FVector& From) {
+		if (FPAlignment != EHAlign::Hero || FPWolf == nullptr || FPWolf->IsDead() ||
+			FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation()) > FPTuning.Wolf.AbsorbRange)
+		{
+			return false;
+		}
+		FPWolf->Absorb(Damage);
+		AutoLogLine(FString::Printf(TEXT("fp wolf absorbed %.1f for the Hero of Humanity"), Damage));
+		return true;
+	});
 	// The water the Ice Wall freezes: the Chapel's water sheet, over the floor within its mesh's bounds.
 	FPWater.SurfaceZ = FPTuning.WaterSurfaceZ;
 	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
@@ -413,6 +437,29 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	}
 	PlayFirstPersonEvents();
 	TickSpells(DeltaSeconds);
+	if (FPWolf)
+	{
+		FPWolf->SetAlignment(FPAlignment);
+		const EEHWolfState WS = FPWolf->GetState();
+		if (WS != FPWolfLastState)
+		{
+			// Placeholder voice: a low rumble as it winds up, the snap of a bite.
+			if (WS == EEHWolfState::BiteWindup || WS == EEHWolfState::LungeWindup)
+			{
+				PlayImpact(TEXT("AuraCharge"), 3, 0.5f, 0.45f);
+			}
+			else if (WS == EEHWolfState::Lunge)
+			{
+				PlayImpact(TEXT("WhooshHeavy"), 3, 0.7f, 0.8f);
+			}
+			else if (FPWolfLastState == EEHWolfState::BiteWindup)
+			{
+				PlayImpact(TEXT("Grab"), 1, 0.7f, 1.4f);
+			}
+			AutoLogLine(FString::Printf(TEXT("fp wolf %s -> %s"), EHWolfStateName(FPWolfLastState), EHWolfStateName(WS)));
+			FPWolfLastState = WS;
+		}
+	}
 	// The Qhi line shows while it changes and a moment after; it flashes when a cast is refused.
 	const bool bShowQhi = Settings.StaminaMeter == 2 || (Settings.StaminaMeter == 1 && (FPPlayer->QhiFraction() < 0.999f || FPPlayer->SecondsSinceQhiChange() < 1.0f || FPPlayer->SecondsSinceRefused() < 1.0f));
 	QhiMeterAlpha = FMath::FInterpConstantTo(QhiMeterAlpha, bShowQhi ? 1.0f : 0.0f, DeltaSeconds, bShowQhi ? 6.0f : 1.5f);
@@ -465,8 +512,25 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("WhooshHeavy")) : FName(TEXT("WhooshLight")), 3, EEHSoundCat::Effects,
 				0.7f);
 			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
+			if (FPWolf && FPWolf->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
+			{
+				AutoLogLine(TEXT("fp wolf disengages (threatened)"));
+			}
 			break;
 		case FEHFirstPersonEvent::EKind::Contact:
+			if (Cast<AEHWolf>(E.Target.Get()))
+			{
+				FEHWolfHit R;
+				R.Damage = E.Damage;
+				R.Reflected = E.Reflected;
+				R.bKilled = E.bKilled;
+				R.bHarmed = E.Damage > 0.0f;
+				PlayImpact(E.Action == EEHFistAction::Straight ? TEXT("HitHeavy") : TEXT("HitLight"), 3, 0.85f, 1.25f);
+				if (Vfx && R.bHarmed) { Vfx->Hit(E.Location, 1, E.Action == EEHFistAction::Straight, false, false, false); }
+				Rumble(0.5f, 0.4f, 0.1f);
+				WolfStruck(R, EHFistActionName(E.Action));
+				break;
+			}
 			// Layered impacts: a crack for the knuckles, a low thud for the weight behind them, pitched by technique and
 			// target (body shots duller), never twice the same.
 			if (E.bBlocked)
@@ -510,6 +574,12 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			AutoLogLine(FString::Printf(TEXT("fp wall %s ice=%d damage=%.1f shattered=%d"), EHFistActionName(E.Action), E.bIce ? 1 : 0, E.Damage, E.bShattered ? 1 : 0));
 			break;
 		case FEHFirstPersonEvent::EKind::Guarded:
+			if (E.bAbsorbed)
+			{
+				PlayImpact(TEXT("Grab"), 1, 0.6f, 1.2f);
+				AutoLogLine(TEXT("fp absorbed by a wolf"));
+				break;
+			}
 			PlayImpact(TEXT("Block"), 2, 0.9f, 0.95f);
 			Rumble(0.45f, 0.3f, 0.1f);
 			++FPGuardedCount;
@@ -532,6 +602,10 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				PlayImpact(TEXT("AuraCharge"), 3, 0.5f, 1.35f);
 			}
 			AutoLogLine(FString::Printf(TEXT("fp cast_start %s qhi=%.1f"), EHFistActionName(E.Action), FPPlayer->Qhi()));
+			if (FPWolf && FPWolf->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
+			{
+				AutoLogLine(TEXT("fp wolf disengages (threatened)"));
+			}
 			break;
 		case FEHFirstPersonEvent::EKind::Cast:
 		{
@@ -549,23 +623,29 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			}
 			else if (AEHIceWall* Wall = GetWorld()->SpawnActor<AEHIceWall>(AEHIceWall::StaticClass(), FTransform(E.Direction.Rotation(), E.Location), Params))
 			{
-				TArray<AEHTrainingDummy*> Opponents;
+				TArray<AActor*> Opponents;
 				if (FPDummy)
 				{
 					Opponents.Add(FPDummy);
 				}
+				if (FPWolf && !FPWolf->IsDead())
+				{
+					Opponents.Add(FPWolf);
+				}
 				Wall->SetVfx(Vfx);
 				Wall->Raise(FPTuning.Magic, FPWater, E.Location, E.Direction, Opponents);
 				// Anyone standing where it rises is pushed out of the ice to the side they stood on.
-				if (FPDummy)
+				for (AActor* A : Opponents)
 				{
-					const FVector Local = Wall->GetActorTransform().InverseTransformPosition(FPDummy->GetActorLocation());
-					const float Clear = FPTuning.Magic.IceWallThickness * 0.5f + FPDummy->GetSimpleCollisionRadius() + 2.0f;
-					if (FMath::Abs(Local.X) < Clear && FMath::Abs(Local.Y) < FPTuning.Magic.IceWallWidth * 0.5f + FPDummy->GetSimpleCollisionRadius())
+					const FVector Local = Wall->GetActorTransform().InverseTransformPosition(A->GetActorLocation());
+					const float Clear = FPTuning.Magic.IceWallThickness * 0.5f + A->GetSimpleCollisionRadius() + 2.0f;
+					if (FMath::Abs(Local.X) < Clear && FMath::Abs(Local.Y) < FPTuning.Magic.IceWallWidth * 0.5f + A->GetSimpleCollisionRadius())
 					{
 						// To the side it stood on; one caught dead centre goes away from the caster.
 						const float Side = Local.X >= -1.0f ? 1.0f : -1.0f;
-						FPDummy->Displace(Wall->GetActorForwardVector() * (Side * Clear - Local.X), Wall);
+						const FVector Push = Wall->GetActorForwardVector() * (Side * Clear - Local.X);
+						if (AEHTrainingDummy* D = Cast<AEHTrainingDummy>(A)) { D->Displace(Push, Wall); }
+						else if (AEHWolf* W = Cast<AEHWolf>(A)) { W->Displace(Push, Wall); }
 					}
 				}
 				FPWalls.Add(Wall);
@@ -642,7 +722,18 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 		switch (Ball->Result())
 		{
 		case AEHFireball::EResult::Target:
-			if (AEHTrainingDummy* D = Ball->HitTarget.Get())
+			if (AEHWolf* Wolf = Cast<AEHWolf>(Ball->HitTarget.Get()))
+			{
+				const FEHWolfHit R = Wolf->ReceivePlayerHit(FPTuning.Magic.FireballDamage, FPPlayer ? FPPlayer->GetActorLocation() : At, At, true);
+				++FPFireballHits;
+				PlayImpact(TEXT("FlameHit"), 1, 0.95f, 1.0f);
+				if (R.Reflected > 0.0f && FPPlayer)
+				{
+					FPPlayer->ReceiveStrike(R.Reflected, At, true);
+				}
+				WolfStruck(R, TEXT("Fireball"));
+			}
+			else if (AEHTrainingDummy* D = Cast<AEHTrainingDummy>(Ball->HitTarget.Get()))
 			{
 				FEHStrikeDef Def;
 				Def.Damage = FPTuning.Magic.FireballDamage;
@@ -718,6 +809,46 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 			FPWalls.RemoveAt(i);
 		}
 	}
+}
+
+void AEHGameDirector::SpawnWolf()
+{
+	FActorSpawnParameters Params;
+	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+	FPWolf = GetWorld()->SpawnActor<AEHWolf>(AEHWolf::StaticClass(), FTransform(FRotator(0, FPTuning.Wolf.HomeYaw, 0), FPTuning.Wolf.Spawn + FVector(0, 0, 60.0f)), Params);
+	if (FPWolf)
+	{
+		FPWolf->SetAlignment(FPAlignment);
+		FPWolf->Setup(FPTuning.Wolf, FPPlayer, FPDummy);
+	}
+}
+
+void AEHGameDirector::WolfStruck(const FEHWolfHit& R, const TCHAR* What)
+{
+	// Harming a guardian pushes the player toward evil; killing one brings them down to a deeper evil. A Hero of
+	// Humanity cannot harm one: the blow came back to them.
+	const int32 Before = FPAlignment;
+	if (R.Reflected > 0.0f)
+	{
+		++FPReflected;
+	}
+	if (R.bHarmed)
+	{
+		++FPWolfHarms;
+		FPAlignment = EHAlign::AfterHarm(FPAlignment);
+	}
+	if (R.bKilled)
+	{
+		++FPWolfKills;
+		FPAlignment = EHAlign::AfterKill(FPAlignment);
+		PlayImpact(TEXT("BodyFall"), 2, 0.8f, 1.15f);
+	}
+	if (FPWolf)
+	{
+		FPWolf->SetAlignment(FPAlignment);
+	}
+	AutoLogLine(FString::Printf(TEXT("fp wolf struck by %s damage=%.1f reflected=%.1f killed=%d alignment %s -> %s"), What, R.Damage, R.Reflected, R.bKilled ? 1 : 0,
+		EHAlign::Name(Before), EHAlign::Name(FPAlignment)));
 }
 
 void AEHGameDirector::OpenSpellSelect()
@@ -874,6 +1005,24 @@ void AEHGameDirector::BuildDeveloperPanel()
 	MenuIndex = 0;
 	MenuOwner = EHDeviceNone;
 	MenuTitle = TEXT("Developer");
+	Menu.Add(FPHeader(TEXT("Alignment")));
+	{
+		// The nine tiers, from Hero of Humanity to Forsaken; the wolves react at once.
+		FEHMenuItem I;
+		I.Label = TEXT("Alignment");
+		I.Value = [this] { return FString::Printf(TEXT("%s (%s)"), EHAlign::Name(FPAlignment), EHAlign::BandName(EHAlign::Band(FPAlignment))); };
+		I.Change = [this](int32 D) { FPAlignment = FMath::Clamp(FPAlignment + D, 0, EHAlign::Count - 1); };
+		I.Hint = TEXT("Left: toward Hero of Humanity. Right: toward Forsaken. It survives the death reset.");
+		Menu.Add(I);
+	}
+	{
+		FEHMenuItem I;
+		I.Label = TEXT("Wolf");
+		I.Value = [this] { return FPWolf ? FString::Printf(TEXT("%s · %.0f HP%s"), EHWolfStateName(FPWolf->GetState()), FPWolf->HealthValue(), FPWolf->IsProvoked() ? TEXT(" · provoked") : TEXT("")) : FString(TEXT("-")); };
+		I.Hint = TEXT("Good: friendly and protective. Neutral: keeps its distance. Evil, or harmed: hostile.");
+		Menu.Add(I);
+	}
+	Menu.Add(FPButton(TEXT("Reset the wolf"), [this] { if (FPWolf) { FPWolf->ResetWolf(); } }, TEXT("Calm, unhurt, at its rest.")));
 	Menu.Add(FPHeader(TEXT("Stats")));
 	auto StatItem = [this](const TCHAR* Label, int32 Which, const TCHAR* Hint) {
 		FEHMenuItem I;
@@ -944,6 +1093,10 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 	{
 		FPDummy->ResetDummy();
 	}
+	if (FPWolf)
+	{
+		FPWolf->ResetWolf();   // the alignment stays: a case can be repeated
+	}
 	HurtFlash = 0.0f;
 	++FPResets;
 	AutoLogLine(FString::Printf(TEXT("firstperson reset (%s) %s"), Why, *DescribeFirstPerson()));
@@ -983,6 +1136,13 @@ void AEHGameDirector::BuildFirstPersonPause()
 		}
 		SetPaused(false, EHDeviceNone);
 	}, TEXT("Back to its place, its count cleared.")));
+	Menu.Add(FPButton(TEXT("Reset the wolf"), [this] {
+		if (FPWolf)
+		{
+			FPWolf->ResetWolf();
+		}
+		SetPaused(false, EHDeviceNone);
+	}, TEXT("The Chapel wolf back at its rest, calm and unhurt.")));
 	Menu.Add(FPHeader(FString()));
 	Menu.Add(FPButton(TEXT("Quit to desktop"), [this] { GoTo(EEHScreen::QuitConfirm); }));
 }
@@ -1064,6 +1224,22 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 			}
 		}
 	}
+#if !UE_BUILD_SHIPPING
+	// Development builds: the debug view's readouts, the alignment and the wolf's state above it.
+	if (FPPlayer && FPWolf && !bPaused && SpellSelectAlpha < 0.01f)
+	{
+		P.Text(FString::Printf(TEXT("Alignment: %s (%s)  ·  F10"), EHAlign::Name(FPAlignment), EHAlign::BandName(EHAlign::Band(FPAlignment))),
+			FVector2f(P.VirtualMin.X + 28.0f, P.VirtualMin.Y + 24.0f), Fonts.Sized(Fonts.Body, 20), EHStyle::Alpha(EHStyle::TextSecondary, 0.75f), 0.0f, 0.0f);
+		FVector2D S2;
+		if (APlayerController* PC2 = GetWorld()->GetFirstPlayerController(); PC2 && PC2->ProjectWorldLocationToScreen(FPWolf->LabelLocation(), S2, true) &&
+			FVector::Dist(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation()) < 2500.0f)
+		{
+			const FVector2f At = P.ToVirtual(FVector2f(S2.X, S2.Y) / FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale()));
+			P.Text(FString::Printf(TEXT("Wolf · %s · %.0f HP%s"), EHWolfStateName(FPWolf->GetState()), FPWolf->HealthValue(), FPWolf->IsProvoked() ? TEXT(" · provoked") : TEXT("")),
+				At, Fonts.Sized(Fonts.Body, 18), EHStyle::Alpha(EHStyle::TextPrimary, 0.8f), 0.5f, 1.0f);
+		}
+	}
+#endif
 	if (!bPaused)
 	{
 		PaintSpellSelect(P);
@@ -1105,6 +1281,11 @@ FString AEHGameDirector::DescribeFirstPerson() const
 		{
 			Out += FString::Printf(TEXT(" wall=(%.0f,%.0f %s hp=%.0f left=%.1f)"), W->GetActorLocation().X, W->GetActorLocation().Y, W->PhaseName(), W->HealthLeft(), W->SecondsLeft());
 		}
+	}
+	Out += FString::Printf(TEXT(" alignment=%s"), EHAlign::Name(FPAlignment));
+	if (FPWolf)
+	{
+		Out += FString::Printf(TEXT(" wolf=(%.0f,%.0f) %s"), FPWolf->GetActorLocation().X, FPWolf->GetActorLocation().Y, *FPWolf->Describe());
 	}
 	if (FPDummy)
 	{
@@ -1204,6 +1385,32 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("wall_dist")) V = FPWalls.Num() > 0 && FPWalls.Last() ? FVector::Dist2D(FPWalls.Last()->GetActorLocation(), FPPlayer->GetActorLocation()) : 0.0f;
 		else if (Field == TEXT("dev_panel")) V = bDevPanel ? 1.0f : 0.0f;
 		else if (Field == TEXT("selecting")) V = bSpellSelect ? 1.0f : 0.0f;
+		else if (Field == TEXT("alignment")) V = static_cast<float>(FPAlignment);
+		else if (Field == TEXT("wolf_harms")) V = static_cast<float>(FPWolfHarms);
+		else if (Field == TEXT("wolf_kills")) V = static_cast<float>(FPWolfKills);
+		else if (Field == TEXT("reflected")) V = static_cast<float>(FPReflected);
+		else if (FPWolf && Field == TEXT("wolf_state")) V = static_cast<float>(static_cast<int32>(FPWolf->GetState()));
+		else if (FPWolf && Field == TEXT("wolf_hostile")) V = FPWolf->IsHostile() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_provoked")) V = FPWolf->IsProvoked() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_dead")) V = FPWolf->IsDead() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_frozen")) V = FPWolf->IsFrozen() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_health")) V = FPWolf->HealthValue();
+		else if (FPWolf && Field == TEXT("wolf_dist")) V = FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation());
+		else if (FPWolf && Field == TEXT("wolf_home_dist")) V = FVector::Dist2D(FPWolf->FeetLocation(), FPTuning.Wolf.Home);
+		else if (FPWolf && Field == TEXT("wolf_bites")) V = static_cast<float>(FPWolf->Bites());
+		else if (FPWolf && Field == TEXT("wolf_lunges")) V = static_cast<float>(FPWolf->Lunges());
+		else if (FPWolf && Field == TEXT("wolf_connected")) V = static_cast<float>(FPWolf->Connected());
+		else if (FPWolf && Field == TEXT("wolf_disengages")) V = static_cast<float>(FPWolf->Disengages());
+		else if (FPWolf && Field == TEXT("wolf_absorbed")) V = static_cast<float>(FPWolf->Absorbed());
+		else if (FPWolf && Field == TEXT("wolf_protects")) V = static_cast<float>(FPWolf->Protects());
+		else if (FPWolf && Field == TEXT("wolf_freezes")) V = static_cast<float>(FPWolf->Freezes());
+		else if (FPWolf && Field == TEXT("wolf_y")) V = FPWolf->GetActorLocation().Y;
+		else if (FPWolf && Field == TEXT("wolf_path"))
+		{
+			// Navigation path length from the wolf to the player (-1 when there is none): an Ice Wall lengthens it.
+			const UNavigationPath* Path = UNavigationSystemV1::FindPathToLocationSynchronously(GetWorld(), FPWolf->FeetLocation(), FPPlayer->FeetLocation(), FPWolf);
+			V = Path && Path->IsValid() && !Path->IsPartial() ? Path->GetPathLength() : -1.0f;
+		}
 		else if (Field == TEXT("select_highlight")) V = static_cast<float>(SpellHighlight);
 		else if (Field == TEXT("select_casts")) V = static_cast<float>(SpellSelectCasts);
 		else if (Field == TEXT("time_dilation")) V = UGameplayStatics::GetGlobalTimeDilation(this);
@@ -1261,6 +1468,16 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(Line);
 		return true;
 	}
+	if (Cmd == TEXT("fp_wolf_reset"))
+	{
+		// What the pause menu's Reset the wolf does.
+		if (FPWolf)
+		{
+			FPWolf->ResetWolf();
+		}
+		AutoLogLine(Line);
+		return true;
+	}
 	if (Cmd == TEXT("fp_selector"))
 	{
 		// fp_selector <wheel|list>: what Settings > Controls > Spell selector does.
@@ -1309,6 +1526,27 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 				return true;
 			}
 			FPPlayer->SetStats(S);
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_align"))
+	{
+		// fp_align <0..8>: the developer selector's alignment tier (0 Hero of Humanity, 4 Platonic, 8 Forsaken).
+		FPAlignment = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("4"))), 0, EHAlign::Count - 1);
+		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, EHAlign::Name(FPAlignment)));
+		return true;
+	}
+	if (Cmd == TEXT("fp_wolf_place"))
+	{
+		// fp_wolf_place <x> <y> [yaw] [health]
+		if (FPWolf)
+		{
+			FPWolf->TeleportTo(FVector(F(1, 0.0f), F(2, -1450.0f), 60.0f), FRotator(0, F(3, 90.0f), 0), false, true);
+			if (T.Num() > 4)
+			{
+				FPWolf->SetHealthForTest(F(4, 60.0f));
+			}
 		}
 		AutoLogLine(Line);
 		return true;

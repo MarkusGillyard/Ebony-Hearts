@@ -1,10 +1,13 @@
 #include "EHMagic.h"
 
+#include "AI/NavigationSystemBase.h"
+
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/PointLightComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EHTrainingDummy.h"
+#include "EHWolf.h"
 #include "EHVfx.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -201,9 +204,9 @@ void AEHFireball::Tick(float DeltaSeconds)
 	{
 		HitAt = Hit.ImpactPoint;
 		SetActorLocation(Hit.Location);
-		if (AEHTrainingDummy* D = Cast<AEHTrainingDummy>(Hit.GetActor()))
+		if (Cast<AEHTrainingDummy>(Hit.GetActor()) || (Cast<AEHWolf>(Hit.GetActor()) && !Cast<AEHWolf>(Hit.GetActor())->IsDead()))
 		{
-			HitTarget = D;
+			HitTarget = Hit.GetActor();
 			State = EResult::Target;
 		}
 		else if (AEHIceWall* W = Cast<AEHIceWall>(Hit.GetActor()))
@@ -295,12 +298,12 @@ const TCHAR* AEHIceWall::PhaseName() const
 	}
 }
 
-void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, const FVector& Base, const FVector& Facing, const TArray<AEHTrainingDummy*>& InOpponents)
+void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, const FVector& Base, const FVector& Facing, const TArray<AActor*>& InOpponents)
 {
 	Tuning = InTuning;
 	Water = InWater;
 	HealthValue = Tuning.IceWallHealth;
-	for (AEHTrainingDummy* D : InOpponents)
+	for (AActor* D : InOpponents)
 	{
 		Opponents.Add(D);
 	}
@@ -309,6 +312,8 @@ void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, 
 	F.Z = 0.0f;
 	SetActorLocationAndRotation(Base + FVector(0, 0, Tuning.IceWallHeight * 0.5f - 10.0f), F.Rotation());
 	Box->SetBoxExtent(FVector(Tuning.IceWallThickness * 0.5f, Tuning.IceWallWidth * 0.5f, Tuning.IceWallHeight * 0.5f));
+	// The box was registered with navigation at its default size: tell it the wall's real shape so paths go round it.
+	FNavigationSystem::UpdateComponentData(*Box);
 	// Placeholder ice (Tools/Blender/magic/make_ice.py): a ridge of leaning crystal shards, 3 m wide and 2.4 m tall
 	// with its base at the origin, modelled across X; turned so it runs across the line of the cast.
 	UStaticMesh* Shards = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Magic/SM_PH_IceWall.SM_PH_IceWall"), nullptr, LOAD_NoWarn | LOAD_Quiet);
@@ -387,16 +392,18 @@ void AEHIceWall::FreezeCaught()
 	{
 		return;
 	}
-	for (const TWeakObjectPtr<AEHTrainingDummy>& D : Opponents)
+	for (const TWeakObjectPtr<AActor>& A : Opponents)
 	{
-		if (!D.IsValid() || D->IsFrozen())
+		AEHTrainingDummy* D = Cast<AEHTrainingDummy>(A.Get());
+		AEHWolf* Wolf = Cast<AEHWolf>(A.Get());
+		if ((!D && !Wolf) || (D && D->IsFrozen()) || (Wolf && (Wolf->IsFrozen() || Wolf->IsDead())))
 		{
 			continue;
 		}
-		const FVector Feet = D->FeetLocation();
-		if (FVector::Dist2D(Feet, Sheet->GetComponentLocation()) <= Tuning.FreezeRadius && Water.DepthAt(GetWorld(), Feet, D.Get()) > 0.5f)
+		const FVector Feet = D ? D->FeetLocation() : Wolf->FeetLocation();
+		if (FVector::Dist2D(Feet, Sheet->GetComponentLocation()) <= Tuning.FreezeRadius && Water.DepthAt(GetWorld(), Feet, A.Get()) > 0.5f)
 		{
-			D->Freeze(Tuning.FreezeSeconds);
+			if (D) { D->Freeze(Tuning.FreezeSeconds); } else { Wolf->Freeze(Tuning.FreezeSeconds); }
 			++FrozenCount;
 		}
 	}
@@ -532,6 +539,7 @@ void AEHIceWall::StartMelt(EEnd Why, float Seconds)
 	End = Why;
 	// The path is open the moment it starts to go.
 	Box->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	FNavigationSystem::UpdateComponentData(*Box);
 	Phase = EPhase::Melting;
 	PhaseAge = 0.0f;
 	MeltSeconds = Seconds;

@@ -8,6 +8,7 @@
 #include "Engine/SkeletalMesh.h"
 #include "EHViewArms.h"
 #include "EHMagic.h"
+#include "EHWolf.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -79,6 +80,11 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	{
 		return false;
 	}
+	const TSharedPtr<FJsonObject>* WolfObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("wolf"), WolfObj) && !Wolf.Load(*WolfObj, OutError))
+	{
+		return false;
+	}
 	const TSharedPtr<FJsonObject>* DummyObj = nullptr;
 	if (Root->TryGetObjectField(TEXT("dummy"), DummyObj) && !Dummy.Load(*DummyObj, OutError))
 	{
@@ -118,7 +124,7 @@ FString FEHFirstPersonTuning::Describe() const
 		WalkSpeed, SprintSpeed, CrouchSpeed, Acceleration, BrakingDeceleration, GroundFriction, AirControl, JumpVelocity, JumpBufferSeconds, GravityScale, StepHeight,
 		WalkableFloorDegrees, CapsuleRadius, StandHeight, CrouchHeight, StandEyeHeight, CrouchEyeHeight, StaminaMax, SprintSecondsFromFull, StaminaRecoverPerSecond,
 		StaminaRecoverDelay, SprintRestartStamina, StickDeadZone, StickYawDegPerSecond, StickPitchDegPerSecond, StickExponent, PitchLimit, WaterSurfaceZ)
-		+ FString::Printf(TEXT(" health=%.0f fists: %s; magic: %s"), PlayerHealth, *Fists.Describe(), *Magic.Describe());
+		+ FString::Printf(TEXT(" health=%.0f fists: %s; magic: %s; wolf: %s"), PlayerHealth, *Fists.Describe(), *Magic.Describe(), *Wolf.Describe());
 }
 
 AEHPlayerCharacter::AEHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -579,26 +585,73 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 	FCollisionQueryParams Params(TEXT("EHFist"), false, this);
 	TArray<FHitResult> Hits;
 	GetWorld()->SweepMultiByObjectType(Hits, Eye + Aim * 10.0f, End, FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn), FCollisionShape::MakeSphere(D.Radius), Params);
-	AEHTrainingDummy* Target = nullptr;
+	// The nearest thing that can be struck: the training dummy or a wolf.
+	AActor* Target = nullptr;
 	FHitResult TargetHit;
 	for (const FHitResult& H : Hits)
 	{
-		if (AEHTrainingDummy* Dm = Cast<AEHTrainingDummy>(H.GetActor()))
+		const bool bStrikeable = Cast<AEHTrainingDummy>(H.GetActor()) || (Cast<AEHWolf>(H.GetActor()) && !Cast<AEHWolf>(H.GetActor())->IsDead());
+		if (bStrikeable && (Target == nullptr || H.Distance < TargetHit.Distance))
 		{
-			if (Target == nullptr || H.Distance < TargetHit.Distance)
+			Target = H.GetActor();
+			TargetHit = H;
+		}
+	}
+	if (Target == nullptr)
+	{
+		// A wolf stands below the line of a punch even when the player looks down at it: a second sweep at its body's
+		// height, straight ahead along the view's heading, finds one within the same reach.
+		FVector Flat = Aim;
+		Flat.Z = 0.0f;
+		Flat = Flat.GetSafeNormal();
+		const FVector Low = FeetLocation() + FVector(0, 0, 55.0f);
+		TArray<FHitResult> LowHits;
+		GetWorld()->SweepMultiByObjectType(LowHits, Low + Flat * 10.0f, Low + Flat * (D.Reach + 15.0f), FQuat::Identity, FCollisionObjectQueryParams(ECC_Pawn),
+			FCollisionShape::MakeSphere(D.Radius + 8.0f), Params);
+		for (const FHitResult& H : LowHits)
+		{
+			if (AEHWolf* W = Cast<AEHWolf>(H.GetActor()); W && !W->IsDead() && (Target == nullptr || H.Distance < TargetHit.Distance))
 			{
-				Target = Dm;
+				Target = W;
 				TargetHit = H;
 			}
 		}
 	}
 	FHitResult Wall;
-	const bool bWall = GetWorld()->LineTraceSingleByChannel(Wall, Eye, End, ECC_Visibility, Params) && Cast<AEHTrainingDummy>(Wall.GetActor()) == nullptr;
-	if (Target && !(bWall && Wall.Distance + 5.0f < TargetHit.Distance))
+	const bool bWall = GetWorld()->LineTraceSingleByChannel(Wall, Eye, End, ECC_Visibility, Params) && Cast<AEHTrainingDummy>(Wall.GetActor()) == nullptr
+		&& Cast<AEHWolf>(Wall.GetActor()) == nullptr;
+	if (AEHWolf* Wolf = Cast<AEHWolf>(Target); Wolf && !(bWall && Wall.Distance + 5.0f < TargetHit.Distance))
 	{
-		const FVector At = TargetHit.ImpactPoint.IsNearlyZero() ? Target->GetActorLocation() : FVector(TargetHit.ImpactPoint);
+		const FVector At = TargetHit.ImpactPoint.IsNearlyZero() ? Wolf->GetActorLocation() : FVector(TargetHit.ImpactPoint);
+		const FEHWolfHit R = Wolf->ReceivePlayerHit(D.Damage, Eye, At, Action == EEHFistAction::Straight);
+		Fists.MarkConnected();
+		Fists.OnContact();
+		if (R.bHarmed)
+		{
+			AddQhi(Tuning.Magic.QhiPerStrike);
+		}
+		Kick(-0.6f, 2.0f, Action == EEHFistAction::Straight ? 1.0f : -0.5f);
+		FEHFirstPersonEvent Out;
+		Out.Kind = FEHFirstPersonEvent::EKind::Contact;
+		Out.Action = Action;
+		Out.Location = At;
+		Out.Damage = R.Damage;
+		Out.Target = Wolf;
+		Out.Reflected = R.Reflected;
+		Out.bKilled = R.bKilled;
+		Events.Add(Out);
+		if (R.Reflected > 0.0f)
+		{
+			// Hero of Humanity: the guardians cannot be harmed by them; the blow lands on the player.
+			ReceiveStrike(R.Reflected, At, true);
+		}
+	}
+	else if (AEHTrainingDummy* Dummy = Cast<AEHTrainingDummy>(Target); Dummy && !(bWall && Wall.Distance + 5.0f < TargetHit.Distance))
+	{
+		AEHTrainingDummy* const DummyTarget = Dummy;
+		const FVector At = TargetHit.ImpactPoint.IsNearlyZero() ? DummyTarget->GetActorLocation() : FVector(TargetHit.ImpactPoint);
 		const float HandSide = Action == EEHFistAction::Jab ? -1.0f : 1.0f;
-		const FEHDummyHit R = Target->ReceiveHit(Action, D, Eye, At, HandSide);
+		const FEHDummyHit R = DummyTarget->ReceiveHit(Action, D, Eye, At, HandSide);
 		Fists.MarkConnected();
 		Fists.OnContact();
 		if (!R.bBlocked)
@@ -622,6 +675,7 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 		Out.Damage = R.Damage;
 		Out.bBlocked = R.bBlocked;
 		Out.bBody = R.bBody;
+		Out.Target = DummyTarget;
 		Events.Add(Out);
 	}
 	else if (bWall)
@@ -645,15 +699,25 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 	}
 }
 
-float AEHPlayerCharacter::ReceiveStrike(float Damage, const FVector& From)
+float AEHPlayerCharacter::ReceiveStrike(float Damage, const FVector& From, bool bOwnBlow)
 {
+	if (!bOwnBlow && Absorber && Absorber(Damage, From))
+	{
+		// Taken by a guardian wolf instead.
+		FEHFirstPersonEvent Out;
+		Out.Kind = FEHFirstPersonEvent::EKind::Guarded;
+		Out.Location = CameraComp->GetComponentLocation() + CameraComp->GetForwardVector() * 30.0f;
+		Out.bAbsorbed = true;
+		Events.Add(Out);
+		return 0.0f;
+	}
 	// The guard covers the front of the view; anything else lands in full.
 	FVector ToAttacker = From - GetActorLocation();
 	ToAttacker.Z = 0.0f;
 	FVector Facing = CameraComp->GetForwardVector();
 	Facing.Z = 0.0f;
 	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToAttacker.GetSafeNormal(), Facing.GetSafeNormal()), -1.0f, 1.0f)));
-	const bool bGuarded = Fists.IsGuarding() && Angle <= Tuning.Fists.BlockAngle;
+	const bool bGuarded = !bOwnBlow && Fists.IsGuarding() && Angle <= Tuning.Fists.BlockAngle;
 	const float Taken = bGuarded ? Damage * (1.0f - Tuning.Fists.BlockReduction) : Damage;
 	HealthValue = FMath::Max(0.0f, HealthValue - Taken);
 	SinceHurt = 0.0f;

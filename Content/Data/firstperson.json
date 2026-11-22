@@ -141,5 +141,45 @@
     "health": 60,
     "freezeRadius": 280,
     "freezeSeconds": 2
+  },
+  "wolf": {
+    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY: the Chapel's floor ends here; the entrance strip beyond counts as outside.",
+    "health": 60,
+    "spawn": [
+      330,
+      -1530,
+      0
+    ],
+    "home": [
+      330,
+      -1530,
+      0
+    ],
+    "homeYaw": 90,
+    "leaveLineY": 120,
+    "calmSeconds": 3,
+    "walkSpeed": 260,
+    "runSpeed": 640,
+    "followDistance": 240,
+    "keepDistance": 460,
+    "threatRange": 480,
+    "disengageSeconds": 3,
+    "disengageDistance": 520,
+    "circleRadius": 330,
+    "biteRange": 150,
+    "biteReach": 175,
+    "biteDamage": 8,
+    "biteWindup": 14,
+    "biteRecover": 24,
+    "lungeMin": 300,
+    "lungeMax": 620,
+    "lungeSpeed": 1050,
+    "lungeDamage": 12,
+    "lungeWindup": 24,
+    "lungeRecover": 34,
+    "attackCooldown": 45,
+    "hitstun": 18,
+    "absorbRange": 1000,
+    "protectRange": 1200
   }
 }

@@ -10,6 +10,7 @@
 #include "EHCombatData.h"
 #include "EHInputRouter.h"
 #include "EHMatch.h"
+#include "EHAlignment.h"
 #include "EHPlayerCharacter.h"
 #include "EHPresentation.h"
 #include "EHSettings.h"
@@ -199,6 +200,8 @@ private:
 	UPROPERTY()
 	TObjectPtr<AEHTrainingDummy> FPDummy;
 	UPROPERTY()
+	TObjectPtr<AEHWolf> FPWolf;
+	UPROPERTY()
 	TArray<TObjectPtr<AEHFireball>> FPFireballs;
 	UPROPERTY()
 	TArray<TObjectPtr<AEHIceWall>> FPWalls;
@@ -338,6 +341,15 @@ private:
 	int32 FPRefusedNoQhi = 0;
 	int32 FPRefusedNoRoom = 0;
 	bool bDevPanel = false;          // development builds: F10 panel (stats, resources, dummy)
+	// The player's alignment tier (EHAlignment.h): set by the developer selector, pushed toward evil by harming or
+	// killing a Chapel wolf. It survives the death reset, so a case can be repeated.
+	int32 FPAlignment = EHAlign::Platonic;
+	EEHWolfState FPWolfLastState = EEHWolfState::Calm;
+	int32 FPWolfHarms = 0;
+	int32 FPWolfKills = 0;
+	int32 FPReflected = 0;
+	void SpawnWolf();
+	void WolfStruck(const FEHWolfHit& R, const TCHAR* What);
 	// The spell selector (hold FPSpellSelect): a wheel or a list of every spell; release casts the highlighted one.
 	bool bSpellSelect = false;
 	int32 SpellHighlight = -1;       // index into the spell list, -1 none (the wheel's centre)

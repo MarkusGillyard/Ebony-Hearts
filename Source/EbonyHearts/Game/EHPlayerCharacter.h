@@ -7,6 +7,7 @@
 #include "CoreMinimal.h"
 #include "EHFists.h"
 #include "EHMagic.h"
+#include "EHWolf.h"
 #include "EHTrainingDummy.h"
 #include "GameFramework/Character.h"
 
@@ -57,7 +58,8 @@ struct FEHFirstPersonTuning
 	float PlayerHealth = 100.0f;
 	FEHFistTuning Fists;
 	FEHDummyTuning Dummy;
-	FEHMagicTuning Magic;   // stats, Qhi and the spells; stats.health and stats.stamina set PlayerHealth and StaminaMax
+	FEHMagicTuning Magic;
+	FEHWolfTuning Wolf;     // the Chapel wolf (milestone 5)   // stats, Qhi and the spells; stats.health and stats.stamina set PlayerHealth and StaminaMax
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);
@@ -91,6 +93,10 @@ struct FEHFirstPersonEvent
 	bool bNoQhi = false;                      // Refused: not enough Qhi (otherwise no room for the wall)
 	bool bIce = false;                        // Wall: the strike landed on an Ice Wall
 	bool bShattered = false;                  // Wall: and broke it
+	TWeakObjectPtr<AActor> Target;            // Contact: what was struck (the dummy or a wolf)
+	float Reflected = 0.0f;                   // Contact: a wolf turned the blow back (Hero of Humanity)
+	bool bKilled = false;                     // Contact: the blow killed a wolf
+	bool bAbsorbed = false;                   // Guarded / Hurt: a wolf took it instead
 };
 
 UCLASS(NotBlueprintable)
@@ -112,7 +118,10 @@ public:
 	// Camera kicks from contact and hits are scaled by this (0 with Reduce camera shake).
 	void SetShakeScale(float Scale) { ShakeScale = Scale; }
 	// A strike against the player from World location From. Returns the damage taken (after the guard).
-	float ReceiveStrike(float Damage, const FVector& From);
+	// bOwnBlow: the player's own blow turned back on them (no guard, no protector).
+	float ReceiveStrike(float Damage, const FVector& From, bool bOwnBlow = false);
+	// Asked before a strike lands: true if someone else takes it (a Chapel wolf protecting a Hero of Humanity).
+	void SetAbsorber(TFunction<bool(float, const FVector&)> InAbsorber) { Absorber = MoveTemp(InAbsorber); }
 	float Health() const { return HealthValue; }
 	void SetHealthForTest(float Value) { HealthValue = FMath::Clamp(Value, 1.0f, Tuning.PlayerHealth); }
 	float HealthFraction() const { return Tuning.PlayerHealth > 0.0f ? HealthValue / Tuning.PlayerHealth : 0.0f; }
@@ -176,6 +185,7 @@ private:
 	bool bWasFalling = false;
 	bool bBodyWalking = false;
 	TArray<FEHFirstPersonEvent> Events;
+	TFunction<bool(float, const FVector&)> Absorber;
 	FEHFists Fists;
 	float FistAccum = 0.0f;
 	float HealthValue = 100.0f;
