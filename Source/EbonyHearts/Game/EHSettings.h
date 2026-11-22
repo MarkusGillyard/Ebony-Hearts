@@ -36,9 +36,13 @@ enum class EEHAction : uint8
 	FPIceWall,
 	// Hold to choose a spell from the wheel or list, release to cast it (settings version 9).
 	FPSpellSelect,
+	// Interact with what the player looks at; at the Chapel's kneeler, pray (settings version 10).
+	FPInteract,
 	Count
 };
 
+// Held and pressed actions travel as bits of a 32-bit mask.
+static_assert(static_cast<int32>(EEHAction::Count) <= 32, "EEHAction no longer fits the input masks");
 constexpr int32 EHFightActionCount = static_cast<int32>(EEHAction::Down) + 1;
 inline bool EHIsFirstPersonAction(EEHAction Action) { return static_cast<int32>(Action) >= EHFightActionCount && Action != EEHAction::Count; }
 
@@ -199,7 +203,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 9;
+constexpr int32 EHSettingsVersion = 10;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

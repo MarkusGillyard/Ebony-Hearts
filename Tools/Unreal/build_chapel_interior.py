@@ -207,7 +207,7 @@ def main():
           unreal.Rotator(0, -90, 0))
     light(eas, unreal.PointLight, "IXL_LoftFill", unreal.Vector(0, 900, 720), (150, 170, 215), 6.0, 800.0)
     light(eas, unreal.PointLight, "IXL_Forge", unreal.Vector(-2000, -800, 140), (255, 120, 48), 60.0, 1300.0, True)
-    light(eas, unreal.PointLight, "IXL_HallOfSix", unreal.Vector(1900, -800, 220), (255, 176, 104), 18.0, 950.0)
+    light(eas, unreal.PointLight, "IXL_HallOfSix", unreal.Vector(1700, -800, 430), (255, 176, 104), 18.0, 1000.0)
     light(eas, unreal.PointLight, "IXL_WayDown", unreal.Vector(-1000, -2400, -90), (96, 150, 190), 8.0, 650.0)
     light(eas, unreal.PointLight, "IXL_Crypt", unreal.Vector(-700, -3100, -130), (90, 150, 185), 16.0, 1300.0)
     for side in (-1, 1):

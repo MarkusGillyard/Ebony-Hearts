@@ -5,6 +5,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EHChapel.h"
 #include "EHFists.h"
 #include "EHMagic.h"
 #include "EHWolf.h"
@@ -59,7 +60,8 @@ struct FEHFirstPersonTuning
 	FEHFistTuning Fists;
 	FEHDummyTuning Dummy;
 	FEHMagicTuning Magic;
-	FEHWolfTuning Wolf;     // the Chapel wolf (milestone 5)   // stats, Qhi and the spells; stats.health and stats.stamina set PlayerHealth and StaminaMax
+	FEHWolfTuning Wolf;     // the Chapel wolf (milestone 5)
+	FEHChapelTuning Chapel; // the Chapel's interactions and prayer (interior stage 2)
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);

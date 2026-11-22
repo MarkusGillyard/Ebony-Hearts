@@ -33,6 +33,7 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::FPJab: return TEXT("FPJab");
 	case EEHAction::FPStraight: return TEXT("FPStraight");
 	case EEHAction::FPSpellSelect: return TEXT("FPSpellSelect");
+	case EEHAction::FPInteract: return TEXT("FPInteract");
 	case EEHAction::FPBlock: return TEXT("FPBlock");
 	case EEHAction::FPFireball: return TEXT("FPFireball");
 	case EEHAction::FPIceWall: return TEXT("FPIceWall");
@@ -65,6 +66,7 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::FPJab: return TEXT("FirstPersonJab");
 	case EEHAction::FPStraight: return TEXT("FirstPersonStraight");
 	case EEHAction::FPSpellSelect: return TEXT("FirstPersonSpellSelect");
+	case EEHAction::FPInteract: return TEXT("FirstPersonInteract");
 	case EEHAction::FPBlock: return TEXT("FirstPersonBlock");
 	case EEHAction::FPFireball: return TEXT("FirstPersonFireball");
 	case EEHAction::FPIceWall: return TEXT("FirstPersonIceWall");
@@ -97,6 +99,7 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::FPJab: return TEXT("Jab");
 	case EEHAction::FPStraight: return TEXT("Straight");
 	case EEHAction::FPSpellSelect: return TEXT("Choose a spell (hold)");
+	case EEHAction::FPInteract: return TEXT("Interact / pray");
 	case EEHAction::FPBlock: return TEXT("Block (hold)");
 	case EEHAction::FPFireball: return TEXT("Fireball");
 	case EEHAction::FPIceWall: return TEXT("Ice Wall");
@@ -152,12 +155,12 @@ TArray<EEHAction> EHActionsFor(EEHBindingSet Set)
 	using A = EEHAction;
 	if (Set == EEHBindingSet::FPKeyboard)
 	{
-		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	if (Set == EEHBindingSet::FPController)
 	{
 		// The left stick always moves and the right stick always looks, so only buttons are listed.
-		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	return {A::Light, A::Heavy, A::Dodge, A::Throw, A::Block, A::Special, A::Left, A::Right, A::Jump, A::Down, A::Reset};
 }
@@ -274,6 +277,9 @@ FEHBindings FEHBindings::Defaults()
 	// thumb.
 	Set(S::FPKeyboard, A::FPSpellSelect, EKeys::Tab);
 	Set(S::FPController, A::FPSpellSelect, EKeys::Gamepad_FaceButton_Left);
+	// Interact and pray (2026-11-22): E and Circle / B, the keys the shove left free.
+	Set(S::FPKeyboard, A::FPInteract, EKeys::E);
+	Set(S::FPController, A::FPInteract, EKeys::Gamepad_FaceButton_Right);
 	return B;
 }
 
@@ -1016,6 +1022,33 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			if (Version >= 6)
 			{
 				Notes += FString::Printf(TEXT("%sThe shove is gone. New: hold to choose a spell (Tab, Square / X)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				if (!Taken.IsEmpty())
+				{
+					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
+				}
+			}
+		}
+		if (Version < 10)
+		{
+			// Version 10 added Interact, on the keys the shove freed; a player who has since given them another job keeps it.
+			FString Taken;
+			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
+			{
+				const EEHAction A = EEHAction::FPInteract;
+				for (int32 K = 0; K < EHKeysPerAction; ++K)
+				{
+					const FKey Key = Loaded.Keys[Idx(BS)][Idx(A)][K];
+					const FEHBindingRef C = Key.IsValid() ? Loaded.FindConflict(BS, A, K, Key) : FEHBindingRef();
+					if (C.IsValid() && C.Action != A)
+					{
+						Loaded.Keys[Idx(BS)][Idx(A)][K] = EKeys::Invalid;
+						Taken += FString::Printf(TEXT("%s%s (%s) is used by %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), *Key.GetDisplayName(false).ToString(), EHActionLabel(A), EHActionLabel(C.Action));
+					}
+				}
+			}
+			if (Version >= 6)
+			{
+				Notes += FString::Printf(TEXT("%sNew: Interact and pray (E, Circle / B)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
 				if (!Taken.IsEmpty())
 				{
 					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);

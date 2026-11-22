@@ -371,6 +371,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	{
 		In.FistPress = SelectedSpell;          // released on a spell: cast it now
 	}
+	bFPInteractPressed = (AnyPress & Bit(EEHAction::FPInteract)) != 0 && !bSpellSelect;
 	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
 	if (In.FistPress != EEHFistAction::None || In.bBlock)
 	{
@@ -385,8 +386,7 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	{
 		BeginFirstPerson();
 	}
-	const FEHFirstPersonInput In = GatherFirstPersonInput(DeltaSeconds);
-	LastFPInput = In;
+	FEHFirstPersonInput In = GatherFirstPersonInput(DeltaSeconds);
 	const bool bDeveloperKey = RouterPtr->TakeDeveloperKey();
 #if !UE_BUILD_SHIPPING
 	// F10: the developer panel (stats and resources live). Shipping builds never open it.
@@ -419,6 +419,8 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	{
 		return;
 	}
+	UpdateChapel(In, DeltaSeconds);
+	LastFPInput = In;
 	FPPlayer->ApplyInput(In, DeltaSeconds);
 	if (Vfx)
 	{
@@ -1103,6 +1105,9 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 	{
 		FPWolf->ResetWolf();   // the alignment stays: a case can be repeated
 	}
+	EndPrayer(TEXT("reset"));
+	FPMessageLeft = 0.0f;
+	FPPrayers = FPMessages = 0;
 	HurtFlash = 0.0f;
 	++FPResets;
 	AutoLogLine(FString::Printf(TEXT("firstperson reset (%s) %s"), Why, *DescribeFirstPerson()));
@@ -1248,6 +1253,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 #endif
 	if (!bPaused)
 	{
+		PaintChapel(P);
 		PaintSpellSelect(P);
 	}
 	// Every piece of art in this build is a stand-in; say so where a reviewer will see it.
@@ -1402,6 +1408,11 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (FPWolf && Field == TEXT("wolf_frozen")) V = FPWolf->IsFrozen() ? 1.0f : 0.0f;
 		else if (FPWolf && Field == TEXT("wolf_health")) V = FPWolf->HealthValue();
 		else if (FPWolf && Field == TEXT("wolf_dist")) V = FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation());
+		else if (Field == TEXT("praying")) V = bPraying ? 1.0f : 0.0f;
+		else if (Field == TEXT("prayers")) V = static_cast<float>(FPPrayers);
+		else if (Field == TEXT("prayer_seconds")) V = PrayerSeconds;
+		else if (Field == TEXT("interact_focus")) V = static_cast<float>(FPInteractFocus);
+		else if (Field == TEXT("interact_messages")) V = static_cast<float>(FPMessages);
 		else if (FPWolf && Field == TEXT("wolf_home_dist")) V = FVector::Dist2D(FPWolf->FeetLocation(), FPTuning.Wolf.Home);
 		else if (FPWolf && Field == TEXT("wolf_bites")) V = static_cast<float>(FPWolf->Bites());
 		else if (FPWolf && Field == TEXT("wolf_lunges")) V = static_cast<float>(FPWolf->Lunges());

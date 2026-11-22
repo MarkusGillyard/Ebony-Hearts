@@ -199,6 +199,23 @@ IX_NAV = [
     ("IX_CryptPierA", (-700, -2970, -150), (40, 40, 150), 0),
     ("IX_CryptPierB", (-700, -3230, -150), (40, 40, 150), 0),
 ]
+# The furnishings (Tools/Unreal/build_chapel_furnish.py) as obstacles.
+IX_NAV += [
+    ("FX_Hearth", (-2122, -800, 94), (68, 150, 50), 0),
+    ("FX_Counter", (-1655, -487, 95), (195, 43, 50), 0),
+    ("FX_Anvil", (-1850, -820, 90), (35, 35, 45), 0),
+    ("FX_Trough", (-1980, -1117, 80), (80, 33, 35), 0),
+    ("FX_Rack", (-1575, -1132, 125), (115, 15, 80), 0),
+    ("FX_Dwar", (-1980, -680, 125), (40, 55, 80), 0),
+    ("FX_StatueN", (-390, -1945, 74), (56, 56, 30), 0),
+    ("FX_StatueS", (390, -1945, 74), (56, 56, 30), 0),
+    ("FX_KneelerDesk", (0, -1798, 86), (72, 14, 42), 0),
+    ("FX_CampCrates", (1125, -95, 50), (35, 70, 50), 0),
+    ("FX_Brazier", (960, 140, 40), (36, 36, 40), 0),
+]
+for _x in (1500, 1740, 1980):
+    IX_NAV.append((f"FX_AlcoveW{_x}", (_x, -465, 80), (75, 28, 35), 0))
+    IX_NAV.append((f"FX_AlcoveE{_x}", (_x, -1135, 80), (75, 28, 35), 0))
 # The wall stubs either side of each opening in the replaced bays (the arch bays' 1.5 m half openings, the way down's
 # 0.9 m), as obstacles from the floor to 2.2 m.
 for _x in (-1228, 1228):

@@ -1,0 +1,112 @@
+# The Chapel's interactions and prayer (interior stage 2; development build: test positions and the alignment
+# selector). Covers: the prompt for each interactable when looked at within reach, the placeholder texts, kneeling at
+# the kneeler (the view turns to the altar and the rose window, movement and techniques stop, the meter shows), rising
+# by Interact and by walking, Interact doing nothing when nothing is looked at, the meter at the ends of the tiers, and
+# a reset ending a prayer. Screenshots: the prompt, kneeling, the meter at Hero of Humanity and at Forsaken.
+wait 5
+fp_expect screen eq 12
+
+log == nothing looked at: Interact does nothing
+fp_teleport 0 -700 0 -90 0
+wait 0.4
+fp_expect interact_focus eq -1
+press kbA FPInteract
+wait 0.3
+fp_expect interact_messages eq 0
+fp_expect praying eq 0
+
+log == the kneeler: prompt, kneel, the view turns to the rose window
+fp_teleport 0 -1660 44 -90 -50
+wait 0.6
+fp_expect interact_focus eq 0
+screenshot chapel_prompt
+press kbA FPInteract
+wait 1.6
+fp_expect praying eq 1
+fp_expect pitch gt 10
+fp_mark
+screenshot chapel_kneeling
+log while kneeling nothing else starts: a jab, a Fireball, a step
+press kbA FPJab
+press kbA FPFireball
+wait 0.4
+fp_expect action eq 0
+fp_expect fireballs eq 0
+fp_expect praying eq 0
+fp_expect prayers eq 1
+log (the jab only rose from the prayer; kneel again, then walking rises)
+fp_teleport 0 -1660 44 -90 -50
+wait 0.4
+press kbA FPInteract
+wait 1.0
+fp_expect praying eq 1
+fp_expect prayers eq 2
+hold kbA FPForward
+wait 0.3
+release kbA FPForward
+wait 0.3
+fp_expect praying eq 0
+
+log == the meter at the ends of the tiers
+fp_align 0
+fp_teleport 0 -1660 44 -90 -50
+wait 0.4
+press kbA FPInteract
+wait 1.8
+screenshot chapel_meter_hero
+fp_align 8
+wait 0.4
+screenshot chapel_meter_forsaken
+press kbA FPInteract
+wait 0.4
+fp_expect praying eq 0
+fp_align 4
+
+log == a reset ends a prayer
+fp_teleport 0 -1660 44 -90 -50
+wait 0.4
+press kbA FPInteract
+wait 0.5
+fp_expect praying eq 1
+fp_reset
+wait 0.3
+fp_expect praying eq 0
+
+log == the forge: the counter, the anvil, Dwar
+fp_teleport -1650 -700 45 90 -18
+wait 0.5
+fp_expect interact_focus eq 2
+press kbA FPInteract
+wait 0.3
+fp_expect interact_messages eq 1
+fp_teleport -1650 -820 45 180 -18
+wait 0.5
+fp_expect interact_focus eq 3
+fp_teleport -1760 -680 45 180 2
+wait 0.5
+fp_expect interact_focus eq 4
+press kbA FPInteract
+wait 0.3
+fp_expect interact_messages eq 2
+screenshot chapel_dwar
+
+log == the Threshold Door, the cave gate, the sealed door
+fp_teleport 0 1200 0 90 -5
+wait 0.5
+fp_expect interact_focus eq 1
+fp_teleport -400 -3330 -300 -90 -5
+wait 0.5
+fp_expect interact_focus eq 5
+fp_teleport -1150 -3100 -300 180 -10
+wait 0.5
+fp_expect interact_focus eq 6
+press kbA FPInteract
+wait 0.3
+fp_expect interact_messages eq 3
+log a message fades when the player walks away
+fp_teleport -700 -3100 -300 0 0
+wait 0.6
+fp_reset
+wait 0.3
+fp_state end
+quit

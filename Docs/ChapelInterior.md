@@ -20,7 +20,7 @@ it.
 | Sanctuary | Prayer at the altar | +0.45 m | Unchanged (prayer is stage 2) |
 | Forge (north transept) | Smithing King Dwar: buying items and upgrading weapons | +0.45 m, dry | Built: opened off the north aisle by two arches, steps, barrel vault, end window, warm light (furnishing is stage 2) |
 | Hall of the Six (south transept) | A memorial of past champions, in traces only | +0.45 m, dry | Built: the mirror of the forge's room (alcoves and mural are stage 2) |
-| The way down and the undercroft | The way to the Hearted Dungeons, through a flooded crypt under the sanctuary | −3 m, water 0.6 m | Built: doorway in the north aisle's east end (with a window above), 17 steps down, crypt with a central arcade and two vaults, the gate (shut) and a sealed door |
+| The way down and the undercroft | A flooded crypt under the sanctuary, with the locked gate to the caverns beneath the Chapel (the Chapel Crowned Cave, not in the prototype) | −3 m, water 0.6 m | Built: doorway in the north aisle's east end (with a window above), 17 steps down, crypt with a central arcade and two vaults, the cave gate (locked) and a sealed door |
 
 ## What changed in the map
 
@@ -78,14 +78,42 @@ onto the balcony, through both transepts and down into the crypt. It is generate
 
 The stair's parapet starts three steps up, at a newel post, so the stair can be stepped onto from the side at its foot.
 
+## Stage 2: function and furnishing
+
+- **Interact** (E, Circle / B; settings format 10).
+  - What the player looks at within 2.3 m, and in plain sight, shows a prompt.
+  - Using it shows a short placeholder text, marked as such. The text is data (`Content/Data/firstperson.json`,
+    `chapel`), so the creator can rewrite it.
+  - Interactables: the Threshold Door, the forge's counter (buying) and anvil (upgrading) and Dwar's stand-in, the
+    cave gate and the sealed door. None of them opens or sells anything yet.
+- **Prayer** at the sanctuary's kneeler.
+  - Interact kneels, and the view turns, unhurried, to the altar and the rose window.
+  - Walking, techniques and spells stop, and looking is slowed.
+  - The alignment meter shows: nine steps from white (good) through grey to black (evil), with a mark at the player's
+    tier and no names. It is the only place the meter can be seen.
+  - Interact, a step, a jump or a strike rises. The press that rises only rises; for a quarter second nothing else
+    starts.
+  - A reset or death ends the prayer.
+  - Time running faster during prayer waits for the world clock (stage 3).
+- **Furnishings** (`Tools/Blender/chapel/chapel_furnish.py`, placed by `Tools/Unreal/build_chapel_furnish.py`):
+  - **Sanctuary:**
+    - the kneeler: a kneeling board, and a desk carrying a cracked heart;
+    - a white-to-black inlay of nine stones at the platform's edge;
+    - two veiled statues flanking the altar.
+  - **Forge:**
+    - a hearth with a stone hood and embers, and a bellows;
+    - an anvil on a stump, a quench trough, a counter with goods, and a rack of plain blades;
+    - Dwar's stand-in, a plain figure in the placeholder grid material.
+  - **Hall of the Six:**
+    - six alcoves with candles; five hold a trace each, and one is empty;
+    - a blank framed panel on the end wall: a slot for the creator's illustration.
+  - **The nave:** two blank devotional boards on the piers (illustration slots).
+  - **The camp in the south aisle:** bedrolls, a brazier with embers and its own small light, crates, a sack and a
+    pot.
+  - **New material instances:** cloth tints, plaster, an ember glow, faintly lime-green water and a red flare.
+  - **Navigation:** the furniture has navigation stand-ins, so the wolves walk round it.
+
 ## Open
 
-- **Stage 2** (function and furnishing):
-  - an Interact input and prompts;
-  - prayer at the altar with the alignment meter;
-  - the forge's furnishings and a placeholder for Dwar;
-  - the Hall of the Six's alcoves and mural slot;
-  - the present occupants' camp;
-  - the statues and the altar relief.
 - **Stage 3:** atmosphere (motes, heat shimmer, sound) and the light following the world's time, once a clock exists.
 - **Creator decisions:** the floor plan and every item listed for approval in the private design document.

@@ -364,6 +364,23 @@ private:
 	void PaintSpellSelect(FEHPainter& P);
 	void TickSpells(float DeltaSeconds);
 	void ClearSpells();
+	// The Chapel's interactions and prayer (EHDirectorChapel.cpp).
+	bool bFPInteractPressed = false;  // Interact was pressed this frame
+	int32 FPInteractFocus = -1;       // the interactable the player looks at, -1 none
+	FString FPMessage;                // a used thing's text, shown for a moment
+	float FPMessageLeft = 0.0f;
+	FVector FPMessageFrom = FVector::ZeroVector;
+	int32 FPMessages = 0;
+	bool bPraying = false;
+	float PrayAlpha = 0.0f;
+	float PrayerSeconds = 0.0f;
+	float RiseBlockLeft = 0.0f;      // after rising from prayer, techniques and spells wait a moment
+	int32 FPPrayers = 0;
+	// Finds what the player looks at, handles Interact and, while praying, holds the player kneeling.
+	void UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds);
+	void BeginPrayer();
+	void EndPrayer(const TCHAR* Why);
+	void PaintChapel(FEHPainter& P);
 	void BuildDeveloperPanel();
 	int32 FrameCaptureLeft = 0;     // automation: fp_frames screenshots every rendered frame
 	int32 FrameCaptureIndex = 0;

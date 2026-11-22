@@ -37,6 +37,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Fireball | F | L2 / LT |
 | Ice Wall | R | Triangle / Y |
 | Choose a spell (hold) | Tab | Square / X |
+| Interact / pray | E | Circle / B |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -53,14 +54,14 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 9), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 10), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
 first-person action. Version 6 adds the two first-person layouts (`fpKeyboard`, `fpController`) and the look,
 field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techniques and Controller vibration;
 version 8 Fireball and Ice Wall; version 9 removed the shove (its keys are simply free) and added Choose a spell
-and the Spell selector setting. Each new action takes its default key only where the player has not already used
+and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left. Each new action takes its default key only where the player has not already used
 that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
@@ -344,7 +345,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path, praying, prayers, prayer_seconds, interact_focus, interact_messages |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -377,7 +378,8 @@ the spell wheel and list with mouse, stick and keys, the developer panel), `fp_s
 `fp_perf_magic.txt` (a warm frame-time capture with walls and Fireballs in play), `fp_wolf.txt` (every band,
 a threat against real harm, leaving and returning, the evil wolf's attacks, a kill, the reset keeping the alignment,
 Hero of Humanity's bond, the friendly wolf protecting the player, the Ice Wall rerouting and freezing it) and
-`fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping).
+`fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping), and the Chapel interior's `fp_interior.txt`,
+`fp_chapel.txt`, `fp_ship_chapel.txt` and `fp_perf_interior.txt` (`Docs/ChapelInterior.md`).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.

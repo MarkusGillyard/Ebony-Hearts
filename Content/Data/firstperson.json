@@ -182,5 +182,97 @@
     "hitstun": 18,
     "absorbRange": 1000,
     "protectRange": 1200
+  },
+  "chapel": {
+    "comment": "The Drowned Chapel's interactions (interior stage 2). Each interactable: id, at [x, y, z] in cm, radius (how far off the line of sight it still counts), prompt (shown after the Interact key), text (shown when used; bracketed text marks a placeholder until the creator writes the real words), pray (the kneeler). reach: how far from the eye something can be used.",
+    "reach": 230,
+    "messageSeconds": 5,
+    "messageWalkAway": 300,
+    "prayLookScale": 0.4,
+    "prayLookAt": [
+      0,
+      -2050,
+      760
+    ],
+    "prayTurnSeconds": 1.2,
+    "interactables": [
+      {
+        "id": "kneeler",
+        "at": [
+          0,
+          -1790,
+          90
+        ],
+        "radius": 80,
+        "prompt": "Pray",
+        "pray": true
+      },
+      {
+        "id": "threshold_door",
+        "at": [
+          0,
+          1360,
+          150
+        ],
+        "radius": 140,
+        "prompt": "Look",
+        "text": "The Threshold Door. It opens onto wherever the Chapel stands. [Placeholder: the way out is not in the prototype.]"
+      },
+      {
+        "id": "forge_counter",
+        "at": [
+          -1650,
+          -490,
+          150
+        ],
+        "radius": 120,
+        "prompt": "Buy",
+        "text": "Smithing King Dwar's counter. [Placeholder: buying items is not built yet.]"
+      },
+      {
+        "id": "forge_anvil",
+        "at": [
+          -1850,
+          -820,
+          135
+        ],
+        "radius": 60,
+        "prompt": "Upgrade",
+        "text": "Dwar's anvil. [Placeholder: upgrading weapons is not built yet.]"
+      },
+      {
+        "id": "dwar",
+        "at": [
+          -1980,
+          -680,
+          150
+        ],
+        "radius": 70,
+        "prompt": "Talk",
+        "text": "Smithing King Dwar. [Placeholder figure: his look and his words are the creator's to write.]"
+      },
+      {
+        "id": "cave_gate",
+        "at": [
+          -400,
+          -3525,
+          -170
+        ],
+        "radius": 130,
+        "prompt": "Look",
+        "text": "A heavy iron gate, locked. [Placeholder: the caverns beyond are not in the prototype.]"
+      },
+      {
+        "id": "sealed_door",
+        "at": [
+          -1340,
+          -3100,
+          -200
+        ],
+        "radius": 90,
+        "prompt": "Touch",
+        "text": "Smooth stone. It does not move."
+      }
+    ]
   }
 }
