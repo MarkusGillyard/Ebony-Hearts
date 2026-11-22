@@ -1,0 +1,117 @@
+# The Chapel's interior (stage 1, development build: test positions). Walks every new space with real movement:
+# the Threshold Hall and its door, the stair up to the loft and the balcony, both transepts' steps, the way down into
+# the undercroft's water, the gate and the sealed door; checks the water depth in each place, and that the wolf's
+# navigation reaches every room (a friendly wolf follows the player into the forge, up to the loft and down below).
+wait 5
+fp_expect screen eq 12
+
+log == Threshold Hall: dry; the door holds
+fp_teleport 0 1000 0 90 0
+wait 0.5
+fp_expect water eq 0
+hold kbA FPForward
+wait 1.6
+release kbA FPForward
+wait 0.3
+fp_expect y lt 1360
+fp_expect y gt 1150
+
+log == the stair along the north wall: up to the loft, then out onto the balcony
+fp_teleport -430 1300 0 -90 0
+wait 0.4
+hold kbA FPForward
+wait 2.6
+release kbA FPForward
+wait 0.4
+fp_state stair_top
+fp_expect z gt 470
+fp_expect y lt 700
+fp_teleport 0 330 490 -90 0
+wait 0.8
+fp_expect z gt 470
+hold kbA FPForward
+wait 1.0
+release kbA FPForward
+wait 0.3
+fp_expect y gt 225
+fp_expect z gt 470
+
+log == the north transept (forge): up three steps from the aisle, dry
+fp_teleport -900 -600 0 180 0
+wait 0.4
+hold kbA FPForward
+wait 2.2
+release kbA FPForward
+wait 0.3
+fp_state forge
+fp_expect x lt -1450
+fp_expect z gt 40
+fp_expect water eq 0
+
+log == the south transept (Hall of the Six)
+fp_teleport 900 -600 0 0 0
+wait 0.4
+hold kbA FPForward
+wait 2.2
+release kbA FPForward
+wait 0.3
+fp_expect x gt 1450
+fp_expect z gt 40
+
+log == the way down: from the north aisle's east end, down the stair into the crypt's water
+fp_teleport -1000 -1850 0 -90 0
+wait 0.4
+hold kbA FPForward
+wait 3.6
+release kbA FPForward
+wait 0.4
+fp_state crypt
+fp_expect y lt -2700
+fp_expect z lt -280
+fp_expect water gt 50
+
+log == the Hearted Dungeons gate and the sealed door stay shut
+fp_teleport -400 -3300 -300 -90 0
+wait 0.4
+hold kbA FPForward
+wait 1.6
+release kbA FPForward
+wait 0.3
+fp_expect y gt -3500
+fp_teleport -1100 -3100 -300 180 0
+wait 0.4
+hold kbA FPForward
+wait 1.6
+release kbA FPForward
+wait 0.3
+fp_expect x gt -1330
+log == and back up the stair
+fp_teleport -1000 -2750 -300 90 0
+wait 0.4
+hold kbA FPForward
+wait 3.6
+release kbA FPForward
+wait 0.4
+fp_expect z gt -30
+fp_expect y gt -2050
+
+log == the wolf's navigation reaches every room: a friendly wolf follows the player
+fp_align 2
+fp_wolf_reset
+fp_teleport -1750 -800 45 180 0
+wait 7
+fp_state wolf_forge
+fp_expect wolf_dist lt 500
+fp_teleport 150 1100 490 -90 0
+wait 10
+fp_state wolf_loft
+fp_expect wolf_dist lt 500
+fp_teleport -700 -3000 -300 -90 0
+wait 12
+fp_state wolf_crypt
+fp_expect wolf_dist lt 600
+fp_align 4
+fp_reset
+wait 0.5
+fp_state end
+quit

@@ -807,7 +807,7 @@ void AEHPlayerCharacter::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHei
 
 void AEHPlayerCharacter::UpdateWater()
 {
-	// The Chapel's water is one sheet at WaterSurfaceZ over the floor: depth is the surface minus the floor under the feet.
+	// Depth is the water's surface over the feet minus the floor under them; dry where no sheet covers the feet.
 	const UCharacterMovementComponent* Move = GetCharacterMovement();
 	const FVector Feet = FeetLocation();
 	float FloorZ = Feet.Z;
@@ -815,7 +815,13 @@ void AEHPlayerCharacter::UpdateWater()
 	{
 		FloorZ = Move->CurrentFloor.HitResult.ImpactPoint.Z;
 	}
-	WaterDepth = Feet.Z <= Tuning.WaterSurfaceZ + 2.0f ? FMath::Max(0.0f, Tuning.WaterSurfaceZ - FloorZ) : 0.0f;
+	float Surface = Tuning.WaterSurfaceZ;
+	if (Water && !Water->SurfaceAt(Feet, Surface))
+	{
+		WaterDepth = 0.0f;
+		return;
+	}
+	WaterDepth = Feet.Z <= Surface + 2.0f ? FMath::Max(0.0f, Surface - FloorZ) : 0.0f;
 }
 
 void AEHPlayerCharacter::UpdateCamera(float DeltaSeconds)

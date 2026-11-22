@@ -74,10 +74,20 @@ struct FEHMagicTuning
 };
 
 // The Chapel's water: one sheet at SurfaceZ over the floor, within the water mesh's bounds.
-struct FEHWater
+// The Chapel's water: flat sheets, each over its own area (the nave's basin, the undercroft's crypt).
+struct FEHWaterSheet
 {
 	float SurfaceZ = 3.0f;
 	FBox2D Bounds = FBox2D(FVector2D(-1200, -2000), FVector2D(1200, 600));
+};
+
+struct FEHWater
+{
+	TArray<FEHWaterSheet> Sheets;
+	// The surface over XY nearest to At's height (false when no sheet covers XY).
+	bool SurfaceAt(const FVector& At, float& OutZ) const;
+	// The surface over XY, or Fallback when no sheet covers it.
+	float SurfaceOr(const FVector& At, float Fallback) const;
 	// Depth of water over the floor under XY (0 when dry or outside the water).
 	float DepthAt(const UWorld* World, const FVector& At, const AActor* Ignore = nullptr) const;
 };

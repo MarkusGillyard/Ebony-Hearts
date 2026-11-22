@@ -143,7 +143,7 @@
     "freezeSeconds": 2
   },
   "wolf": {
-    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY: the Chapel's floor ends here; the entrance strip beyond counts as outside.",
+    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY / leaveMaxZ: the Chapel's floor ends here; the Threshold Hall's floor beyond (below leaveMaxZ) counts as outside, the loft above it does not.",
     "health": 60,
     "spawn": [
       330,
@@ -156,7 +156,8 @@
       0
     ],
     "homeYaw": 90,
-    "leaveLineY": 120,
+    "leaveLineY": 560,
+    "leaveMaxZ": 250,
     "calmSeconds": 3,
     "walkSpeed": 260,
     "runSpeed": 640,

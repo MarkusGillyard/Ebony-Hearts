@@ -44,12 +44,9 @@ SHELL = {
 
 # Placeholder blockouts, centre and half size in cm (Unreal axes: the nave runs along -Y from the entrance at +Y to the
 # apse; X is across the nave). See Docs/FirstPerson.md for why each one exists.
-BLOCKOUTS = [
-    # The 2.5D camera looked from +Y, so the Chapel has no west (entrance) wall. Its inner face (Y = +415) meets the
-    # ends of the first bay's vaults, arcades and aisle walls (Y = +400..+416), so no gap shows above them, and it
-    # half-buries the westmost piers like the wall responds elsewhere. It rises past the nave vault's apex (16 m).
-    ("PH_Blockout_WestWall", (0.0, 475.0, 825.0), (1340.0, 60.0, 875.0)),
-]
+# (The grey west-wall blockout that closed the open west end is gone: the interior's west wall, Threshold Hall and loft
+# replace it. Tools/Unreal/build_chapel_interior.py.)
+BLOCKOUTS = []
 
 
 def log(msg):
@@ -177,7 +174,45 @@ def place_blockouts(eas):
 # Where the wolves can walk: the whole nave, aisles, basin and altar, floor to well above head height. The navigation
 # mesh itself is generated at run time (RecastNavMesh RuntimeGeneration=Dynamic, Config/DefaultEngine.ini), so an Ice
 # Wall cuts it the moment it rises and gives the way back when it melts.
-NAV_BOUNDS = ("EH_NavBounds_Chapel", (0.0, -950.0, 100.0), (1320.0, 1400.0, 260.0))
+NAV_BOUNDS = ("EH_NavBounds_Chapel", (0.0, -1050.0, 150.0), (2350.0, 2600.0, 520.0))
+
+# The interior's rooms (Tools/Unreal/build_chapel_interior.py) as navigation stand-ins, centre and half size in cm, and
+# a roll in degrees for the stairs' ramps: floors are slabs whose tops are the walking height, the wall stubs beside
+# each opening are obstacles.
+IX_NAV = [
+    ("IX_NarthexFloor", (0, 935, -10), (500, 400, 10), 0),
+    ("IX_LoftFloor", (70, 935, 480), (430, 400, 10), 0),
+    ("IX_LoftLanding", (-430, 574, 480), (70, 39, 10), 0),
+    ("IX_LoftBack", (-430, 1150, 480), (70, 185, 10), 0),
+    ("IX_Balcony", (0, 377, 480), (380, 158, 10), 0),
+    ("IX_BalconyColumnL", (-340, 185, 110), (25, 25, 110), 0),
+    ("IX_BalconyColumnR", (340, 185, 110), (25, 25, 110), 0),
+    ("IX_TransS_Step1", (1288, -800, -5), (15, 360, 10), 0),
+    ("IX_TransS_Step2", (1318, -800, 15), (15, 360, 10), 0),
+    ("IX_TransS_Floor", (1762, -800, 35), (429, 360, 10), 0),
+    ("IX_TransN_Step1", (-1288, -800, -5), (15, 360, 10), 0),
+    ("IX_TransN_Step2", (-1318, -800, 15), (15, 360, 10), 0),
+    ("IX_TransN_Floor", (-1762, -800, 35), (429, 360, 10), 0),
+    ("IX_DownLanding", (-1000, -2065, -15), (90, 65, 10), 0),        # from the aisle's floor through the doorway
+    ("IX_DownFoot", (-1000, -2670, -310), (90, 30, 10), 0),           # the last step's run into the crypt
+    ("IX_CryptFloor", (-700, -3100, -310), (600, 400, 10), 0),
+    ("IX_CryptPierA", (-700, -2970, -150), (40, 40, 150), 0),
+    ("IX_CryptPierB", (-700, -3230, -150), (40, 40, 150), 0),
+]
+# The wall stubs either side of each opening in the replaced bays (the arch bays' 1.5 m half openings, the way down's
+# 0.9 m), as obstacles from the floor to 2.2 m.
+for _x in (-1228, 1228):
+    for _y, _h in ((-425, 25), (-800, 50), (-1175, 25)):
+        IX_NAV.append((f"IX_TransPier_{_x}_{_y}", (_x, _y, 110), (45, _h, 110), 0))
+# The stairs, one slab per step (the Threshold Hall's 27 steps of 18 cm up to the loft; the way down's 17 of 17 cm).
+for _i in range(27):
+    _y0 = 1260 - 24 * _i
+    IX_NAV.append((f"IX_HallStep{_i:02d}", (-430, _y0 - 12, (_i + 1) * 18.15 - 10), (70, 12, 10), 0))
+for _i in range(1, 18):
+    _y0 = -2130 - 30 * (_i - 1)
+    IX_NAV.append((f"IX_DownStep{_i:02d}", (-1000, _y0 - 15, -5 - _i * 17.35 - 10), (90, 15, 10), 0))
+IX_NAV.append(("IX_DownJambL", (-1145, -2028, 110), (55, 45, 110), 0))
+IX_NAV.append(("IX_DownJambR", (-855, -2028, 110), (55, 45, 110), 0))
 
 
 def place_nav_bounds(eas):
@@ -202,6 +237,26 @@ def place_nav_bounds(eas):
 # height; anything standing on the floor becomes a box from the floor up to 2.2 m. Flat debris is left out: walked over.
 NAV_FLOORS = {"SM_Floor_Strip": 0.0, "SM_Floor_Basin": -12.0, "SM_AltarSteps": None}
 NAV_SKIP_BELOW = 15.0   # pieces lower than this (planks) are walked over
+
+
+def nav_only(p):
+    p.set_actor_hidden_in_game(True)
+    comp = p.static_mesh_component
+    comp.set_mobility(unreal.ComponentMobility.STATIC)
+    # The cube's own collision profile (block all) would otherwise win over the settings below.
+    setp(comp, "use_default_collision", False)
+    comp.set_collision_profile_name("Custom")
+    comp.set_collision_enabled(unreal.CollisionEnabled.QUERY_ONLY)
+    # A type no game probe asks for (the floor, wall and water probes query world static and dynamic objects).
+    comp.set_collision_object_type(unreal.CollisionChannel.ECC_VEHICLE)
+    comp.set_collision_response_to_all_channels(unreal.CollisionResponseType.ECR_IGNORE)
+    # Navigation only reads pieces that block pawns or vehicles: block the vehicle channel, which nothing in the game
+    # moves or traces on, so the player, the wolf and every probe pass through.
+    comp.set_collision_response_to_channel(unreal.CollisionChannel.ECC_VEHICLE, unreal.CollisionResponseType.ECR_BLOCK)
+    setp(comp, "can_ever_affect_navigation", True)
+    setp(comp, "cast_shadow", False)
+    setp(comp, "visible", False)
+    p.tags = [unreal.Name("EHNavProxy")]
 
 
 def place_nav_proxies(eas, actors):
@@ -232,23 +287,14 @@ def place_nav_proxies(eas, actors):
         count += 1
         p.set_actor_label(f"EH_NavProxy_{count:03d}_{name}")
         p.set_actor_scale3d(unreal.Vector(max(extent.x, 5.0) / 50.0, max(extent.y, 5.0) / 50.0, (hi - lo) / 100.0))
-        p.set_actor_hidden_in_game(True)
-        comp = p.static_mesh_component
-        comp.set_mobility(unreal.ComponentMobility.STATIC)
-        # The cube's own collision profile (block all) would otherwise win over the settings below.
-        setp(comp, "use_default_collision", False)
-        comp.set_collision_profile_name("Custom")
-        comp.set_collision_enabled(unreal.CollisionEnabled.QUERY_ONLY)
-        # A type no game probe asks for (the floor, wall and water probes query world static and dynamic objects).
-        comp.set_collision_object_type(unreal.CollisionChannel.ECC_VEHICLE)
-        comp.set_collision_response_to_all_channels(unreal.CollisionResponseType.ECR_IGNORE)
-        # Navigation only reads pieces that block pawns or vehicles: block the vehicle channel, which nothing in the game
-        # moves or traces on, so the player, the wolf and every probe pass through.
-        comp.set_collision_response_to_channel(unreal.CollisionChannel.ECC_VEHICLE, unreal.CollisionResponseType.ECR_BLOCK)
-        setp(comp, "can_ever_affect_navigation", True)
-        setp(comp, "cast_shadow", False)
-        setp(comp, "visible", False)
-        p.tags = [unreal.Name("EHNavProxy")]
+        nav_only(p)
+    for name, centre, half, roll in IX_NAV:
+        p = eas.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(*centre), unreal.Rotator(roll=roll))
+        p.static_mesh_component.set_static_mesh(cube)
+        count += 1
+        p.set_actor_label(f"EH_NavProxy_{count:03d}_{name}")
+        p.set_actor_scale3d(unreal.Vector(half[0] / 50.0, half[1] / 50.0, half[2] / 50.0))
+        nav_only(p)
     log(f"nav proxies {count}")
 
 

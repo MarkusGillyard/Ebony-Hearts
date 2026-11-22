@@ -141,18 +141,23 @@ void AEHGameDirector::BeginFirstPerson()
 		AutoLogLine(FString::Printf(TEXT("fp wolf absorbed %.1f for the Hero of Humanity"), Damage));
 		return true;
 	});
-	// The water the Ice Wall freezes: the Chapel's water sheet, over the floor within its mesh's bounds.
-	FPWater.SurfaceZ = FPTuning.WaterSurfaceZ;
+	// The Chapel's water: one sheet per water mesh (the nave's basin at the tuned surface; the undercroft's crypt at its
+	// mesh's height), each over its mesh's bounds. The Ice Wall, the player's wading and the ripples all read it.
+	FPWater.Sheets.Reset();
 	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
 	{
 		const UStaticMesh* M = It->GetStaticMeshComponent() ? It->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
-		if (M && M->GetName() == TEXT("SM_Water"))
+		const bool bNave = M && M->GetName() == TEXT("SM_Water");
+		if (bNave || (M && M->GetName() == TEXT("SM_IX_UnderWater")))
 		{
 			const FBox B = It->GetComponentsBoundingBox();
-			FPWater.Bounds = FBox2D(FVector2D(B.Min.X, B.Min.Y), FVector2D(B.Max.X, B.Max.Y));
-			break;
+			FEHWaterSheet W;
+			W.Bounds = FBox2D(FVector2D(B.Min.X, B.Min.Y), FVector2D(B.Max.X, B.Max.Y));
+			W.SurfaceZ = bNave ? FPTuning.WaterSurfaceZ : B.Max.Z;
+			FPWater.Sheets.Add(W);
 		}
 	}
+	FPPlayer->SetWater(&FPWater);
 	PC->SetViewTarget(FPPlayer);
 	PC->bShowMouseCursor = false;
 	PC->SetInputMode(FInputModeGameOnly());
@@ -483,7 +488,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				Audio.PlayVaried(TEXT("StepWater"), 3, EEHSoundCat::Effects, 0.18f + 0.22f * E.Strength + 0.25f * Depth);
 				if (Vfx)
 				{
-					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPTuning.WaterSurfaceZ), 0.35f + 0.5f * Depth);
+					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPWater.SurfaceOr(E.Location, FPTuning.WaterSurfaceZ)), 0.35f + 0.5f * Depth);
 				}
 			}
 			break;
@@ -499,10 +504,10 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				Audio.PlayVaried(TEXT("StepWater"), 3, EEHSoundCat::Effects, 0.35f + 0.45f * E.Strength);
 				if (Vfx)
 				{
-					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPTuning.WaterSurfaceZ), 0.6f + 0.6f * E.Strength);
+					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPWater.SurfaceOr(E.Location, FPTuning.WaterSurfaceZ)), 0.6f + 0.6f * E.Strength);
 					if (E.Strength > 0.5f)
 					{
-						Vfx->Splash(FVector(E.Location.X, E.Location.Y, FPTuning.WaterSurfaceZ), 0.6f * E.Strength);
+						Vfx->Splash(FVector(E.Location.X, E.Location.Y, FPWater.SurfaceOr(E.Location, FPTuning.WaterSurfaceZ)), 0.6f * E.Strength);
 					}
 				}
 			}
@@ -1543,6 +1548,7 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		if (FPWolf)
 		{
 			FPWolf->TeleportTo(FVector(F(1, 0.0f), F(2, -1450.0f), 60.0f), FRotator(0, F(3, 90.0f), 0), false, true);
+			FPWolf->HaltForTest();
 			if (T.Num() > 4)
 			{
 				FPWolf->SetHealthForTest(F(4, 60.0f));

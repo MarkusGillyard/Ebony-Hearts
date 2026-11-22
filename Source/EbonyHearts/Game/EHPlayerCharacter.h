@@ -150,6 +150,8 @@ public:
 	bool IsSprinting() const { return bSprinting; }
 	bool IsExhausted() const { return bExhausted; }
 	float WaterDepthAtFeet() const { return WaterDepth; }
+	// The Chapel's water sheets (owned by the director); without them the tuned surface covers everything.
+	void SetWater(const FEHWater* InWater) { Water = InWater; }
 	float EyeHeight() const { return EyeZ; }
 	FVector FeetLocation() const;
 	UCameraComponent* Camera() const { return CameraComp; }
@@ -206,6 +208,7 @@ private:
 	void AddQhi(float Amount);
 
 	void UpdateWater();
+	const FEHWater* Water = nullptr;
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateBody();
 	void Emit(FEHFirstPersonEvent::EKind Kind, float Strength);

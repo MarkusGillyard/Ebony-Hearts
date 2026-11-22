@@ -260,7 +260,8 @@ and the death reset keep it.
 - **A threat is not harm.** A jab, straight or cast aimed at the wolf within 4.8 m that does not connect makes it back
   off for 3 seconds, unprovoked. The player can stop there.
 - **Real harm** (a strike or Fireball that connects) provokes it: hostile whatever the band, until the player leaves
-  the Chapel's floor. The entrance strip counts as outside. After 3 seconds outside it calms, and back inside it
+  the Chapel's floor. The Threshold Hall, by the door, counts as outside (the loft above it does not). After 3 seconds
+  outside it calms, and back inside it
   treats the player by their band again.
 - **Hero of Humanity** cannot harm a guardian: a blow at the wolf lands on the player instead. A wolf within 10 m
   takes the blows meant for the player (it is never brought below 1 Health doing so).
@@ -293,8 +294,8 @@ The slice built the Chapel for a camera looking down the nave from one side. Wal
   and its steps, the pews, the candle stands and the aisles' east walls. The basin's water is about 40 cm deep at
   its centre, so the player wades knee-deep. The stone floor on the entrance strip is under 3 cm of water.
 - **Missing:** the whole west (entrance) end. The side-on camera never looked that way, so the nave and aisles
-  opened onto a void. `PH_Blockout_WestWall`, a grey 1 m grid placeholder, now closes it from the floor to above the
-  nave vault.
+  opened onto a void. A grey placeholder wall closed it at first; the interior's west wall, Threshold Hall and loft
+  now replace it (`Docs/ChapelInterior.md`).
 - **Light leak:** the vault webs and upper walls are single-sided. The low moon shone through them onto the west end
   (rib shadows across the new wall). The shell pieces now cast two-sided shadows, so moonlight enters only through
   the glass. The rose window's light pattern on the nave floor is unchanged.
@@ -401,5 +402,4 @@ no longer shows. The combat core tests (`Tests/Core`) are unchanged.
   step sound yet.
 - The placeholder body is a fighting-stance model. Its shadow shows raised guard arms and its walk is a fighting
   shuffle.
-- The west wall blockout is plain and very dark. Most of the Chapel's light comes from the east.
 - No music plays in first person; the Chapel ambience does.

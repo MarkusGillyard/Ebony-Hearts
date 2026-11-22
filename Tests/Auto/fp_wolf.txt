@@ -29,7 +29,7 @@ wait 3
 
 log == real harm provokes it and pushes the player a tier toward evil
 fp_wolf_place 0 -640 90
-fp_teleport 0 -530 0 -90 -32
+fp_teleport 0 -530 -28 -90 -32
 wait 0.1
 press kbA FPJab
 wait 0.4
@@ -40,8 +40,8 @@ fp_expect wolf_harms eq 1
 wait 1.0
 fp_expect wolf_hostile eq 1
 
-log == leaving the Chapel's floor (the entrance strip) and staying a moment calms it; back inside it is calm
-fp_teleport 0 300 0 -90 0
+log == leaving the Chapel's floor (into the Threshold Hall) and staying a moment calms it; back inside it is calm
+fp_teleport 0 900 0 -90 0
 wait 1.0
 fp_expect wolf_provoked eq 1
 wait 3.0
@@ -65,7 +65,7 @@ log == killing a guardian: at least Malevolent (one tier deeper when already evi
 fp_reset
 fp_align 4
 fp_wolf_place 0 -640 90 5
-fp_teleport 0 -530 0 -90 -32
+fp_teleport 0 -530 -28 -90 -32
 wait 0.1
 press kbA FPJab
 wait 0.5
@@ -80,7 +80,7 @@ fp_expect alignment eq 7
 log == Hero of Humanity cannot harm a guardian: the blow lands on the player instead
 fp_align 0
 fp_wolf_place 0 -640 90
-fp_teleport 0 -530 0 -90 -32
+fp_teleport 0 -530 -28 -90 -32
 wait 0.1
 press kbA FPJab
 wait 0.5
