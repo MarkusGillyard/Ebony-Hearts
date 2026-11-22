@@ -169,9 +169,13 @@ def narthex():
         y0 = STAIR_Y_BOTTOM + i * STAIR_TREAD
         p.add(box(STAIR_X0, STAIR_X1, y0, STAIR_Y_TOP if i == STAIR_N - 1 else y0 + STAIR_TREAD + 0.02, -0.3,
                   (i + 1) * STAIR_RISE, 0.01), DRS, UV_BOX)
-    para = [(STAIR_Y_BOTTOM, -0.3), (STAIR_Y_TOP, CEIL_Z1 - 0.02), (STAIR_Y_TOP, CEIL_Z1 + 0.95),
-            (STAIR_Y_BOTTOM, 0.95), (STAIR_Y_BOTTOM - 0.25, 0.95), (STAIR_Y_BOTTOM - 0.25, -0.3)]
+    # the parapet starts three steps up, so the stair can be stepped onto from the side at its foot; a newel post
+    # marks where it begins
+    y_s = STAIR_Y_BOTTOM + 3 * STAIR_TREAD
+    z_s = 3 * STAIR_RISE
+    para = [(y_s, z_s - 0.3), (STAIR_Y_TOP, CEIL_Z1 - 0.02), (STAIR_Y_TOP, CEIL_Z1 + 0.95), (y_s, z_s + 0.95)]
     add_wall(p, DRS, wall_y([para], STAIR_X1 + 0.11, 0.22, bevel=0.02))
+    p.add(box(STAIR_X1 - 0.03, STAIR_X1 + 0.25, y_s - 0.28, y_s, -0.3, z_s + 1.12, 0.03), DRS, UV_BOX)
     # a parapet along the opening's west edge, on the loft
     p.add(box(STAIR_X0, STAIR_X1 + 0.22, hole_y0 - 0.22, hole_y0, CEIL_Z1, CEIL_Z1 + 0.95, 0.02), DRS, UV_BOX)
     # the loft room's vault (a gently pointed barrel along Y)
