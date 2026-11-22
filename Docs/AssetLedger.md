@@ -66,7 +66,8 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | First-person arms fallback (runtime) | Placeholder | Made with AI assistance (`EHViewArms.cpp`) | Drawn only if the arms model fails to load: Unreal Engine's `/Engine/BasicShapes/Cylinder`, `Sphere` and `BasicShapeMaterial` (engine content) |
 | Training dummy | Placeholder | Existing slice assets reused unchanged | `SK_Ashka`; `A_Ashka_Idle`, `Guard`, `HitLight`, `HitHeadMedium`, `HitBody`, `BlockHit`, `L1` (provenance above) |
 | Technique sounds | Existing slice assets reused | | `S_WhooshLight`, `S_WhooshHeavy`, `S_HitLight`, `S_HitHeavy`, `S_Block`, `S_BodySlam` |
-| `/Game/Magic/M_PH_Ice` (Ice Wall, frozen water, ice around frozen feet) | Placeholder material | Made with AI assistance (`Tools/Unreal/make_magic_materials.py`) | Samples the slice's `T_FX_Noise` (provenance above); shown on Unreal Engine's `/Engine/BasicShapes/Cube` and `Cylinder` (engine content) |
+| `/Game/Magic/SM_PH_IceWall`, `SM_PH_IceSheet`, `SM_PH_IceCuff` (Ice Wall shards, frozen water, ice around frozen feet) | Placeholder meshes | Made with AI assistance (`Tools/Blender/magic/make_ice.py`, procedural, fixed seed) | No source art; imported by `Tools/Unreal/make_magic_materials.py` |
+| `/Game/Magic/M_PH_Ice` | Placeholder material | Made with AI assistance (`Tools/Unreal/make_magic_materials.py`) | Samples the slice's `T_FX_Noise` and the Chapel's `T_Water_N` (provenance above); a cold point light in the wall |
 | Fireball, hand glows, steam and ice bursts (runtime) | Placeholder effects | Made with AI assistance (`EHMagic.cpp`, `EHVfx.cpp`, `EHViewArms.cpp`) | The slice's `M_VFX_Additive`, `T_FX_Glow`, `T_FX_Ring`, `T_FX_Spark` on Unreal Engine's `/Engine/BasicShapes/Plane`; a point light |
 | Spell sounds | Existing slice assets reused | | `S_FlameIgnite`, `S_FlameRoar_01-03`, `S_FlameHit`, `S_AuraCharge_01-03`, `S_AuraFade`, `S_Deflect`, `S_BodySlam`, `S_UiDenied` |
 

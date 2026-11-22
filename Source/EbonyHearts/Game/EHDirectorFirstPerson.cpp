@@ -481,6 +481,17 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				}
 				FPWalls.Add(Wall);
 				++FPWallsRaised;
+				if (Vfx)
+				{
+					// Frost bursting up along its foot, and a cold mist rolling off it.
+					const FVector Across = FVector::CrossProduct(FVector::UpVector, E.Direction.GetSafeNormal2D());
+					for (int32 k = -2; k <= 2; ++k)
+					{
+						const FVector P = E.Location + Across * (k * FPTuning.Magic.IceWallWidth * 0.2f);
+						Vfx->IceBurst(P + FVector(0, 0, 25.0f), 0.9f);
+						Vfx->Steam(P + FVector(0, 0, 10.0f), 0.9f);
+					}
+				}
 				PlayImpact(TEXT("Deflect"), 1, 0.8f, 0.6f);
 				PlayImpact(TEXT("BodySlam"), 2, 0.45f, 0.7f);
 				Rumble(0.6f, 0.2f, 0.25f);

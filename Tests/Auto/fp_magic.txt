@@ -243,7 +243,7 @@ wait 0.5
 press kbA FPIceWall
 wait 0.6
 fp_expect walls eq 1
-fp_expect dummy_dist near 164 8
+fp_expect dummy_dist near 154 8
 fp_reset
 wait 0.5
 

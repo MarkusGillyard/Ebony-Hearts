@@ -264,6 +264,13 @@ AEHIceWall::AEHIceWall()
 	Sheet->SetCastShadow(false);
 	Sheet->SetCanEverAffectNavigation(false);
 	Sheet->SetVisibility(false);
+	Glow = CreateDefaultSubobject<UPointLightComponent>(TEXT("ColdLight"));
+	Glow->SetupAttachment(Box);
+	Glow->SetCastShadows(false);
+	Glow->SetIntensityUnits(ELightUnits::Candelas);
+	Glow->SetIntensity(0.0f);
+	Glow->SetAttenuationRadius(420.0f);
+	Glow->SetLightColor(FLinearColor(0.42f, 0.7f, 1.0f));
 }
 
 const TCHAR* AEHIceWall::PhaseName() const
@@ -291,14 +298,19 @@ void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, 
 	F.Z = 0.0f;
 	SetActorLocationAndRotation(Base + FVector(0, 0, Tuning.IceWallHeight * 0.5f - 10.0f), F.Rotation());
 	Box->SetBoxExtent(FVector(Tuning.IceWallThickness * 0.5f, Tuning.IceWallWidth * 0.5f, Tuning.IceWallHeight * 0.5f));
-	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
-	UStaticMesh* Disc = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	// Placeholder ice (Tools/Blender/magic/make_ice.py): a ridge of leaning crystal shards, 3 m wide and 2.4 m tall
+	// with its base at the origin, modelled across X; turned so it runs across the line of the cast.
+	UStaticMesh* Shards = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Magic/SM_PH_IceWall.SM_PH_IceWall"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UStaticMesh* Floe = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Magic/SM_PH_IceSheet.SM_PH_IceSheet"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	UMaterialInterface* Ice = IceMaterial();
-	if (Cube)
+	bShards = Shards != nullptr;
+	if (UStaticMesh* WallMesh = Shards ? Shards : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube")))
 	{
-		Mesh->SetStaticMesh(Cube);
+		Mesh->SetStaticMesh(WallMesh);
 		Mesh->SetMaterial(0, Ice);
+		Mesh->SetRelativeRotation(FRotator(0.0f, bShards ? 90.0f : 0.0f, 0.0f));
 	}
+	UStaticMesh* Disc = Floe ? Floe : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
 	// Water within reach freezes into a sheet just above the surface, for as long as anything caught stays trapped.
 	const FVector Feet(Base.X, Base.Y, Base.Z);
 	bSheet = Tuning.FreezeRadius > 0.0f && Water.DepthAt(GetWorld(), Feet, this) > 0.5f;
@@ -307,11 +319,13 @@ void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, 
 		Sheet->SetStaticMesh(Disc);
 		// The frozen water is thinner and darker than the wall: a sheen on the surface rather than a slab.
 		UMaterialInstanceDynamic* Thin = UMaterialInstanceDynamic::Create(Ice, this);
-		Thin->SetScalarParameterValue(TEXT("Opacity"), 0.35f);
-		Thin->SetScalarParameterValue(TEXT("Glow"), 0.25f);
+		Thin->SetScalarParameterValue(TEXT("Opacity"), Floe ? 0.85f : 0.35f);
+		Thin->SetScalarParameterValue(TEXT("Glow"), 0.4f);
 		Sheet->SetMaterial(0, Thin);
-		Sheet->SetWorldLocationAndRotation(FVector(Base.X, Base.Y, Water.SurfaceZ + 0.6f), FRotator::ZeroRotator);
-		Sheet->SetWorldScale3D(FVector(Tuning.FreezeRadius * 2.0f / 100.0f, Tuning.FreezeRadius * 2.0f / 100.0f, 0.012f));
+		// The floe mesh has a 0.9 m radius; turned at random so no two freezes look alike.
+		Sheet->SetWorldLocationAndRotation(FVector(Base.X, Base.Y, Water.SurfaceZ + 0.6f), FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f));
+		Sheet->SetWorldScale3D(Floe ? FVector(Tuning.FreezeRadius / 90.0f, Tuning.FreezeRadius / 90.0f, 1.0f)
+		                            : FVector(Tuning.FreezeRadius * 2.0f / 100.0f, Tuning.FreezeRadius * 2.0f / 100.0f, 0.012f));
 		Sheet->SetVisibility(true);
 		SheetLeft = FMath::Max(Tuning.FreezeSeconds, Tuning.IceWallRiseSeconds);
 	}
@@ -323,10 +337,24 @@ void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, 
 
 void AEHIceWall::SetHeightFraction(float F)
 {
-	// The ice grows up out of the floor (the blocking box is whole from the first frame: nothing slips through).
-	const float H = FMath::Max(0.02f, F) * Tuning.IceWallHeight;
-	Mesh->SetRelativeScale3D(FVector(Tuning.IceWallThickness / 100.0f, Tuning.IceWallWidth / 100.0f, H / 100.0f));
-	Mesh->SetRelativeLocation(FVector(0, 0, -Tuning.IceWallHeight * 0.5f + H * 0.5f));
+	// The cold light swells with the ice and fades as it goes.
+	Glow->SetIntensity(5.0f * FMath::Clamp(F, 0.0f, 1.0f));
+	Glow->SetRelativeLocation(FVector(0.0f, 0.0f, -Tuning.IceWallHeight * 0.5f + 90.0f));
+	// The blocking box is whole from the first frame (nothing slips through); what shows grows.
+	const float Half = Tuning.IceWallHeight * 0.5f;
+	if (!bShards)
+	{
+		const float H = FMath::Max(0.02f, F) * Tuning.IceWallHeight;
+		Mesh->SetRelativeScale3D(FVector(Tuning.IceWallThickness / 100.0f, Tuning.IceWallWidth / 100.0f, H / 100.0f));
+		Mesh->SetRelativeLocation(FVector(0, 0, -Half + H * 0.5f));
+		return;
+	}
+	// The shards push up out of the floor, stretching a little as they come; melting, they slump back into it.
+	const float F2 = FMath::Clamp(F, 0.0f, 1.0f);
+	const float Width = Tuning.IceWallWidth / 300.0f;
+	const float Height = Tuning.IceWallHeight / 240.0f;
+	Mesh->SetRelativeScale3D(FVector(Width, FMath::Lerp(0.8f, 1.0f, F2) * Tuning.IceWallThickness / 60.0f, Height * FMath::Lerp(0.55f, 1.0f, F2)));
+	Mesh->SetRelativeLocation(FVector(0, 0, -Half + 10.0f - (1.0f - F2) * Tuning.IceWallHeight * 0.75f));
 }
 
 void AEHIceWall::FreezeCaught()

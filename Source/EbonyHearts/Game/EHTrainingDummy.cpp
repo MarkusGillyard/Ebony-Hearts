@@ -95,15 +95,21 @@ AEHTrainingDummy::AEHTrainingDummy(const FObjectInitializer& ObjectInitializer)
 	IceCuff->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	IceCuff->SetCanEverAffectNavigation(false);
 	IceCuff->SetCastShadow(false);
-	IceCuff->SetRelativeLocation(FVector(0, 0, -90.0f + 9.0f));
-	IceCuff->SetRelativeScale3D(FVector(0.9f, 0.9f, 0.18f));
+	IceCuff->SetRelativeLocation(FVector(0, 0, -90.0f));
 	IceCuff->SetVisibility(false);
 }
 
 void AEHTrainingDummy::BeginPlay()
 {
 	Super::BeginPlay();
-	if (UStaticMesh* Cyl = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder")))
+	// A ring of small shards around the feet (Tools/Blender/magic/make_ice.py), or a flat disc without it.
+	UStaticMesh* Ring = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Magic/SM_PH_IceCuff.SM_PH_IceCuff"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Ring)
+	{
+		IceCuff->SetRelativeLocation(FVector(0, 0, -81.0f));
+		IceCuff->SetRelativeScale3D(FVector(0.9f, 0.9f, 0.18f));
+	}
+	if (UStaticMesh* Cyl = Ring ? Ring : LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder")))
 	{
 		IceCuff->SetStaticMesh(Cyl);
 		UMaterialInterface* Ice = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Magic/M_PH_Ice.M_PH_Ice"), nullptr, LOAD_NoWarn | LOAD_Quiet);

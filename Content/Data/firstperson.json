@@ -145,7 +145,7 @@
     "minDistance": 110,
     "width": 300,
     "height": 240,
-    "thickness": 40,
+    "thickness": 60,
     "riseSeconds": 0.3,
     "meltSeconds": 0.5,
     "health": 60,

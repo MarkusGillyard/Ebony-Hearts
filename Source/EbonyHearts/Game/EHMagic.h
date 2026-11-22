@@ -56,7 +56,7 @@ struct FEHMagicTuning
 	float IceWallMinDistance = 110.0f;  // nearer than this to an obstruction, the wall is refused
 	float IceWallWidth = 300.0f;
 	float IceWallHeight = 240.0f;
-	float IceWallThickness = 40.0f;
+	float IceWallThickness = 60.0f;
 	float IceWallRiseSeconds = 0.3f;    // the start-up that freezes the water
 	float IceWallMeltSeconds = 0.5f;
 	float IceWallHealth = 60.0f;        // physical damage that shatters it
@@ -144,6 +144,8 @@ private:
 	TObjectPtr<UStaticMeshComponent> Mesh;
 	UPROPERTY()
 	TObjectPtr<UStaticMeshComponent> Sheet;
+	UPROPERTY()
+	TObjectPtr<UPointLightComponent> Glow;   // the spell's cold light inside the ice
 	FEHMagicTuning Tuning;
 	FEHWater Water;
 	TArray<TWeakObjectPtr<AEHTrainingDummy>> Opponents;
@@ -154,6 +156,7 @@ private:
 	float HealthValue = 60.0f;
 	float SheetLeft = 0.0f;
 	bool bSheet = false;
+	bool bShards = false;   // the shard mesh loaded (otherwise a plain box stands in)
 	int32 FrozenCount = 0;
 	void SetHeightFraction(float F);
 	void StartMelt(EEnd Why, float Seconds);

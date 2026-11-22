@@ -182,7 +182,7 @@ go straight into a Fireball and a Fireball straight into a straight.
 | Spell | Cost | Cast (wind-up / release / recovery) | Effect |
 |---|---|---|---|
 | Fireball | 20 Qhi | 12 / 1 / 16 frames (0.48 s), walking at 60% | a ball of fire from the left hand toward the centre of the view, 22 m/s, 30 m range; 25 damage on contact |
-| Ice Wall | 30 Qhi | 14 / 1 / 20 frames (0.58 s), walking at 50% | a wall 3 m wide and 2.4 m high rises 2.2 m ahead across the view in 0.3 s and stands for 8 s |
+| Ice Wall | 30 Qhi | 14 / 1 / 20 frames (0.58 s), walking at 50% | a wall 3 m wide, 2.4 m high and 0.6 m deep rises 2.2 m ahead across the view in 0.3 s and stands for 8 s |
 
 - **Fireball** hits the first thing in its path: the dummy (a heavy reaction, knocked back about a step; the Guard
   mode stops 70% from the front), an Ice Wall, which melts at once in a burst of steam, or stone. The wind-up is the
@@ -195,8 +195,12 @@ go straight into a Fireball and a Fireball straight into a straight.
   are in that water at any moment of the 0.3 s rise is trapped for 2 s: it cannot slide, be pushed or turn, though it
   can still strike. On dry floor nothing freezes.
 - **Look.** Plain placeholders: a glow gathers in the casting hand (fire in the left, frost in both for the wall); the
-  Fireball is a glowing card with a trail of glow sprites and a point light; the ice is a translucent pale-blue
-  material (`/Game/Magic/M_PH_Ice`, `Tools/Unreal/make_magic_materials.py`). The sounds are the slice's (flame ignite,
+  Fireball is a glowing card with a trail of glow sprites and a point light. The wall is a ridge of leaning,
+  faceted crystal shards that pushes up out of the floor in a burst of frost and mist and slumps back into it when it
+  melts; a faint cold light inside it lights the ice and the floor. The frozen water is an irregular floe and frozen
+  feet get a ring of small shards (meshes from `Tools/Blender/magic/make_ice.py`). The ice material
+  (`/Game/Magic/M_PH_Ice`, `Tools/Unreal/make_magic_materials.py`) is clear blue, refractive, glossy and frosted at
+  its feet and in streaks. The sounds are the slice's (flame ignite,
   roar and hit for Fireball; aura charge, deflect and a body slam for the wall).
 - **Navigation.** The wall's blocking box is marked to affect navigation for the wolves of milestone 5; nothing
   navigates yet.
