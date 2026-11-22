@@ -160,6 +160,10 @@ void AEHGameDirector::BeginFirstPerson()
 	}
 	FPPlayer->SetWater(&FPWater);
 	InitWorldClock();
+	// Load every sound now, during start-up: loading one the first time it plays stalls that frame in a packaged build.
+	const double PreloadStart = FPlatformTime::Seconds();
+	const int32 Preloaded = Audio.PreloadAll();
+	AutoLogLine(FString::Printf(TEXT("firstperson sounds preloaded %d in %.0f ms"), Preloaded, (FPlatformTime::Seconds() - PreloadStart) * 1000.0));
 	// The rooms' own sounds (the forge's fire, the brazier, the crypt's tone), placed in the world.
 	for (const FEHChapelSound& Snd : FPTuning.Chapel.Sounds)
 	{

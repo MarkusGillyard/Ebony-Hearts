@@ -1,5 +1,7 @@
 #include "EHAudio.h"
 
+#include "AssetRegistry/AssetRegistryModule.h"
+
 #include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
@@ -54,6 +56,31 @@ USoundBase* FEHAudio::Find(FName Name, EEHSoundCat Cat)
 	}
 	Cache.Add(Name, TStrongObjectPtr<USoundBase>(Sound));
 	return Sound;
+}
+
+int32 FEHAudio::PreloadAll()
+{
+	IAssetRegistry& Registry = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).Get();
+	int32 Count = 0;
+	for (EEHSoundCat Cat : {EEHSoundCat::Effects, EEHSoundCat::Ui, EEHSoundCat::Ambience})
+	{
+		TArray<FAssetData> Assets;
+		Registry.GetAssetsByPath(FName(*FString::Printf(TEXT("/Game/Audio/%s"), EHAudioDetail::Folder(Cat))), Assets, false);
+		for (const FAssetData& A : Assets)
+		{
+			const FString Asset = A.AssetName.ToString();
+			if (!Asset.StartsWith(TEXT("S_")))
+			{
+				continue;
+			}
+			const FName Name(*Asset.RightChop(2));
+			if (!Cache.Contains(Name) && Find(Name, Cat) != nullptr)
+			{
+				++Count;
+			}
+		}
+	}
+	return Count;
 }
 
 void FEHAudio::Play(FName Name, EEHSoundCat Cat, float Volume, float Pitch)

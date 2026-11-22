@@ -388,6 +388,12 @@ would override injected stick values on `pad0`.
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
+## Sound loading
+
+First person loads every combat, UI and ambience sound when it starts: about 60 sounds, in about 40 ms. Before
+that, each sound loaded the first time it played, and in a packaged build that read stalled the frame it happened on
+(the single 40–70 ms frames seen once per capture since milestone 4).
+
 ## Known limits
 
 - Fists: the arms are Wren's, cut from her test model, and both casts use the same fists as the punches;

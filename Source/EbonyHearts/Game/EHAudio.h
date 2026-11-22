@@ -30,6 +30,9 @@ public:
 	void StopPlacedLoops();
 	int32 PlacedLoopCount() const { return Placed.Num(); }
 	void SetMusicDuck(float Multiplier);
+	// Loads every sound under /Game/Audio/<Combat|UI|Ambience> into the cache now. A sound loads from the package the
+	// first time it plays otherwise, and in a packaged build that read stalls the frame it happens on. Returns how many.
+	int32 PreloadAll();
 	TArray<FString> MissingSounds() const;
 	int32 PlayedCount() const { return Played; }
 
