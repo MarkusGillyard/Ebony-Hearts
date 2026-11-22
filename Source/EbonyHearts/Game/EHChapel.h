@@ -16,6 +16,16 @@ struct FEHInteractable
 	bool bPray = false;              // the kneeler: Interact kneels and prays
 };
 
+// A looping sound placed in the Chapel (the forge's fire, the brazier, the crypt's tone).
+struct FEHChapelSound
+{
+	FName Name;                      // Ambience/S_<Name>
+	FVector At = FVector::ZeroVector;
+	float Inner = 200.0f;            // full volume within this
+	float Falloff = 1000.0f;         // silent this much further out
+	float Volume = 1.0f;
+};
+
 struct FEHChapelTuning
 {
 	TArray<FEHInteractable> Interactables;
@@ -25,5 +35,9 @@ struct FEHChapelTuning
 	float PrayLookScale = 0.4f;      // looking while kneeling is slowed
 	FVector PrayLookAt = FVector(0, -2050, 760);   // kneeling turns the view toward this (the rose window)
 	float PrayTurnSeconds = 1.2f;
+	TArray<FEHChapelSound> Sounds;
+	FVector SparkAt = FVector(-2130, -800, 145);   // the forge's coals: embers rise from here now and then
+	float SparkRange = 2200.0f;      // only while the player is this close
+	float SparkGap = 0.45f;          // mean seconds between sparks
 	bool Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError);
 };

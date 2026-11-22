@@ -374,7 +374,9 @@ private:
 	bool bPraying = false;
 	float PrayAlpha = 0.0f;
 	float PrayerSeconds = 0.0f;
-	float RiseBlockLeft = 0.0f;      // after rising from prayer, techniques and spells wait a moment
+	float RiseBlockLeft = 0.0f;
+	float FPSparkLeft = 0.0f;         // the forge: seconds to the next ember
+	int32 FPSparks = 0;      // after rising from prayer, techniques and spells wait a moment
 	int32 FPPrayers = 0;
 	// Finds what the player looks at, handles Interact and, while praying, holds the player kneeling.
 	void UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds);

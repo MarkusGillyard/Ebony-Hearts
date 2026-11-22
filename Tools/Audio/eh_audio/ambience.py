@@ -174,5 +174,72 @@ def chapel_bed(c):
     return mix, -26.0
 
 
+def fire_loop(name, loop_s, roar_db, crackle_gap, pop_gap, crackle_db, target):
+    """A fire on a circle: a low roar and breathing hiss (crossfade-looped), crackles and the odd pop (circular
+    events). Dual mono: the game plays it as a point source in the room."""
+    rng = dsp.rng_for(name)
+    n = ns(loop_s)
+    xf = ns(2.0)
+    m = n + xf
+    breath = np.clip(0.6 + 0.4 * np.clip(dsp.lfo_noise(rng, m, 0.35), -2.5, 2.5) / 2.5, 0.15, 1.0)
+    roar = filt(dsp.colored(rng, m, 2.0), [("hp", 35, 2), ("lp", 260, 2)]) * breath
+    roar = roar / dsp.rms(roar) * dsp.undb(roar_db)
+    hiss = filt(dsp.white(rng, m), [("hp", 1800, 2), ("lp", 6500, 2)]) * breath ** 2
+    hiss = hiss / dsp.rms(hiss) * dsp.undb(roar_db - 14)
+    bed = loop_crossfade(roar + hiss, n, xf)
+    ev = np.zeros(n)
+    for tt in circular_poisson(rng, loop_s, crackle_gap, crackle_gap * 0.2):
+        c = synth.burst(rng, rng.uniform(0.004, 0.018), 0.0003, rng.uniform(0.002, 0.008), [("hp", 1400, 2), ("lp", 9000, 2)])
+        place_circ(ev, c * dsp.undb(crackle_db + rng.uniform(-8, 3)), ns(tt))
+    for tt in circular_poisson(rng, loop_s, pop_gap, pop_gap * 0.3):
+        p = synth.burst(rng, rng.uniform(0.03, 0.06), 0.0005, rng.uniform(0.01, 0.025), [("hp", 400, 2), ("lp", 5000, 2)])
+        place_circ(ev, p * dsp.undb(crackle_db + 6 + rng.uniform(-3, 2)), ns(tt))
+    mono = bed + ev
+    return np.stack([mono, mono], axis=1), target
+
+
+def forge_fire(c):
+    """The forge's hearth: a steady, breathing coal fire (placeholder)."""
+    return fire_loop("ForgeFire", 24.0, -30, 0.11, 2.4, -24, -24.0)
+
+
+def brazier(c):
+    """The camp's brazier: a small fire, mostly crackle (placeholder)."""
+    return fire_loop("Brazier", 18.0, -40, 0.2, 4.0, -26, -32.0)
+
+
+def crypt_tone(c):
+    """The undercroft: low, cold room tone, slow lapping and a far, deep drip (placeholder). Dual mono."""
+    rng = dsp.rng_for("CryptTone")
+    loop_s = 40.0
+    n = ns(loop_s)
+    xf = ns(3.0)
+    m = n + xf
+    tone = filt(dsp.colored(rng, m, 1.8), [("hp", 22, 2), ("lp", 180, 2), ("peak", 60, 0.9, 4.0)])
+    tone *= 1.0 + 0.15 * np.clip(dsp.lfo_noise(rng, m, 0.05), -2.5, 2.5)
+    tone = tone / dsp.rms(tone) * dsp.undb(-36)
+    bed = loop_crossfade(tone, n, xf)
+    ev = np.zeros(n)
+    for tt in circular_poisson(rng, loop_s, 3.6, 1.8):
+        dur = rng.uniform(0.7, 1.4)
+        k = ns(dur)
+        fc0 = rng.uniform(220, 420)
+
+        def g(tq, f, dur=dur, fc0=fc0):
+            e = dsp.smoothstep(tq / (0.35 * dur)) * np.exp(-np.maximum(tq - 0.35 * dur, 0) / (0.3 * dur))
+            return e * dsp.mag_bp(f, fc0, 0.8)
+
+        lap = dsp.normalize(dsp.shaped_noise(rng, k, g, 0.8, nfft=1024, hop=256)) * rng.uniform(0.25, 0.5)
+        place_circ(ev, dsp.endfade(lap) * dsp.undb(-30), ns(tt))
+    for tt in circular_times(rng, loop_s, 9.5, 1.5):
+        d = filt(synth.drip(rng, 640 * rng.uniform(0.97, 1.03), 0.7), [("lp", 2500, 2), ("hp", 150, 2)])
+        place_circ(ev, d * dsp.undb(-30), ns(tt))
+    ir = dsp.make_ir(dsp.rng_for("ir:crypt"), 3.2, 3.0, 2.4, 1.2, predelay=0.02, early=CHAPEL_EARLY, stereo=False,
+                     corr=1.0, lp=3500, density_ramp=0.08)
+    wet = dsp.cconv(ev, ir)
+    mono = bed + ev + 0.7 * wet
+    return np.stack([mono, mono], axis=1), -32.0
+
+
 def builders():
-    return [("ChapelBed", chapel_bed)]
+    return [("ChapelBed", chapel_bed), ("ForgeFire", forge_fire), ("Brazier", brazier), ("CryptTone", crypt_tone)]

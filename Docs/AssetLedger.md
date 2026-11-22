@@ -77,6 +77,7 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | `EH_NavProxy_*` in `DrownedChapel` (85 hidden boxes, navigation only) | Level data | Made with AI assistance (`Tools/Unreal/adapt_chapel_fp.py`, `EH_FP_STAGE=nav`) | Unreal Engine's `/Engine/BasicShapes/Cube`; never drawn, no collision |
 | Spell sounds | Existing slice assets reused | | `S_FlameIgnite`, `S_FlameRoar_01-03`, `S_FlameHit`, `S_AuraCharge_01-03`, `S_AuraFade`, `S_Deflect`, `S_BodySlam`, `S_StepWater_01-03` (melting), `S_UiDenied`, `S_UiOpen`, `S_UiClose`, `S_UiMove` (spell selector) |
 | Wolf sounds (placeholder voice) | Existing slice assets reused | | `S_AuraCharge_01-03` (pitched down: the wind-up growl), `S_WhooshHeavy_01-03` (the lunge), `S_Grab` (the bite) |
+| `/Game/Audio/Ambience/S_ForgeFire`, `S_Brazier`, `S_CryptTone` (the Chapel interior's placed loops) | Placeholder sounds | Made with AI assistance (`Tools/Audio/eh_audio/ambience.py`, synthesized, seeded and deterministic; built by `Tools/Audio/build_audio.py`) | No samples: filtered noise, synthesized crackles, drips and a synthetic room reverb |
 
 No new third-party inputs were added.
 

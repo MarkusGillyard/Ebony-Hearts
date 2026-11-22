@@ -113,7 +113,19 @@ The stair's parapet starts three steps up, at a newel post, so the stair can be 
   - **New material instances:** cloth tints, plaster, an ember glow, faintly lime-green water and a red flare.
   - **Navigation:** the furniture has navigation stand-ins, so the wolves walk round it.
 
+## Stage 3 (first part): atmosphere
+
+- **Placed sounds.** Each room has its own looping sound, placed where it comes from: the forge's fire, the camp's
+  brazier, and the crypt's low tone and lapping water. They are synthesized placeholders
+  (`Tools/Audio/eh_audio/ambience.py`), follow the Ambience volume setting, and fall off with distance. Their places
+  and volumes are data (`chapel.sounds`).
+- **The Hall of the Six stays silent**, by design.
+- **The forge's embers.** Embers rise off the coals now and then while the player is near (`chapel.sparkAt`,
+  `sparkRange`, `sparkGap`).
+- **The camp's brazier light** is brighter, so the camp reads.
+- **Not built:** the light following a world clock. A clock is a new system and awaits the creator's go-ahead.
+
 ## Open
 
-- **Stage 3:** atmosphere (motes, heat shimmer, sound) and the light following the world's time, once a clock exists.
+- **The rest of stage 3:** the light following the world's time, once the creator approves a world clock.
 - **Creator decisions:** the floor plan and every item listed for approval in the private design document.

@@ -34,6 +34,8 @@ public:
 	void FlameBurst(const FVector& At, int32 Facing);
 	void AuraFlash(const FVector& At);
 	void AuraMote(const FVector& At);
+	// An ember rising off a fire (the forge's coals).
+	void HearthSpark(const FVector& At) { Ember(At, 0.8f); }
 	void Ripple(const FVector& At, float Scale);
 	void Splash(const FVector& At, float Scale);
 	// Spells (first person): a fireball's trail, its burst, steam off melting ice, and ice breaking.

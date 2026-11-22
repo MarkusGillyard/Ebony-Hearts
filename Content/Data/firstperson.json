@@ -184,7 +184,7 @@
     "protectRange": 1200
   },
   "chapel": {
-    "comment": "The Drowned Chapel's interactions (interior stage 2). Each interactable: id, at [x, y, z] in cm, radius (how far off the line of sight it still counts), prompt (shown after the Interact key), text (shown when used; bracketed text marks a placeholder until the creator writes the real words), pray (the kneeler). reach: how far from the eye something can be used.",
+    "comment": "The Drowned Chapel's interactions (interior stage 2). Each interactable: id, at [x, y, z] in cm, radius (how far off the line of sight it still counts), prompt (shown after the Interact key), text (shown when used; bracketed text marks a placeholder until the creator writes the real words), pray (the kneeler). reach: how far from the eye something can be used. sounds: looping ambience placed in the rooms (Ambience/S_<name>), full volume within inner, silent at inner + falloff, scaled by the ambience setting. sparkAt / sparkRange / sparkGap: embers rising off the forge's coals while the player is near.",
     "reach": 230,
     "messageSeconds": 5,
     "messageWalkAway": 300,
@@ -272,6 +272,48 @@
         "radius": 90,
         "prompt": "Touch",
         "text": "Smooth stone. It does not move."
+      }
+    ],
+    "sparkAt": [
+      -2130,
+      -800,
+      145
+    ],
+    "sparkRange": 2200,
+    "sparkGap": 0.45,
+    "sounds": [
+      {
+        "name": "ForgeFire",
+        "at": [
+          -2120,
+          -800,
+          110
+        ],
+        "inner": 150,
+        "falloff": 1500,
+        "volume": 1.0
+      },
+      {
+        "name": "Brazier",
+        "at": [
+          960,
+          140,
+          60
+        ],
+        "inner": 60,
+        "falloff": 700,
+        "volume": 1.0
+      },
+      {
+        "name": "CryptTone",
+        "at": [
+          -700,
+          -3100,
+          -150
+        ],
+        "inner": 500,
+        "falloff": 700,
+        "volume": 1.0
       }
     ]
   }

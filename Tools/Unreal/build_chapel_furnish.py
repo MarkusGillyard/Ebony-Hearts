@@ -219,9 +219,9 @@ def main():
     c = l.get_component_by_class(unreal.LocalLightComponent)
     c.set_mobility(unreal.ComponentMobility.MOVABLE)
     c.set_editor_property("intensity_units", unreal.LightUnits.CANDELAS)
-    c.set_editor_property("intensity", 8.0)
+    c.set_editor_property("intensity", 14.0)
     c.set_editor_property("light_color", unreal.Color(r=255, g=140, b=70, a=255))
-    c.set_editor_property("attenuation_radius", 380.0)
+    c.set_editor_property("attenuation_radius", 550.0)
     c.set_editor_property("cast_shadows", False)
     l.tags = [unreal.Name("EHInterior")]
     if not les.save_current_level():

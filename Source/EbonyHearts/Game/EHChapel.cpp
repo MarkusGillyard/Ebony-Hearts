@@ -30,6 +30,37 @@ bool FEHChapelTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError
 	{
 		PrayLookAt = FVector((*Look)[0]->AsNumber(), (*Look)[1]->AsNumber(), (*Look)[2]->AsNumber());
 	}
+	Num(Obj, TEXT(""), TEXT("sparkRange"), SparkRange, 0, 10000);
+	Num(Obj, TEXT(""), TEXT("sparkGap"), SparkGap, 0.05f, 30);
+	const TArray<TSharedPtr<FJsonValue>>* Spark = nullptr;
+	if (Obj->TryGetArrayField(TEXT("sparkAt"), Spark) && Spark->Num() == 3)
+	{
+		SparkAt = FVector((*Spark)[0]->AsNumber(), (*Spark)[1]->AsNumber(), (*Spark)[2]->AsNumber());
+	}
+	const TArray<TSharedPtr<FJsonValue>>* SoundList = nullptr;
+	if (Obj->TryGetArrayField(TEXT("sounds"), SoundList))
+	{
+		Sounds.Reset();
+		for (int32 i = 0; i < SoundList->Num() && bOk; ++i)
+		{
+			const TSharedPtr<FJsonObject>* It = nullptr;
+			const TArray<TSharedPtr<FJsonValue>>* At = nullptr;
+			FString Name;
+			if (!(*SoundList)[i]->TryGetObject(It) || !(*It)->TryGetStringField(TEXT("name"), Name) || !(*It)->TryGetArrayField(TEXT("at"), At) || At->Num() != 3)
+			{
+				OutError = FString::Printf(TEXT("Data/firstperson.json: chapel.sounds[%d] needs a name and \"at\": [x, y, z]."), i);
+				return false;
+			}
+			FEHChapelSound S;
+			S.Name = FName(*Name);
+			S.At = FVector((*At)[0]->AsNumber(), (*At)[1]->AsNumber(), (*At)[2]->AsNumber());
+			const FString Where = FString::Printf(TEXT("sounds[%d]."), i);
+			Num(*It, Where, TEXT("inner"), S.Inner, 0, 10000);
+			Num(*It, Where, TEXT("falloff"), S.Falloff, 1, 20000);
+			Num(*It, Where, TEXT("volume"), S.Volume, 0, 4);
+			Sounds.Add(S);
+		}
+	}
 	const TArray<TSharedPtr<FJsonValue>>* List = nullptr;
 	if (Obj->TryGetArrayField(TEXT("interactables"), List))
 	{

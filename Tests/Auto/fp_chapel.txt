@@ -2,9 +2,12 @@
 # selector). Covers: the prompt for each interactable when looked at within reach, the placeholder texts, kneeling at
 # the kneeler (the view turns to the altar and the rose window, movement and techniques stop, the meter shows), rising
 # by Interact and by walking, Interact doing nothing when nothing is looked at, the meter at the ends of the tiers, and
-# a reset ending a prayer. Screenshots: the prompt, kneeling, the meter at Hero of Humanity and at Forsaken.
+# a reset ending a prayer, the rooms' placed sounds and the forge's embers. Screenshots: the prompt, kneeling, the meter at Hero of Humanity and at Forsaken.
 wait 5
 fp_expect screen eq 12
+log == the rooms' own sounds are placed (the forge's fire, the brazier, the crypt's tone); no sparks far from the forge
+fp_expect placed_loops eq 3
+fp_expect sparks eq 0
 
 log == nothing looked at: Interact does nothing
 fp_teleport 0 -700 0 -90 0
@@ -71,6 +74,17 @@ fp_expect praying eq 1
 fp_reset
 wait 0.3
 fp_expect praying eq 0
+
+log == the forge: embers rise off the coals while the player is near
+fp_teleport -1500 -800 45 180 6
+wait 3
+fp_expect sparks gt 2
+screenshot chapel_forge_sparks
+fp_teleport 0 -700 0 -90 0
+wait 0.5
+fp_mark
+wait 2
+fp_expect sparks lt 30
 
 log == the forge: the counter, the anvil, Dwar
 fp_teleport -1650 -700 45 90 -18

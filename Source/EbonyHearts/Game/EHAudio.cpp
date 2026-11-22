@@ -3,6 +3,7 @@
 #include "Components/AudioComponent.h"
 #include "Engine/World.h"
 #include "Kismet/GameplayStatics.h"
+#include "Sound/SoundAttenuation.h"
 #include "Sound/SoundBase.h"
 
 namespace EHAudioDetail
@@ -138,6 +139,48 @@ void FEHAudio::StopAmbience()
 	}
 }
 
+void FEHAudio::PlayLoopAt(FName Name, const FVector& At, float Inner, float Falloff, float Volume)
+{
+	UWorld* W = World.Get();
+	if (W == nullptr || Placed.Contains(Name))
+	{
+		return;
+	}
+	USoundBase* Sound = Find(Name, EEHSoundCat::Ambience);
+	if (Sound == nullptr)
+	{
+		return;
+	}
+	USoundAttenuation* Att = NewObject<USoundAttenuation>(GetTransientPackage());
+	Att->Attenuation.bAttenuate = true;
+	Att->Attenuation.bSpatialize = true;
+	Att->Attenuation.AttenuationShape = EAttenuationShape::Sphere;
+	Att->Attenuation.AttenuationShapeExtents = FVector(Inner, 0, 0);
+	Att->Attenuation.FalloffDistance = Falloff;
+	Att->Attenuation.DistanceAlgorithm = EAttenuationDistanceModel::NaturalSound;
+	UAudioComponent* C = UGameplayStatics::SpawnSoundAtLocation(W, Sound, At, FRotator::ZeroRotator, 1.0f, 1.0f, 0.0f, Att, nullptr, false);
+	if (C)
+	{
+		FPlaced& P = Placed.Add(Name);
+		P.Comp.Reset(C);
+		P.Volume = Volume;
+		C->SetVolumeMultiplier(Volume * Gain[static_cast<int32>(EEHSoundCat::Ambience)]);
+		C->FadeIn(1.5f, 1.0f);
+	}
+}
+
+void FEHAudio::StopPlacedLoops()
+{
+	for (TPair<FName, FPlaced>& P : Placed)
+	{
+		if (P.Value.Comp.IsValid())
+		{
+			P.Value.Comp->Stop();
+		}
+	}
+	Placed.Reset();
+}
+
 void FEHAudio::SetMusicDuck(float Multiplier)
 {
 	MusicDuck = Multiplier;
@@ -153,6 +196,13 @@ void FEHAudio::ApplyLoopVolumes()
 	if (AmbienceComp.IsValid())
 	{
 		AmbienceComp->SetVolumeMultiplier(Gain[static_cast<int32>(EEHSoundCat::Ambience)]);
+	}
+	for (TPair<FName, FPlaced>& P : Placed)
+	{
+		if (P.Value.Comp.IsValid())
+		{
+			P.Value.Comp->SetVolumeMultiplier(P.Value.Volume * Gain[static_cast<int32>(EEHSoundCat::Ambience)]);
+		}
 	}
 }
 

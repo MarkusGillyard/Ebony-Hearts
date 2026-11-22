@@ -159,6 +159,11 @@ void AEHGameDirector::BeginFirstPerson()
 		}
 	}
 	FPPlayer->SetWater(&FPWater);
+	// The rooms' own sounds (the forge's fire, the brazier, the crypt's tone), placed in the world.
+	for (const FEHChapelSound& Snd : FPTuning.Chapel.Sounds)
+	{
+		Audio.PlayLoopAt(Snd.Name, Snd.At, Snd.Inner, Snd.Falloff, Snd.Volume);
+	}
 	PC->SetViewTarget(FPPlayer);
 	PC->bShowMouseCursor = false;
 	PC->SetInputMode(FInputModeGameOnly());
@@ -445,6 +450,17 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	}
 	PlayFirstPersonEvents();
 	TickSpells(DeltaSeconds);
+	if (Vfx && FPTuning.Chapel.SparkRange > 0.0f && FVector::Dist(FPPlayer->GetActorLocation(), FPTuning.Chapel.SparkAt) < FPTuning.Chapel.SparkRange)
+	{
+		// Now and then an ember rises off the forge's coals.
+		FPSparkLeft -= DeltaSeconds;
+		if (FPSparkLeft <= 0.0f)
+		{
+			Vfx->HearthSpark(FPTuning.Chapel.SparkAt + FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-80.0f, 80.0f), 0.0f));
+			FPSparkLeft = FPTuning.Chapel.SparkGap * FMath::FRandRange(0.3f, 1.7f);
+			++FPSparks;
+		}
+	}
 	if (FPWolf)
 	{
 		FPWolf->SetAlignment(FPAlignment);
@@ -1408,6 +1424,8 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (FPWolf && Field == TEXT("wolf_frozen")) V = FPWolf->IsFrozen() ? 1.0f : 0.0f;
 		else if (FPWolf && Field == TEXT("wolf_health")) V = FPWolf->HealthValue();
 		else if (FPWolf && Field == TEXT("wolf_dist")) V = FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation());
+		else if (Field == TEXT("placed_loops")) V = static_cast<float>(Audio.PlacedLoopCount());
+		else if (Field == TEXT("sparks")) V = static_cast<float>(FPSparks);
 		else if (Field == TEXT("praying")) V = bPraying ? 1.0f : 0.0f;
 		else if (Field == TEXT("prayers")) V = static_cast<float>(FPPrayers);
 		else if (Field == TEXT("prayer_seconds")) V = PrayerSeconds;

@@ -24,6 +24,11 @@ public:
 	void StopMusic(float FadeOut = 1.0f);
 	void StartAmbience(FName Name);
 	void StopAmbience();
+	// A looping ambience sound placed in the world (a fire, a room's tone): full volume within Inner, fading to nothing
+	// at Inner + Falloff; scaled by the ambience volume setting. Played once per name; StopPlacedLoops ends them all.
+	void PlayLoopAt(FName Name, const FVector& At, float Inner, float Falloff, float Volume);
+	void StopPlacedLoops();
+	int32 PlacedLoopCount() const { return Placed.Num(); }
 	void SetMusicDuck(float Multiplier);
 	TArray<FString> MissingSounds() const;
 	int32 PlayedCount() const { return Played; }
@@ -34,6 +39,12 @@ private:
 	TSet<FName> Missing;
 	TStrongObjectPtr<UAudioComponent> MusicComp;
 	TStrongObjectPtr<UAudioComponent> AmbienceComp;
+	struct FPlaced
+	{
+		TStrongObjectPtr<UAudioComponent> Comp;
+		float Volume = 1.0f;
+	};
+	TMap<FName, FPlaced> Placed;
 	FName CurrentMusic;
 	float Gain[4] = {1.0f, 1.0f, 1.0f, 1.0f};
 	float MusicDuck = 1.0f;
