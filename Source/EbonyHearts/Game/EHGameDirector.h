@@ -383,6 +383,31 @@ private:
 	void BeginPrayer();
 	void EndPrayer(const TCHAR* Why);
 	void PaintChapel(FEHPainter& P);
+	// Destiny's Ark's time (EHWorldClock.h; driven in EHDirectorChapel.cpp).
+	double FPClockHours = 0.0;          // hours since hour 0 of day 0
+	double FPClockApplied = -1.0;
+	FEHClockKey FPClockNow;
+	TWeakObjectPtr<class ULightComponent> SkyLightComp;
+	float SkyBaseIntensity = 1.0f;
+	TWeakObjectPtr<class UExponentialHeightFogComponent> FogComp;
+	FLinearColor FogBase = FLinearColor::Black;
+	struct FGlassGlow
+	{
+		TWeakObjectPtr<class UMaterialInstanceDynamic> Mid;
+		float Base = 1.0f;
+	};
+	TArray<FGlassGlow> GlassGlows;
+	struct FSkyFill
+	{
+		TWeakObjectPtr<class ULightComponent> Light;
+		float BaseIntensity = 1.0f;
+		FLinearColor BaseColor = FLinearColor::White;
+	};
+	TArray<FSkyFill> SkyFills;
+	FLinearColor ClockNightColor = FLinearColor::White;   // the first key's colour: fills keep their own colour at night
+	void InitWorldClock();
+	void TickWorldClock(float RealSeconds);
+	void ApplyWorldClock(bool bForce);
 	void BuildDeveloperPanel();
 	int32 FrameCaptureLeft = 0;     // automation: fp_frames screenshots every rendered frame
 	int32 FrameCaptureIndex = 0;

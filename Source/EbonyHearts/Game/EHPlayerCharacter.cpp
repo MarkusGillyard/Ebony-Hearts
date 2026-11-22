@@ -85,6 +85,11 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	{
 		return false;
 	}
+	const TSharedPtr<FJsonObject>* ClockObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("clock"), ClockObj) && !Clock.Load(*ClockObj, OutError))
+	{
+		return false;
+	}
 	const TSharedPtr<FJsonObject>* ChapelObj = nullptr;
 	if (Root->TryGetObjectField(TEXT("chapel"), ChapelObj) && !Chapel.Load(*ChapelObj, OutError))
 	{

@@ -159,6 +159,7 @@ void AEHGameDirector::BeginFirstPerson()
 		}
 	}
 	FPPlayer->SetWater(&FPWater);
+	InitWorldClock();
 	// The rooms' own sounds (the forge's fire, the brazier, the crypt's tone), placed in the world.
 	for (const FEHChapelSound& Snd : FPTuning.Chapel.Sounds)
 	{
@@ -424,6 +425,7 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	{
 		return;
 	}
+	TickWorldClock(FApp::GetDeltaTime());   // real time: the spell selector's slow motion does not slow the world's day
 	UpdateChapel(In, DeltaSeconds);
 	LastFPInput = In;
 	FPPlayer->ApplyInput(In, DeltaSeconds);
@@ -1047,6 +1049,22 @@ void AEHGameDirector::BuildDeveloperPanel()
 		Menu.Add(I);
 	}
 	Menu.Add(FPButton(TEXT("Reset the wolf"), [this] { if (FPWolf) { FPWolf->ResetWolf(); } }, TEXT("Calm, unhurt, at its rest.")));
+	Menu.Add(FPHeader(TEXT("Time")));
+	{
+		// Destiny's Ark's hour, six at a time: the windows follow it.
+		FEHMenuItem I;
+		I.Label = TEXT("Hour");
+		I.Value = [this] {
+			const double H = FMath::Fmod(FPClockHours, static_cast<double>(FPTuning.Clock.DayHours));
+			return FString::Printf(TEXT("day %.0f · hour %.0f of %.0f"), FMath::FloorToDouble(FPClockHours / FPTuning.Clock.DayHours) + 1.0, FMath::FloorToDouble(H), FPTuning.Clock.DayHours);
+		};
+		I.Change = [this](int32 D) {
+			FPClockHours = FMath::Max(0.0, FPClockHours + 6.0 * D);
+			ApplyWorldClock(true);
+		};
+		I.Hint = TEXT("Left and right move six hours. One real minute is one hour; praying runs faster; pausing stops it.");
+		Menu.Add(I);
+	}
 	Menu.Add(FPHeader(TEXT("Stats")));
 	auto StatItem = [this](const TCHAR* Label, int32 Which, const TCHAR* Hint) {
 		FEHMenuItem I;
@@ -1311,6 +1329,7 @@ FString AEHGameDirector::DescribeFirstPerson() const
 		}
 	}
 	Out += FString::Printf(TEXT(" alignment=%s"), EHAlign::Name(FPAlignment));
+	Out += FString::Printf(TEXT(" clock=%.2fh"), FPClockHours);
 	if (FPWolf)
 	{
 		Out += FString::Printf(TEXT(" wolf=(%.0f,%.0f) %s"), FPWolf->GetActorLocation().X, FPWolf->GetActorLocation().Y, *FPWolf->Describe());
@@ -1424,6 +1443,10 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (FPWolf && Field == TEXT("wolf_frozen")) V = FPWolf->IsFrozen() ? 1.0f : 0.0f;
 		else if (FPWolf && Field == TEXT("wolf_health")) V = FPWolf->HealthValue();
 		else if (FPWolf && Field == TEXT("wolf_dist")) V = FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation());
+		else if (Field == TEXT("clock_hour")) V = static_cast<float>(FMath::Fmod(FPClockHours, static_cast<double>(FPTuning.Clock.DayHours)));
+		else if (Field == TEXT("clock_day")) V = static_cast<float>(FMath::FloorToDouble(FPClockHours / FPTuning.Clock.DayHours));
+		else if (Field == TEXT("sky_light")) V = FPClockNow.Light;
+		else if (Field == TEXT("glass_glow")) V = FPClockNow.Glass;
 		else if (Field == TEXT("placed_loops")) V = static_cast<float>(Audio.PlacedLoopCount());
 		else if (Field == TEXT("sparks")) V = static_cast<float>(FPSparks);
 		else if (Field == TEXT("praying")) V = bPraying ? 1.0f : 0.0f;
@@ -1570,6 +1593,15 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		// fp_align <0..8>: the developer selector's alignment tier (0 Hero of Humanity, 4 Platonic, 8 Forsaken).
 		FPAlignment = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("4"))), 0, EHAlign::Count - 1);
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, EHAlign::Name(FPAlignment)));
+		return true;
+	}
+	if (Cmd == TEXT("fp_clock"))
+	{
+		// fp_clock <hour>: sets the hour of the current day (0 = midnight; the day is clock.dayHours long).
+		const double Day = FMath::FloorToDouble(FPClockHours / FPTuning.Clock.DayHours);
+		FPClockHours = Day * FPTuning.Clock.DayHours + FMath::Clamp(F(1, 0.0f), 0.0f, FPTuning.Clock.DayHours - 0.001f);
+		ApplyWorldClock(true);
+		AutoLogLine(FString::Printf(TEXT("%s -> hour %.2f light %.2f glass %.2f"), *Line, FMath::Fmod(FPClockHours, (double)FPTuning.Clock.DayHours), FPClockNow.Light, FPClockNow.Glass));
 		return true;
 	}
 	if (Cmd == TEXT("fp_hide"))

@@ -123,9 +123,20 @@ The stair's parapet starts three steps up, at a newel post, so the stair can be 
 - **The forge's embers.** Embers rise off the coals now and then while the player is near (`chapel.sparkAt`,
   `sparkRange`, `sparkGap`).
 - **The camp's brazier light** is brighter, so the camp reads.
-- **Not built:** the light following a world clock. A clock is a new system and awaits the creator's go-ahead.
+- **Destiny's Ark's time** (`Source/EbonyHearts/Game/EHWorldClock.h`, data `clock`; built with the creator's go-ahead):
+  - One real minute is one game hour, and a day lasts 144 hours.
+  - The pause menu stops it.
+  - Prayer runs it about 86 times faster. This is the prototype's reading of "no prayer keeps the player waiting more
+    than five real minutes": the longest prayer in the design, three days, takes five real minutes.
+  - The game starts at hour 4, in the night.
+  - There is no clock on screen. The Chapel shows the hour through its windows:
+    - the window light's colour and strength, and the glass's glow;
+    - the fog's tint;
+    - the general fills, as daylight through the windows.
+  - Night is the established moonlit look. Dawn and dusk turn it warm, and noon is brighter and neutral but still dim.
+  - The window light is stationary, so it does not move across the windows.
+  - Development builds: the F10 panel's Hour (six hours a step) and `fp_clock <hour>`.
 
 ## Open
 
-- **The rest of stage 3:** the light following the world's time, once the creator approves a world clock.
 - **Creator decisions:** the floor plan and every item listed for approval in the private design document.

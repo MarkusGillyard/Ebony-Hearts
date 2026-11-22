@@ -4,6 +4,13 @@
 // meter shows: white for good through grey to black for evil, with a mark at the player's tier. It names no tier: the
 // game never tells the player which actions were good or evil. Interact again, or walking, jumping or striking, rises.
 #include "Camera/CameraComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/ExponentialHeightFog.h"
+#include "EngineUtils.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "EHGameDirector.h"
 #include "EHUIStyle.h"
 #include "Engine/World.h"
@@ -179,5 +186,125 @@ void AEHGameDirector::PaintChapel(FEHPainter& P)
 		P.Rect(FVector2f(MarkX - 2.0f, Pos.Y + H + 6.0f), FVector2f(4.0f, 16.0f), FLinearColor(0.85f, 0.72f, 0.45f, A));
 		P.Text(FString::Printf(TEXT("%s   Rise"), *KeyText), FVector2f(960.0f, Pos.Y + 70.0f), Fonts.Sized(Fonts.Body, 20),
 			EHStyle::Alpha(EHStyle::TextSecondary, 0.7f * A), 0.5f, 0.5f);
+	}
+}
+
+void AEHGameDirector::InitWorldClock()
+{
+	FPClockHours = FPTuning.Clock.StartHour;
+	FPClockApplied = -1.0;
+	// The window light: the map's shadow-casting directional light (the moon through the glass). A stationary light,
+	// so its colour and strength change with the hour but it does not move.
+	for (TActorIterator<ADirectionalLight> It(GetWorld()); It; ++It)
+	{
+		ULightComponent* L = It->GetLightComponent();
+		if (L && L->CastShadows && !SkyLightComp.IsValid())
+		{
+			SkyLightComp = L;
+			SkyBaseIntensity = L->Intensity;
+		}
+	}
+	SkyFills.Reset();
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		if (It->ActorHasTag(TEXT("EHSkyFill")))
+		{
+			for (ULightComponent* L : TInlineComponentArray<ULightComponent*>(*It))
+			{
+				FSkyFill& F = SkyFills.AddDefaulted_GetRef();
+				F.Light = L;
+				F.BaseIntensity = L->Intensity;
+				F.BaseColor = L->GetLightColor();
+			}
+		}
+	}
+	ClockNightColor = FPTuning.Clock.Keys.Num() > 0 ? FPTuning.Clock.Keys[0].Color : FLinearColor::White;
+	for (TActorIterator<AExponentialHeightFog> It(GetWorld()); It; ++It)
+	{
+		if (UExponentialHeightFogComponent* Fog = It->GetComponent())
+		{
+			FogComp = Fog;
+			FogBase = Fog->FogInscatteringLuminance;
+			break;
+		}
+	}
+	// The glass glows with the hour: one dynamic instance per glass material, shared by every pane that uses it.
+	TMap<UMaterialInterface*, UMaterialInstanceDynamic*> Mids;
+	for (TObjectIterator<UStaticMeshComponent> It; It; ++It)
+	{
+		if (It->GetWorld() != GetWorld())
+		{
+			continue;
+		}
+		for (int32 i = 0; i < It->GetNumMaterials(); ++i)
+		{
+			UMaterialInterface* M = It->GetMaterial(i);
+			if (M == nullptr || !M->GetName().StartsWith(TEXT("MI_Glass")))
+			{
+				continue;
+			}
+			UMaterialInstanceDynamic*& Mid = Mids.FindOrAdd(M);
+			if (Mid == nullptr)
+			{
+				Mid = UMaterialInstanceDynamic::Create(M, this);
+				float Base = 1.0f;
+				M->GetScalarParameterValue(FHashedMaterialParameterInfo(TEXT("Emissive")), Base);
+				FGlassGlow& G = GlassGlows.AddDefaulted_GetRef();
+				G.Mid = Mid;
+				G.Base = Base;
+			}
+			It->SetMaterial(i, Mid);
+		}
+	}
+	ApplyWorldClock(true);
+	AutoLogLine(FString::Printf(TEXT("firstperson clock start hour=%.1f day=%.0fh window_light=%d glass=%d fog=%d fills=%d"), FPClockHours, FPTuning.Clock.DayHours,
+		SkyLightComp.IsValid() ? 1 : 0, GlassGlows.Num(), FogComp.IsValid() ? 1 : 0, SkyFills.Num()));
+}
+
+void AEHGameDirector::TickWorldClock(float RealSeconds)
+{
+	const FEHWorldClockTuning& C = FPTuning.Clock;
+	FPClockHours += RealSeconds / C.RealSecondsPerHour * (bPraying ? C.PrayScale : 1.0f);
+	ApplyWorldClock(false);
+}
+
+void AEHGameDirector::ApplyWorldClock(bool bForce)
+{
+	// A few hundredths of an hour (about a real second) between updates is plenty for light that changes over hours.
+	if (!bForce && FMath::Abs(FPClockHours - FPClockApplied) < 0.02)
+	{
+		return;
+	}
+	FPClockApplied = FPClockHours;
+	FPClockNow = FPTuning.Clock.Sample(static_cast<float>(FMath::Fmod(FPClockHours, static_cast<double>(FPTuning.Clock.DayHours))));
+	if (ULightComponent* L = SkyLightComp.Get())
+	{
+		L->SetIntensity(SkyBaseIntensity * FPClockNow.Light);
+		L->SetLightColor(FPClockNow.Color);
+	}
+	if (UExponentialHeightFogComponent* Fog = FogComp.Get())
+	{
+		Fog->SetFogInscatteringColor(FogBase * FPClockNow.Fog);
+	}
+	// The fills take the day's colour relative to the night's (brightness kept apart): night leaves them as the map
+	// has them; day turns their blue toward the daylight's.
+	FLinearColor Tint(FPClockNow.Color.R / FMath::Max(ClockNightColor.R, 0.01f), FPClockNow.Color.G / FMath::Max(ClockNightColor.G, 0.01f),
+		FPClockNow.Color.B / FMath::Max(ClockNightColor.B, 0.01f), 1.0f);
+	Tint /= FMath::Max3(Tint.R, Tint.G, Tint.B);
+	Tint.A = 1.0f;
+	for (const FSkyFill& F : SkyFills)
+	{
+		if (ULightComponent* L = F.Light.Get())
+		{
+			L->SetIntensity(F.BaseIntensity * FPClockNow.Fill);
+			L->SetLightColor(F.BaseColor * Tint);
+		}
+	}
+	for (const FGlassGlow& G : GlassGlows)
+	{
+		if (UMaterialInstanceDynamic* Mid = G.Mid.Get())
+		{
+			Mid->SetScalarParameterValue(TEXT("Emissive"), G.Base * FPClockNow.Glass);
+		}
 	}
 }

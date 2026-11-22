@@ -1,10 +1,12 @@
 # The Chapel's interactions in the Shipping package: device inputs and observation only (no teleports, no selector).
 # From the start: turn round, walk to the Threshold Door and use it (its placeholder text shows); then from the start
 # again, down the north aisle and across to the sanctuary, up the steps to the kneeler, look down at it and pray (the
-# meter shows); rise by Interact; a reset. fp_state lines record where each stop ended.
+# meter shows, time runs faster); rise by Interact; a reset. The clock starts at hour 4. fp_state lines record where each stop ended.
 wait 5
 fp_expect screen eq 12
 fp_expect interact_messages eq 0
+fp_expect clock_hour gt 3.9
+fp_expect clock_hour lt 4.5
 
 log == the Threshold Door
 loop 18
@@ -64,6 +66,9 @@ press kbA FPInteract
 wait 1.6
 fp_expect praying eq 1
 screenshot ship_praying
+log prayer runs Destiny's Ark's time faster
+wait 2
+fp_expect clock_hour gt 7
 press kbA FPInteract
 wait 0.5
 fp_expect praying eq 0

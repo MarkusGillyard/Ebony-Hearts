@@ -169,6 +169,12 @@ def main():
     for a in eas.get_all_level_actors():
         if a.get_actor_label() == "CameraSideCoolFill":
             a.set_actor_location(unreal.Vector(0, 200, 400), False, False)
+    # The world clock (Source/EbonyHearts/Game/EHWorldClock.h) drives the Chapel's general fills as daylight through the
+    # windows: tag them so the game finds them (labels do not exist in packaged builds).
+    for a in eas.get_all_level_actors():
+        if a.get_actor_label() in ("NaveSkyFill", "NaveApseFill", "CameraSideCoolFill"):
+            tags = [t for t in a.tags if str(t) != "EHSkyFill"]
+            a.tags = tags + [unreal.Name("EHSkyFill")]
     for a in eas.get_all_level_actors():
         if a.get_actor_label() in ("Candle_08", "Candle_00", "NaveApseFill"):
             c = a.get_component_by_class(unreal.LocalLightComponent)
