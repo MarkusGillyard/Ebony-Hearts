@@ -372,6 +372,11 @@ bool FEHInputRouter::HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyE
 	{
 		return true;
 	}
+	if (Key == EKeys::F10)
+	{
+		bDeveloperKey = true;
+		return true;
+	}
 	ProcessKeyboardKey(Key, true);
 	return false;
 }

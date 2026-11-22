@@ -2,7 +2,8 @@
 
 This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space. Milestone 2, Walk the Chapel:
 the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
-shove and a held block, practised on a training dummy. The game starts straight in the Chapel, with no title screen or menus
+shove and a held block, practised on a training dummy. Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
+Wall, with the wall's water freeze and Fireball's melt. The game starts straight in the Chapel, with no title screen or menus
 before play. The 2.5D slice stays intact in `main`'s history. Its fighting code is still compiled here but is not
 reachable from the first-person flow.
 
@@ -33,6 +34,8 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Straight | Right mouse button | R2 / RT |
 | Shove | E | Circle / B |
 | Block (hold) | Q | L1 / LB |
+| Fireball | F | L2 / LT |
+| Ice Wall | R | Triangle / Y |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -49,12 +52,14 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 6), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 8), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
 first-person action. Version 6 adds the two first-person layouts (`fpKeyboard`, `fpController`) and the look,
-field-of-view, hold/toggle and Stamina-meter settings.
+field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techniques and Controller vibration;
+version 8 Fireball and Ice Wall. Each new action takes its default key only where the player has not already used
+that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
 
@@ -102,8 +107,9 @@ speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`
 
 - **Aim.** A strike sweeps a sphere along the view from the eyes. A wall or pier in between stops it (a knock on stone,
   no hit).
-- **Combos.** The jab chains into the straight as soon as its active frames end, hit or miss. The straight chains
-  into nothing. A press up to 8 frames before a technique allows it still counts; a later one is dropped.
+- **Combos.** The jab chains into the straight as soon as its active frames end, hit or miss. Any strike's recovery
+  hands over to a cast the same way, and a cast's recovery to a strike (see Magic). A press up to 8 frames before a
+  technique allows it still counts; a later one is dropped.
 - **Guard.** While the guard is held no technique starts; one pressed while it lowers comes out as soon as it is down.
   Sprinting stops for any technique or the guard.
 - **Contact.** Hitstop holds the fist and the target together. Meanwhile the striking fist gives back about 3 cm into
@@ -139,6 +145,67 @@ the punching hand and slides the body back about 35 cm (out of jab reach, so the
 strike landing below the neck drives the chest back first, the head following less; a guarded strike moves only the
 arms and chest; the shove throws chest and head back while the body slides 2 m along anything it meets. Above it a training readout counts hits, blocks and
 damage. Reset the dummy puts it back with its count cleared.
+
+## Magic
+
+### Stats and Qhi
+
+All seven stats exist at one fixed set of values (`Content/Data/firstperson.json`, `stats`). Health, Qhi and Stamina
+are pools; the other four act through simple shares, measured from a base of 10 where every value is the plan's:
+
+| Stat | Starting value | What it does in the prototype |
+|---|---|---|
+| Health | 100 | damage taken before the reset |
+| Qhi | 100 | the pool spells draw from |
+| Stamina | 100 | spent by sprinting |
+| Intelligence | 10 | each point above 10 speeds Qhi regeneration by 5% |
+| Faith | 10 | each point above 10 speeds Qhi regeneration by 5% |
+| Dexterity | 10 | each point above 10 speeds Stamina recovery by 5% |
+| Martial Prowess | 10 | each point above 10 adds 5% to all four techniques' damage and the shove's distance |
+
+- **Regeneration.** 5 Qhi per second at base Intelligence and Faith, starting 0.5 s after the last cast.
+- **Strikes feed Qhi.** A technique that lands restores 4 Qhi; one the target guards does not.
+- **Spending.** A spell costs its Qhi once, the moment its cast starts. A cast without enough Qhi is refused: nothing is
+  spent, the arms stay down, a short denied sound plays and the Qhi line flashes. Qhi never goes above the pool or
+  below zero.
+- **Readout.** A thin blue line below Stamina shows Qhi while it changes, following the Stamina meter setting. Like
+  the others it is a playtest placeholder.
+- **Interpretation.** The plan says which stat affects what but not by how much; the 5% shares are engineering
+  starting points. "Physically enhanced spells" do not exist yet, so Martial Prowess touches only the techniques.
+
+### Spells
+
+Casts are part of the same 60 Hz technique state as the strikes, so the buffer, the walking speed and the arms work
+the same way. The recovery of any strike hands over to a cast, and the recovery of a cast to a strike, so a shove can
+go straight into a Fireball and a Fireball straight into a straight.
+
+| Spell | Cost | Cast (wind-up / release / recovery) | Effect |
+|---|---|---|---|
+| Fireball | 20 Qhi | 12 / 1 / 16 frames (0.48 s), walking at 60% | a ball of fire from the left hand toward the centre of the view, 22 m/s, 30 m range; 25 damage on contact |
+| Ice Wall | 30 Qhi | 14 / 1 / 20 frames (0.58 s), walking at 50% | a wall 3 m wide and 2.4 m high rises 2.2 m ahead across the view in 0.3 s and stands for 8 s |
+
+- **Fireball** hits the first thing in its path: the dummy (a heavy reaction, knocked back about a step; the Guard
+  mode stops 70% from the front), an Ice Wall, which melts at once in a burst of steam, or stone. The wind-up is the
+  risk: next to a target, the shove makes room first.
+- **Ice Wall** blocks the player, the dummy, strikes and Fireballs (until one melts it). It stands across the view's
+  heading, stopping short of any wall or pier in the way; with less than 1.1 m of room it is refused and costs
+  nothing. A dummy standing where it rises is pushed out of the ice on the side it stood on. It ends after 8 s (melting
+  down over 0.5 s), at once when a Fireball strikes it, or shattered by 60 damage of strikes (five straights).
+- **Water freeze.** If the wall rises in water, the water within 2.8 m freezes into a sheet. An opponent whose feet
+  are in that water at any moment of the 0.3 s rise is trapped for 2 s: it cannot slide, be pushed or turn, though it
+  can still strike. On dry floor nothing freezes.
+- **Look.** Plain placeholders: a glow gathers in the casting hand (fire in the left, frost in both for the wall); the
+  Fireball is a glowing card with a trail of glow sprites and a point light; the ice is a translucent pale-blue
+  material (`/Game/Magic/M_PH_Ice`, `Tools/Unreal/make_magic_materials.py`). The sounds are the slice's (flame ignite,
+  roar and hit for Fireball; aura charge, deflect and a body slam for the wall).
+- **Navigation.** The wall's blocking box is marked to affect navigation for the wolves of milestone 5; nothing
+  navigates yet.
+
+### Developer panel (development builds only)
+
+F10 opens a panel with the seven stats (left and right change them live), the current Health, Qhi and Stamina, Empty
+Qhi, Default stats and Return to the start. Stat changes last until the game closes and survive the death reset, so a
+case can be repeated. Shipping builds compile the panel out; F10 does nothing there.
 
 ## The Chapel in first person
 
@@ -199,7 +266,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, dev_panel, dummy_frozen, dummy_freezes |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -207,6 +274,8 @@ path as a player. New commands:
 | `fp_frames <count> <name>` | all | slows the world to 1/20 and saves one screenshot per combat frame |
 | `fp_teleport`, `fp_view`, `fp_box`, `fp_clear_boxes`, `fp_body_visible`, `fp_planar`, `fp_dummy_place`, `fp_health`, `fp_arms_fp` | development only | test positions, a blocking test box, the body and reflection experiments, placing the dummy, test Health, arms drawn as ordinary geometry |
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
+| `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |
+| `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
 
 Scripts: `fp_movement.txt` (movement, Stamina, jump, crouch under a low ceiling, controller sticks and dead zone,
 mouse look, water and steps, pause, focus loss, reset), `fp_controls_a.txt` and `fp_controls_b.txt` (remapping, then
@@ -218,7 +287,12 @@ controller through SDL, including a disconnect), `fp_soak.txt` (the route eight 
 round trips), `fp_import.txt` (a profile that has only the slice's settings file), `fp_fists.txt` (every technique,
 chain, buffer, whiff, wall, shove, the dummy's guard from the front and behind, its strike against the guard, a
 wind-up interrupted, death, pause and reset mid-technique, the controller), `fp_ship_fists.txt` (the same ground
-with inputs only, for Shipping and for footage) and `fp_fists_frames.txt` (frame-by-frame captures).
+with inputs only, for Shipping and for footage), `fp_fists_frames.txt` (frame-by-frame captures), `fp_magic.txt`
+(stats, Qhi and both spells: one payment per cast, refusal, clamping, regeneration by stat, Qhi from strikes,
+Dexterity and Martial Prowess, the wall blocking, freezing in and out of water, melting, obstruction, expiry,
+breaking, both proximities, casts before and after strikes, the controller, pause, reset, death, the developer
+panel), `fp_ship_magic.txt` (the spells with inputs only, for Shipping and for footage; it expects F10 to do nothing)
+and `fp_perf_magic.txt` (a warm frame-time capture with walls and Fireballs in play).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.
@@ -228,9 +302,12 @@ no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
 ## Known limits
 
-- Fists: the arms are Wren's, cut from her test model, and the shove uses the same fists as the punches; final arms and animation are the
-  creator's. The guard does not cost Stamina yet; stat scaling and anything gained from landed strikes come with the
-  next milestone. The dummy's reactions and punch are the slice's fighting clips.
+- Fists: the arms are Wren's, cut from her test model, and the shove and both casts use the same fists as the punches;
+  final arms and animation are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
+  fighting clip.
+- Magic: the stat shares are engineering guesses; the ice, fire and their sounds are placeholders; the frozen sheet is
+  a plain disc that can reach over a dry edge; nothing navigates around the wall until the wolves arrive. Enchanted
+  strikes and lesser ice spells that strengthen the wall wait for their own specs.
 
 - Footsteps sound only in water (`S_StepWater`). Dry surfaces (pews, altar steps, rubble) are silent; there is no dry
   step sound yet.

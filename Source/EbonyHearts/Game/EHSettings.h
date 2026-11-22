@@ -32,6 +32,9 @@ enum class EEHAction : uint8
 	FPStraight,
 	FPShove,
 	FPBlock,
+	// Spells (settings version 8).
+	FPFireball,
+	FPIceWall,
 	Count
 };
 
@@ -194,7 +197,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 7;
+constexpr int32 EHSettingsVersion = 8;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

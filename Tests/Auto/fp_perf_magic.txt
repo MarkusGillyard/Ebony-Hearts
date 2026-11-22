@@ -1,0 +1,57 @@
+# Warm frame-time capture with spells in the air (all builds: device inputs only, so it runs in Shipping). Ice Walls
+# (translucent, with frozen water) and Fireballs (a moving light and glow trails) are the new rendering costs of
+# milestone 4. One warm-up round, then about 50 s captured: walls raised and melted, Fireballs at the dummy and down
+# the nave, strikes between them, the view turning across the walls.
+wait 6
+log warm-up round
+press kbA FPIceWall
+wait 1.0
+press kbA FPFireball
+wait 2.0
+press kbA FPFireball
+wait 2.0
+fp_reset
+wait 3
+perf_begin
+loop 4
+log round: wall, look across it, melt it, Fireballs at the dummy, strikes
+press kbA FPIceWall
+wait 0.8
+loop 24
+look 60 0
+wait 0.05
+endloop
+loop 24
+look -60 0
+wait 0.05
+endloop
+press kbA FPFireball
+wait 1.6
+hold kbA FPForward
+wait 1.6
+release kbA FPForward
+press kbA FPJab
+wait 0.3
+press kbA FPStraight
+wait 0.8
+press kbA FPFireball
+wait 1.4
+fp_dummy_reset
+fp_reset
+wait 1.5
+endloop
+log a wall left to expire, with Fireballs flying past it down the nave
+press kbA FPIceWall
+wait 1.0
+look 900 0
+wait 0.3
+press kbA FPFireball
+wait 1.0
+press kbA FPFireball
+wait 1.0
+look -900 0
+wait 6.5
+perf_end fp_magic
+fp_state end
+mem end
+quit

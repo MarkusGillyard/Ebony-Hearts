@@ -36,6 +36,11 @@ public:
 	void AuraMote(const FVector& At);
 	void Ripple(const FVector& At, float Scale);
 	void Splash(const FVector& At, float Scale);
+	// Spells (first person): a fireball's trail, its burst, steam off melting ice, and ice breaking.
+	void FireTrail(const FVector& At);
+	void FireBurst(const FVector& At);
+	void Steam(const FVector& At, float Scale);
+	void IceBurst(const FVector& At, float Scale);
 	bool HasMaterial() const { return BaseMaterial != nullptr; }
 	int32 ActiveCount() const;
 

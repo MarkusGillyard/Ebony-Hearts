@@ -7,6 +7,8 @@ const TCHAR* EHFistActionName(EEHFistAction Action)
 	case EEHFistAction::Jab: return TEXT("Jab");
 	case EEHFistAction::Straight: return TEXT("Straight");
 	case EEHFistAction::Shove: return TEXT("Shove");
+	case EEHFistAction::Fireball: return TEXT("Fireball");
+	case EEHFistAction::IceWall: return TEXT("Ice Wall");
 	default: return TEXT("None");
 	}
 }
@@ -18,11 +20,21 @@ FEHFistTuning::FEHFistTuning()
 	Jab = {6, 3, 10, 95.0f, 18.0f, 6.0f, 4, 0.0f, 0, 0.8f};
 	Straight = {11, 3, 18, 115.0f, 18.0f, 12.0f, 7, 0.0f, 0, 0.7f};
 	Shove = {9, 4, 18, 100.0f, 26.0f, 0.0f, 4, 200.0f, 15, 0.7f};
+	// Casts: a short wind-up (casting next to a target is a risk the shove answers), one release frame, recovery.
+	Fireball = {12, 1, 16, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0, 0.6f};
+	IceWall = {14, 1, 20, 0.0f, 0.0f, 0.0f, 0, 0.0f, 0, 0.5f};
 }
 
 const FEHStrikeDef& FEHFistTuning::Def(EEHFistAction Action) const
 {
-	return Action == EEHFistAction::Straight ? Straight : (Action == EEHFistAction::Shove ? Shove : Jab);
+	switch (Action)
+	{
+	case EEHFistAction::Straight: return Straight;
+	case EEHFistAction::Shove: return Shove;
+	case EEHFistAction::Fireball: return Fireball;
+	case EEHFistAction::IceWall: return IceWall;
+	default: return Jab;
+	}
 }
 
 bool FEHFistTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
@@ -72,6 +84,8 @@ bool FEHFistTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
 	Strike(TEXT("jab"), Jab);
 	Strike(TEXT("straight"), Straight);
 	Strike(TEXT("shove"), Shove);
+	Strike(TEXT("fireballCast"), Fireball);
+	Strike(TEXT("iceWallCast"), IceWall);
 	Int(Obj, FString(), TEXT("bufferFrames"), BufferFrames, 0, 30);
 	Int(Obj, FString(), TEXT("blockRaiseFrames"), BlockRaiseFrames, 1, 30);
 	Int(Obj, FString(), TEXT("blockLowerFrames"), BlockLowerFrames, 0, 30);
@@ -87,8 +101,9 @@ FString FEHFistTuning::Describe() const
 	auto D = [](const TCHAR* N, const FEHStrikeDef& S) {
 		return FString::Printf(TEXT("%s %d/%d/%d reach=%.0f r=%.0f dmg=%.0f stop=%d push=%.0f/%d move=%.2f"), N, S.Startup, S.Active, S.Recovery, S.Reach, S.Radius, S.Damage, S.Hitstop, S.Push, S.PushFrames, S.MoveScale);
 	};
-	return FString::Printf(TEXT("%s; %s; %s; buffer=%d block raise=%d lower=%d stop=%.0f%% front=%.0f move=%.2f linger=%.2f"),
-		*D(TEXT("jab"), Jab), *D(TEXT("straight"), Straight), *D(TEXT("shove"), Shove), BufferFrames, BlockRaiseFrames, BlockLowerFrames,
+	return FString::Printf(TEXT("%s; %s; %s; fireball cast %d/%d/%d move=%.2f; ice wall cast %d/%d/%d move=%.2f; buffer=%d block raise=%d lower=%d stop=%.0f%% front=%.0f move=%.2f linger=%.2f"),
+		*D(TEXT("jab"), Jab), *D(TEXT("straight"), Straight), *D(TEXT("shove"), Shove), Fireball.Startup, Fireball.Active, Fireball.Recovery,
+		Fireball.MoveScale, IceWall.Startup, IceWall.Active, IceWall.Recovery, IceWall.MoveScale, BufferFrames, BlockRaiseFrames, BlockLowerFrames,
 		BlockReduction * 100.0f, BlockAngle, BlockMoveScale, ArmsLinger);
 }
 
@@ -155,9 +170,14 @@ bool FEHFists::CanStart(EEHFistAction Next) const
 	{
 		return true;
 	}
-	// The jab chains into the straight as soon as its active frames are over, hit or miss.
+	// Once the current technique's active frames are over, hit or miss, its recovery can hand over: the jab to the
+	// straight, any strike to a cast and any cast to a strike, so punches and spells flow into each other.
 	const FEHStrikeDef& D = Tuning.Def(Current);
-	return Current == EEHFistAction::Jab && Next == EEHFistAction::Straight && FrameIndex >= D.Startup + D.Active;
+	if (FrameIndex < D.Startup + D.Active)
+	{
+		return false;
+	}
+	return (Current == EEHFistAction::Jab && Next == EEHFistAction::Straight) || EHIsSpell(Current) != EHIsSpell(Next);
 }
 
 void FEHFists::Start(EEHFistAction Next, TArray<FEHFistEvent>& OutEvents)
@@ -241,7 +261,14 @@ void FEHFists::Step(TArray<FEHFistEvent>& OutEvents)
 		{
 			const EEHFistAction Next = Buffered;
 			Buffered = EEHFistAction::None;
-			Start(Next, OutEvents);
+			if (!Gate || Gate(Next))
+			{
+				Start(Next, OutEvents);
+			}
+			else
+			{
+				OutEvents.Add({FEHFistEvent::EKind::Refused, Next, 0});
+			}
 		}
 		else if (++BufferAge > Tuning.BufferFrames)
 		{

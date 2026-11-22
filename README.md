@@ -8,7 +8,8 @@ This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fight
 
 ## Status
 
-**Branch `proto/first-person` (2026-11-21):** a first-person prototype that walks the Drowned Chapel, with
+**Branch `proto/first-person` (2026-11-21):** a first-person prototype in the Drowned Chapel: walking, four
+physical techniques on a training dummy, and two spells (Fireball and Ice Wall) on the seven stats and Qhi, with
 placeholder art. See [Docs/FirstPerson.md](Docs/FirstPerson.md). The status notes below describe the 2.5D slice.
 
 **Independent review update (2026-11-10):** PR #1 and the stacked Still Water PR #2 remain open. The creator has

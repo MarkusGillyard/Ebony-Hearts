@@ -89,6 +89,15 @@ public:
 	float PeakChestBack() const { return PeakChest; }
 	FString StateName() const;
 	FVector LabelLocation() const;
+	FVector FeetLocation() const;
+	// Ice Wall: frozen water holds its feet for Seconds (it cannot slide, be pushed or turn; it can still strike).
+	void Freeze(float Seconds);
+	bool IsFrozen() const { return FrozenLeft > 0.0f; }
+	float FrozenSeconds() const { return FrozenLeft; }
+	int32 TimesFrozen() const { return FreezeCount; }
+	// Moved by the world rather than a hit (a wall rising where it stands), sweeping against what is around it.
+	// Ignore: what it is being moved out of (that never stops it).
+	void Displace(const FVector& Offset, AActor* Ignore = nullptr);
 
 private:
 	enum class EState : uint8 { Idle, Hit, Blocked, Pushed, Windup, Recover };
@@ -107,6 +116,10 @@ private:
 	TObjectPtr<UAnimSequence> AnimBlockHit;
 	UPROPERTY()
 	TObjectPtr<UAnimSequence> AnimStrike;
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> IceCuff;
+	float FrozenLeft = 0.0f;
+	int32 FreezeCount = 0;
 
 	TWeakObjectPtr<AEHPlayerCharacter> Player;
 	FEHDummyTuning Tuning;

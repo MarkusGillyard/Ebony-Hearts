@@ -7,6 +7,7 @@
 #include "Components/BoxComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "EHMagic.h"
 #include "EHPlayerCharacter.h"
 #include "EHViewArms.h"
 #include "EHVfx.h"
@@ -99,6 +100,18 @@ void AEHGameDirector::BeginFirstPerson()
 	if (FPDummy)
 	{
 		FPDummy->Setup(FPTuning.Dummy, FPTuning.Fists, FPPlayer);
+	}
+	// The water the Ice Wall freezes: the Chapel's water sheet, over the floor within its mesh's bounds.
+	FPWater.SurfaceZ = FPTuning.WaterSurfaceZ;
+	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
+	{
+		const UStaticMesh* M = It->GetStaticMeshComponent() ? It->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
+		if (M && M->GetName() == TEXT("SM_Water"))
+		{
+			const FBox B = It->GetComponentsBoundingBox();
+			FPWater.Bounds = FBox2D(FVector2D(B.Min.X, B.Min.Y), FVector2D(B.Max.X, B.Max.Y));
+			break;
+		}
 	}
 	PC->SetViewTarget(FPPlayer);
 	PC->bShowMouseCursor = false;
@@ -235,7 +248,10 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	// still ends on the committed hit); the guard is held on any device.
 	const uint32 AnyPress = Presses | PadPresses;
 	In.FistPress = (AnyPress & Bit(EEHAction::FPStraight)) ? EEHFistAction::Straight
-		: ((AnyPress & Bit(EEHAction::FPJab)) ? EEHFistAction::Jab : ((AnyPress & Bit(EEHAction::FPShove)) ? EEHFistAction::Shove : EEHFistAction::None));
+		: (AnyPress & Bit(EEHAction::FPJab)) ? EEHFistAction::Jab
+		: (AnyPress & Bit(EEHAction::FPShove)) ? EEHFistAction::Shove
+		: (AnyPress & Bit(EEHAction::FPFireball)) ? EEHFistAction::Fireball
+		: (AnyPress & Bit(EEHAction::FPIceWall)) ? EEHFistAction::IceWall : EEHFistAction::None;
 	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
 	if (In.FistPress != EEHFistAction::None || In.bBlock)
 	{
@@ -252,6 +268,29 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	}
 	const FEHFirstPersonInput In = GatherFirstPersonInput(DeltaSeconds);
 	LastFPInput = In;
+	const bool bDeveloperKey = RouterPtr->TakeDeveloperKey();
+#if !UE_BUILD_SHIPPING
+	// F10: the developer panel (stats and resources live). Shipping builds never open it.
+	if (bDeveloperKey && Screen == EEHScreen::FirstPerson && FPPlayer)
+	{
+		if (bPaused && bDevPanel)
+		{
+			bDevPanel = false;
+			SetPaused(false, EHDeviceNone);
+		}
+		else if (!bPaused)
+		{
+			SetPaused(true, EHDeviceNone);
+			BuildDeveloperPanel();
+		}
+	}
+#else
+	(void)bDeveloperKey;
+#endif
+	if (!bPaused)
+	{
+		bDevPanel = false;
+	}
 	if (FPPlayer == nullptr || Screen != EEHScreen::FirstPerson || bPaused)
 	{
 		return;
@@ -279,6 +318,10 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 		}
 	}
 	PlayFirstPersonEvents();
+	TickSpells(DeltaSeconds);
+	// The Qhi line shows while it changes and a moment after; it flashes when a cast is refused.
+	const bool bShowQhi = Settings.StaminaMeter == 2 || (Settings.StaminaMeter == 1 && (FPPlayer->QhiFraction() < 0.999f || FPPlayer->SecondsSinceQhiChange() < 1.0f || FPPlayer->SecondsSinceRefused() < 1.0f));
+	QhiMeterAlpha = FMath::FInterpConstantTo(QhiMeterAlpha, bShowQhi ? 1.0f : 0.0f, DeltaSeconds, bShowQhi ? 6.0f : 1.5f);
 	// The Stamina line fades in while it changes and out a moment after it is full again.
 	const bool bShow = Settings.StaminaMeter == 2 || (Settings.StaminaMeter == 1 && (FPPlayer->StaminaFraction() < 0.999f || FPPlayer->SecondsSinceStaminaChange() < 1.0f));
 	StaminaMeterAlpha = FMath::FInterpConstantTo(StaminaMeterAlpha, bShow ? 1.0f : 0.0f, DeltaSeconds, bShow ? 6.0f : 1.5f);
@@ -365,9 +408,18 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			AutoLogLine(FString::Printf(TEXT("fp contact %s damage=%.1f blocked=%d body=%d"), EHFistActionName(E.Action), E.Damage, E.bBlocked ? 1 : 0, E.bBody ? 1 : 0));
 			break;
 		case FEHFirstPersonEvent::EKind::Wall:
-			PlayImpact(TEXT("Block"), 2, 0.45f, 0.7f);
-			Rumble(0.0f, 0.3f, 0.05f);
-			AutoLogLine(FString::Printf(TEXT("fp wall %s"), EHFistActionName(E.Action)));
+			if (E.bIce)
+			{
+				PlayImpact(TEXT("Deflect"), 1, E.bShattered ? 0.9f : 0.55f, E.bShattered ? 0.55f : 1.3f);
+				if (Vfx) { Vfx->IceBurst(E.Location, E.bShattered ? 2.0f : 0.6f); }
+				Rumble(E.bShattered ? 0.6f : 0.1f, 0.35f, E.bShattered ? 0.2f : 0.06f);
+			}
+			else
+			{
+				PlayImpact(TEXT("Block"), 2, 0.45f, 0.7f);
+				Rumble(0.0f, 0.3f, 0.05f);
+			}
+			AutoLogLine(FString::Printf(TEXT("fp wall %s ice=%d damage=%.1f shattered=%d"), EHFistActionName(E.Action), E.bIce ? 1 : 0, E.Damage, E.bShattered ? 1 : 0));
 			break;
 		case FEHFirstPersonEvent::EKind::Guarded:
 			PlayImpact(TEXT("Block"), 2, 0.9f, 0.95f);
@@ -381,6 +433,78 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			Rumble(0.9f, 0.6f, 0.25f);
 			++FPHurtCount;
 			AutoLogLine(FString::Printf(TEXT("fp hurt damage=%.1f health=%.1f"), E.Damage, FPPlayer->Health()));
+			break;
+		case FEHFirstPersonEvent::EKind::CastStart:
+			if (E.Action == EEHFistAction::Fireball)
+			{
+				PlayImpact(TEXT("FlameIgnite"), 1, 0.55f, 1.1f);
+			}
+			else
+			{
+				PlayImpact(TEXT("AuraCharge"), 3, 0.5f, 1.35f);
+			}
+			AutoLogLine(FString::Printf(TEXT("fp cast_start %s qhi=%.1f"), EHFistActionName(E.Action), FPPlayer->Qhi()));
+			break;
+		case FEHFirstPersonEvent::EKind::Cast:
+		{
+			FActorSpawnParameters Params;
+			Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			if (E.Action == EEHFistAction::Fireball)
+			{
+				if (AEHFireball* Ball = GetWorld()->SpawnActor<AEHFireball>(AEHFireball::StaticClass(), FTransform(E.Direction.Rotation(), E.Location), Params))
+				{
+					Ball->Launch(FPTuning.Magic, FPPlayer, Vfx, E.Direction);
+					FPFireballs.Add(Ball);
+				}
+				PlayImpact(TEXT("FlameRoar"), 3, 0.7f, 1.15f);
+				Rumble(0.25f, 0.35f, 0.12f);
+			}
+			else if (AEHIceWall* Wall = GetWorld()->SpawnActor<AEHIceWall>(AEHIceWall::StaticClass(), FTransform(E.Direction.Rotation(), E.Location), Params))
+			{
+				TArray<AEHTrainingDummy*> Opponents;
+				if (FPDummy)
+				{
+					Opponents.Add(FPDummy);
+				}
+				Wall->Raise(FPTuning.Magic, FPWater, E.Location, E.Direction, Opponents);
+				// Anyone standing where it rises is pushed out of the ice to the side they stood on.
+				if (FPDummy)
+				{
+					const FVector Local = Wall->GetActorTransform().InverseTransformPosition(FPDummy->GetActorLocation());
+					const float Clear = FPTuning.Magic.IceWallThickness * 0.5f + FPDummy->GetSimpleCollisionRadius() + 2.0f;
+					if (FMath::Abs(Local.X) < Clear && FMath::Abs(Local.Y) < FPTuning.Magic.IceWallWidth * 0.5f + FPDummy->GetSimpleCollisionRadius())
+					{
+						// To the side it stood on; one caught dead centre goes away from the caster.
+						const float Side = Local.X >= -1.0f ? 1.0f : -1.0f;
+						FPDummy->Displace(Wall->GetActorForwardVector() * (Side * Clear - Local.X), Wall);
+					}
+				}
+				FPWalls.Add(Wall);
+				++FPWallsRaised;
+				PlayImpact(TEXT("Deflect"), 1, 0.8f, 0.6f);
+				PlayImpact(TEXT("BodySlam"), 2, 0.45f, 0.7f);
+				Rumble(0.6f, 0.2f, 0.25f);
+				AutoLogLine(FString::Printf(TEXT("fp ice_wall at=(%.0f,%.0f,%.0f) froze_water=%d frozen=%d"), E.Location.X, E.Location.Y, E.Location.Z, Wall->FroseWater() ? 1 : 0, Wall->Frozen()));
+			}
+			AutoLogLine(FString::Printf(TEXT("fp cast %s qhi=%.1f"), EHFistActionName(E.Action), FPPlayer->Qhi()));
+			break;
+		}
+		case FEHFirstPersonEvent::EKind::Refused:
+			Audio.Play(TEXT("UiDenied"), EEHSoundCat::Ui, 0.6f);
+			if (E.bNoQhi)
+			{
+				++FPRefusedNoQhi;
+			}
+			else
+			{
+				++FPRefusedNoRoom;
+			}
+			AutoLogLine(FString::Printf(TEXT("fp refused %s %s qhi=%.1f"), EHFistActionName(E.Action), E.bNoQhi ? TEXT("no_qhi") : TEXT("no_room"), FPPlayer->Qhi()));
+			break;
+		case FEHFirstPersonEvent::EKind::Fizzle:
+			Audio.Play(TEXT("UiDenied"), EEHSoundCat::Ui, 0.6f);
+			++FPFizzles;
+			AutoLogLine(FString::Printf(TEXT("fp fizzle %s qhi=%.1f"), EHFistActionName(E.Action), FPPlayer->Qhi()));
 			break;
 		case FEHFirstPersonEvent::EKind::Died:
 			++FPDeaths;
@@ -399,8 +523,177 @@ void AEHGameDirector::PlayFirstPersonEvents()
 	}
 }
 
+void AEHGameDirector::TickSpells(float DeltaSeconds)
+{
+	// Fireballs: play each one's end once, then let it go.
+	for (int32 i = FPFireballs.Num() - 1; i >= 0; --i)
+	{
+		AEHFireball* Ball = FPFireballs[i];
+		if (Ball == nullptr)
+		{
+			FPFireballs.RemoveAt(i);
+			continue;
+		}
+		if (Ball->Result() == AEHFireball::EResult::Flying)
+		{
+			continue;
+		}
+		const FVector At = Ball->HitAt;
+		switch (Ball->Result())
+		{
+		case AEHFireball::EResult::Target:
+			if (AEHTrainingDummy* D = Ball->HitTarget.Get())
+			{
+				FEHStrikeDef Def;
+				Def.Damage = FPTuning.Magic.FireballDamage;
+				Def.Hitstop = FMath::RoundToInt(FPTuning.Magic.FireballHitstop);
+				const FEHDummyHit R = D->ReceiveHit(EEHFistAction::Fireball, Def, FPPlayer ? FPPlayer->Camera()->GetComponentLocation() : At - Ball->GetActorForwardVector() * 300.0f, At, 0.0f);
+				++FPFireballHits;
+				PlayImpact(TEXT("FlameHit"), 1, 0.95f, 1.0f);
+				PlayImpact(TEXT("HitHeavy"), 3, 0.5f, 0.8f);
+				Rumble(0.3f, 0.5f, 0.12f);
+				AutoLogLine(FString::Printf(TEXT("fp fireball hit damage=%.1f blocked=%d"), R.Damage, R.bBlocked ? 1 : 0));
+			}
+			break;
+		case AEHFireball::EResult::Wall:
+			if (AEHIceWall* W = Ball->HitWall.Get())
+			{
+				W->Melt();
+				PlayImpact(TEXT("FlameHit"), 1, 0.7f, 0.8f);
+				PlayImpact(TEXT("AuraFade"), 1, 0.8f, 0.7f);
+				if (Vfx)
+				{
+					// Steam off the melting ice.
+					Vfx->Steam(At, 1.4f);
+					Vfx->Steam(W->GetActorLocation(), 2.0f);
+				}
+				AutoLogLine(TEXT("fp fireball melted ice_wall"));
+			}
+			break;
+		case AEHFireball::EResult::World:
+			PlayImpact(TEXT("FlameHit"), 1, 0.6f, 1.15f);
+			AutoLogLine(TEXT("fp fireball hit world"));
+			break;
+		default:
+			AutoLogLine(TEXT("fp fireball expired"));
+			break;
+		}
+		if (Vfx && Ball->Result() != AEHFireball::EResult::Expired)
+		{
+			Vfx->FireBurst(At);
+		}
+		Ball->Destroy();
+		FPFireballs.RemoveAt(i);
+	}
+	// Ice Walls: count how each ended, and clear the ones that are gone.
+	for (int32 i = FPWalls.Num() - 1; i >= 0; --i)
+	{
+		AEHIceWall* W = FPWalls[i];
+		if (W == nullptr)
+		{
+			FPWalls.RemoveAt(i);
+			continue;
+		}
+		if (W->IsDone())
+		{
+			switch (W->EndReason())
+			{
+			case AEHIceWall::EEnd::Melted: ++FPWallsMelted; break;
+			case AEHIceWall::EEnd::Shattered: ++FPWallsShattered; break;
+			default: ++FPWallsExpired; break;
+			}
+			AutoLogLine(FString::Printf(TEXT("fp ice_wall gone (%s)"), W->EndReason() == AEHIceWall::EEnd::Melted ? TEXT("melted") : (W->EndReason() == AEHIceWall::EEnd::Shattered ? TEXT("shattered") : TEXT("expired"))));
+			W->Destroy();
+			FPWalls.RemoveAt(i);
+		}
+	}
+}
+
+void AEHGameDirector::ClearSpells()
+{
+	for (AEHFireball* B : FPFireballs)
+	{
+		if (B)
+		{
+			B->Destroy();
+		}
+	}
+	for (AEHIceWall* W : FPWalls)
+	{
+		if (W)
+		{
+			W->Destroy();
+		}
+	}
+	FPFireballs.Reset();
+	FPWalls.Reset();
+}
+
+void AEHGameDirector::BuildDeveloperPanel()
+{
+	// Development builds only (F10): the seven stats live, the resources, and quick resets. Changes last until the
+	// game closes; the death reset keeps them so a case can be repeated.
+	bDevPanel = true;
+	Menu.Reset();
+	MenuIndex = 0;
+	MenuOwner = EHDeviceNone;
+	MenuTitle = TEXT("Developer");
+	Menu.Add(FPHeader(TEXT("Stats")));
+	auto StatItem = [this](const TCHAR* Label, int32 Which, const TCHAR* Hint) {
+		FEHMenuItem I;
+		I.Label = Label;
+		I.Hint = Hint;
+		I.Value = [this, Which] {
+			const FEHPlayerStats& S = FPPlayer->GetStats();
+			const float V[] = {S.Health, S.Qhi, S.Stamina, (float)S.Intelligence, (float)S.Faith, (float)S.Dexterity, (float)S.MartialProwess};
+			return FString::Printf(TEXT("%.0f"), V[Which]);
+		};
+		I.Change = [this, Which](int32 D) {
+			FEHPlayerStats S = FPPlayer->GetStats();
+			switch (Which)
+			{
+			case 0: S.Health = FMath::Clamp(S.Health + 10.0f * D, 10.0f, 1000.0f); break;
+			case 1: S.Qhi = FMath::Clamp(S.Qhi + 10.0f * D, 10.0f, 1000.0f); break;
+			case 2: S.Stamina = FMath::Clamp(S.Stamina + 10.0f * D, 10.0f, 1000.0f); break;
+			case 3: S.Intelligence = FMath::Clamp(S.Intelligence + D, 0, 99); break;
+			case 4: S.Faith = FMath::Clamp(S.Faith + D, 0, 99); break;
+			case 5: S.Dexterity = FMath::Clamp(S.Dexterity + D, 0, 99); break;
+			default: S.MartialProwess = FMath::Clamp(S.MartialProwess + D, 0, 99); break;
+			}
+			FPPlayer->SetStats(S);
+		};
+		Menu.Add(I);
+	};
+	StatItem(TEXT("Health"), 0, TEXT("Damage you can take before the reset."));
+	StatItem(TEXT("Qhi"), 1, TEXT("The pool spells draw from."));
+	StatItem(TEXT("Stamina"), 2, TEXT("Spent by sprinting."));
+	StatItem(TEXT("Intelligence"), 3, TEXT("Each point above 10 speeds Qhi regeneration by 5%."));
+	StatItem(TEXT("Faith"), 4, TEXT("Each point above 10 speeds Qhi regeneration by 5%."));
+	StatItem(TEXT("Dexterity"), 5, TEXT("Each point above 10 speeds Stamina recovery by 5%."));
+	StatItem(TEXT("Martial Prowess"), 6, TEXT("Each point above 10 adds 5% to strike damage and shove distance."));
+	Menu.Add(FPHeader(TEXT("Now")));
+	{
+		FEHMenuItem I;
+		I.Label = TEXT("Health · Qhi · Stamina");
+		I.Value = [this] { return FString::Printf(TEXT("%.0f · %.0f · %.0f"), FPPlayer->Health(), FPPlayer->Qhi(), FPPlayer->Stamina()); };
+		I.Hint = FString::Printf(TEXT("Qhi regenerates %.1f per second at these stats."), FPTuning.Magic.QhiRegen(FPPlayer->GetStats()));
+		Menu.Add(I);
+	}
+	Menu.Add(FPButton(TEXT("Empty Qhi"), [this] { FPPlayer->SetQhiForTest(0.0f); }, TEXT("To feel regeneration and a refused cast.")));
+	Menu.Add(FPButton(TEXT("Default stats"), [this] { FPPlayer->SetStats(FPTuning.Magic.Stats); }, TEXT("Back to Content/Data/firstperson.json.")));
+	Menu.Add(FPButton(TEXT("Return to the start"), [this] {
+		bDevPanel = false;
+		SetPaused(false, EHDeviceNone);
+		ResetFirstPerson(TEXT("developer"));
+	}));
+	Menu.Add(FPButton(TEXT("Close (F10)"), [this] { bDevPanel = false; SetPaused(false, EHDeviceNone); }));
+}
+
 void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 {
+	ClearSpells();
+	// The spell counts are per attempt (automation reads them after each reset).
+	FPFireballHits = FPWallsMelted = FPWallsShattered = FPWallsExpired = FPWallsRaised = FPFizzles = FPRefusedNoQhi = FPRefusedNoRoom = 0;
 	bFPCrouchToggled = false;
 	bFPSprintToggled = false;
 	RouterPtr->ResetHeld();
@@ -472,6 +765,16 @@ void AEHGameDirector::HandleFirstPersonNav(const FEHNavEvent& E)
 
 void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 {
+	if (FPPlayer && QhiMeterAlpha > 0.01f && !bPaused)
+	{
+		// Qhi: the same thin line under Stamina, in a cold blue; it flashes the warning colour when a cast is refused.
+		const float W = 280.0f;
+		const float Frac = FPPlayer->QhiFraction();
+		const FVector2f Pos(960.0f - W * 0.5f, 1014.0f);
+		const float Denied = FMath::Clamp(1.0f - FPPlayer->SecondsSinceRefused() / 0.6f, 0.0f, 1.0f);
+		P.Rect(Pos, FVector2f(W, 4.0f), EHStyle::Alpha(Denied > 0.0f ? FLinearColor::LerpUsingHSV(EHStyle::Abyss, EHStyle::HealthLow, 0.6f * Denied) : EHStyle::Abyss, 0.45f * QhiMeterAlpha + 0.4f * Denied));
+		P.Rect(FVector2f(960.0f - W * 0.5f * Frac, Pos.Y), FVector2f(W * Frac, 4.0f), FLinearColor(0.42f, 0.66f, 1.0f, 0.8f * QhiMeterAlpha));
+	}
 	if (FPPlayer && StaminaMeterAlpha > 0.01f && !bPaused)
 	{
 		// Placeholder readout for the playtest (see Docs/FirstPerson.md): a thin line that shortens as Stamina drains.
@@ -545,10 +848,20 @@ FString AEHGameDirector::DescribeFirstPerson() const
 		FPPlayer->WaterDepthAtFeet(), FPPlayer->EyeHeight(), FPPlayer->Camera()->GetComponentLocation().Z, FPResets);
 	Out += FString::Printf(TEXT(" health=%.1f action=%s frame=%d guard=%.2f arms=%d deaths=%d"), FPPlayer->Health(), EHFistActionName(Fi.Action()), Fi.Frame(), Fi.GuardLevel(),
 		FPPlayer->ViewArms() && FPPlayer->ViewArms()->AreShown() ? 1 : 0, FPDeaths);
+	const FEHPlayerStats& St = FPPlayer->GetStats();
+	Out += FString::Printf(TEXT(" qhi=%.1f/%.0f stats=%d/%d/%d/%d casts=%d refused=%d fireballs=%d walls=%d"), FPPlayer->Qhi(), St.Qhi, St.Intelligence, St.Faith, St.Dexterity, St.MartialProwess,
+		FPPlayer->SpellsCast(), FPPlayer->SpellsRefused(), FPFireballs.Num(), FPWalls.Num());
+	for (const AEHIceWall* W : FPWalls)
+	{
+		if (W)
+		{
+			Out += FString::Printf(TEXT(" wall=(%.0f,%.0f %s hp=%.0f left=%.1f)"), W->GetActorLocation().X, W->GetActorLocation().Y, W->PhaseName(), W->HealthLeft(), W->SecondsLeft());
+		}
+	}
 	if (FPDummy)
 	{
-		Out += FString::Printf(TEXT(" dummy=(%.1f,%.1f) %s %s hits=%d blocks=%d damage=%.1f strikes=%d"), FPDummy->GetActorLocation().X, FPDummy->GetActorLocation().Y,
-			EHDummyModeName(FPDummy->GetMode()), *FPDummy->StateName(), FPDummy->Hits(), FPDummy->Blocks(), FPDummy->TotalDamage(), FPDummy->StrikesThrown());
+		Out += FString::Printf(TEXT(" dummy=(%.1f,%.1f) %s %s hits=%d blocks=%d damage=%.1f strikes=%d frozen=%.2f"), FPDummy->GetActorLocation().X, FPDummy->GetActorLocation().Y,
+			EHDummyModeName(FPDummy->GetMode()), *FPDummy->StateName(), FPDummy->Hits(), FPDummy->Blocks(), FPDummy->TotalDamage(), FPDummy->StrikesThrown(), FPDummy->FrozenSeconds());
 	}
 	return Out;
 }
@@ -621,6 +934,28 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (FPDummy && Field == TEXT("dummy_headpeak")) V = FPDummy->PeakHeadBack();
 		else if (FPDummy && Field == TEXT("dummy_chestpeak")) V = FPDummy->PeakChestBack();
 		else if (Field == TEXT("hurt")) V = static_cast<float>(FPHurtCount);
+		else if (Field == TEXT("qhi")) V = FPPlayer->Qhi();
+		else if (Field == TEXT("qhi_max")) V = FPPlayer->GetStats().Qhi;
+		else if (Field == TEXT("health_max")) V = FPPlayer->GetStats().Health;
+		else if (Field == TEXT("casts")) V = static_cast<float>(FPPlayer->SpellsCast());
+		else if (Field == TEXT("refused")) V = static_cast<float>(FPPlayer->SpellsRefused());
+		else if (Field == TEXT("refused_qhi")) V = static_cast<float>(FPRefusedNoQhi);
+		else if (Field == TEXT("refused_room")) V = static_cast<float>(FPRefusedNoRoom);
+		else if (Field == TEXT("fizzles")) V = static_cast<float>(FPFizzles);
+		else if (Field == TEXT("fireballs")) V = static_cast<float>(FPFireballs.Num());
+		else if (Field == TEXT("fireball_hits")) V = static_cast<float>(FPFireballHits);
+		else if (Field == TEXT("walls")) V = static_cast<float>(FPWalls.Num());
+		else if (Field == TEXT("walls_raised")) V = static_cast<float>(FPWallsRaised);
+		else if (Field == TEXT("walls_melted")) V = static_cast<float>(FPWallsMelted);
+		else if (Field == TEXT("walls_shattered")) V = static_cast<float>(FPWallsShattered);
+		else if (Field == TEXT("walls_expired")) V = static_cast<float>(FPWallsExpired);
+		else if (Field == TEXT("wall_solid")) V = FPWalls.Num() > 0 && FPWalls.Last() && FPWalls.Last()->IsSolid() ? 1.0f : 0.0f;
+		else if (Field == TEXT("wall_hp")) V = FPWalls.Num() > 0 && FPWalls.Last() ? FPWalls.Last()->HealthLeft() : 0.0f;
+		else if (Field == TEXT("wall_ice_water")) V = FPWalls.Num() > 0 && FPWalls.Last() && FPWalls.Last()->FroseWater() ? 1.0f : 0.0f;
+		else if (Field == TEXT("wall_dist")) V = FPWalls.Num() > 0 && FPWalls.Last() ? FVector::Dist2D(FPWalls.Last()->GetActorLocation(), FPPlayer->GetActorLocation()) : 0.0f;
+		else if (Field == TEXT("dev_panel")) V = bDevPanel ? 1.0f : 0.0f;
+		else if (FPDummy && Field == TEXT("dummy_frozen")) V = FPDummy->IsFrozen() ? 1.0f : 0.0f;
+		else if (FPDummy && Field == TEXT("dummy_freezes")) V = static_cast<float>(FPDummy->TimesFrozen());
 		else if (Field == TEXT("action")) V = static_cast<float>(static_cast<int32>(FPPlayer->GetFists().Action()));
 		else if (Field == TEXT("guarding")) V = FPPlayer->GetFists().IsGuarding() ? 1.0f : 0.0f;
 		else if (Field == TEXT("arms")) V = FPPlayer->ViewArms() && FPPlayer->ViewArms()->AreShown() ? 1.0f : 0.0f;
@@ -673,6 +1008,13 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(Line);
 		return true;
 	}
+	if (Cmd == TEXT("fp_devkey"))
+	{
+		// fp_devkey: F10 as the keyboard sends it (development builds open the panel; Shipping ignores it).
+		RouterPtr->InjectDeveloperKey();
+		AutoLogLine(Line);
+		return true;
+	}
 	if (Cmd == TEXT("fp_focus_lost"))
 	{
 		// What the frame loop does when the window loses focus: pause and drop every held input.
@@ -686,6 +1028,41 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 	}
 #if !UE_BUILD_SHIPPING
 	// Development-only test tools: they move the player or change the world, so Shipping builds leave them out.
+	if (Cmd == TEXT("fp_stat"))
+	{
+		// fp_stat <health|qhi|stamina|intelligence|faith|dexterity|martial> <value>: the developer panel's stat change.
+		if (FPPlayer)
+		{
+			FEHPlayerStats S = FPPlayer->GetStats();
+			const FString N = Arg(1, TEXT(""));
+			const float V = F(2, 10.0f);
+			if (N == TEXT("health")) S.Health = V;
+			else if (N == TEXT("qhi")) S.Qhi = V;
+			else if (N == TEXT("stamina")) S.Stamina = V;
+			else if (N == TEXT("intelligence")) S.Intelligence = FMath::RoundToInt(V);
+			else if (N == TEXT("faith")) S.Faith = FMath::RoundToInt(V);
+			else if (N == TEXT("dexterity")) S.Dexterity = FMath::RoundToInt(V);
+			else if (N == TEXT("martial")) S.MartialProwess = FMath::RoundToInt(V);
+			else
+			{
+				AutoLogLine(FString::Printf(TEXT("FAIL %s (unknown stat)"), *Line));
+				return true;
+			}
+			FPPlayer->SetStats(S);
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_qhi"))
+	{
+		// fp_qhi <value>: sets the current Qhi (clamped to the pool).
+		if (FPPlayer)
+		{
+			FPPlayer->SetQhiForTest(F(1, 0.0f));
+		}
+		AutoLogLine(FString::Printf(TEXT("%s -> %.1f"), *Line, FPPlayer ? FPPlayer->Qhi() : 0.0f));
+		return true;
+	}
 	if (Cmd == TEXT("fp_teleport"))
 	{
 		// fp_teleport <x> <y> <z feet> [yaw] [pitch]

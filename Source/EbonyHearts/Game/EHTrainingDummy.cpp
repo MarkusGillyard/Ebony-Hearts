@@ -3,6 +3,8 @@
 #include "Animation/AnimSequence.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "EHAnimInstance.h"
 #include "EHPlayerCharacter.h"
 #include "Engine/SkeletalMesh.h"
@@ -87,11 +89,29 @@ AEHTrainingDummy::AEHTrainingDummy(const FObjectInitializer& ObjectInitializer)
 	GetCharacterMovement()->bRunPhysicsWithNoController = true;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 	bUseControllerRotationYaw = false;
+	// Frozen water around the feet (placeholder ice), shown while an Ice Wall's freeze holds them.
+	IceCuff = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("IceCuff"));
+	IceCuff->SetupAttachment(GetCapsuleComponent());
+	IceCuff->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	IceCuff->SetCanEverAffectNavigation(false);
+	IceCuff->SetCastShadow(false);
+	IceCuff->SetRelativeLocation(FVector(0, 0, -90.0f + 9.0f));
+	IceCuff->SetRelativeScale3D(FVector(0.9f, 0.9f, 0.18f));
+	IceCuff->SetVisibility(false);
 }
 
 void AEHTrainingDummy::BeginPlay()
 {
 	Super::BeginPlay();
+	if (UStaticMesh* Cyl = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder")))
+	{
+		IceCuff->SetStaticMesh(Cyl);
+		UMaterialInterface* Ice = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Magic/M_PH_Ice.M_PH_Ice"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+		if (Ice)
+		{
+			IceCuff->SetMaterial(0, Ice);
+		}
+	}
 	auto Seq = [](const TCHAR* Name) {
 		return LoadObject<UAnimSequence>(nullptr, *FString::Printf(TEXT("/Game/Characters/Ashka/Anims/A_Ashka_%s.A_Ashka_%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	};
@@ -149,6 +169,9 @@ void AEHTrainingDummy::ResetDummy()
 	HeadBack = HeadTwist = HeadSide = ChestBack = ChestTwist = ChestSide = FSpring();
 	Knockback = FVector::ZeroVector;
 	bKickPending = false;
+	FrozenLeft = 0.0f;
+	FreezeCount = 0;
+	IceCuff->SetVisibility(false);
 }
 
 void AEHTrainingDummy::SetMode(EEHDummyMode InMode)
@@ -177,6 +200,38 @@ FString AEHTrainingDummy::StateName() const
 FVector AEHTrainingDummy::LabelLocation() const
 {
 	return GetActorLocation() + FVector(0, 0, 115.0f);
+}
+
+FVector AEHTrainingDummy::FeetLocation() const
+{
+	return GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+}
+
+void AEHTrainingDummy::Freeze(float Seconds)
+{
+	if (Seconds <= 0.0f)
+	{
+		return;
+	}
+	FrozenLeft = FMath::Max(FrozenLeft, Seconds);
+	++FreezeCount;
+	Knockback = FVector::ZeroVector;
+	PushLeft = 0;
+	IceCuff->SetVisibility(true);
+}
+
+void AEHTrainingDummy::Displace(const FVector& Offset, AActor* Ignore)
+{
+	FHitResult Hit;
+	if (Ignore)
+	{
+		GetCapsuleComponent()->IgnoreActorWhenMoving(Ignore, true);
+	}
+	AddActorWorldOffset(FVector(Offset.X, Offset.Y, 0.0f), true, &Hit);
+	if (Ignore)
+	{
+		GetCapsuleComponent()->IgnoreActorWhenMoving(Ignore, false);
+	}
 }
 
 FVector AEHTrainingDummy::ToPlayer2D() const
@@ -221,7 +276,8 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 	{
 		++HitCount;
 		// A hit interrupts a strike in its wind-up: that is the jab's job.
-		Enter(Action == EEHFistAction::Shove ? EState::Pushed : EState::Hit, Action == EEHFistAction::Straight ? Tuning.HitstunHeavy : Tuning.HitstunLight);
+		const bool bHeavy = Action == EEHFistAction::Straight || Action == EEHFistAction::Fireball;
+		Enter(Action == EEHFistAction::Shove ? EState::Pushed : EState::Hit, bHeavy ? Tuning.HitstunHeavy : Tuning.HitstunLight);
 	}
 	if (Action == EEHFistAction::Shove && Def.Push > 0.0f && Def.PushFrames > 0)
 	{
@@ -241,7 +297,7 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 	HitDir = Dir.GetSafeNormal(UE_SMALL_NUMBER, GetActorForwardVector() * -1.0f);
 	const float Feet = GetActorLocation().Z - GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	// Below the neck (about 145 cm on this model) is the body.
-	bLastBodyShot = Action != EEHFistAction::Shove && (At.Z - Feet) < 145.0f;
+	bLastBodyShot = Action != EEHFistAction::Shove && Action != EEHFistAction::Fireball && (At.Z - Feet) < 145.0f;
 	const FVector Right = FVector::CrossProduct(FVector::UpVector, HitDir);   // the attacker's right, seen from them
 	const FVector Lever = Right * HandSide * 12.0f;
 	const float TwistSign = FMath::Sign(FVector::CrossProduct(Lever, HitDir).Z);
@@ -254,6 +310,14 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 		K.ChestBack = Action == EEHFistAction::Straight ? 220.0f : 120.0f;
 		K.ChestTwist = TwistSign * 80.0f;
 		K.Knock = Action == EEHFistAction::Straight ? 110.0f : 60.0f;
+	}
+	else if (Action == EEHFistAction::Fireball)
+	{
+		// A ball of fire in the chest or face: the whole upper body is thrown back and the body driven a step away.
+		K.ChestBack = 700.0f;
+		K.HeadBack = 520.0f;
+		K.HeadSide = FMath::FRandRange(-90.0f, 90.0f);
+		K.Knock = 260.0f;
 	}
 	else if (Action == EEHFistAction::Shove)
 	{
@@ -322,6 +386,14 @@ void AEHTrainingDummy::StepFrame()
 		--Hitstop;
 		return;
 	}
+	if (FrozenLeft > 0.0f)
+	{
+		// Feet held in the ice: no slide, no push, no turning.
+		FrozenLeft = FMath::Max(0.0f, FrozenLeft - Step);
+		Knockback = FVector::ZeroVector;
+		PushLeft = 0;
+		IceCuff->SetVisibility(FrozenLeft > 0.0f);
+	}
 	// Knockback slides the body and bleeds off quickly, like feet catching the floor.
 	const FVector KnockStep = Knockback * Step;
 	if (!KnockStep.IsNearlyZero(0.01f))
@@ -353,7 +425,7 @@ void AEHTrainingDummy::StepFrame()
 	const bool bReacting = State == EState::Hit || State == EState::Blocked || State == EState::Pushed;
 	// Turn toward the player except while reeling.
 	const FVector To = ToPlayer2D();
-	if (!bReacting && !To.IsNearlyZero())
+	if (!bReacting && !To.IsNearlyZero() && FrozenLeft <= 0.0f)
 	{
 		const float Want = To.Rotation().Yaw;
 		const float Yaw = FMath::FixedTurn(GetActorRotation().Yaw, Want, Tuning.TurnRate * Step);

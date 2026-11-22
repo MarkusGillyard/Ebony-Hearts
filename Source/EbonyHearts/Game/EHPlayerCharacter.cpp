@@ -7,6 +7,7 @@
 #include "Dom/JsonObject.h"
 #include "Engine/SkeletalMesh.h"
 #include "EHViewArms.h"
+#include "EHMagic.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -83,6 +84,16 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	{
 		return false;
 	}
+	// The seven stats: Health and Stamina default to the movement milestone's playerHealth and staminaMax; stats.health
+	// and stats.stamina, when given, set both.
+	Magic.Stats.Health = PlayerHealth;
+	Magic.Stats.Stamina = StaminaMax;
+	if (!Magic.Load(Root, OutError))
+	{
+		return false;
+	}
+	PlayerHealth = Magic.Stats.Health;
+	StaminaMax = Magic.Stats.Stamina;
 	const TArray<TSharedPtr<FJsonValue>>* SpawnArr = nullptr;
 	if (Root->TryGetArrayField(TEXT("spawn"), SpawnArr))
 	{
@@ -107,7 +118,7 @@ FString FEHFirstPersonTuning::Describe() const
 		WalkSpeed, SprintSpeed, CrouchSpeed, Acceleration, BrakingDeceleration, GroundFriction, AirControl, JumpVelocity, JumpBufferSeconds, GravityScale, StepHeight,
 		WalkableFloorDegrees, CapsuleRadius, StandHeight, CrouchHeight, StandEyeHeight, CrouchEyeHeight, StaminaMax, SprintSecondsFromFull, StaminaRecoverPerSecond,
 		StaminaRecoverDelay, SprintRestartStamina, StickDeadZone, StickYawDegPerSecond, StickPitchDegPerSecond, StickExponent, PitchLimit, WaterSurfaceZ)
-		+ FString::Printf(TEXT(" health=%.0f fists: %s"), PlayerHealth, *Fists.Describe());
+		+ FString::Printf(TEXT(" health=%.0f fists: %s; magic: %s"), PlayerHealth, *Fists.Describe(), *Magic.Describe());
 }
 
 AEHPlayerCharacter::AEHPlayerCharacter(const FObjectInitializer& ObjectInitializer)
@@ -166,6 +177,8 @@ void AEHPlayerCharacter::BeginPlay()
 		}
 	}
 	Arms->Build();
+	// A spell starts only with the Qhi for it (and, for the wall, room to raise it); the cost is taken as it starts.
+	Fists.SetGate([this](EEHFistAction Next) { return !EHIsSpell(Next) || CanCast(Next); });
 	ApplyTuning(Tuning);
 	ResetToStart();
 }
@@ -204,7 +217,117 @@ void AEHPlayerCharacter::ApplyTuning(const FEHFirstPersonTuning& InTuning)
 	CrouchedEyeHeight = Tuning.CrouchEyeHeight - Tuning.CrouchHeight * 0.5f;
 	StaminaValue = FMath::Min(StaminaValue, Tuning.StaminaMax);
 	Fists.Configure(Tuning.Fists);
+	Stats = Tuning.Magic.Stats;
 	HealthValue = FMath::Min(HealthValue, Tuning.PlayerHealth);
+	QhiValue = FMath::Min(QhiValue, Stats.Qhi);
+}
+
+void AEHPlayerCharacter::SetStats(const FEHPlayerStats& InStats)
+{
+	Stats = InStats;
+	Tuning.PlayerHealth = Stats.Health;
+	Tuning.StaminaMax = Stats.Stamina;
+	HealthValue = FMath::Min(HealthValue, Stats.Health);
+	StaminaValue = FMath::Min(StaminaValue, Stats.Stamina);
+	QhiValue = FMath::Min(QhiValue, Stats.Qhi);
+}
+
+void AEHPlayerCharacter::AddQhi(float Amount)
+{
+	const float Before = QhiValue;
+	QhiValue = FMath::Clamp(QhiValue + Amount, 0.0f, Stats.Qhi);
+	if (QhiValue != Before)
+	{
+		QhiIdle = 0.0f;
+	}
+}
+
+bool AEHPlayerCharacter::CanCast(EEHFistAction Spell) const
+{
+	const float Cost = Spell == EEHFistAction::Fireball ? Tuning.Magic.FireballCost : Tuning.Magic.IceWallCost;
+	if (QhiValue + 0.001f < Cost)
+	{
+		return false;
+	}
+	FVector Base, Facing;
+	return Spell != EEHFistAction::IceWall || FindIceWallPlacement(Base, Facing);
+}
+
+bool AEHPlayerCharacter::FindIceWallPlacement(FVector& OutBase, FVector& OutFacing) const
+{
+	// Straight ahead along the view's heading, at waist height: the wall stops short of anything solid in the way
+	// (characters are not in the way: a wall rising under one pushes it aside), and needs floor under it.
+	const FEHMagicTuning& M = Tuning.Magic;
+	FVector Forward = GetControlRotation().Vector();
+	Forward.Z = 0.0f;
+	Forward = Forward.GetSafeNormal(UE_SMALL_NUMBER, GetActorForwardVector());
+	const FVector Waist = GetActorLocation();
+	FCollisionQueryParams Params(TEXT("EHIceWallRoom"), false, this);
+	FCollisionObjectQueryParams Solid;
+	Solid.AddObjectTypesToQuery(ECC_WorldStatic);
+	Solid.AddObjectTypesToQuery(ECC_WorldDynamic);
+	float Dist = M.IceWallDistance;
+	FHitResult Hit;
+	const float Probe = M.IceWallDistance + M.IceWallThickness * 0.5f + 10.0f;
+	if (GetWorld()->SweepSingleByObjectType(Hit, Waist, Waist + Forward * Probe, FQuat::Identity, Solid, FCollisionShape::MakeSphere(20.0f), Params))
+	{
+		Dist = FMath::Min(Dist, Hit.Distance - M.IceWallThickness * 0.5f - 10.0f);
+	}
+	if (Dist < M.IceWallMinDistance)
+	{
+		return false;
+	}
+	const FVector At = Waist + Forward * Dist;
+	FHitResult Floor;
+	FCollisionObjectQueryParams Ground(ECC_WorldStatic);
+	if (!GetWorld()->LineTraceSingleByObjectType(Floor, At + FVector(0, 0, 40.0f), At - FVector(0, 0, 400.0f), Ground, Params))
+	{
+		return false;
+	}
+	OutBase = Floor.ImpactPoint;
+	OutFacing = Forward;
+	return true;
+}
+
+void AEHPlayerCharacter::ReleaseSpell(EEHFistAction Spell)
+{
+	FEHFirstPersonEvent Out;
+	Out.Action = Spell;
+	if (Spell == EEHFistAction::Fireball)
+	{
+		// From the left hand toward whatever the view's centre rests on, so the ball lands where the player aims.
+		const FVector Eye = CameraComp->GetComponentLocation();
+		const FVector Aim = CameraComp->GetForwardVector();
+		const FVector Origin = Eye + Aim * 45.0f - CameraComp->GetRightVector() * 12.0f - CameraComp->GetUpVector() * 14.0f;
+		FHitResult Hit;
+		FCollisionQueryParams Params(TEXT("EHFireballAim"), false, this);
+		FVector Target = Eye + Aim * Tuning.Magic.FireballRange;
+		if (GetWorld()->LineTraceSingleByChannel(Hit, Eye, Target, ECC_Visibility, Params) && Hit.Distance > 120.0f)
+		{
+			Target = Hit.ImpactPoint;
+		}
+		Out.Kind = FEHFirstPersonEvent::EKind::Cast;
+		Out.Location = Origin;
+		Out.Direction = (Target - Origin).GetSafeNormal(UE_SMALL_NUMBER, Aim);
+		Events.Add(Out);
+		++CastCount;
+		return;
+	}
+	FVector Base, Facing;
+	if (!FindIceWallPlacement(Base, Facing))
+	{
+		// The player turned into a pier during the cast: no wall, and the Qhi comes back.
+		AddQhi(Tuning.Magic.IceWallCost);
+		Out.Kind = FEHFirstPersonEvent::EKind::Fizzle;
+		Out.Location = GetActorLocation();
+		Events.Add(Out);
+		return;
+	}
+	Out.Kind = FEHFirstPersonEvent::EKind::Cast;
+	Out.Location = Base;
+	Out.Direction = Facing;
+	Events.Add(Out);
+	++CastCount;
 }
 
 void AEHPlayerCharacter::SetFieldOfView(float HorizontalDegrees)
@@ -244,6 +367,10 @@ void AEHPlayerCharacter::ResetToStart()
 	FistAccum = 0.0f;
 	HealthValue = Tuning.PlayerHealth;
 	SinceHurt = 100.0f;
+	QhiValue = Stats.Qhi;
+	QhiIdle = 10.0f;
+	SinceCast = 10.0f;
+	SinceRefused = 10.0f;
 	KickPitch = KickRoll = KickForward = 0.0f;
 	if (Arms)
 	{
@@ -341,10 +468,19 @@ void AEHPlayerCharacter::ApplyInput(const FEHFirstPersonInput& In, float DeltaSe
 		SinceDrain += DeltaSeconds;
 		if (SinceDrain >= Tuning.StaminaRecoverDelay)
 		{
-			StaminaValue = FMath::Min(Tuning.StaminaMax, StaminaValue + Tuning.StaminaRecoverPerSecond * DeltaSeconds);
+			StaminaValue = FMath::Min(Tuning.StaminaMax, StaminaValue + Tuning.StaminaRecoverPerSecond * Tuning.Magic.StaminaScale(Stats) * DeltaSeconds);
 		}
 	}
 	StaminaIdle = StaminaValue != Before ? 0.0f : StaminaIdle + DeltaSeconds;
+
+	// Qhi flows back at the rate Intelligence and Faith set, shortly after the last cast.
+	SinceCast += DeltaSeconds;
+	SinceRefused += DeltaSeconds;
+	QhiIdle += DeltaSeconds;
+	if (SinceCast >= Tuning.Magic.QhiRegenDelay && QhiValue < Stats.Qhi)
+	{
+		AddQhi(Tuning.Magic.QhiRegen(Stats) * DeltaSeconds);
+	}
 
 	// Jump: a press shortly before landing still counts; a jump from a crouch stands up first.
 	if (In.bJumpPressed)
@@ -396,10 +532,31 @@ void AEHPlayerCharacter::StepFists()
 		if (E.Kind == FEHFistEvent::EKind::Start)
 		{
 			FEHFirstPersonEvent Out;
-			Out.Kind = FEHFirstPersonEvent::EKind::Swing;
+			Out.Kind = EHIsSpell(E.Action) ? FEHFirstPersonEvent::EKind::CastStart : FEHFirstPersonEvent::EKind::Swing;
 			Out.Action = E.Action;
 			Out.Location = CameraComp->GetComponentLocation();
 			Events.Add(Out);
+			if (EHIsSpell(E.Action))
+			{
+				// One payment per accepted cast, as it starts.
+				AddQhi(-(E.Action == EEHFistAction::Fireball ? Tuning.Magic.FireballCost : Tuning.Magic.IceWallCost));
+				SinceCast = 0.0f;
+			}
+		}
+		else if (E.Kind == FEHFistEvent::EKind::Refused)
+		{
+			FEHFirstPersonEvent Out;
+			Out.Kind = FEHFirstPersonEvent::EKind::Refused;
+			Out.Action = E.Action;
+			Out.Location = CameraComp->GetComponentLocation();
+			Out.bNoQhi = QhiValue + 0.001f < (E.Action == EEHFistAction::Fireball ? Tuning.Magic.FireballCost : Tuning.Magic.IceWallCost);
+			Events.Add(Out);
+			SinceRefused = 0.0f;
+			++RefusedCount;
+		}
+		else if (E.Kind == FEHFistEvent::EKind::Active && EHIsSpell(E.Action) && E.Action == Fists.Action())
+		{
+			ReleaseSpell(E.Action);
 		}
 		// A technique that chained into the next one in this step has handed over; its frame is not checked again.
 		else if (E.Kind == FEHFistEvent::EKind::Active && E.Action == Fists.Action() && !Fists.HasConnected())
@@ -411,8 +568,12 @@ void AEHPlayerCharacter::StepFists()
 
 void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 {
-	// The strike reaches along the aim from the eyes: a sphere for the target, a line for walls in between.
-	const FEHStrikeDef& D = Tuning.Fists.Def(Action);
+	// The strike reaches along the aim from the eyes: a sphere for the target, a line for walls in between. Martial
+	// Prowess scales its damage and the shove's distance.
+	FEHStrikeDef D = Tuning.Fists.Def(Action);
+	const float Physical = Tuning.Magic.PhysicalScale(Stats);
+	D.Damage *= Physical;
+	D.Push *= Physical;
 	const FVector Eye = CameraComp->GetComponentLocation();
 	const FVector Aim = CameraComp->GetForwardVector();
 	const FVector End = Eye + Aim * D.Reach;
@@ -441,6 +602,10 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 		const FEHDummyHit R = Target->ReceiveHit(Action, D, Eye, At, HandSide);
 		Fists.MarkConnected();
 		Fists.OnContact();
+		if (!R.bBlocked)
+		{
+			AddQhi(Tuning.Magic.QhiPerStrike);   // a landed technique feeds the pool
+		}
 		// The view follows the blow: a small push forward into the target and a roll with the punching hand.
 		const float Weight = R.bBlocked ? 0.6f : 1.0f;
 		if (Action == EEHFistAction::Straight)
@@ -474,6 +639,13 @@ void AEHPlayerCharacter::CheckContact(EEHFistAction Action)
 		Out.Kind = FEHFirstPersonEvent::EKind::Wall;
 		Out.Action = Action;
 		Out.Location = Wall.ImpactPoint;
+		if (AEHIceWall* Ice = Cast<AEHIceWall>(Wall.GetActor()))
+		{
+			// Ice gives way to enough blows (the shove only pushes against it).
+			Out.bIce = true;
+			Out.bShattered = Ice->Damage(D.Damage);
+			Out.Damage = D.Damage;
+		}
 		Events.Add(Out);
 	}
 }

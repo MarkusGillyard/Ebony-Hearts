@@ -398,3 +398,72 @@ void AEHVfx::Splash(const FVector& At, float Scale)
 		S.Gravity = 900.0f;
 	}
 }
+
+void AEHVfx::FireTrail(const FVector& At)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	// Two layers of glow left behind the ball: a hot yellow core that dies at once and an orange skin that drifts and
+	// cools a moment longer.
+	const FVector Jitter(FMath::FRandRange(-3.0f, 3.0f), FMath::FRandRange(-3.0f, 3.0f), FMath::FRandRange(-3.0f, 3.0f));
+	Spawn(EEHFxTex::Glow, At + Jitter, 0.10f, 30.0f, 12.0f, FLinearColor(1.0f, 0.72f, 0.32f), 5.0f);
+	FParticle& O = Spawn(EEHFxTex::Glow, At + Jitter * 2.0f, FMath::FRandRange(0.16f, 0.26f), 34.0f, 10.0f, FLinearColor(1.0f, 0.34f, 0.07f), 3.0f);
+	O.Vel = FVector(FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(10.0f, 45.0f));
+	if (FMath::FRand() < 0.35f)
+	{
+		FParticle& E = Spawn(EEHFxTex::Glow, At, FMath::FRandRange(0.3f, 0.55f), 3.5f, 1.0f, EmberColor, 7.0f);
+		E.Vel = FVector(FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(20.0f, 110.0f));
+	}
+}
+
+void AEHVfx::FireBurst(const FVector& At)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	Spawn(EEHFxTex::Glow, At, 0.26f, 40.0f, 170.0f, FLinearColor(1.0f, 0.55f, 0.2f), 4.0f);
+	Spawn(EEHFxTex::Ring, At, 0.24f, 20.0f, 190.0f, FLinearColor(1.0f, 0.42f, 0.1f), 2.4f);
+	for (int32 i = 0; i < 14; ++i)
+	{
+		FParticle& F = Spawn(EEHFxTex::Glow, At, FMath::FRandRange(0.22f, 0.45f), FMath::FRandRange(16.0f, 30.0f), 6.0f, FLinearColor(1.0f, 0.38f, 0.08f), 3.4f);
+		F.Vel = FMath::VRand() * FMath::FRandRange(150.0f, 420.0f) + FVector(0, 0, 60.0f);
+	}
+	for (int32 i = 0; i < 6; ++i)
+	{
+		FParticle& E = Spawn(EEHFxTex::Glow, At, FMath::FRandRange(0.45f, 0.9f), 3.5f, 1.0f, EmberColor, 7.0f);
+		E.Vel = FMath::VRand() * FMath::FRandRange(200.0f, 500.0f) + FVector(0, 0, 150.0f);
+		E.Gravity = 600.0f;
+	}
+}
+
+void AEHVfx::Steam(const FVector& At, float Scale)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	for (int32 i = 0; i < 5; ++i)
+	{
+		FParticle& P = Spawn(EEHFxTex::Glow, At + FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-20.0f, 30.0f)) * Scale,
+		                     FMath::FRandRange(0.7f, 1.2f), 40.0f * Scale, 160.0f * Scale, FLinearColor(0.55f, 0.6f, 0.66f), 0.4f);
+		P.Vel = FVector(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(50.0f, 110.0f));
+	}
+}
+
+void AEHVfx::IceBurst(const FVector& At, float Scale)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	Spawn(EEHFxTex::Glow, At, 0.2f, 30.0f * Scale, 110.0f * Scale, FLinearColor(0.5f, 0.8f, 1.0f), 2.2f);
+	for (int32 i = 0; i < FMath::RoundToInt(10 * Scale); ++i)
+	{
+		FParticle& F = Spawn(EEHFxTex::Spark, At, FMath::FRandRange(0.3f, 0.6f), FMath::FRandRange(6.0f, 12.0f), 2.0f, FLinearColor(0.7f, 0.9f, 1.0f), 2.5f);
+		F.Vel = FMath::VRand() * FMath::FRandRange(150.0f, 380.0f) * Scale + FVector(0, 0, 120.0f);
+		F.Gravity = 900.0f;
+	}
+}

@@ -52,6 +52,12 @@ private:
 	TObjectPtr<UMaterialInstanceDynamic> SkinMaterial;
 	UPROPERTY()
 	TObjectPtr<UMaterialInstanceDynamic> WrapMaterial;
+	// A glow in each hand while a spell gathers (fire in the left hand, frost in both for the wall), drawn with the
+	// arms so it sits on the hand the player sees.
+	UPROPERTY()
+	TObjectPtr<UStaticMeshComponent> Glow[2];
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> GlowMaterial[2];
 
 	FArm Arms[2];   // 0 left (lead hand: the jab), 1 right (rear hand: the straight)
 	FVector ShownL = FVector::ZeroVector;
@@ -69,6 +75,8 @@ private:
 	void PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side);
 	void PoseMeshArms(const FVector& L, const FVector& R);
 	void ShowParts(bool bShow);
+	void BuildGlows();
+	void SetGlow(int32 Hand, const FLinearColor& Color, float Amount);
 public:
 	bool UsesModelArms() const { return ArmsMesh != nullptr; }
 	FString Describe() const;

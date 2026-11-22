@@ -135,6 +135,9 @@ public:
 	void InjectAnalog(int32 DeviceKey, const FKey& Axis, float Value);
 	// Mouse movement in counts, as if from the device.
 	void InjectMouseMove(const FVector2D& Delta) { if (bFirstPerson) { MouseDelta += Delta; } }
+	// F10, reserved for the developer panel (development builds act on it; it is never a gameplay binding).
+	bool TakeDeveloperKey() { const bool b = bDeveloperKey; bDeveloperKey = false; return b; }
+	void InjectDeveloperKey() { bDeveloperKey = true; }
 	// Removes a device created by injected input (self-tests), so it never shows up as a real controller.
 	void ForgetDevice(int32 DeviceKey);
 
@@ -151,6 +154,7 @@ private:
 	bool bRegistered = false;
 	bool bFirstPerson = false;
 	FVector2D MouseDelta = FVector2D::ZeroVector;
+	bool bDeveloperKey = false;
 	bool bCapturing = false;
 	EEHBindingSet CaptureSet = EEHBindingSet::KeyboardA;
 	FKey CapturedKey;

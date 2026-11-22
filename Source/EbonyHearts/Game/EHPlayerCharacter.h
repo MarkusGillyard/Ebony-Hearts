@@ -6,6 +6,7 @@
 
 #include "CoreMinimal.h"
 #include "EHFists.h"
+#include "EHMagic.h"
 #include "EHTrainingDummy.h"
 #include "GameFramework/Character.h"
 
@@ -56,6 +57,7 @@ struct FEHFirstPersonTuning
 	float PlayerHealth = 100.0f;
 	FEHFistTuning Fists;
 	FEHDummyTuning Dummy;
+	FEHMagicTuning Magic;   // stats, Qhi and the spells; stats.health and stats.stamina set PlayerHealth and StaminaMax
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);
@@ -69,14 +71,14 @@ struct FEHFirstPersonInput
 	bool bJumpPressed = false;
 	bool bCrouch = false;                     // wanted posture (holds and toggles are resolved by the director)
 	bool bSprint = false;
-	EEHFistAction FistPress = EEHFistAction::None;   // the technique pressed this frame, if any
+	EEHFistAction FistPress = EEHFistAction::None;   // the technique or spell pressed this frame, if any
 	bool bBlock = false;                             // the guard button is held
 };
 
 // Something the presentation reacts to (sounds, ripples).
 struct FEHFirstPersonEvent
 {
-	enum class EKind : uint8 { Step, Jump, Land, Reset, Swing, Contact, Wall, Hurt, Guarded, Died };
+	enum class EKind : uint8 { Step, Jump, Land, Reset, Swing, Contact, Wall, Hurt, Guarded, Died, CastStart, Cast, Refused, Fizzle };
 	EKind Kind = EKind::Step;
 	FVector Location = FVector::ZeroVector;   // at the feet
 	float WaterDepth = 0.0f;                  // cm of water at the feet (0 when dry)
@@ -85,6 +87,10 @@ struct FEHFirstPersonEvent
 	float Damage = 0.0f;                      // dealt (Contact) or taken (Hurt, Guarded)
 	bool bBlocked = false;                    // Contact: the target guarded it
 	bool bBody = false;                       // Contact: landed on the body rather than the head
+	FVector Direction = FVector::ZeroVector;  // Cast: the spell's line (Fireball) or the wall's facing (Ice Wall)
+	bool bNoQhi = false;                      // Refused: not enough Qhi (otherwise no room for the wall)
+	bool bIce = false;                        // Wall: the strike landed on an Ice Wall
+	bool bShattered = false;                  // Wall: and broke it
 };
 
 UCLASS(NotBlueprintable)
@@ -117,6 +123,18 @@ public:
 	void ResetToStart();
 	void TakeEvents(TArray<FEHFirstPersonEvent>& Out) { Out.Append(Events); Events.Reset(); }
 
+	float Qhi() const { return QhiValue; }
+	float QhiFraction() const { return Stats.Qhi > 0.0f ? QhiValue / Stats.Qhi : 0.0f; }
+	float SecondsSinceQhiChange() const { return QhiIdle; }
+	float SecondsSinceRefused() const { return SinceRefused; }
+	const FEHPlayerStats& GetStats() const { return Stats; }
+	// Live stat changes (development tools); pools are clamped to their new maximum.
+	void SetStats(const FEHPlayerStats& InStats);
+	void SetQhiForTest(float Value) { QhiValue = FMath::Clamp(Value, 0.0f, Stats.Qhi); QhiIdle = 0.0f; }
+	// Where an Ice Wall cast now would stand (its base on the floor) and face; false when there is no room.
+	bool FindIceWallPlacement(FVector& OutBase, FVector& OutFacing) const;
+	int32 SpellsCast() const { return CastCount; }
+	int32 SpellsRefused() const { return RefusedCount; }
 	float Stamina() const { return StaminaValue; }
 	float StaminaFraction() const { return Tuning.StaminaMax > 0.0f ? StaminaValue / Tuning.StaminaMax : 0.0f; }
 	float SecondsSinceStaminaChange() const { return StaminaIdle; }
@@ -166,6 +184,16 @@ private:
 	float KickPitch = 0.0f;        // degrees, decaying camera kick
 	float KickRoll = 0.0f;         // degrees
 	float KickForward = 0.0f;      // cm along the view
+	FEHPlayerStats Stats;
+	float QhiValue = 100.0f;
+	float QhiIdle = 10.0f;         // seconds since Qhi last changed
+	float SinceCast = 10.0f;
+	float SinceRefused = 10.0f;
+	int32 CastCount = 0;
+	int32 RefusedCount = 0;
+	bool CanCast(EEHFistAction Spell) const;
+	void ReleaseSpell(EEHFistAction Spell);
+	void AddQhi(float Amount);
 
 	void UpdateWater();
 	void UpdateCamera(float DeltaSeconds);

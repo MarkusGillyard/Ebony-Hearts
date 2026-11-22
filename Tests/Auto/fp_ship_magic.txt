@@ -1,0 +1,111 @@
+# The spells in the Shipping package (the F10 check expects no developer panel; a development build opens it): device inputs and observation only (no teleports, no stat changes).
+# From the start the player casts at the training dummy 4.5 m ahead: Fireball, Ice Wall with its freeze, the wall
+# blocking the way, Fireball melting it, a cast refused without the Qhi, the controller, F10 (no panel in Shipping),
+# pause mid-cast and reset. Also the review footage's script: record with capture.py --start-on
+# <evidence>/auto_log.txt:review_start.
+wait 5
+fp_expect screen eq 12
+fp_expect qhi eq 100
+log review_start
+wait 1.0
+
+log == Fireball at the dummy: 20 Qhi, 25 damage
+press kbA FPFireball
+wait 1.2
+fp_expect fireball_hits eq 1
+fp_expect dummy_damage eq 25
+fp_expect qhi lt 90
+fp_dummy_reset
+wait 1.0
+
+log == Ice Wall: it rises across the view, freezes the water and catches the dummy's feet
+press kbA FPIceWall
+wait 0.6
+fp_expect walls eq 1
+fp_expect wall_ice_water eq 1
+fp_expect dummy_frozen eq 1
+log walking into it stops at the ice
+hold kbA FPForward
+wait 1.2
+release kbA FPForward
+fp_expect y gt 130
+wait 0.8
+
+log == Fireball melts it
+press kbA FPFireball
+wait 1.2
+fp_expect walls eq 0
+fp_expect walls_melted eq 1
+hold kbA FPForward
+wait 0.6
+release kbA FPForward
+fp_expect y lt 120
+wait 0.5
+
+log == Qhi runs short: Fireballs in a row until one is refused, with nothing spent
+press kbA FPFireball
+wait 0.5
+press kbA FPFireball
+wait 0.5
+press kbA FPFireball
+wait 0.5
+fp_expect qhi lt 20
+press kbA FPFireball
+wait 0.3
+fp_expect refused_qhi gt 0
+fp_expect qhi lt 20
+fp_dummy_reset
+wait 1.0
+
+log == strikes feed Qhi: jab, straight, then a Fireball straight after
+press kbA FPJab
+wait 0.25
+press kbA FPStraight
+wait 0.7
+fp_expect dummy_hits eq 2
+fp_dummy_reset
+wait 3.0
+press kbA FPShove
+wait 0.25
+press kbA FPFireball
+wait 1.2
+fp_dummy_reset
+wait 1.0
+
+log == controller: L2 / LT Fireball, Triangle / Y Ice Wall
+fp_reset
+wait 1.0
+axis pad7 Gamepad_LeftTriggerAxis 1.0
+wait 0.1
+axis pad7 Gamepad_LeftTriggerAxis 0.0
+wait 1.2
+fp_expect fireball_hits eq 1
+fp_dummy_reset
+wait 0.8
+press pad7 FPIceWall
+wait 1.5
+fp_expect walls eq 1
+log review_end
+
+log == F10 opens nothing in Shipping (the developer panel exists only in development builds)
+fp_devkey
+wait 0.3
+fp_expect paused eq 0
+fp_expect dev_panel eq 0
+
+log == pause mid-cast, then Return to the start clears every spell
+press kbA FPFireball
+wait 0.1
+press kbA Pause
+fp_expect action eq 4
+press kbA Down
+press kbA Confirm
+wait 0.4
+fp_expect action eq 0
+fp_expect walls eq 0
+fp_expect fireballs eq 0
+fp_expect qhi eq 100
+fp_expect dummy_frozen eq 0
+# Footage capture runs slower than real time; the window stays open until it has every frame.
+wait 12
+quit

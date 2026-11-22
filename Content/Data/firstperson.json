@@ -80,7 +80,19 @@
     "blockReduction": 0.7,
     "blockAngle": 70,
     "blockMoveScale": 0.6,
-    "armsLinger": 0.6
+    "armsLinger": 0.6,
+    "fireballCast": {
+      "startup": 12,
+      "active": 1,
+      "recovery": 16,
+      "moveScale": 0.6
+    },
+    "iceWallCast": {
+      "startup": 14,
+      "active": 1,
+      "recovery": 20,
+      "moveScale": 0.5
+    }
   },
   "dummy": {
     "strikeDamage": 10,
@@ -100,5 +112,44 @@
       0
     ],
     "spawnYaw": 90
+  },
+  "stats": {
+    "comment": "The seven stats at fixed prototype values. Intelligence and Faith speed Qhi regeneration, Dexterity Stamina recovery, Martial Prowess physical damage and the shove; each point above base adds the given share.",
+    "health": 100,
+    "qhi": 100,
+    "stamina": 100,
+    "intelligence": 10,
+    "faith": 10,
+    "dexterity": 10,
+    "martialProwess": 10,
+    "base": 10,
+    "qhiRegenPerSecond": 5,
+    "qhiRegenPerPoint": 0.05,
+    "qhiRegenDelay": 0.5,
+    "qhiPerStrike": 4,
+    "staminaPerDexterity": 0.05,
+    "physicalPerProwess": 0.05
+  },
+  "fireball": {
+    "cost": 20,
+    "damage": 25,
+    "speed": 2200,
+    "radius": 14,
+    "range": 3000,
+    "hitstop": 5
+  },
+  "iceWall": {
+    "cost": 30,
+    "seconds": 8,
+    "distance": 220,
+    "minDistance": 110,
+    "width": 300,
+    "height": 240,
+    "thickness": 40,
+    "riseSeconds": 0.3,
+    "meltSeconds": 0.5,
+    "health": 60,
+    "freezeRadius": 280,
+    "freezeSeconds": 2
   }
 }

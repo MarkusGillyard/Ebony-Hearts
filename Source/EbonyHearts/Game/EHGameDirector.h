@@ -198,6 +198,10 @@ private:
 	TObjectPtr<AEHPlayerCharacter> FPPlayer;
 	UPROPERTY()
 	TObjectPtr<AEHTrainingDummy> FPDummy;
+	UPROPERTY()
+	TArray<TObjectPtr<AEHFireball>> FPFireballs;
+	UPROPERTY()
+	TArray<TObjectPtr<AEHIceWall>> FPWalls;
 
 	// Data
 	eh::Rules Rules;
@@ -322,6 +326,21 @@ private:
 	int32 FPDeaths = 0;
 	int32 FPGuardedCount = 0;
 	int32 FPHurtCount = 0;
+	// Spells
+	FEHWater FPWater;
+	float QhiMeterAlpha = 0.0f;
+	int32 FPFireballHits = 0;       // fireballs that reached the dummy
+	int32 FPWallsMelted = 0;
+	int32 FPWallsShattered = 0;
+	int32 FPWallsExpired = 0;
+	int32 FPWallsRaised = 0;
+	int32 FPFizzles = 0;
+	int32 FPRefusedNoQhi = 0;
+	int32 FPRefusedNoRoom = 0;
+	bool bDevPanel = false;          // development builds: F10 panel (stats, resources, dummy)
+	void TickSpells(float DeltaSeconds);
+	void ClearSpells();
+	void BuildDeveloperPanel();
 	int32 FrameCaptureLeft = 0;     // automation: fp_frames screenshots every rendered frame
 	int32 FrameCaptureIndex = 0;
 	double FrameCaptureNext = 0.0;

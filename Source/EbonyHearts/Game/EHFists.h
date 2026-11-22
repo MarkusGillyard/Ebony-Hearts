@@ -1,6 +1,6 @@
-// The first-person physical techniques as plain game state: jab, straight, shove and a held block, stepped at a fixed
-// 60 frames per second. Hit detection, reactions and the arms all read this state, so timing, contact and what the
-// player sees come from one place. Frame counts are combat frames (1/60 s).
+// The first-person techniques as plain game state: jab, straight, shove, a held block and the two spells' casts,
+// stepped at a fixed 60 frames per second. Hit detection, casting, reactions and the arms all read this state, so
+// timing, contact and what the player sees come from one place. Frame counts are combat frames (1/60 s).
 #pragma once
 
 #include "CoreMinimal.h"
@@ -12,7 +12,11 @@ enum class EEHFistAction : uint8
 	Jab,
 	Straight,
 	Shove,
+	Fireball,   // a cast: its single active frame releases the spell
+	IceWall,
 };
+
+inline bool EHIsSpell(EEHFistAction Action) { return Action == EEHFistAction::Fireball || Action == EEHFistAction::IceWall; }
 
 const TCHAR* EHFistActionName(EEHFistAction Action);
 
@@ -36,6 +40,8 @@ struct FEHFistTuning
 	FEHStrikeDef Jab;
 	FEHStrikeDef Straight;
 	FEHStrikeDef Shove;
+	FEHStrikeDef Fireball;   // casts: startup, one release frame, recovery and walking speed; the rest is unused
+	FEHStrikeDef IceWall;
 	int32 BufferFrames = 8;       // a press this many frames before the current technique allows it still counts
 	int32 BlockRaiseFrames = 5;   // frames until a raised guard protects
 	int32 BlockLowerFrames = 6;   // frames to lower it again before a technique can start
@@ -52,7 +58,7 @@ struct FEHFistTuning
 
 struct FEHFistEvent
 {
-	enum class EKind : uint8 { Start, Active, End, BlockUp, BlockDown };
+	enum class EKind : uint8 { Start, Active, End, BlockUp, BlockDown, Refused };
 	EKind Kind = EKind::Start;
 	EEHFistAction Action = EEHFistAction::None;
 	int32 ActiveFrame = 0;   // for Active: 0 on the first active frame
@@ -62,6 +68,9 @@ class FEHFists
 {
 public:
 	void Configure(const FEHFistTuning& InTuning) { Tuning = InTuning; }
+	// Asked when a technique is about to start; false refuses it (a spell without the Qhi, or with no room to cast)
+	// and reports a Refused event instead. The cost is taken by whoever handles the Start event.
+	void SetGate(TFunction<bool(EEHFistAction)> InGate) { Gate = MoveTemp(InGate); }
 	void Reset();
 	// Input for the next step. A press is held in a short buffer; a press while guarding is dropped.
 	void Press(EEHFistAction Action);
@@ -98,6 +107,7 @@ private:
 	int32 GuardFrames = 0;       // frames the guard has been rising (capped at the raise time)
 	int32 LowerFrames = 0;       // frames left of lowering
 	int32 IdleFrames = 600;
+	TFunction<bool(EEHFistAction)> Gate;
 
 	bool CanStart(EEHFistAction Next) const;
 	void Start(EEHFistAction Next, TArray<FEHFistEvent>& OutEvents);

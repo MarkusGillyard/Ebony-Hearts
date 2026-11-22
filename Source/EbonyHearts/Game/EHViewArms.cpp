@@ -26,6 +26,11 @@ const FVector JabLoad(33.0f, -13.0f, -14.0f), JabOut(60.0f, -4.0f, -5.0f);
 const FVector StraightLoad(27.0f, 15.0f, -18.0f), StraightOut(62.0f, 1.0f, -5.0f);
 const FVector ShoveLoadL(29.0f, -14.0f, -16.0f), ShoveLoadR(29.0f, 14.0f, -16.0f);
 const FVector ShoveOutL(56.0f, -12.0f, -12.0f), ShoveOutR(56.0f, 12.0f, -12.0f);
+// Casts. Fireball: the left hand draws back beside the face while the fire gathers, then throws it forward.
+// Ice Wall: both hands sink low and drive forward and up, raising the wall.
+const FVector FireLoad(24.0f, -17.0f, -6.0f), FireOut(60.0f, -7.0f, -6.0f);
+const FVector IceLoadL(30.0f, -16.0f, -34.0f), IceLoadR(30.0f, 16.0f, -34.0f);
+const FVector IceOutL(54.0f, -17.0f, -6.0f), IceOutR(54.0f, 17.0f, -6.0f);
 
 float Smooth(float T) { T = FMath::Clamp(T, 0.0f, 1.0f); return T * T * (3.0f - 2.0f * T); }
 float Accelerate(float T) { T = FMath::Clamp(T, 0.0f, 1.0f); return T * T; }
@@ -97,6 +102,7 @@ void UEHViewArms::Build()
 		{
 			A->SetSample(FistPose, 0.0);
 		}
+		BuildGlows();
 		return;
 	}
 	UStaticMesh* Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
@@ -116,6 +122,65 @@ void UEHViewArms::Build()
 		A.Fore = MakePart(Cylinder, SkinMaterial);
 		A.Fist = MakePart(Sphere, WrapMaterial);
 	}
+	BuildGlows();
+}
+
+void UEHViewArms::BuildGlows()
+{
+	UStaticMesh* Quad = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
+	UMaterialInterface* Add = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/VFX/M_VFX_Additive.M_VFX_Additive"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	UTexture* Tex = LoadObject<UTexture>(nullptr, TEXT("/Game/VFX/T_FX_Glow.T_FX_Glow"), nullptr, LOAD_NoWarn | LOAD_Quiet);
+	if (!Quad || !Add)
+	{
+		return;
+	}
+	for (int32 H = 0; H < 2; ++H)
+	{
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(GetOwner(), H == 0 ? TEXT("SpellGlowL") : TEXT("SpellGlowR"));
+		if (ArmsMesh)
+		{
+			C->SetupAttachment(ArmsMesh, H == 0 ? TEXT("hand_l") : TEXT("hand_r"));
+		}
+		else
+		{
+			C->SetupAttachment(Arms[H].Fist ? static_cast<USceneComponent*>(Arms[H].Fist) : static_cast<USceneComponent*>(this));
+		}
+		C->SetStaticMesh(Quad);
+		GlowMaterial[H] = UMaterialInstanceDynamic::Create(Add, this);
+		if (Tex)
+		{
+			GlowMaterial[H]->SetTextureParameterValue(TEXT("Tex"), Tex);
+		}
+		C->SetMaterial(0, GlowMaterial[H]);
+		C->SetUsingAbsoluteScale(true);
+		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		C->SetCastShadow(false);
+		C->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+		C->SetVisibility(false);
+		C->RegisterComponent();
+		Glow[H] = C;
+	}
+}
+
+void UEHViewArms::SetGlow(int32 Hand, const FLinearColor& Color, float Amount)
+{
+	UStaticMeshComponent* C = Glow[Hand];
+	if (C == nullptr)
+	{
+		return;
+	}
+	const bool bOn = Amount > 0.01f;
+	C->SetVisibility(bOn);
+	if (!bOn)
+	{
+		return;
+	}
+	// A quad facing the eyes, a little in front of the knuckles.
+	const FVector Forward = GetComponentRotation().Vector();
+	C->SetWorldRotation(FRotationMatrix::MakeFromZ(-Forward).Rotator());
+	C->SetWorldScale3D(FVector(0.025f + 0.045f * Amount));
+	GlowMaterial[Hand]->SetVectorParameterValue(TEXT("Color"), Color);
+	GlowMaterial[Hand]->SetScalarParameterValue(TEXT("Intensity"), 2.0f + 6.0f * Amount);
 }
 
 void UEHViewArms::SetFirstPersonRendering(bool bOn)
@@ -198,6 +263,8 @@ void UEHViewArms::SnapHidden()
 	Visible = 0.0f;
 	bShown = false;
 	ShowParts(false);
+	SetGlow(0, FLinearColor::Black, 0.0f);
+	SetGlow(1, FLinearColor::Black, 0.0f);
 }
 
 void UEHViewArms::PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side)
@@ -256,17 +323,31 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 			R = StrikePath(StartR, StraightLoad, StraightOut, ReadyR, F, D);
 			L = FMath::Lerp(StartL, ReadyL, GuardIn);
 			break;
+		case EEHFistAction::Fireball:
+			L = StrikePath(StartL, FireLoad, FireOut, ReadyL, F, D);
+			R = FMath::Lerp(StartR, ReadyR, GuardIn);
+			break;
+		case EEHFistAction::IceWall:
+			L = StrikePath(StartL, IceLoadL, IceOutL, ReadyL, F, D);
+			R = StrikePath(StartR, IceLoadR, IceOutR, ReadyR, F, D);
+			break;
 		default:
 			L = StrikePath(StartL, ShoveLoadL, ShoveOutL, ReadyL, F, D);
 			R = StrikePath(StartR, ShoveLoadR, ShoveOutR, ReadyR, F, D);
 			break;
 		}
+		// The spell gathers in the hand through the wind-up and leaves it on release.
+		const float Gather = EHIsSpell(Action) && F < D.Startup + D.Active ? Smooth(F / FMath::Max(1, D.Startup)) : 0.0f;
+		SetGlow(0, Action == EEHFistAction::IceWall ? FLinearColor(0.45f, 0.75f, 1.0f) : FLinearColor(1.0f, 0.45f, 0.12f), Action == EEHFistAction::IceWall || Action == EEHFistAction::Fireball ? Gather : 0.0f);
+		SetGlow(1, FLinearColor(0.45f, 0.75f, 1.0f), Action == EEHFistAction::IceWall ? Gather : 0.0f);
 		Visible = 1.0f;
 		RestL = L;
 		RestR = R;
 	}
 	else
 	{
+		SetGlow(0, FLinearColor::Black, 0.0f);
+		SetGlow(1, FLinearColor::Black, 0.0f);
 		// Between techniques the fists settle: up in the guard while it is held, at the ready for a moment after a
 		// technique, then down out of view.
 		const float Guard = Fists.GuardLevel();

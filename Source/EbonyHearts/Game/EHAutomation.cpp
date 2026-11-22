@@ -1200,6 +1200,22 @@ void AEHGameDirector::RunBindingsSelfTest()
 			V6.Bindings.Get(S::FPKeyboard, A::FPStraight, 0) == EKeys::RightMouseButton && !V6.Bindings.HasConflicts(&V6Report) && Warning.Contains(TEXT("Jab")),
 			TEXT("version 6 to 7: the player's own mouse binding stays; the jab is left without it and the notice says so ") + Warning);
 	}
+	// Spells (settings version 8).
+	Check(D.Get(S::FPKeyboard, A::FPFireball, 0) == EKeys::F && D.Get(S::FPKeyboard, A::FPIceWall, 0) == EKeys::R &&
+		D.Get(S::FPController, A::FPFireball, 0) == EKeys::Gamepad_LeftTrigger && D.Get(S::FPController, A::FPIceWall, 0) == EKeys::Gamepad_FaceButton_Top,
+		TEXT("spells: F and R; L2 / LT and Triangle / Y"));
+	{
+		const FString V7Path = FPaths::Combine(Dir, TEXT("fp_v7_jump_on_f.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":7,\"bindings\":{\"fpKeyboard\":{\"FirstPersonShove\":[\"F\",\"\",\"\"]},\"fpController\":{\"FirstPersonJump\":[\"Gamepad_FaceButton_Top\",\"\",\"\"]}}}"), *V7Path);
+		Warning.Reset();
+		const FEHSettings V7 = FEHSettings::Load(&Warning, V7Path);
+		FString V7Report;
+		Check(V7.Bindings.Get(S::FPKeyboard, A::FPShove, 0) == EKeys::F && V7.Bindings.IsUnbound(S::FPKeyboard, A::FPFireball) &&
+			V7.Bindings.Get(S::FPKeyboard, A::FPIceWall, 0) == EKeys::R && V7.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Top &&
+			V7.Bindings.IsUnbound(S::FPController, A::FPIceWall) && V7.Bindings.Get(S::FPController, A::FPFireball, 0) == EKeys::Gamepad_LeftTrigger &&
+			!V7.Bindings.HasConflicts(&V7Report) && Warning.Contains(TEXT("Fireball")) && Warning.Contains(TEXT("Ice Wall")),
+			TEXT("version 7 to 8: the player's own F and Triangle stay theirs; the spells are left without them and the notice says so ") + Warning);
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 
