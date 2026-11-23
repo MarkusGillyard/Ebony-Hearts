@@ -35,8 +35,8 @@ of each script for another machine.
 | 4. Animations | `Tools/Blender/anim/build_all.sh [--review]` | `sourceart/anims/<char>/A_*.fbx`, contact sheets |
 | 5. Audio | `<blender>/5.2/python/bin/python3.13 -I Tools/Audio/build_audio.py` | `sourceart/audio/<category>/S_*.wav` |
 | 6. Effect textures | `python3 Tools/Assets/make_vfx_textures.py <sourceart>/vfx` | `T_FX_*.png` |
-| 7. Interface source art | `python3 -I Tools/Assets/make_ui_textures.py <creator-supplied logo PNG> <sourceart>/ui`; copy the creator-supplied key art byte-for-byte to `<sourceart>/ui/T_KeyArt.jpg` (JPEG data despite its original `.png` name). Check both supplied hashes against `Docs/AssetLedger.md` before import | `sourceart/ui/T_Logo.png`, `T_LogoSmall.png`, `T_KeyArt.jpg` |
-| 8. Unreal content | editor Python, in order: `Tools/Unreal/build_content.py`, `build_audio.py`, `import_ui.py`, `build_characters.py` (headless commandlet); `build_level.py` (needs the full editor) | `/Game/...` assets and `/Game/Maps/DrownedChapel` |
+| 7. Interface source art | None since 2026-11-23: the title is typeset in Cinzel (the AI-generated logo and key art were removed) | None |
+| 8. Unreal content | editor Python, in order: `Tools/Unreal/build_content.py`, `build_audio.py`, `build_characters.py` (headless commandlet); `build_level.py` (needs the full editor) | `/Game/...` assets and `/Game/Maps/DrownedChapel` |
 | 9. Game code | `Build.sh EbonyHeartsEditor Linux Development -Project=...` | editor module |
 | 10. Package | `RunUAT.sh BuildCookRun -project=... -platform=Linux -clientconfig=Shipping -build -cook -stage -package -pak -archive -archivedirectory=<dir> -installed -nocompileeditor -skipbuildeditor -unrealexe=UnrealEditor-Cmd` | standalone package |
 | 11. Release | `python3 -I Tools/Package/stage_release.py <archive>/Linux <out> <name> <commit>` | release folder without debug symbols, plus `THIRD_PARTY_NOTICES.txt`, `VERSION.txt`, `<name>.tar.gz`, `SHA256SUMS` and a per-file checksum list |

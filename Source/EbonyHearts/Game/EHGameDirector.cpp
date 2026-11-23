@@ -111,6 +111,13 @@ void AEHGameDirector::BeginPlay()
 	bSessionDisplayOverride = Settings.WindowMode != DiskDisplay.WindowMode || Settings.Resolution != DiskDisplay.Resolution || Settings.bVSync != DiskDisplay.bVSync;
 	RouterPtr = MakeShared<FEHInputRouter>(&Settings.Bindings);
 	RouterPtr->Register();
+#if !UE_BUILD_SHIPPING
+	// Development only: -EHSlice starts the fighting slice's title and menus instead of the first-person prototype.
+	if (FParse::Param(FCommandLine::Get(), TEXT("EHSlice")))
+	{
+		bFirstPersonMode = false;
+	}
+#endif
 	RouterPtr->SetFirstPerson(bFirstPersonMode);
 	const bool bDataOk = bFirstPersonMode ? LoadFirstPersonData() : LoadData();
 	FString FontMissing;
@@ -119,20 +126,6 @@ void AEHGameDirector::BeginPlay()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("EbonyHearts: fonts missing: %s"), *FontMissing);
 	}
-	auto LoadBrush = [](const TCHAR* Path, TObjectPtr<UTexture2D>& Tex, FSlateBrush& Brush) {
-		Tex = LoadObject<UTexture2D>(nullptr, Path, nullptr, LOAD_NoWarn | LOAD_Quiet);
-		if (Tex)
-		{
-			Brush.SetResourceObject(Tex);
-			// The imported size is the artwork's true aspect even before the texture's platform data has streamed in.
-			const FIntPoint Imported = Tex->GetImportedSize();
-			Brush.ImageSize = Imported.X > 0 && Imported.Y > 0 ? FVector2D(Imported.X, Imported.Y) : FVector2D(Tex->GetSizeX(), Tex->GetSizeY());
-			Brush.DrawAs = ESlateBrushDrawType::Image;
-		}
-	};
-	LoadBrush(TEXT("/Game/UI/T_Logo.T_Logo"), TitleTexture, TitleBrush);
-	LoadBrush(TEXT("/Game/UI/T_LogoSmall.T_LogoSmall"), LogoSmallTexture, LogoSmallBrush);
-	LoadBrush(TEXT("/Game/UI/T_KeyArt.T_KeyArt"), KeyArtTexture, KeyArtBrush);
 	Audio.Init(GetWorld());
 	SpawnWorldActors();
 	ApplySettings(true);

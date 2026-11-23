@@ -84,25 +84,16 @@ No new third-party inputs were added.
 
 ## Creator-supplied
 
-- **Logo** (`/Game/UI/T_Logo`, `/Game/UI/T_LogoSmall`). Supplied by the creator on 2026-11-09 as `1000012869.png`,
-  the file `Ebony Hearts Title Card.png` (PNG, 2172 × 724, RGBA), SHA-256
-  `5508d12d6f4b9acf2c023e3fd85bbf17134cb1b670b61f9bda3693a5d243d61f`. It replaces the title card below as the
-  game's wordmark everywhere (the creator's decision, 2026-11-09).
-  - `T_Logo` is the file unmodified.
-  - `T_LogoSmall` is the same logo, downscaled to 1024 px wide for menus by `Tools/Assets/make_ui_textures.py`, which
-    checks the hash first. It is imported by `Tools/Unreal/import_ui.py`.
-  - **Origin and rights.** Supplied by the creator for Ebony Hearts. Its method of creation is not verified here. If
-    it was AI-generated, the notes on the earlier title card apply in the same way.
-  - **Handling.** Keep the original (`sourceart/ui/supplied-20261109/` in the delivery workspace, with `SHA256SUMS`).
-    Do not redraw or redesign the logo without the creator's approval.
-- **Key art** (`/Game/UI/T_KeyArt`, the title screen since the creator chose direction A on 2026-11-09). Supplied by the creator on 2026-11-09 as `1000012878.png`, the file `EH Concept
-  Art.png` (1536 × 864), SHA-256 `21992941f9b3ad508701c4f061ffcb32f8a7ecd8a51d3b742ae9b72acaaf7f69`.
-  - The data is a JPEG despite the `.png` name, so it is lossy.
-  - A copy with the same bytes is named "ChatGPT Image Nov 9, 2026", which suggests AI generation (not confirmed).
-  - The painting contains the logo's wordmark, so it can serve as a title screen but not behind other screens.
-  - The depicted buildings are atmosphere, not canon locations.
-  - Imported unchanged by `Tools/Unreal/import_ui.py` (BC1, 1536 × 864). A larger or lossless version would be
-    sharper at 1080p and above.
+- **Logo and key art, removed** (were `/Game/UI/T_Logo`, `/Game/UI/T_LogoSmall` and `/Game/UI/T_KeyArt`; removed from
+  the content on 2026-11-23 at the creator's decision, kept in the repository's history).
+  - **Origin.** AI-generated: the creator confirmed on 2026-11-23 that the logo and the key art were all made with AI.
+    The logo was supplied on 2026-11-09 as `1000012869.png` (SHA-256
+    `5508d12d6f4b9acf2c023e3fd85bbf17134cb1b670b61f9bda3693a5d243d61f`), the key art as `1000012878.png` (SHA-256
+    `21992941f9b3ad508701c4f061ffcb32f8a7ecd8a51d3b742ae9b72acaaf7f69`).
+  - **Why removed.** The creator wants Ebony Hearts on Steam without AI-generated content shown to players.
+  - **Replacement.** The title and main menu set the name "EBONY HEARTS" as text in Cinzel Regular (SIL OFL 1.1,
+    listed above), drawn by the game's code. No image replaces them.
+  - **Handling.** The creator keeps his original files; nothing from them ships.
 - **Title card, retired** (was `/Game/UI/T_TitleCard`; removed from the content on 2026-11-09 at the creator's
   decision, kept in the repository's history). Imported unmodified from the creator's file `Ebony Hearts Title Card`
   (PNG, 2172 × 724), SHA-256 `2856a3520ba7def78f39c1daeb6c8e1b4b119c637902d6a55e78598f5a401f0f`.

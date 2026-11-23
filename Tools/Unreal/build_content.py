@@ -222,8 +222,8 @@ def main():
     build_fire(textures["FireSheet"])
     build_aura_shell(textures["Noise"])
     build_marker(textures["Ring"])
-    # The interface's own textures (the creator's logo) are imported by Tools/Unreal/import_ui.py. The earlier title
-    # card was retired by the creator on 2026-11-09.
+    # The interface has no image textures of its own: the title is typeset in Cinzel (the creator removed the
+    # AI-generated logo and key art on 2026-11-23; the earlier title card was retired on 2026-11-09).
     log("DONE")
 
 
