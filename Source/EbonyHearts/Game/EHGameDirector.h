@@ -7,6 +7,7 @@
 #include "EHAI.h"
 #include "EHAudio.h"
 #include "EHClock.h"
+#include "EHCombatText.h"
 #include "EHCombatData.h"
 #include "EHInputRouter.h"
 #include "EHMatch.h"
@@ -354,6 +355,12 @@ private:
 	void SpawnWolf();
 	// The pack (EHDirectorPack.cpp).
 	TArray<EEHWolfState> FPWolvesLastState;
+	// Comic-book combat text (milestone 7, EHCombatText.h).
+	FEHCombatText CombatText;
+	TArray<float> FPWolfIdleTalkAt;     // per wolf: when it may next remark on the player's nearness
+	void CombatTextEvents(int32 i, EEHWolfState WS, EEHWolfState Last);
+	void CombatTextNearness(float Now);
+	bool CombatTextField(const FString& Field, float& V) const;
 	TArray<float> PackWaiting;          // per wolf: seconds since it last held the turn
 	int32 PackHolder = -1;
 	int32 PackHolderAttacks = 0;

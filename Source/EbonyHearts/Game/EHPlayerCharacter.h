@@ -7,6 +7,7 @@
 #include "CoreMinimal.h"
 #include "EHChapel.h"
 #include "EHPack.h"
+#include "EHCombatText.h"
 #include "EHWorldClock.h"
 #include "EHFists.h"
 #include "EHMagic.h"
@@ -66,6 +67,7 @@ struct FEHFirstPersonTuning
 	FEHChapelTuning Chapel; // the Chapel's interactions and prayer (interior stage 2)
 	FEHWorldClockTuning Clock; // Destiny's Ark's time
 	FEHPackTuning Pack;     // the Chapel wolves as a pack (milestone 6)
+	FEHCombatTextTuning CombatText; // comic-book combat text (milestone 7)
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);

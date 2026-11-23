@@ -1,0 +1,143 @@
+# Comic-book combat text (milestone 7; development build: test positions, the alignment, the pack's size, forced
+# lines). Covers: the player's lines; lines arising on their own from a real four-wolf fight (occasional, never more
+# than three at once, never overlapping, inside the view); several speakers side by side; expiry; the jump-out and
+# reduced flashing; the interface scale; a speaker off screen; a neutral wolf's warning and a friendly wolf's greeting
+# arising on their own; a reset clearing every line. Lines are the marked placeholders in firstperson.json.
+wait 5
+fp_expect screen eq 12
+fp_expect ct_visible eq 0
+
+log == the player answers a blow (the first line of its kind always comes)
+fp_hurt 5
+wait 0.2
+fp_expect ct_player eq 1
+fp_expect ct_visible eq 1
+fp_expect ct_placeholders eq 1
+screenshot ct_player
+wait 4
+fp_expect ct_visible eq 0
+
+log == a real fight: four evil wolves, twenty seconds; lines come by themselves, at most three, never overlapping
+fp_stat health 3000
+fp_health 3000
+fp_wolves 4
+fp_align 7
+fp_teleport 0 -900 0 -90 0
+fp_text_stats
+wait 6
+screenshot ct_fight_a
+wait 6
+screenshot ct_fight_b
+wait 8
+fp_state fight
+fp_expect ct_shown gt 4
+fp_expect ct_hostile gt 2
+fp_expect ct_max_visible lt 4
+fp_expect ct_overlaps eq 0
+fp_expect ct_outside eq 0
+fp_expect ct_refused gt 0
+
+log == several speakers side by side: three wolves close together speak at once (natural lines paused for the forced cases)
+fp_text_natural 0
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 0.2
+fp_pack_ring 330
+look 0 0
+fp_text_stats
+fp_say 0 wolf.hostile.attack
+fp_say 1 wolf.hostile.turn
+fp_say 3 wolf.hostile.notice
+wait 0.4
+fp_expect ct_visible eq 3
+fp_expect ct_overlaps eq 0
+fp_expect ct_outside eq 0
+screenshot ct_three
+log a fourth speaker: the oldest line gives way
+fp_say 2 wolf.hostile.hurt
+wait 0.2
+fp_expect ct_visible eq 3
+fp_expect ct_overlaps eq 0
+
+log == expiry: every line gone within a few seconds
+wait 4
+fp_expect ct_visible eq 0
+
+log == the jump-out, then reduced flashing: a fade instead
+fp_say 0 wolf.hostile.attack
+wait 0.05
+fp_expect ct_popping gt 0
+wait 4
+fp_setting reduceflash 1
+fp_say 0 wolf.hostile.attack
+wait 0.05
+fp_expect ct_popping eq 0
+fp_expect ct_visible eq 1
+wait 4
+fp_setting reduceflash 0
+
+log == interface scale: the bubbles scale with the HUD and stay inside the view
+fp_setting uiscale 0.8
+fp_say player player.hit
+wait 0.4
+fp_expect ct_height lt 62
+wait 4
+fp_setting uiscale 1.4
+fp_say player player.hit
+fp_say 0 wolf.hostile.attack
+fp_say 1 wolf.hostile.turn
+wait 0.4
+fp_expect ct_height gt 85
+fp_expect ct_outside eq 0
+fp_expect ct_overlaps eq 0
+fp_expect ct_suppressed eq 0
+screenshot ct_scale_140
+wait 4
+fp_setting uiscale 1.0
+
+log == a speaker off screen speaks from the edge of the view
+fp_wolves 1
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+fp_wolf_place 0 -450 90
+wait 0.2
+fp_say 0 wolf.hostile.attack
+wait 0.3
+fp_expect ct_offscreen eq 1
+fp_expect ct_outside eq 0
+screenshot ct_offscreen
+wait 4
+
+log == a neutral wolf warns the player off when they come close (on its own)
+fp_text_natural 1
+fp_align 4
+fp_reset
+wait 0.5
+fp_teleport 330 -1100 0 -90 0
+wait 2
+fp_expect ct_warning gt 0
+screenshot ct_neutral
+wait 4
+
+log == a friendly wolf greets the player (on its own)
+fp_align 1
+fp_reset
+wait 0.5
+fp_teleport 330 -1150 0 -90 0
+wait 2
+fp_expect ct_friendly gt 0
+screenshot ct_friendly
+
+log == a reset clears every line
+fp_say 0 wolf.friendly.near friendly
+fp_say player player.hit
+wait 0.1
+fp_expect ct_visible eq 2
+fp_reset
+wait 0.1
+fp_expect ct_visible eq 0
+fp_align 4
+fp_state end
+quit

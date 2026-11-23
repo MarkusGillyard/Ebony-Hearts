@@ -131,6 +131,8 @@ void AEHGameDirector::BeginFirstPerson()
 		AutoLogLine(FString::Printf(TEXT("firstperson navigation built in %.0f ms"), (FPlatformTime::Seconds() - T0) * 1000.0));
 	}
 	SpawnWolf();
+	CombatText.Tuning = FPTuning.CombatText;
+	CombatText.Clear();
 	// A Hero of Humanity is protected by the Chapel's wolves: the nearest one close by takes the blows meant for them.
 	FPPlayer->SetAbsorber([this](float Damage, const FVector& From) {
 		AEHWolf* W = FPAlignment == EHAlign::Hero ? NearestLiveWolf(FPPlayer->GetActorLocation(), FPTuning.Wolf.AbsorbRange) : nullptr;
@@ -494,11 +496,14 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 			}
 			AutoLogLine(i == 0 ? FString::Printf(TEXT("fp wolf %s -> %s"), EHWolfStateName(Last), EHWolfStateName(WS))
 				: FString::Printf(TEXT("fp wolf %d %s -> %s"), i, EHWolfStateName(Last), EHWolfStateName(WS)));
+			CombatTextEvents(i, WS, Last);
 			Last = WS;
 		}
 	}
 	FPWolfLastState = FPWolvesLastState.Num() > 0 ? FPWolvesLastState[0] : EEHWolfState::Calm;
 	TickPack(DeltaSeconds);
+	CombatTextNearness(GetWorld()->GetTimeSeconds());
+	CombatText.Tick(DeltaSeconds);
 	// The Qhi line shows while it changes and a moment after; it flashes when a cast is refused.
 	const bool bShowQhi = Settings.StaminaMeter == 2 || (Settings.StaminaMeter == 1 && (FPPlayer->QhiFraction() < 0.999f || FPPlayer->SecondsSinceQhiChange() < 1.0f || FPPlayer->SecondsSinceRefused() < 1.0f));
 	QhiMeterAlpha = FMath::FInterpConstantTo(QhiMeterAlpha, bShowQhi ? 1.0f : 0.0f, DeltaSeconds, bShowQhi ? 6.0f : 1.5f);
@@ -633,6 +638,10 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			Rumble(0.9f, 0.6f, 0.25f);
 			++FPHurtCount;
 			FPHurtTimes.Add(GetWorld()->GetTimeSeconds());
+			if (CombatText.Offer(TEXT("player.hurt"), nullptr, EEHLineKind::Player, GetWorld()->GetTimeSeconds()))
+			{
+				AutoLogLine(FString::Printf(TEXT("fp text player: %s"), *CombatText.LastText));
+			}
 			AutoLogLine(FString::Printf(TEXT("fp hurt damage=%.1f health=%.1f"), E.Damage, FPPlayer->Health()));
 			break;
 		case FEHFirstPersonEvent::EKind::CastStart:
@@ -872,6 +881,10 @@ void AEHGameDirector::WolfStruck(const FEHWolfHit& R, const TCHAR* What)
 	// Harming a guardian pushes the player toward evil; killing one brings them down to a deeper evil. A Hero of
 	// Humanity cannot harm one: the blow came back to them.
 	const int32 Before = FPAlignment;
+	if (R.Damage > 0.0f && CombatText.Offer(R.bKilled ? TEXT("player.kill") : TEXT("player.hit"), nullptr, EEHLineKind::Player, GetWorld()->GetTimeSeconds()))
+	{
+		AutoLogLine(FString::Printf(TEXT("fp text player: %s"), *CombatText.LastText));
+	}
 	if (R.Reflected > 0.0f)
 	{
 		++FPReflected;
@@ -1166,6 +1179,8 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 		FPDummy->ResetDummy();
 	}
 	ResetWolves();   // the alignment stays: a case can be repeated
+	CombatText.Clear();
+	FPWolfIdleTalkAt.Reset();
 	EndPrayer(TEXT("reset"));
 	FPMessageLeft = 0.0f;
 	FPPrayers = FPMessages = 0;
@@ -1314,6 +1329,21 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		}
 	}
 #endif
+	if (FPPlayer && !bPaused)
+	{
+		// Combat text: beside each speaker (development labels above stay readable: bubbles sit above them).
+		APlayerController* PC = GetWorld()->GetFirstPlayerController();
+		const float AppScale = FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale());
+		CombatText.Paint(P, Fonts, [&](const FVector& World, FVector2f& Out) {
+			FVector2D S;
+			if (PC == nullptr || !PC->ProjectWorldLocationToScreen(World, S, true))
+			{
+				return false;
+			}
+			Out = P.ToVirtual(FVector2f(S.X, S.Y) / AppScale);
+			return true;
+		}, Settings.bReduceFlash);
+	}
 	if (!bPaused)
 	{
 		PaintChapel(P);
@@ -1479,6 +1509,7 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("placed_loops")) V = static_cast<float>(Audio.PlacedLoopCount());
 		else if (Field == TEXT("sparks")) V = static_cast<float>(FPSparks);
 		else if (PackField(Field, V)) {}
+		else if (CombatTextField(Field, V)) {}
 		else if (Field == TEXT("praying")) V = bPraying ? 1.0f : 0.0f;
 		else if (Field == TEXT("prayers")) V = static_cast<float>(FPPrayers);
 		else if (Field == TEXT("prayer_seconds")) V = PrayerSeconds;
@@ -1665,6 +1696,50 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		{
 			FPPlayer->ReceiveStrike(F(1, 5.0f), FPPlayer->GetActorLocation() + FPPlayer->GetActorForwardVector() * 80.0f, true);
 		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_say"))
+	{
+		// fp_say <wolf index | player> <event> [friendly|warning|hostile|player]: a line said at once (no chance, no gaps).
+		const FString Who = Arg(1, TEXT("player"));
+		const FString Event = Arg(2, TEXT("wolf.hostile.attack"));
+		const FString KindName = Arg(3, Who == TEXT("player") ? TEXT("player") : TEXT("hostile"));
+		const EEHLineKind Kind = KindName == TEXT("friendly") ? EEHLineKind::Friendly : KindName == TEXT("warning") ? EEHLineKind::Warning
+			: KindName == TEXT("player") ? EEHLineKind::Player : EEHLineKind::Hostile;
+		const int32 i = FCString::Atoi(*Who);
+		const AActor* Speaker = Who == TEXT("player") ? nullptr : (FPWolves.IsValidIndex(i) ? FPWolves[i].Get() : nullptr);
+		const bool bShown = (Who == TEXT("player") || Speaker) && CombatText.Offer(Event, Speaker, Kind, GetWorld()->GetTimeSeconds(), true);
+		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, bShown ? *CombatText.LastText : TEXT("(nothing)")));
+		return true;
+	}
+	if (Cmd == TEXT("fp_setting"))
+	{
+		// fp_setting <reduceflash 0|1 | uiscale 0.8..1.4>: what the Accessibility settings change, for the text tests.
+		const FString N = Arg(1, TEXT(""));
+		if (N == TEXT("reduceflash"))
+		{
+			Settings.bReduceFlash = F(2, 0.0f) > 0.5f;
+		}
+		else if (N == TEXT("uiscale"))
+		{
+			Settings.UIScale = FMath::Clamp(F(2, 1.0f), 0.8f, 1.4f);
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_text_natural"))
+	{
+		// fp_text_natural <0|1>: lines arising on their own off/on (forced fp_say lines still show).
+		CombatText.bNatural = F(1, 1.0f) > 0.5f;
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_text_stats"))
+	{
+		// Clears the combat text's running evidence (the most visible, the most overlaps) for the next case.
+		CombatText.MaxVisibleSeen = CombatText.Visible();
+		CombatText.OverlapsSeen = 0;
 		AutoLogLine(Line);
 		return true;
 	}

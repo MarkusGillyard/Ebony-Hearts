@@ -1,0 +1,40 @@
+# Combat text in the Shipping package: device inputs and observation only. The player starts Platonic (Neutral):
+# walking up to the Chapel wolf at its rest, it warns them off (its first warning always comes), in a marked
+# placeholder bubble that expires within a few seconds. The forced lines, the four-wolf fight, the settings and
+# placement cases are covered in the development build (fp_combat_text.txt).
+wait 5
+fp_expect screen eq 12
+fp_expect alignment eq 4
+fp_expect ct_visible eq 0
+
+log == round the dummy, down the centre aisle between the pews, then across toward the wolf at the altar end
+hold kbA FPLeft
+wait 0.7
+release kbA FPLeft
+hold kbA FPForward
+wait 2.5
+release kbA FPForward
+hold kbA FPRight
+wait 0.7
+release kbA FPRight
+fp_state past_dummy
+hold kbA FPForward
+wait 5.0
+release kbA FPForward
+fp_state aisle_end
+hold kbA FPRight
+wait 1.2
+release kbA FPRight
+wait 0.3
+fp_state near_wolf
+fp_expect ct_warning gt 0
+fp_expect ct_shown gt 0
+fp_expect ct_outside eq 0
+fp_expect wolf_hostile eq 0
+screenshot ship_text_warning
+
+log == the line expires
+wait 4
+fp_expect ct_visible eq 0
+fp_state end
+quit
