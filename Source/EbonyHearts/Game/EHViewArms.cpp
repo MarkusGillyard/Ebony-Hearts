@@ -38,19 +38,43 @@ float Decelerate(float T) { T = FMath::Clamp(T, 0.0f, 1.0f); return 1.0f - (1.0f
 
 // A strike's path for the hand that throws it: a short load, then an accelerating extension that arrives on the
 // first active frame, a hold while it can connect, and a return to the guard.
-FVector StrikePath(const FVector& Start, const FVector& Load, const FVector& Out, const FVector& Back, float F, const FEHStrikeDef& D)
+FVector StrikePath(const FVector& Start, const FVector& Load, const FVector& Out, const FVector& Back, float F, const FEHStrikeDef& D, bool bSnap = false)
 {
 	if (F < D.Startup)
 	{
 		const float U = F / D.Startup;
+		if (bSnap)
+		{
+			// The snap: a quick, compact load (the shoulder drawing back), then a release that starts slow and finishes
+			// very fast, so nearly all the distance is covered in the last frames before the hit.
+			constexpr float LoadShare = 0.30f;
+			if (U < LoadShare)
+			{
+				return FMath::Lerp(Start, Load, Smooth(U / LoadShare));
+			}
+			const float R = (U - LoadShare) / (1.0f - LoadShare);
+			return FMath::Lerp(Load, Out, R * R * R);
+		}
 		constexpr float LoadShare = 0.35f;
 		return U < LoadShare ? FMath::Lerp(Start, Load, Smooth(U / LoadShare)) : FMath::Lerp(Load, Out, Accelerate((U - LoadShare) / (1.0f - LoadShare)));
 	}
 	if (F < D.Startup + D.Active)
 	{
+		if (bSnap)
+		{
+			// Arrives on the first active frame, drives a little through the target, settles back.
+			const float A = (F - D.Startup) / FMath::Max(1, D.Active);
+			return Out + (Out - Load).GetSafeNormal() * 3.0f * FMath::Sin(A * PI);
+		}
 		return Out;
 	}
-	return FMath::Lerp(Out, Back, Decelerate((F - D.Startup - D.Active) / FMath::Max(1, D.Recovery)));
+	const float T = (F - D.Startup - D.Active) / FMath::Max(1, D.Recovery);
+	if (bSnap)
+	{
+		// Follow-through: the fist drops a little as the arm relaxes on the way back to the guard.
+		return FMath::Lerp(Out, Back, Decelerate(T)) + FVector(0.0f, 0.0f, -2.5f * FMath::Sin(FMath::Clamp(T, 0.0f, 1.0f) * PI));
+	}
+	return FMath::Lerp(Out, Back, Decelerate(T));
 }
 }
 using namespace EHArmsDetail;
@@ -386,11 +410,11 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		switch (Action)
 		{
 		case EEHFistAction::Jab:
-			L = StrikePath(StartL, JabLoad, JabOut, ReadyL, F, D);
+			L = StrikePath(StartL, JabLoad, JabOut, ReadyL, F, D, bRealHands);
 			R = FMath::Lerp(StartR, ReadyR, GuardIn);
 			break;
 		case EEHFistAction::Straight:
-			R = StrikePath(StartR, StraightLoad, StraightOut, ReadyR, F, D);
+			R = StrikePath(StartR, StraightLoad, StraightOut, ReadyR, F, D, bRealHands);
 			L = FMath::Lerp(StartL, ReadyL, GuardIn);
 			break;
 		case EEHFistAction::Fireball:
@@ -422,8 +446,8 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		const float V = Smooth(Visible);
 		// The realistic hands guard lower and further out than the placeholder (chin height, not eye height), so the
 		// fists read as fists rather than filling the view from above.
-		const FVector GL = bRealHands ? FVector(44.0f, -10.0f, -12.0f) : GuardL;
-		const FVector GR = bRealHands ? FVector(42.0f, 10.0f, -13.0f) : GuardR;
+		const FVector GL = bRealHands ? FVector(50.0f, -11.0f, -7.0f) : GuardL;
+		const FVector GR = bRealHands ? FVector(48.0f, 11.0f, -8.0f) : GuardR;
 		const FVector TargetL = FMath::Lerp(DownL, FMath::Lerp(ReadyL, GL, Smooth(Guard)), V);
 		const FVector TargetR = FMath::Lerp(DownR, FMath::Lerp(ReadyR, GR, Smooth(Guard)), V);
 		const float K = 1.0f - FMath::Exp(-DeltaSeconds / 0.05f);
@@ -458,6 +482,18 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		{
 			R += Give;
 		}
+	}
+	// A blow landing on the guard drives both fists back toward the face; a strike stopped by a guard rebounds.
+	GuardShock *= FMath::Exp(-DeltaSeconds / 0.09f);
+	Rebound *= FMath::Exp(-DeltaSeconds / 0.07f);
+	if (GuardShock > 0.01f)
+	{
+		L += FVector(-5.0f, 1.0f, 2.0f) * GuardShock;
+		R += FVector(-5.0f, -1.0f, 2.0f) * GuardShock;
+	}
+	if (Rebound > 0.01f)
+	{
+		(ReboundHand == 0 ? L : R) += FVector(-7.0f, 0.0f, 1.5f) * Rebound;
 	}
 	L = Real(L);
 	R = Real(R);
@@ -551,7 +587,7 @@ void UEHViewArms::AddHandRotations(TArray<FEHAdditiveRotation>& Out, int32 Hand)
 	const FVector Lat = (BendQ * Turn).RotateVector(F.Lateral);
 	const float C = Curl[Hand];
 	static const TCHAR* Fingers[4] = {TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky")};
-	static const float Joint[3] = {92.0f, 106.0f, 66.0f};   // a tight fist: knuckle, middle and end joints
+	static const float Joint[3] = {80.0f, 90.0f, 40.0f};   // a closed fist (tuned so the fingertips rest on the palm, not through it)
 	for (int32 I = 0; I < 4; ++I)
 	{
 		const float Extra = 1.0f + 0.06f * I;
@@ -593,7 +629,7 @@ void UEHViewArms::UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds)
 	for (int32 H = 0; H < 2; ++H)
 	{
 		TC[H] = FMath::Lerp(0.30f, 0.86f + 0.12f * Smooth(Fists.GuardLevel()), Up);
-		TP[H] = FMath::Lerp(15.0f, 38.0f, Up);
+		TP[H] = FMath::Lerp(15.0f, 68.0f, Up);
 		TB[H] = 0.0f;
 	}
 	float Fast = 0.06f;
@@ -607,11 +643,11 @@ void UEHViewArms::UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds)
 		{
 		case EEHFistAction::Jab:
 			TC[0] = 1.0f;
-			TP[0] = 38.0f + 50.0f * (bLive ? Out : 0.4f);
+			TP[0] = 68.0f + 22.0f * (bLive ? Out : 0.4f);
 			break;
 		case EEHFistAction::Straight:
 			TC[1] = 1.0f;
-			TP[1] = 38.0f + 54.0f * (bLive ? Out : 0.4f);
+			TP[1] = 68.0f + 26.0f * (bLive ? Out : 0.4f);
 			break;
 		case EEHFistAction::Fireball:
 			TC[0] = bLive ? FMath::Lerp(0.55f, 0.05f, Out) : 0.35f;
@@ -651,3 +687,13 @@ FQuat UEHViewArms::AimHand(int32 Hand, const FVector& Forward, const FVector& Pa
 	return (Want * Rest.Inverse()) * F.RefRotation;
 }
 
+void UEHViewArms::GuardImpact(float Strength)
+{
+	GuardShock = FMath::Max(GuardShock, FMath::Clamp(Strength, 0.0f, 1.5f));
+}
+
+void UEHViewArms::StrikeRebound(int32 Hand, float Strength)
+{
+	ReboundHand = Hand;
+	Rebound = FMath::Max(Rebound, FMath::Clamp(Strength, 0.0f, 1.5f));
+}

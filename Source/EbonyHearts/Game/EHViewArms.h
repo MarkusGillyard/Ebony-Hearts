@@ -69,6 +69,9 @@ private:
 	EEHFistAction LastAction = EEHFistAction::None;
 	float Visible = 0.0f;                   // 0 lowered out of view .. 1 up
 	float Recoil = 0.0f;                    // 1 at contact, easing to 0 after the hitstop
+	float GuardShock = 0.0f;
+	float Rebound = 0.0f;
+	int32 ReboundHand = 1;
 	float ShudderTime = 0.0f;
 	bool bShown = false;
 
@@ -108,6 +111,9 @@ private:
 	void SetGlow(int32 Hand, const FLinearColor& Color, float Amount);
 public:
 	bool UsesModelArms() const { return ArmsMesh != nullptr; }
+	// A blow landed on the player's guard (both fists pushed back), or the player's strike was stopped by a guard.
+	void GuardImpact(float Strength);
+	void StrikeRebound(int32 Hand, float Strength);
 	FString Describe() const;
 	UStaticMeshComponent* MakePart(UStaticMesh* Mesh, UMaterialInstanceDynamic* Material);
 };

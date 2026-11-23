@@ -221,6 +221,9 @@ void AEHWolf::ResetWolf()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	BiteCount = LungeCount = ConnectCount = DisengageCount = AbsorbCount = ProtectCount = FreezeCount = 0;
 	RepathCount = StuckCount = StuckFrames = WaitGoalFrames = 0;
+	Reactions = Rebuffs = 0;
+	Tilt = TiltVel = Snap = SnapVel = FVector2D::ZeroVector;
+	PeakTilt = 0.0f;
 	WaitGoal = FVector(1e9);
 	SinceAttack = 0.0f;
 	PackRole = EEHPackRole::Free;
@@ -407,7 +410,10 @@ FEHWolfHit AEHWolf::ReceivePlayerHit(float Damage, const FVector& From, const FV
 	{
 		LaunchCharacter(Away.GetSafeNormal() * (bHeavy ? 420.0f : 220.0f) + FVector(0, 0, 80.0f), true, false);
 	}
-	Enter(EEHWolfState::Hitstun, Tuning.Hitstun);
+	// The body takes the blow: it tips away from it and the head snaps aside (springs that settle on their own); a
+	// heavy blow staggers it for longer.
+	React(Away.GetSafeNormal(), bHeavy ? 1.15f : 0.7f);
+	Enter(EEHWolfState::Hitstun, Tuning.Hitstun + (bHeavy ? 12 : 0));
 	return Out;
 }
 
@@ -715,6 +721,12 @@ void AEHWolf::StepFrame()
 			{
 				++ConnectCount;
 				Player->ReceiveStrike(Tuning.BiteDamage, GetActorLocation() + GetActorForwardVector() * 60.0f + FVector(0, 0, 40.0f));
+				if (Player->WasLastStrikeGuarded())
+				{
+					// Bitten into a guard: the jaws are knocked aside and the wolf is thrown back off balance.
+					Rebuff();
+					break;
+				}
 			}
 			Enter(EEHWolfState::Recover, Tuning.BiteRecover);
 			Cooldown = Tuning.AttackCooldown;
@@ -742,6 +754,11 @@ void AEHWolf::StepFrame()
 			bLungeHit = true;
 			++ConnectCount;
 			Player->ReceiveStrike(Tuning.LungeDamage, GetActorLocation() + FVector(0, 0, 40.0f));
+			if (Player->WasLastStrikeGuarded())
+			{
+				Rebuff();
+				break;
+			}
 		}
 		if ((StateFrame > 8 && GetCharacterMovement()->IsMovingOnGround()) || StateFrame >= StateLength)
 		{
@@ -794,8 +811,17 @@ void AEHWolf::UpdatePose(float DeltaSeconds)
 	}
 	// Body: a bob in the stride, low and forward when stalking or winding up.
 	const float Bob = FMath::Abs(FMath::Sin(Gait)) * FMath::Clamp(Speed / 500.0f, 0.0f, 1.0f) * 3.0f;
-	Body->SetRelativeLocation(FVector(0, 0, 72.0f - 12.0f * Crouch + Bob));
-	Body->SetRelativeRotation(FRotator(-6.0f * Crouch, 0, 0));
+	// The hit reaction's springs: a stiff, quick settle, slightly under-damped so a heavy blow rocks it once.
+	auto SpringStep = [DeltaSeconds](FVector2D& X, FVector2D& Vel, float K, float C) {
+		const FVector2D Acc = -X * K - Vel * C;
+		Vel += Acc * DeltaSeconds;
+		X += Vel * DeltaSeconds;
+	};
+	SpringStep(Tilt, TiltVel, 150.0f, 10.0f);
+	SpringStep(Snap, SnapVel, 220.0f, 13.0f);
+	PeakTilt = FMath::Max(PeakTilt, Tilt.Size());
+	Body->SetRelativeLocation(FVector(0, 0, 72.0f - 12.0f * Crouch + Bob - 0.25f * FMath::Abs(Tilt.X)));
+	Body->SetRelativeRotation(FRotator(-6.0f * Crouch + Tilt.X, 0, Tilt.Y));
 	// Head: looks at the player; low when hostile, up when friendly; snaps forward in a bite.
 	float Yaw = 0.0f;
 	if (Player.IsValid())
@@ -806,7 +832,7 @@ void AEHWolf::UpdatePose(float DeltaSeconds)
 	const bool bFriendly = State == EEHWolfState::Calm && EHAlign::Band(Alignment) == EEHAlignBand::Good;
 	const float Pitch = bFriendly ? 8.0f : (IsHostile() ? -14.0f : 0.0f);
 	Head->SetRelativeLocation(FVector(50.0f + 16.0f * HeadThrust, 0, 6.0f - 8.0f * Crouch));
-	Head->SetRelativeRotation(FRotator(Pitch - 18.0f * HeadThrust, Yaw, 0));
+	Head->SetRelativeRotation(FRotator(Pitch - 18.0f * HeadThrust + Snap.X, Yaw + Snap.Y, 0));
 	// Tail: wags for a friend, hangs for a wary wolf, straight out and stiff when hostile.
 	WagTime += DeltaSeconds;
 	const float TailYaw = bFriendly ? FMath::Sin(WagTime * 11.0f) * 28.0f : 0.0f;
@@ -818,4 +844,33 @@ FString AEHWolf::Describe() const
 {
 	return FString::Printf(TEXT("%s hp=%.0f provoked=%d frozen=%.1f bites=%d lunges=%d connected=%d disengaged=%d absorbed=%d protects=%d"),
 		EHWolfStateName(State), HealthNow, bProvoked ? 1 : 0, FrozenLeft, BiteCount, LungeCount, ConnectCount, DisengageCount, AbsorbCount, ProtectCount);
+}
+
+void AEHWolf::React(const FVector& Away, float Strength)
+{
+	// Away from the blow, in the wolf's own frame: X forward, Y right. Pushed from the front it rears (pitch up) and
+	// the head snaps back; from the side it rolls away and the head snaps aside.
+	const FVector L = GetActorTransform().InverseTransformVectorNoScale(Away);
+	TiltVel += FVector2D(L.X * 430.0f, -L.Y * 400.0f) * Strength;
+	PeakTilt = 0.0f;
+	SnapVel += FVector2D(L.X * 520.0f, L.Y * 900.0f) * Strength;
+	++Reactions;
+}
+
+void AEHWolf::Rebuff()
+{
+	++Rebuffs;
+	HeadThrust = 0.0f;
+	if (Player.IsValid())
+	{
+		FVector Back = GetActorLocation() - Player->GetActorLocation();
+		Back.Z = 0.0f;
+		if (FrozenLeft <= 0.0f)
+		{
+			LaunchCharacter(Back.GetSafeNormal() * 360.0f + FVector(0, 0, 60.0f), true, false);
+		}
+		React(Back.GetSafeNormal(), 0.8f);
+	}
+	Enter(EEHWolfState::Recover, Tuning.BiteRecover + 16);
+	Cooldown = Tuning.AttackCooldown;
 }

@@ -125,7 +125,38 @@ speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`
 
 ### Arms
 
-Placeholder arms cut from the slice's Wren model (`SK_FPArms_Wren`: her upper arms, forearms and gloved hands, on her
+**Realistic hands (fists rework, 2026-11-23).** The first-person arms are a realistic human pair from the Blender
+Foundation's CC0 Human Base Meshes: the realistic male body's arms, cut at the shoulders and rigged by
+`Tools/Blender/fphands/build_fp_hands.py` on a 45-bone skeleton that uses the characters' bone names, with three bones
+per finger. Joints are found from the mesh itself: arm centre lines from cross-sections, the wrist at the forearm's
+narrowest point, digits separated by connectivity. `Tools/Unreal/import_fp_hands.py` imports them with their own skeleton
+and a plain subsurface skin material (the creator's painted skin replaces it).
+
+They are posed with no clip:
+- The arm IK reaches each wrist.
+- A final aim turns each hand. For fists the knuckles point forward and the palm turns down as a blow lands (the
+  corkscrew); for pushes the hand is bent back with the palm forward.
+- Rotations measured on the rest pose curl the fingers (80°, 90° and 40° at full curl, the little finger a little
+  further) and wrap the thumb across them.
+- Each technique sets the hands' state: closed fists for the guard and strikes, an open throwing hand for Fireball,
+  palms driving forward for Ice Wall, and relaxed when lowered.
+
+Because the real arm is shorter than the placeholder's, positions are drawn in toward the shoulder line.
+
+Strikes have a snap: a compact load, a release that covers most of the distance in its last frames, a short drive
+through the target on the active frames, and a small drop in the follow-through. The view carries the body's weight: a
+lean with each swing (more for the straight, turning with the shoulder), a jolt back on impact, and a stronger one when
+a guard stops the fist (which rebounds).
+
+A blow taken on the guard drives both fists back toward the face and jolts the view. All view motion respects Reduce
+shake.
+
+The struck wolf's body takes the blow: it tips away and its head snaps aside, on springs that settle on their own. A
+straight staggers it 12 frames longer. A bite or lunge into the player's raised guard throws the wolf back off balance
+instead of landing. `fp_fists_feel.txt` covers these, with the fields `wolf_reactions`, `wolf_tilt` and
+`wolf_rebuffs`.
+
+**The earlier placeholder (the fallback):** arms cut from the slice's Wren model (`SK_FPArms_Wren`: her upper arms, forearms and gloved hands, on her
 skeleton and with her materials; `Tools/Blender/fparms/cut_fp_arms.py` makes it from `SK_Wren.fbx`,
 `Tools/Unreal/import_fp_arms.py` imports it). `EHViewArms.*` holds the model's fists from her guard clip, squares her
 bladed shoulders to the view and turns them into each blow (the straight drives the right shoulder through), and

@@ -556,6 +556,8 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("WhooshHeavy")) : FName(TEXT("WhooshLight")), 3, EEHSoundCat::Effects,
 				0.7f);
 			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
+			// The body goes with the blow: the view leans in and turns a little with the throwing shoulder.
+			FPPlayer->AddCameraKick(-0.25f, E.Action == EEHFistAction::Straight ? 2.2f : 1.2f, E.Action == EEHFistAction::Straight ? 0.9f : -0.5f);
 			for (AEHWolf* W : FPWolves)
 			{
 				if (W && W->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
@@ -604,6 +606,16 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				if (Vfx) { Vfx->Hit(E.Location, 1, false, false, false, false); }
 				Rumble(E.bBody ? 0.35f : 0.0f, 0.5f, 0.08f);
 			}
+			// The impact comes back up the arm: a jolt back in the view; a guard stops the fist dead and throws it back.
+			if (E.bBlocked)
+			{
+				FPPlayer->AddCameraKick(0.7f, -2.4f, 0.0f);
+				if (UEHViewArms* VA = FPPlayer->ViewArms()) { VA->StrikeRebound(E.Action == EEHFistAction::Jab ? 0 : 1, 1.0f); }
+			}
+			else
+			{
+				FPPlayer->AddCameraKick(E.Action == EEHFistAction::Straight ? 0.55f : 0.3f, E.Action == EEHFistAction::Straight ? -1.6f : -0.9f, 0.0f);
+			}
 			AutoLogLine(FString::Printf(TEXT("fp contact %s damage=%.1f blocked=%d body=%d"), EHFistActionName(E.Action), E.Damage, E.bBlocked ? 1 : 0, E.bBody ? 1 : 0));
 			break;
 		case FEHFirstPersonEvent::EKind::Wall:
@@ -629,6 +641,9 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			}
 			PlayImpact(TEXT("Block"), 2, 0.9f, 0.95f);
 			Rumble(0.45f, 0.3f, 0.1f);
+			// The blow lands on the forearms: both fists driven back, the view jolted.
+			FPPlayer->AddCameraKick(1.1f, -2.8f, FMath::FRandRange(-0.8f, 0.8f));
+			if (UEHViewArms* VA = FPPlayer->ViewArms()) { VA->GuardImpact(FMath::Clamp(E.Damage / 3.0f + 0.6f, 0.6f, 1.3f)); }
 			++FPGuardedCount;
 			AutoLogLine(FString::Printf(TEXT("fp guarded damage=%.1f"), E.Damage));
 			break;
@@ -1519,6 +1534,10 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (FPWolf && Field == TEXT("wolf_bites")) V = static_cast<float>(FPWolf->Bites());
 		else if (FPWolf && Field == TEXT("wolf_lunges")) V = static_cast<float>(FPWolf->Lunges());
 		else if (FPWolf && Field == TEXT("wolf_connected")) V = static_cast<float>(FPWolf->Connected());
+		else if (FPWolf && Field == TEXT("wolf_reactions")) V = static_cast<float>(FPWolf->HitReactions());
+		else if (FPWolf && Field == TEXT("wolf_rebuffs")) V = static_cast<float>(FPWolf->RebuffCount());
+		else if (FPWolf && Field == TEXT("wolf_tilt")) V = FPWolf->ReactionTilt();
+		else if (FPWolf && Field == TEXT("wolf_tilt_peak")) V = FPWolf->ReactionPeak();
 		else if (FPWolf && Field == TEXT("wolf_disengages")) V = static_cast<float>(FPWolf->Disengages());
 		else if (FPWolf && Field == TEXT("wolf_absorbed")) V = static_cast<float>(FPWolf->Absorbed());
 		else if (FPWolf && Field == TEXT("wolf_protects")) V = static_cast<float>(FPWolf->Protects());
