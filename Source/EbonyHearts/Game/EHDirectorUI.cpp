@@ -482,12 +482,10 @@ void AEHGameDirector::PaintTitle(FEHPainter& P)
 {
 	namespace St = EHStyle;
 	const float In = FMath::Clamp(ScreenAge / 1.2f, 0.0f, 1.0f);
-	// The title is typeset, not an image (the creator's decision, 2026-11-23: no AI-made art in the game): the name in
-	// Cinzel, widely spaced in the manner of a carved inscription, over the Chapel darkened toward the edges, with a
-	// fine rule beneath it.
-	const float Wide = P.VirtualMax.X - P.VirtualMin.X;
-	P.Gradient(FVector2f(P.VirtualMin.X, P.VirtualMin.Y), FVector2f(Wide, 540.0f - P.VirtualMin.Y), St::Alpha(St::Abyss, 0.88f * In), St::Alpha(St::Abyss, 0.55f * In));
-	P.Gradient(FVector2f(P.VirtualMin.X, 540.0f), FVector2f(Wide, P.VirtualMax.Y - 540.0f), St::Alpha(St::Abyss, 0.55f * In), St::Alpha(St::Abyss, 0.94f * In));
+	// The title is typeset, not an image (the creator's decisions, 2026-11-23: no AI-made art in the game, and a simple
+	// black background): the name in Cinzel, widely spaced in the manner of a carved inscription, with a fine rule
+	// beneath it.
+	P.Fill(FLinearColor::Black);
 	const float Rise = (1.0f - In) * 14.0f;
 	TitleWordmark(P, FVector2f(960.0f, 430.0f + Rise), 1.0f, In);
 	if (ScreenAge < 1.5f)
