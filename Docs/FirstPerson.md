@@ -388,11 +388,25 @@ would override injected stick values on `pad0`.
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
-## Sound loading
+## Sound loading and the single slow frames
 
-First person loads every combat, UI and ambience sound when it starts: about 60 sounds, in about 40 ms. Before
-that, each sound loaded the first time it played, and in a packaged build that read stalled the frame it happened on
-(the single 40–70 ms frames seen once per capture since milestone 4).
+First person loads every combat, UI and ambience sound when it starts: 59 sounds, in 10–13 ms in a Shipping build.
+Before that, each sound loaded from the package the first time it played, which is a synchronous read in the middle
+of a frame.
+
+The single 40–70 ms frames seen in Shipping captures since milestone 4 are mostly something else.
+
+| Capture | When the slow frame comes |
+|---|---|
+| Spells | the first time the view turns that way in a session |
+| Stability | the first 360° turn, the first time the west end comes into view |
+| Stability | also the first reset after launch |
+
+- They repeat at the same moments in the same script, the GPU time stays normal, and runs whose warm-up covers the
+  same views have none.
+- That points to graphics pipelines being created the first time a material is drawn.
+- The usual remedy is a recorded pipeline cache bundled with the package. It is not set up yet.
+- The development build does not show them.
 
 ## Known limits
 
