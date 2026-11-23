@@ -1029,7 +1029,7 @@ void AEHGameDirector::HandleNav()
 			{
 				PrimaryDevice = E.Device;
 				Audio.Play(TEXT("UiConfirm"), EEHSoundCat::Ui);
-				GoTo(EEHScreen::Main);
+				GoTo(bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Main);
 			}
 			break;
 		case EEHScreen::Select:

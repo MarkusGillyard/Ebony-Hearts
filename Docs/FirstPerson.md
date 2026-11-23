@@ -4,9 +4,11 @@ This branch (`proto/first-person`) turns the Drowned Chapel into a first-person 
 the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
 and a held block, practised on a training dummy (the shove was removed on 2026-11-22: quality over quantity). Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
 Wall, with the wall's water freeze and Fireball's melt. Milestone 5, One Wolf: a Chapel wolf that treats the player by
-their alignment (nine tiers), with navigation through the Chapel. The game starts straight in the Chapel, with no title screen or menus
-before play. The 2.5D slice stays intact in `main`'s history. Its fighting code is still compiled here but is not
-reachable from the first-person flow.
+their alignment (nine tiers), with navigation through the Chapel. The game opens on the title (the name typeset in Cinzel on
+plain black, since 2026-11-23); any button goes straight into the Chapel. The 2.5D slice stays intact in `main`'s
+history. Its fighting code is still compiled here but is not reachable from the first-person flow (the creator chose to
+hide it, 2026-11-23). Automated runs start in the Chapel unless `-EHTitle` is given; development builds open the slice's
+own title and menus with `-EHSlice`.
 
 Every model, animation and blockout in this build is a placeholder. The game says so in a small line at the bottom
 left of the screen.

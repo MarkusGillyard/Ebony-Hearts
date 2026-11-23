@@ -162,8 +162,13 @@ void AEHGameDirector::BeginPlay()
 		Audio.StartMusic(TEXT("Theme"));
 	}
 	InitAutomation();
-	// First person starts in the Chapel itself: no title or menus before play.
-	GoTo(bDataOk ? (bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Title) : EEHScreen::Error);
+	// The game opens on the title (the typeset name on black); any button then goes straight into the Chapel in first
+	// person (the 2.5D slice's menus and modes are not reachable from it). Automated runs start in the Chapel, unless
+	// -EHTitle asks for the title.
+	FString AutoScriptArg;
+	const bool bAutomated = FParse::Value(FCommandLine::Get(), TEXT("EHAuto="), AutoScriptArg);
+	const bool bTitleFirst = !bFirstPersonMode || !bAutomated || FParse::Param(FCommandLine::Get(), TEXT("EHTitle"));
+	GoTo(bDataOk ? (bTitleFirst ? EEHScreen::Title : EEHScreen::FirstPerson) : EEHScreen::Error);
 	if (!SettingsWarning.IsEmpty())
 	{
 		ShowToast(SettingsWarning);
