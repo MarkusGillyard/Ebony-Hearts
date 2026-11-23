@@ -283,7 +283,7 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 		Enter(EState::Hit, bHeavy ? Tuning.HitstunHeavy : Tuning.HitstunLight);
 	}
 	// The physical reaction: how hard, where (head or body, by the height it landed), and which way (the attacker's
-	// line, and the side the fist came from twisting the body away from it).
+	// line, and the side it landed on turning toward it).
 	FVector Dir = GetActorLocation() - From;
 	Dir.Z = 0.0f;
 	HitDir = Dir.GetSafeNormal(UE_SMALL_NUMBER, GetActorForwardVector() * -1.0f);
@@ -292,7 +292,9 @@ FEHDummyHit AEHTrainingDummy::ReceiveHit(EEHFistAction Action, const FEHStrikeDe
 	bLastBodyShot = Action != EEHFistAction::Fireball && (At.Z - Feet) < 145.0f;
 	const FVector Right = FVector::CrossProduct(FVector::UpVector, HitDir);   // the attacker's right, seen from them
 	const FVector Lever = Right * HandSide * 12.0f;
-	const float TwistSign = FMath::Sign(FVector::CrossProduct(Lever, HitDir).Z);
+	// The blow lands to one side of the line and pushes that side back, so the head and chest turn toward the side it
+	// landed on (the creator compared both ways and chose this one, 2026-11-23).
+	const float TwistSign = -FMath::Sign(FVector::CrossProduct(Lever, HitDir).Z);
 	FEHDummyHit& R = Out;
 	R.bBody = bLastBodyShot;
 	FKick K;

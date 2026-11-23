@@ -109,6 +109,10 @@ sounds and the arms all read that state, so what the player sees and what connec
 Damage and the guard's 70% are the prototype plan's proposed values; frames, reach, hitstop and
 speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`).
 
+The dummy's reactions are physical: springs drive its head and chest back from the blow, plus a knockback. A blow
+landing to one side of the line pushes that side back, so the head and chest turn toward the side it landed on (the
+creator compared this with the opposite turn and chose it, 2026-11-23).
+
 - **Aim.** A strike sweeps a sphere along the view from the eyes. A wall or pier in between stops it (a knock on stone,
   no hit).
 - **Combos.** The jab chains into the straight as soon as its active frames end, hit or miss. Any strike's recovery
