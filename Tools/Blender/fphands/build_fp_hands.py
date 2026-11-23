@@ -375,6 +375,12 @@ for v in body.data.vertices:
 print(f"FPHANDS weights: forearm shared on {moved} vertices, {cleaned} digit vertices cleaned of other digits")
 body.data.attributes.remove(body.data.attributes["eh_digit"])
 
+# The rest rig and mesh, for the first-person animation tool (fp_anim.py) to key clips on.
+import os as _os
+if _os.environ.get("EH_FPHANDS_BLEND"):
+    bpy.ops.wm.save_as_mainfile(filepath=_os.environ["EH_FPHANDS_BLEND"])
+    print(f"FPHANDS saved {_os.environ['EH_FPHANDS_BLEND']}")
+
 if PREVIEW:
     import os
     os.makedirs(PREVIEW, exist_ok=True)

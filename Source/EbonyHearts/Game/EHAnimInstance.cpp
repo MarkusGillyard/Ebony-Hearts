@@ -351,8 +351,9 @@ void FEHAnimProxy::RotateBoneCS(FCompactPose& Pose, const FCompactPoseBoneIndex 
 
 void FEHAnimProxy::ApplyLimbIK(FCompactPose& Pose) const
 {
-	for (const FEHLimbIK& Limb : LimbIK)
+	for (const FEHLimbIK& Given : LimbIK)
 	{
+		FEHLimbIK Limb = Given;
 		const FCompactPoseBoneIndex Upper = FindBone(Pose, Limb.Upper);
 		const FCompactPoseBoneIndex Lower = FindBone(Pose, Limb.Lower);
 		const FCompactPoseBoneIndex End = FindBone(Pose, Limb.End);
@@ -362,6 +363,14 @@ void FEHAnimProxy::ApplyLimbIK(FCompactPose& Pose) const
 		}
 		FCSPose<FCompactPose> CS;
 		CS.InitPose(Pose);
+		if (Limb.bRelative)
+		{
+			const FTransform EndNow = CS.GetComponentSpaceTransform(End);
+			Limb.Target = EndNow.GetLocation() + Given.Target;
+			Limb.bAimEnd = true;
+			Limb.EndRotation = EndNow.GetRotation();
+			Limb.Straight = 0.0f;
+		}
 		const FVector S = CS.GetComponentSpaceTransform(Upper).GetLocation();
 		const FVector E = CS.GetComponentSpaceTransform(Lower).GetLocation();
 		const FVector H = CS.GetComponentSpaceTransform(End).GetLocation();
@@ -457,6 +466,11 @@ void FEHAnimProxy::ApplyLimbIK(FCompactPose& Pose) const
 					const FCompactPoseBoneIndex T = FindBone(Pose, Limb.Twist[K]);
 					if (T != INDEX_NONE)
 					{
+						if (Limb.bRelative)
+						{
+							// The clip keyed its own share of the twist: start again from the forearm's.
+							Pose[T].SetRotation(Pose.GetRefPose(T).GetRotation());
+						}
 						RotateBoneCS(Pose, T, FQuat(Axis, Angle * Limb.TwistShare[K]));
 					}
 				}

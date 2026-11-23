@@ -115,6 +115,15 @@ private:
 	void UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds);
 	void PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side);
 	void PoseMeshArms(const FVector& L, const FVector& R);
+	// The keyed clips (Tools/Blender/fphands/fp_anim.py): at the ready, the block held, and one per technique, played
+	// on the game's frames; blows and lowering move the keyed hands by offsets (view space, cm).
+	void PoseClipArms(const FEHFists& Fists, float Alpha, const FVector& OffL, const FVector& OffR);
+	void PlaceArmsMesh();
+	UPROPERTY()
+	TArray<TObjectPtr<UAnimSequence>> Clips;   // Ready, Guard, Jab, Straight, Fireball, IceWall
+	bool bClips = false;
+	UAnimSequence* ShownClip = nullptr;
+	double ClipClock = 0.0;
 	void ShowParts(bool bShow);
 	void BuildGlows();
 	void SetGlow(int32 Hand, const FLinearColor& Color, float Amount);

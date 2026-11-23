@@ -141,7 +141,27 @@ web). The forearm's skin is shared out between the elbow end, the two twist bone
 skin follows only its own bones and the hand. `Tools/Unreal/import_fp_hands.py` imports them with their own skeleton
 and a plain subsurface skin material (the creator's painted skin replaces it).
 
-They are posed with no clip, following hand and arm anatomy and Oblivion's first person (the study of 2026-11-23):
+**Keyed clips (2026-11-23).** The hands now play keyed clips: at the ready, the block held, Jab, Straight, Fireball and
+Ice Wall (`/Game/Characters/FPHands/Anims/A_FPH_*`). They are made in Blender by `Tools/Blender/fphands/fp_anim.py` from
+the key poses in `fp_clips.py`, seen from the game's eye (72° field of view):
+- each technique is keyed on its own frame data, so the blow lands on its first active frame;
+- a key sets each hand's knuckle position, aim, palm, closure, spread, wrist straightness and shoulder carry, with an
+  ease per segment (a strike's "snap" covers most of its distance in its last frames);
+- every frame is posed by the same anatomy as below (elbow hinge, forearm twist, fingers drawing in and closing in a
+  wave, the thumb across them), then keyed.
+
+`Tools/Unreal/import_fp_anims.py` imports them at 60 fps. The game picks the technique's clip and plays it on the
+game's frames, held during hitstop. Between techniques it plays the block or the ready, looping. Changes blend over 4
+frames (5 for the block). Blows and lowering are added on top: the contact give, a blow on the guard and a stopped
+strike's rebound move the keyed hand by an offset (the arm reaching there on its hinge, the hand keeping its keyed
+turn), and lowering carries both hands down out of view. If the clips are missing, the hands fall back to the code
+posing below.
+
+`fp_anim.py preview` renders a contact sheet of each clip from the eye. The rig it keys on is saved by
+`build_fp_hands.py` when `EH_FPHANDS_BLEND` is set.
+
+The code posing (the fallback, and what the clips were built from) follows hand and arm anatomy and Oblivion's first
+person (the study of 2026-11-23):
 - The arm IK reaches each wrist. The elbow bends only on its hinge, so the upper arm's roll and the forearm's neutral
   turn follow the elbow.
 - A final aim turns each hand. For fists the knuckles point forward and the palm turns down as a blow lands (the

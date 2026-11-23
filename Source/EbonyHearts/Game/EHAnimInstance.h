@@ -59,6 +59,9 @@ struct FEHLimbIK
 	// EndTip (the middle knuckle) runs on along the forearm, as a closed fist does to punch or guard.
 	FName EndTip;
 	float Straight = 0.0f;
+	// Relative: Target is an offset (component space) from where the animation put the end bone, which keeps its
+	// rotation; the arm reaches there on its hinge (a keyed clip nudged by a blow or lowered out of view).
+	bool bRelative = false;
 };
 
 struct FEHAnimSample

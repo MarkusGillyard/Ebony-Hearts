@@ -121,6 +121,15 @@ void UEHViewArms::Build()
 		FistPose = nullptr;
 		bRealHands = true;
 		CacheHandFrames();
+		// The keyed clips, if all are present (otherwise the hands are posed in code, as before).
+		static const TCHAR* ClipNames[6] = {TEXT("Ready"), TEXT("Guard"), TEXT("Jab"), TEXT("Straight"), TEXT("Fireball"), TEXT("IceWall")};
+		Clips.Reset();
+		for (const TCHAR* N : ClipNames)
+		{
+			Clips.Add(LoadObject<UAnimSequence>(nullptr, *FString::Printf(TEXT("/Game/Characters/FPHands/Anims/A_FPH_%s.A_FPH_%s"), N, N), nullptr, LOAD_NoWarn | LOAD_Quiet));
+		}
+		bClips = !Clips.Contains(nullptr);
+		UE_LOG(LogTemp, Log, TEXT("EHFPHands clips=%d"), bClips ? 1 : 0);
 		BuildGlows();
 		return;
 	}
@@ -290,6 +299,80 @@ void UEHViewArms::ShowParts(bool bShow)
 	}
 }
 
+void UEHViewArms::PlaceArmsMesh()
+{
+	// The model's head sits just behind and below the eyes: its own shoulders then land where the viewer's would.
+	const FVector HeadCS = ArmsMesh->GetBoneLocation(TEXT("head"), EBoneSpaces::ComponentSpace);
+	const FQuat RelRot = FRotator(0.0f, -90.0f, 0.0f).Quaternion();
+	ArmsMesh->SetRelativeLocation(FVector(-4.0f, 0.0f, 1.0f) - RelRot.RotateVector(HeadCS));
+}
+
+void UEHViewArms::PoseClipArms(const FEHFists& Fists, float Alpha, const FVector& OffL, const FVector& OffR)
+{
+	UEHAnimInstance* A = Cast<UEHAnimInstance>(ArmsMesh->GetAnimInstance());
+	if (A == nullptr)
+	{
+		return;
+	}
+	// Which clip: a technique plays on its own frames (held during hitstop, so contact freezes the pose with the game);
+	// otherwise the block held, or the ready, looping.
+	const EEHFistAction Action = Fists.Action();
+	UAnimSequence* Clip = nullptr;
+	double Time = 0.0;
+	if (Action != EEHFistAction::None)
+	{
+		const int32 Index = Action == EEHFistAction::Jab ? 2 : Action == EEHFistAction::Straight ? 3 : Action == EEHFistAction::Fireball ? 4 : 5;
+		Clip = Clips[Index];
+		const double F = static_cast<double>(Fists.Frame()) + (Fists.InHitstop() ? 0.0 : Alpha);
+		Time = FMath::Clamp(F / 60.0, 0.0, static_cast<double>(Clip->GetPlayLength()));
+	}
+	else
+	{
+		Clip = Fists.GuardLevel() > 0.4f ? Clips[1] : Clips[0];
+		Time = FMath::Fmod(ClipClock, FMath::Max(0.05, static_cast<double>(Clip->GetPlayLength())));
+	}
+	A->SetSample(Clip, Time);
+	if (Clip != ShownClip)
+	{
+		// The block rises in 5 frames; a technique blends in over 4, so the first frames of a strike keep its snap.
+		const bool bGuardChange = (Clip == Clips[1]) || (ShownClip == Clips[1]);
+		A->BeginTransition(ShownClip == nullptr ? 0.0f : (bGuardChange ? 5.0f / 60.0f : 4.0f / 60.0f));
+		ShownClip = Clip;
+	}
+	A->SetAdditive({});
+	PlaceArmsMesh();
+	const FQuat RelRot = FRotator(0.0f, -90.0f, 0.0f).Quaternion();
+	TArray<FEHLimbIK> Limbs;
+	for (int32 H = 0; H < 2; ++H)
+	{
+		const FVector Off = H == 0 ? OffL : OffR;
+		const FHandFrame& HF = HandFrames[H];
+		if (Off.SizeSquared() < 0.0025f || !HF.bValid)
+		{
+			continue;
+		}
+		const TCHAR* Sd = H == 0 ? TEXT("l") : TEXT("r");
+		FEHLimbIK Limb;
+		Limb.Upper = FName(*FString::Printf(TEXT("upperarm_%s"), Sd));
+		Limb.Lower = FName(*FString::Printf(TEXT("lowerarm_%s"), Sd));
+		Limb.End = FName(*FString::Printf(TEXT("hand_%s"), Sd));
+		Limb.Target = RelRot.UnrotateVector(Off);
+		Limb.Pole = RelRot.UnrotateVector(FVector(0.0f, H == 0 ? -0.55f : 0.55f, -1.0f));
+		Limb.bRelative = true;
+		Limb.bHinge = true;
+		Limb.HingeUpper = HF.HingeUpper;
+		Limb.HingeLower = HF.HingeLower;
+		Limb.LowerToEndRef = HF.LowerToHand;
+		if (HF.bTwist)
+		{
+			Limb.Twist[0] = FName(*FString::Printf(TEXT("lowerarm_twist_01_%s"), Sd));
+			Limb.Twist[1] = FName(*FString::Printf(TEXT("lowerarm_twist_02_%s"), Sd));
+		}
+		Limbs.Add(Limb);
+	}
+	A->SetLimbIK(Limbs);
+}
+
 void UEHViewArms::PoseMeshArms(const FVector& L, const FVector& R)
 {
 	UEHAnimInstance* A = Cast<UEHAnimInstance>(ArmsMesh->GetAnimInstance());
@@ -420,6 +503,7 @@ void UEHViewArms::PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Han
 
 void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeconds)
 {
+	ClipClock += DeltaSeconds;
 	// The realistic arm is about 5 cm shorter to the wrist than the placeholder's: its targets are drawn in toward the
 	// shoulder line (scaled forward distance) and lifted a little, so a full extension reaches the middle of the view.
 	auto Real = [this](FVector V) { return bRealHands ? FVector(4.0f + V.X * 0.88f, V.Y, V.Z + 3.0f) : V; };
@@ -490,6 +574,7 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		L = RestL;
 		R = RestR;
 	}
+	const FVector BaseL = L, BaseR = R;
 	// Contact: the striking fist gives back a little into the arm and shudders while the hitstop holds, then eases out.
 	if (Action != EEHFistAction::None && Fists.HasConnected() && Fists.InHitstop())
 	{
@@ -529,11 +614,13 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 	{
 		(ReboundHand == 0 ? L : R) += FVector(-7.0f, 0.0f, 1.5f) * Rebound;
 	}
+	// What contact added on top of the path (give, guard shock, rebound): the keyed clips take these as offsets.
+	const FVector ExtraL = L - BaseL, ExtraR = R - BaseR;
 	L = Real(L);
 	R = Real(R);
 	ShownL = L;
 	ShownR = R;
-	if (bRealHands)
+	if (bRealHands && !bClips)
 	{
 		UpdateHandTargets(Fists, DeltaSeconds);
 	}
@@ -543,7 +630,13 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		bShown = bShow;
 		ShowParts(bShow);
 	}
-	if (bShown && ArmsMesh)
+	if (bShown && ArmsMesh && bClips)
+	{
+		// Lowering carries the keyed hands down and out of view; contact moves them as it moved the coded ones.
+		const float Down = Action == EEHFistAction::None ? 1.0f - Smooth(Visible) : 0.0f;
+		PoseClipArms(Fists, Alpha, ExtraL + (DownL - ReadyL) * Down, ExtraR + (DownR - ReadyR) * Down);
+	}
+	else if (bShown && ArmsMesh)
 	{
 		PoseMeshArms(L, R);
 	}
