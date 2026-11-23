@@ -201,6 +201,9 @@ private:
 	TObjectPtr<AEHTrainingDummy> FPDummy;
 	UPROPERTY()
 	TObjectPtr<AEHWolf> FPWolf;
+	// The pack (milestone 6): every Chapel wolf; FPWolf is the first.
+	UPROPERTY()
+	TArray<TObjectPtr<AEHWolf>> FPWolves;
 	UPROPERTY()
 	TArray<TObjectPtr<AEHFireball>> FPFireballs;
 	UPROPERTY()
@@ -349,6 +352,29 @@ private:
 	int32 FPWolfKills = 0;
 	int32 FPReflected = 0;
 	void SpawnWolf();
+	// The pack (EHDirectorPack.cpp).
+	TArray<EEHWolfState> FPWolvesLastState;
+	TArray<float> PackWaiting;          // per wolf: seconds since it last held the turn
+	int32 PackHolder = -1;
+	int32 PackHolderAttacks = 0;
+	float PackHolderSince = 0.0f;
+	bool bPackOverwhelmed = false;
+	bool bOneOnOne = false;
+	float OneOnOneLeft = 0.0f;
+	int32 PackPasses = 0;
+	int32 PackMaxAttackers = 0;
+	int32 PackOneOnOnes = 0;
+	TArray<double> FPHurtTimes;
+	TArray<float> PackRepathAt;
+	void SpawnPack(int32 Count);
+	void ResetPack();
+	void ResetWolves();
+	void TickPack(float DeltaSeconds);
+	void PassTurn(const TArray<int32>& Fighting, const TCHAR* Why);
+	void PackRepathSoon();
+	bool WolfFighting(const AEHWolf* W) const;
+	AEHWolf* NearestLiveWolf(const FVector& To, float Within) const;
+	bool PackField(const FString& Field, float& V) const;
 	void WolfStruck(const FEHWolfHit& R, const TCHAR* What);
 	// The spell selector (hold FPSpellSelect): a wheel or a list of every spell; release casts the highlighted one.
 	bool bSpellSelect = false;

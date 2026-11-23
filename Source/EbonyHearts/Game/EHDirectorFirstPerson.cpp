@@ -131,14 +131,14 @@ void AEHGameDirector::BeginFirstPerson()
 		AutoLogLine(FString::Printf(TEXT("firstperson navigation built in %.0f ms"), (FPlatformTime::Seconds() - T0) * 1000.0));
 	}
 	SpawnWolf();
-	// A Hero of Humanity is protected by the Chapel's wolves: one close by takes the blows meant for them.
+	// A Hero of Humanity is protected by the Chapel's wolves: the nearest one close by takes the blows meant for them.
 	FPPlayer->SetAbsorber([this](float Damage, const FVector& From) {
-		if (FPAlignment != EHAlign::Hero || FPWolf == nullptr || FPWolf->IsDead() ||
-			FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation()) > FPTuning.Wolf.AbsorbRange)
+		AEHWolf* W = FPAlignment == EHAlign::Hero ? NearestLiveWolf(FPPlayer->GetActorLocation(), FPTuning.Wolf.AbsorbRange) : nullptr;
+		if (W == nullptr)
 		{
 			return false;
 		}
-		FPWolf->Absorb(Damage);
+		W->Absorb(Damage);
 		AutoLogLine(FString::Printf(TEXT("fp wolf absorbed %.1f for the Hero of Humanity"), Damage));
 		return true;
 	});
@@ -467,11 +467,17 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 			++FPSparks;
 		}
 	}
-	if (FPWolf)
+	for (int32 i = 0; i < FPWolves.Num(); ++i)
 	{
-		FPWolf->SetAlignment(FPAlignment);
-		const EEHWolfState WS = FPWolf->GetState();
-		if (WS != FPWolfLastState)
+		AEHWolf* W = FPWolves[i];
+		if (W == nullptr)
+		{
+			continue;
+		}
+		W->SetAlignment(FPAlignment);
+		const EEHWolfState WS = W->GetState();
+		EEHWolfState& Last = FPWolvesLastState[i];
+		if (WS != Last)
 		{
 			// Placeholder voice: a low rumble as it winds up, the snap of a bite.
 			if (WS == EEHWolfState::BiteWindup || WS == EEHWolfState::LungeWindup)
@@ -482,14 +488,17 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 			{
 				PlayImpact(TEXT("WhooshHeavy"), 3, 0.7f, 0.8f);
 			}
-			else if (FPWolfLastState == EEHWolfState::BiteWindup)
+			else if (Last == EEHWolfState::BiteWindup)
 			{
 				PlayImpact(TEXT("Grab"), 1, 0.7f, 1.4f);
 			}
-			AutoLogLine(FString::Printf(TEXT("fp wolf %s -> %s"), EHWolfStateName(FPWolfLastState), EHWolfStateName(WS)));
-			FPWolfLastState = WS;
+			AutoLogLine(i == 0 ? FString::Printf(TEXT("fp wolf %s -> %s"), EHWolfStateName(Last), EHWolfStateName(WS))
+				: FString::Printf(TEXT("fp wolf %d %s -> %s"), i, EHWolfStateName(Last), EHWolfStateName(WS)));
+			Last = WS;
 		}
 	}
+	FPWolfLastState = FPWolvesLastState.Num() > 0 ? FPWolvesLastState[0] : EEHWolfState::Calm;
+	TickPack(DeltaSeconds);
 	// The Qhi line shows while it changes and a moment after; it flashes when a cast is refused.
 	const bool bShowQhi = Settings.StaminaMeter == 2 || (Settings.StaminaMeter == 1 && (FPPlayer->QhiFraction() < 0.999f || FPPlayer->SecondsSinceQhiChange() < 1.0f || FPPlayer->SecondsSinceRefused() < 1.0f));
 	QhiMeterAlpha = FMath::FInterpConstantTo(QhiMeterAlpha, bShowQhi ? 1.0f : 0.0f, DeltaSeconds, bShowQhi ? 6.0f : 1.5f);
@@ -542,9 +551,12 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			Audio.PlayVaried(E.Action == EEHFistAction::Straight ? FName(TEXT("WhooshHeavy")) : FName(TEXT("WhooshLight")), 3, EEHSoundCat::Effects,
 				0.7f);
 			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
-			if (FPWolf && FPWolf->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
+			for (AEHWolf* W : FPWolves)
 			{
-				AutoLogLine(TEXT("fp wolf disengages (threatened)"));
+				if (W && W->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
+				{
+					AutoLogLine(TEXT("fp wolf disengages (threatened)"));
+				}
 			}
 			break;
 		case FEHFirstPersonEvent::EKind::Contact:
@@ -620,6 +632,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			HurtFlash = Settings.bReduceFlash ? 0.35f : 1.0f;
 			Rumble(0.9f, 0.6f, 0.25f);
 			++FPHurtCount;
+			FPHurtTimes.Add(GetWorld()->GetTimeSeconds());
 			AutoLogLine(FString::Printf(TEXT("fp hurt damage=%.1f health=%.1f"), E.Damage, FPPlayer->Health()));
 			break;
 		case FEHFirstPersonEvent::EKind::CastStart:
@@ -632,9 +645,12 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				PlayImpact(TEXT("AuraCharge"), 3, 0.5f, 1.35f);
 			}
 			AutoLogLine(FString::Printf(TEXT("fp cast_start %s qhi=%.1f"), EHFistActionName(E.Action), FPPlayer->Qhi()));
-			if (FPWolf && FPWolf->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
+			for (AEHWolf* W : FPWolves)
 			{
-				AutoLogLine(TEXT("fp wolf disengages (threatened)"));
+				if (W && W->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
+				{
+					AutoLogLine(TEXT("fp wolf disengages (threatened)"));
+				}
 			}
 			break;
 		case FEHFirstPersonEvent::EKind::Cast:
@@ -658,12 +674,16 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				{
 					Opponents.Add(FPDummy);
 				}
-				if (FPWolf && !FPWolf->IsDead())
+				for (AEHWolf* W : FPWolves)
 				{
-					Opponents.Add(FPWolf);
+					if (W && !W->IsDead())
+					{
+						Opponents.Add(W);
+					}
 				}
 				Wall->SetVfx(Vfx);
 				Wall->Raise(FPTuning.Magic, FPWater, E.Location, E.Direction, Opponents);
+				PackRepathSoon();
 				// Anyone standing where it rises is pushed out of the ice to the side they stood on.
 				for (AActor* A : Opponents)
 				{
@@ -821,6 +841,7 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 			PlayImpact(TEXT("StepWater"), 3, 0.55f, 0.8f);
 			PlayImpact(TEXT("AuraFade"), 1, 0.45f, 0.6f);
 			AutoLogLine(TEXT("fp ice_wall melting into water"));
+			PackRepathSoon();
 		}
 		if (W->TakeEnded())
 		{
@@ -843,14 +864,7 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 
 void AEHGameDirector::SpawnWolf()
 {
-	FActorSpawnParameters Params;
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-	FPWolf = GetWorld()->SpawnActor<AEHWolf>(AEHWolf::StaticClass(), FTransform(FRotator(0, FPTuning.Wolf.HomeYaw, 0), FPTuning.Wolf.Spawn + FVector(0, 0, 60.0f)), Params);
-	if (FPWolf)
-	{
-		FPWolf->SetAlignment(FPAlignment);
-		FPWolf->Setup(FPTuning.Wolf, FPPlayer, FPDummy);
-	}
+	SpawnPack(FPTuning.Pack.Count);
 }
 
 void AEHGameDirector::WolfStruck(const FEHWolfHit& R, const TCHAR* What)
@@ -873,9 +887,12 @@ void AEHGameDirector::WolfStruck(const FEHWolfHit& R, const TCHAR* What)
 		FPAlignment = EHAlign::AfterKill(FPAlignment);
 		PlayImpact(TEXT("BodyFall"), 2, 0.8f, 1.15f);
 	}
-	if (FPWolf)
+	for (AEHWolf* W : FPWolves)
 	{
-		FPWolf->SetAlignment(FPAlignment);
+		if (W)
+		{
+			W->SetAlignment(FPAlignment);
+		}
 	}
 	AutoLogLine(FString::Printf(TEXT("fp wolf struck by %s damage=%.1f reflected=%.1f killed=%d alignment %s -> %s"), What, R.Damage, R.Reflected, R.bKilled ? 1 : 0,
 		EHAlign::Name(Before), EHAlign::Name(FPAlignment)));
@@ -1052,7 +1069,16 @@ void AEHGameDirector::BuildDeveloperPanel()
 		I.Hint = TEXT("Good: friendly and protective. Neutral: keeps its distance. Evil, or harmed: hostile.");
 		Menu.Add(I);
 	}
-	Menu.Add(FPButton(TEXT("Reset the wolf"), [this] { if (FPWolf) { FPWolf->ResetWolf(); } }, TEXT("Calm, unhurt, at its rest.")));
+	Menu.Add(FPButton(TEXT("Reset the wolves"), [this] { ResetWolves(); }, TEXT("Calm, unhurt, at their rest.")));
+	{
+		// The pack (milestone 6): one to four wolves, spawned at their rests.
+		FEHMenuItem I;
+		I.Label = TEXT("Wolves");
+		I.Value = [this] { return FString::Printf(TEXT("%d"), FPWolves.Num()); };
+		I.Change = [this](int32 D) { SpawnPack(FPWolves.Num() + D); };
+		I.Hint = TEXT("One to four. Evil (or harmed) wolves fight as a pack, taking turns; an overwhelmed player gets a one-on-one.");
+		Menu.Add(I);
+	}
 	Menu.Add(FPHeader(TEXT("Time")));
 	{
 		// Destiny's Ark's hour, six at a time: the windows follow it.
@@ -1139,10 +1165,7 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 	{
 		FPDummy->ResetDummy();
 	}
-	if (FPWolf)
-	{
-		FPWolf->ResetWolf();   // the alignment stays: a case can be repeated
-	}
+	ResetWolves();   // the alignment stays: a case can be repeated
 	EndPrayer(TEXT("reset"));
 	FPMessageLeft = 0.0f;
 	FPPrayers = FPMessages = 0;
@@ -1185,13 +1208,10 @@ void AEHGameDirector::BuildFirstPersonPause()
 		}
 		SetPaused(false, EHDeviceNone);
 	}, TEXT("Back to its place, its count cleared.")));
-	Menu.Add(FPButton(TEXT("Reset the wolf"), [this] {
-		if (FPWolf)
-		{
-			FPWolf->ResetWolf();
-		}
+	Menu.Add(FPButton(FPWolves.Num() > 1 ? TEXT("Reset the wolves") : TEXT("Reset the wolf"), [this] {
+		ResetWolves();
 		SetPaused(false, EHDeviceNone);
-	}, TEXT("The Chapel wolf back at its rest, calm and unhurt.")));
+	}, FPWolves.Num() > 1 ? TEXT("The Chapel wolves back at their rest, calm and unhurt.") : TEXT("The Chapel wolf back at its rest, calm and unhurt.")));
 	Menu.Add(FPHeader(FString()));
 	Menu.Add(FPButton(TEXT("Quit to desktop"), [this] { GoTo(EEHScreen::QuitConfirm); }));
 }
@@ -1279,13 +1299,18 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 	{
 		P.Text(FString::Printf(TEXT("Alignment: %s (%s)  ·  F10"), EHAlign::Name(FPAlignment), EHAlign::BandName(EHAlign::Band(FPAlignment))),
 			FVector2f(P.VirtualMin.X + 28.0f, P.VirtualMin.Y + 24.0f), Fonts.Sized(Fonts.Body, 20), EHStyle::Alpha(EHStyle::TextSecondary, 0.75f), 0.0f, 0.0f);
-		FVector2D S2;
-		if (APlayerController* PC2 = GetWorld()->GetFirstPlayerController(); PC2 && PC2->ProjectWorldLocationToScreen(FPWolf->LabelLocation(), S2, true) &&
-			FVector::Dist(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation()) < 2500.0f)
+		for (int32 i = 0; i < FPWolves.Num(); ++i)
 		{
-			const FVector2f At = P.ToVirtual(FVector2f(S2.X, S2.Y) / FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale()));
-			P.Text(FString::Printf(TEXT("Wolf · %s · %.0f HP%s"), EHWolfStateName(FPWolf->GetState()), FPWolf->HealthValue(), FPWolf->IsProvoked() ? TEXT(" · provoked") : TEXT("")),
-				At, Fonts.Sized(Fonts.Body, 18), EHStyle::Alpha(EHStyle::TextPrimary, 0.8f), 0.5f, 1.0f);
+			const AEHWolf* W = FPWolves[i];
+			FVector2D S2;
+			if (W && GetWorld()->GetFirstPlayerController() && GetWorld()->GetFirstPlayerController()->ProjectWorldLocationToScreen(W->LabelLocation(), S2, true) &&
+				FVector::Dist(W->GetActorLocation(), FPPlayer->GetActorLocation()) < 2500.0f)
+			{
+				static const TCHAR* Roles[] = {TEXT(""), TEXT(" · turn"), TEXT(" · waiting"), TEXT(" · standing back")};
+				const FVector2f At = P.ToVirtual(FVector2f(S2.X, S2.Y) / FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale()));
+				P.Text(FString::Printf(TEXT("Wolf %d · %s · %.0f HP%s%s"), i + 1, EHWolfStateName(W->GetState()), W->HealthValue(), W->IsProvoked() ? TEXT(" · provoked") : TEXT(""),
+					Roles[static_cast<int32>(W->GetPackRole())]), At, Fonts.Sized(Fonts.Body, 18), EHStyle::Alpha(EHStyle::TextPrimary, 0.8f), 0.5f, 1.0f);
+			}
 		}
 	}
 #endif
@@ -1453,6 +1478,7 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("glass_glow")) V = FPClockNow.Glass;
 		else if (Field == TEXT("placed_loops")) V = static_cast<float>(Audio.PlacedLoopCount());
 		else if (Field == TEXT("sparks")) V = static_cast<float>(FPSparks);
+		else if (PackField(Field, V)) {}
 		else if (Field == TEXT("praying")) V = bPraying ? 1.0f : 0.0f;
 		else if (Field == TEXT("prayers")) V = static_cast<float>(FPPrayers);
 		else if (Field == TEXT("prayer_seconds")) V = PrayerSeconds;
@@ -1533,10 +1559,7 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 	if (Cmd == TEXT("fp_wolf_reset"))
 	{
 		// What the pause menu's Reset the wolf does.
-		if (FPWolf)
-		{
-			FPWolf->ResetWolf();
-		}
+		ResetWolves();
 		AutoLogLine(Line);
 		return true;
 	}
@@ -1606,6 +1629,55 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		FPClockHours = Day * FPTuning.Clock.DayHours + FMath::Clamp(F(1, 0.0f), 0.0f, FPTuning.Clock.DayHours - 0.001f);
 		ApplyWorldClock(true);
 		AutoLogLine(FString::Printf(TEXT("%s -> hour %.2f light %.2f glass %.2f"), *Line, FMath::Fmod(FPClockHours, (double)FPTuning.Clock.DayHours), FPClockNow.Light, FPClockNow.Glass));
+		return true;
+	}
+	if (Cmd == TEXT("fp_wolves"))
+	{
+		// fp_wolves <1..4>: the pack's size (what the developer panel's Wolves does).
+		SpawnPack(FMath::RoundToInt(F(1, 1.0f)));
+		AutoLogLine(FString::Printf(TEXT("%s -> %d"), *Line, FPWolves.Num()));
+		return true;
+	}
+	if (Cmd == TEXT("fp_pack_ring"))
+	{
+		// fp_pack_ring <radius>: every living wolf placed round the player at this distance, at rest, facing them.
+		const float R = F(1, 300.0f);
+		int32 N = 0;
+		for (int32 i = 0; i < FPWolves.Num(); ++i)
+		{
+			AEHWolf* W = FPWolves[i];
+			if (W && !W->IsDead() && FPPlayer)
+			{
+				const float A = 2.0f * PI * i / FMath::Max(1, FPWolves.Num());
+				const FVector At = FPPlayer->GetActorLocation() + FVector(FMath::Cos(A), FMath::Sin(A), 0.0f) * R;
+				W->TeleportTo(FVector(At.X, At.Y, FPPlayer->FeetLocation().Z + 60.0f), (FPPlayer->GetActorLocation() - At).Rotation(), false, true);
+				W->HaltForTest();
+				++N;
+			}
+		}
+		AutoLogLine(FString::Printf(TEXT("%s -> %d"), *Line, N));
+		return true;
+	}
+	if (Cmd == TEXT("fp_hurt"))
+	{
+		// fp_hurt <damage>: a blow from straight ahead, as a strike would land (testing the pack's three-hits rule).
+		if (FPPlayer)
+		{
+			FPPlayer->ReceiveStrike(F(1, 5.0f), FPPlayer->GetActorLocation() + FPPlayer->GetActorForwardVector() * 80.0f, true);
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_wolf_kill"))
+	{
+		// fp_wolf_kill <index>: a wolf dies at once (testing the pack's turns), with no alignment change.
+		const int32 i = FMath::RoundToInt(F(1, 0.0f));
+		if (FPWolves.IsValidIndex(i) && FPWolves[i])
+		{
+			FPWolves[i]->SetHealthForTest(1.0f);
+			FPWolves[i]->ReceivePlayerHit(5.0f, FPWolves[i]->GetActorLocation() + FVector(100, 0, 0), FPWolves[i]->GetActorLocation(), false);
+		}
+		AutoLogLine(Line);
 		return true;
 	}
 	if (Cmd == TEXT("fp_hide"))

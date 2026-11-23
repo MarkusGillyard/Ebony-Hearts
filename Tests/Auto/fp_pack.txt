@@ -1,0 +1,139 @@
+# The Chapel wolves as a pack (milestone 6; development build: test positions, the alignment selector, the pack's
+# size). Covers: two, three and four wolves; taking turns (never more than one wolf attacking, the turn passing after
+# each attack); the one-on-one when the player is overwhelmed, by each of the creator's three conditions (Health below
+# half, surrounded by three, three hits in four seconds), with the others standing back; the turn passing cleanly on
+# a death, a freeze and a reset; the wolves re-planning round an Ice Wall; a lone wolf unchanged.
+wait 5
+fp_expect screen eq 12
+fp_expect wolves eq 1
+
+log == two wolves, evil: they take turns (the player's Health raised so the long fights cannot kill them)
+fp_stat health 1000
+fp_health 1000
+fp_wolves 2
+fp_align 7
+fp_teleport 0 -900 0 -90 0
+wait 9
+fp_state two
+fp_expect wolves eq 2
+fp_expect wolves_fighting eq 2
+fp_expect pack_max_attackers lt 2
+fp_expect pack_attacks gt 2
+fp_expect pack_passes gt 1
+
+log == three wolves
+fp_reset
+fp_wolves 3
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 9
+fp_expect wolves eq 3
+fp_expect wolves_fighting eq 3
+fp_expect pack_max_attackers lt 2
+fp_expect pack_passes gt 1
+
+log == four wolves
+fp_reset
+fp_wolves 4
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 9
+fp_state four
+fp_expect wolves eq 4
+fp_expect wolves_fighting eq 4
+fp_expect pack_max_attackers lt 2
+fp_expect pack_passes gt 2
+
+log == overwhelmed by Health below half: a one-on-one, the others stand back
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+fp_health 450
+wait 2
+fp_expect overwhelmed eq 1
+fp_expect one_on_one eq 1
+wait 5
+fp_state one_on_one
+fp_expect pack_holdback_min gt 500
+fp_expect pack_max_attackers lt 2
+
+log == overwhelmed by being surrounded (three wolves within 4 m)
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 0.2
+fp_pack_ring 250
+wait 0.2
+fp_expect overwhelmed eq 1
+fp_expect one_on_one eq 1
+
+log == overwhelmed by three hits in four seconds (the wolves held far off, so only the hits count)
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 0.2
+fp_pack_ring 1000
+wait 0.1
+fp_expect overwhelmed eq 0
+fp_hurt 5
+wait 0.3
+fp_hurt 5
+wait 0.3
+fp_expect overwhelmed eq 0
+fp_hurt 5
+wait 0.1
+fp_expect pack_hits eq 3
+fp_expect overwhelmed eq 1
+fp_expect one_on_one eq 1
+
+log == the turn passes cleanly when the holder dies
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 3
+fp_state before_kill
+fp_wolf_kill 0
+wait 1.5
+fp_expect wolves_alive eq 3
+fp_expect wolves_fighting eq 3
+fp_expect pack_holder gt 0
+fp_expect pack_max_attackers lt 2
+
+log == and when the holder is frozen (an Ice Wall in the water catches the wolves near it)
+fp_reset
+wait 0.3
+fp_teleport 0 -1150 0 -90 0
+wait 0.2
+fp_pack_ring 260
+press kbA FPIceWall
+wait 0.6
+fp_expect wolves_fighting lt 4
+
+log == an Ice Wall: the wolves re-plan round it, and none stays stuck against it
+fp_reset
+wait 0.3
+fp_teleport 0 -1150 0 -90 0
+wait 1
+press kbA FPIceWall
+wait 4
+fp_expect pack_repaths gt 3
+fp_expect walls eq 1
+wait 8
+fp_expect walls eq 0
+fp_expect pack_attacks gt 0
+
+log == a reset puts every wolf back at rest, alive; the fight starts afresh from the first wolf
+fp_reset
+wait 0.5
+fp_expect pack_holder lt 1
+fp_expect one_on_one eq 0
+fp_expect wolves_alive eq 4
+
+log == back to one wolf: no pack
+fp_wolves 1
+fp_align 4
+fp_reset
+wait 0.5
+fp_expect wolves eq 1
+fp_state end
+quit

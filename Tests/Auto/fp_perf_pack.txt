@@ -1,0 +1,61 @@
+# Frame-time capture of the pack's fight (milestone 6; development builds: the pack's size, the alignment and a test
+# position). Four evil wolves fighting the player in the nave, with Ice Walls rising among them and Fireballs flying:
+# the four wolves' navigation, re-plans and placeholder bodies on top of milestone 4's spell costs. One warm-up
+# round, then about 50 s captured.
+wait 6
+fp_stat health 5000
+fp_health 5000
+fp_wolves 4
+fp_align 7
+fp_teleport 0 -900 0 -90 0
+wait 3
+log warm-up round
+press kbA FPIceWall
+wait 1.0
+press kbA FPFireball
+wait 2.0
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 3
+perf_begin
+loop 4
+log round: the pack closes, a wall among them, the view turning across it, Fireballs, strikes
+wait 2.0
+press kbA FPIceWall
+wait 0.8
+loop 24
+look 60 0
+wait 0.05
+endloop
+loop 24
+look -60 0
+wait 0.05
+endloop
+press kbA FPFireball
+wait 1.4
+press kbA FPJab
+wait 0.3
+press kbA FPStraight
+wait 0.8
+press kbA FPFireball
+wait 1.4
+loop 12
+look 120 0
+wait 0.05
+endloop
+loop 12
+look -120 0
+wait 0.05
+endloop
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 1.5
+endloop
+perf_end fp_pack
+fp_expect wolves eq 4
+fp_expect pack_max_attackers lt 2
+fp_state end
+mem end
+quit

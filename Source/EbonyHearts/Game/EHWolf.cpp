@@ -10,6 +10,7 @@
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Navigation/PathFollowingComponent.h"
+#include "NavigationSystem.h"
 
 namespace
 {
@@ -219,6 +220,10 @@ void AEHWolf::ResetWolf()
 	Rig->SetRelativeLocation(FVector(0, 0, -48.0f));
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	BiteCount = LungeCount = ConnectCount = DisengageCount = AbsorbCount = ProtectCount = FreezeCount = 0;
+	RepathCount = StuckCount = StuckFrames = WaitGoalFrames = 0;
+	WaitGoal = FVector(1e9);
+	SinceAttack = 0.0f;
+	PackRole = EEHPackRole::Free;
 	Enter(EEHWolfState::Calm, 0);
 }
 
@@ -261,6 +266,18 @@ bool AEHWolf::IsHostile() const
 	}
 }
 
+bool AEHWolf::IsAttacking() const
+{
+	switch (State)
+	{
+	case EEHWolfState::BiteWindup: case EEHWolfState::Bite: case EEHWolfState::LungeWindup: case EEHWolfState::Lunge:
+	case EEHWolfState::Recover:
+		return true;
+	default:
+		return false;
+	}
+}
+
 void AEHWolf::Enter(EEHWolfState Next, int32 Length)
 {
 	State = Next;
@@ -282,6 +299,34 @@ void AEHWolf::MoveTo(const FVector& Where, float Speed, float Accept)
 		LastMoveTarget = Where;
 		AI->MoveToLocation(Where, Accept, false, true, true, false, nullptr, true);
 	}
+}
+
+FVector AEHWolf::FindWaitSpot(float Radius) const
+{
+	// The nearest place on the circle (from the wolf's own bearing, a step ahead in its circling direction, then
+	// alternately further each way) that is on the navigation mesh and still about that far from the player.
+	const FVector P = Player->GetActorLocation();
+	const FVector From = GetActorLocation() - P;
+	const float Bearing = FMath::Atan2(From.Y, From.X) + CircleSign * FMath::DegreesToRadians(17.0f);
+	const UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+	FVector Fallback = P + FVector(FMath::Cos(Bearing), FMath::Sin(Bearing), 0.0f) * Radius;
+	if (Nav == nullptr)
+	{
+		return Fallback;
+	}
+	for (int32 k = 0; k < 16; ++k)
+	{
+		const float Turn = FMath::DegreesToRadians(22.5f) * ((k + 1) / 2) * (k % 2 == 0 ? 1.0f : -1.0f) * CircleSign;
+		const float A = Bearing + Turn;
+		const FVector C = P + FVector(FMath::Cos(A), FMath::Sin(A), 0.0f) * Radius;
+		FNavLocation On;
+		if (Nav->ProjectPointToNavigation(FVector(C.X, C.Y, GetActorLocation().Z), On, FVector(60.0f, 60.0f, 250.0f))
+			&& FVector::Dist2D(On.Location, P) >= Radius * 0.85f && FVector::Dist2D(On.Location, C) < 80.0f)
+		{
+			return On.Location;
+		}
+	}
+	return Fallback;
 }
 
 void AEHWolf::Stop()
@@ -434,6 +479,23 @@ void AEHWolf::StepFrame()
 		IceCuff->SetVisibility(FrozenLeft > 0.0f);
 	}
 	const bool bFrozen = FrozenLeft > 0.0f;
+	SinceAttack = IsAttacking() ? 0.0f : SinceAttack + Step;
+	// Moving but going nowhere (a wall the navigation has not caught up with yet, another wolf in the way): re-plan.
+	if (AAIController* AI = Cast<AAIController>(Controller); AI && !bFrozen && AI->GetMoveStatus() == EPathFollowingStatus::Moving
+		&& GetVelocity().Size2D() < 25.0f && FVector::Dist2D(GetActorLocation(), LastMoveTarget) > 120.0f)
+	{
+		if (++StuckFrames >= 45)
+		{
+			StuckFrames = 0;
+			++StuckCount;
+			LastMoveTarget = FVector(1e9);
+			AI->StopMovement();
+		}
+	}
+	else
+	{
+		StuckFrames = 0;
+	}
 	const FVector To = ToPlayer2D();
 	const float Dist = To.Size();
 	const bool bOutside = PlayerOutside();
@@ -578,30 +640,59 @@ void AEHWolf::StepFrame()
 		{
 			Enter(EEHWolfState::Hostile, 0);
 		}
-		// Attack when ready: a bite up close, a lunge from range; otherwise circle at a distance, changing direction.
-		if (Cooldown == 0 && Dist <= Tuning.BiteRange)
+		if (PackRole == EEHPackRole::HoldBack)
+		{
+			// One-on-one: another wolf is fighting; this one stands back and watches.
+			if (FMath::Abs(Dist - HoldBackRadius) > 120.0f)
+			{
+				MoveTo(Player->GetActorLocation() - To.GetSafeNormal() * HoldBackRadius, Dist < HoldBackRadius ? Tuning.WalkSpeed * 1.3f : Tuning.RunSpeed, 60.0f);
+			}
+			else
+			{
+				Stop();
+				FaceTowards(Player->GetActorLocation(), 4.0f);
+			}
+			break;
+		}
+		const bool bMayAttack = PackRole == EEHPackRole::Free || PackRole == EEHPackRole::Attacker;
+		// Attack when ready (and when it is this wolf's turn): a bite up close, a lunge from range; otherwise circle at
+		// a distance, changing direction. Waiting wolves keep circling just outside the bite.
+		if (bMayAttack && Cooldown == 0 && Dist <= Tuning.BiteRange)
 		{
 			Stop();
 			Enter(EEHWolfState::BiteWindup, Tuning.BiteWindup);
 			break;
 		}
-		if (Cooldown == 0 && Dist >= Tuning.LungeMin && Dist <= Tuning.LungeMax && FMath::FRand() < 0.04f)
+		if (bMayAttack && Cooldown == 0 && Dist >= Tuning.LungeMin && Dist <= Tuning.LungeMax && FMath::FRand() < 0.04f)
 		{
 			Stop();
 			Enter(EEHWolfState::LungeWindup, Tuning.LungeWindup);
 			break;
 		}
-		if (Cooldown > 0 || Dist > Tuning.CircleRadius + 150.0f)
+		if (!bMayAttack || Cooldown > 0 || Dist > Tuning.CircleRadius + 150.0f)
 		{
 			if (--CircleFrames <= 0)
 			{
 				CircleFrames = FMath::RandRange(70, 160);
 				CircleSign = FMath::FRand() < 0.5f ? -1.0f : 1.0f;
 			}
+			if (PackRole == EEHPackRole::Waiting)
+			{
+				// Waiting its turn: circle a little wider, outside the distance that counts as surrounding the player,
+				// at a place on the floor (between the pews the aisles are narrow).
+				if (--WaitGoalFrames <= 0 || FVector::Dist2D(WaitGoal, Player->GetActorLocation()) < WaitRadius * 0.8f)
+				{
+					WaitGoalFrames = 10;
+					WaitGoal = FindWaitSpot(WaitRadius);
+				}
+				MoveTo(WaitGoal, Dist > WaitRadius + 300.0f ? Tuning.RunSpeed : Tuning.WalkSpeed * 1.3f, 40.0f);
+				break;
+			}
+			const float R = Tuning.CircleRadius;
 			const FVector Dir = (-To).GetSafeNormal();
 			const FVector Side = FVector::CrossProduct(FVector::UpVector, Dir) * CircleSign;
-			const FVector Goal = Player->GetActorLocation() + (Dir * Tuning.CircleRadius + Side * 160.0f).GetSafeNormal() * Tuning.CircleRadius;
-			MoveTo(Goal, Dist > Tuning.CircleRadius + 300.0f ? Tuning.RunSpeed : Tuning.WalkSpeed * 1.3f, 40.0f);
+			const FVector Goal = Player->GetActorLocation() + (Dir * R + Side * 160.0f).GetSafeNormal() * R;
+			MoveTo(Goal, Dist > R + 300.0f ? Tuning.RunSpeed : Tuning.WalkSpeed * 1.3f, 40.0f);
 		}
 		else
 		{
