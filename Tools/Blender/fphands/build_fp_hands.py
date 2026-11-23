@@ -4,6 +4,12 @@ characters (root, spine, clavicles, arms, hands and three bones per finger, neck
 code drives it unchanged. Joints are found from the mesh itself: arm centre lines from cross-sections, the wrist at the
 forearm's narrowest point, fingers by splitting the hand into its five digits and walking each one's centre line.
 
+Anatomy (see the first-person hands study): finger bones in the proportions of real phalanges (proximal : middle :
+distal about 0.49 : 0.30 : 0.21 of knuckle-to-tip), the knuckle joint well behind the finger web, and two forearm twist
+bones per arm. Forearm rotation (palm down or up) happens along the whole forearm, not at the wrist, so the forearm skin
+is shared out between the elbow end, the two twist bones and the wrist end; the game turns each twist bone by part of
+the hand's rotation. Each finger's skin follows only its own bones and the hand.
+
 Usage:
   blender -b --factory-startup -P build_fp_hands.py -- <human_base_meshes_bundle.blend> <out.fbx> [preview dir]
 """
@@ -184,7 +190,7 @@ def chain(comp, base_extra, ratios, start=None):
 
 finger_chains = {}
 for name, comp in zip(NAMES, fingers):
-    j, ax = chain(comp, 0.32, [0.45, 0.30, 0.25])
+    j, ax = chain(comp, 0.28, [0.49, 0.30, 0.21])
     finger_chains[name] = j
 # Thumb: its metacarpal starts near the wrist on the thumb side; the free digit gives the two phalanges.
 tj, tax = chain(thumb, 0.0, [0.55, 0.45])
@@ -193,6 +199,14 @@ finger_chains["thumb"] = [cmc, tj[0], tj[1], tj[2]]
 for k, j in finger_chains.items():
     print(f"FPHANDS {k}: " + " ".join(str(tuple(round(v, 3) for v in p)) for p in j))
 knuckles = sum((finger_chains[n][0] for n in NAMES), Vector()) / 4
+
+# Tag each digit's vertices (beyond the webs) so its skin can be kept to its own bones after binding.
+digit_attr = me.attributes.new("eh_digit", "INT", "POINT")
+for n, comp in enumerate(fingers):
+    for i in comp:
+        digit_attr.data[i].value = n + 1
+for i in thumb:
+    digit_attr.data[i].value = 5
 
 # --- Keep only the arms (and a little of each shoulder) ---------------------------------------------------------------
 bm = bmesh.new()
@@ -261,6 +275,10 @@ for side, f in (("r", lambda p: p), ("l", mirror)):
     bone(f"clavicle_{side}", f(Vector((-0.02, -0.04, 1.43))), f(shoulder), "spine_03")
     bone(f"upperarm_{side}", f(shoulder), f(elbow), f"clavicle_{side}", roll_axis=Vector((0, -1, 0)))
     bone(f"lowerarm_{side}", f(elbow), f(wrist), f"upperarm_{side}", roll_axis=Vector((0, -1, 0)))
+    # Twist bones along the forearm (children of the forearm, deforming only): one at its middle, one near the wrist.
+    for tn, a, b in (("lowerarm_twist_01", 0.50, 0.70), ("lowerarm_twist_02", 0.85, 1.0)):
+        bone(f"{tn}_{side}", f(elbow + (wrist - elbow) * a), f(elbow + (wrist - elbow) * b), f"lowerarm_{side}",
+             roll_axis=Vector((0, -1, 0)))
     bone(f"hand_{side}", f(wrist), f(knuckles), f"lowerarm_{side}",
          roll_axis=f(lateral) if side == "r" else mirror(lateral))
     for n in NAMES + ["thumb"]:
@@ -294,6 +312,68 @@ bpy.context.view_layer.objects.active = rig
 bpy.ops.object.parent_set(type="ARMATURE_AUTO")
 groups = [g.name for g in body.vertex_groups]
 print(f"FPHANDS bound with {len(groups)} vertex groups")
+
+# --- Weights: share the forearm out for twisting, and keep each digit to its own bones ---------------------------------
+G = {g.name: g.index for g in body.vertex_groups}
+for nm in ("lowerarm_twist_01_r", "lowerarm_twist_02_r", "lowerarm_twist_01_l", "lowerarm_twist_02_l"):
+    if nm not in G:
+        G[nm] = body.vertex_groups.new(name=nm).index
+INV = {v: k for k, v in G.items()}
+DIGIT_BONES = {1: "index", 2: "middle", 3: "ring", 4: "pinky", 5: "thumb"}
+tags = body.data.attributes["eh_digit"].data
+KNOTS = ((0.22, 0), (0.55, 1), (0.90, 2))   # forearm position (elbow 0 .. wrist 1) where each bone has full weight
+
+
+def share(s):
+    """Weights for (lowerarm, twist_01, twist_02) at forearm position s: piecewise linear between the knots."""
+    out = [0.0, 0.0, 0.0]
+    if s <= KNOTS[0][0]:
+        out[0] = 1.0
+    elif s >= KNOTS[-1][0]:
+        out[2] = 1.0
+    else:
+        for (s0, a), (s1, b) in zip(KNOTS, KNOTS[1:]):
+            if s0 <= s <= s1:
+                t = (s - s0) / (s1 - s0)
+                t = t * t * (3 - 2 * t)
+                out[a] = 1.0 - t
+                out[b] = t
+                break
+    return out
+
+
+moved = cleaned = 0
+for v in body.data.vertices:
+    side = "r" if v.co.x < 0 else "l"
+    sgn = 1.0 if side == "r" else -1.0
+    e = Vector((elbow.x * sgn, elbow.y, elbow.z))
+    w = Vector((wrist.x * sgn, wrist.y, wrist.z))
+    ws = {INV[g.group]: g.weight for g in v.groups if g.weight > 0.0}
+    fore = [f"lowerarm_{side}", f"lowerarm_twist_01_{side}", f"lowerarm_twist_02_{side}"]
+    total = sum(ws.get(n, 0.0) for n in fore)
+    if total > 1e-4:
+        s = (v.co - e).dot(w - e) / (w - e).length_squared
+        for n, k in zip(fore, share(max(0.0, min(1.0, s)))):
+            ws[n] = total * k
+        moved += 1
+    d = tags[v.index].value
+    if d:
+        own = DIGIT_BONES[d]
+        keep = {n: x for n, x in ws.items()
+                if n.startswith(own + "_") or n == f"hand_{side}" or not any(n.startswith(o + "_") for o in DIGIT_BONES.values())}
+        if len(keep) != len(ws):
+            cleaned += 1
+        ws = keep
+    tot = sum(ws.values())
+    if tot <= 1e-6:
+        continue
+    for g in list(v.groups):
+        body.vertex_groups[g.group].remove([v.index])
+    for n, x in ws.items():
+        if x / tot > 1e-4:
+            body.vertex_groups[G[n]].add([v.index], x / tot, "REPLACE")
+print(f"FPHANDS weights: forearm shared on {moved} vertices, {cleaned} digit vertices cleaned of other digits")
+body.data.attributes.remove(body.data.attributes["eh_digit"])
 
 if PREVIEW:
     import os

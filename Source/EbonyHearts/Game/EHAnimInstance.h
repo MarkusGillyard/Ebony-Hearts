@@ -46,6 +46,19 @@ struct FEHLimbIK
 	// hand can aim its knuckles or palm independently of the forearm's direction.
 	bool bAimEnd = false;
 	FQuat EndRotation = FQuat::Identity;
+	// Optional anatomy: the elbow bends only on its hinge (each bone's hinge axis in its own space), so the upper arm's
+	// roll and the forearm's neutral turn follow the elbow instead of the shortest rotation; and the hand's turn about
+	// the forearm (pronation, supination) is shared along it by twist bones, as the radius rolls around the ulna.
+	bool bHinge = false;
+	FVector HingeUpper = FVector::ZeroVector;
+	FVector HingeLower = FVector::ZeroVector;
+	FName Twist[2];
+	float TwistShare[2] = {0.5f, 0.85f};
+	FQuat LowerToEndRef = FQuat::Identity;   // the end bone's rest rotation relative to the lower bone
+	// Optional: straighten the wrist by this much (0..1) after the aim, turning the end bone so the line from it to
+	// EndTip (the middle knuckle) runs on along the forearm, as a closed fist does to punch or guard.
+	FName EndTip;
+	float Straight = 0.0f;
 };
 
 struct FEHAnimSample

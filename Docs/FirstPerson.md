@@ -127,19 +127,34 @@ speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`
 
 **Realistic hands (fists rework, 2026-11-23).** The first-person arms are a realistic human pair from the Blender
 Foundation's CC0 Human Base Meshes: the realistic male body's arms, cut at the shoulders and rigged by
-`Tools/Blender/fphands/build_fp_hands.py` on a 45-bone skeleton that uses the characters' bone names, with three bones
-per finger. Joints are found from the mesh itself: arm centre lines from cross-sections, the wrist at the forearm's
-narrowest point, digits separated by connectivity. `Tools/Unreal/import_fp_hands.py` imports them with their own skeleton
+`Tools/Blender/fphands/build_fp_hands.py` on a 49-bone skeleton that uses the characters' bone names, with three bones
+per finger and two twist bones in each forearm. Joints are found from the mesh itself: arm centre lines from
+cross-sections, the wrist at the forearm's narrowest point, digits separated by connectivity. Finger bones follow real
+phalanx proportions (proximal : middle : distal about 0.49 : 0.30 : 0.21, the knuckle joint well behind the finger
+web). The forearm's skin is shared out between the elbow end, the two twist bones and the wrist end, and each finger's
+skin follows only its own bones and the hand. `Tools/Unreal/import_fp_hands.py` imports them with their own skeleton
 and a plain subsurface skin material (the creator's painted skin replaces it).
 
-They are posed with no clip:
-- The arm IK reaches each wrist.
+They are posed with no clip, following hand and arm anatomy and Oblivion's first person (the study of 2026-11-23):
+- The arm IK reaches each wrist. The elbow bends only on its hinge, so the upper arm's roll and the forearm's neutral
+  turn follow the elbow.
 - A final aim turns each hand. For fists the knuckles point forward and the palm turns down as a blow lands (the
-  corkscrew); for pushes the hand is bent back with the palm forward.
-- Rotations measured on the rest pose curl the fingers (80°, 90° and 40° at full curl, the little finger a little
-  further) and wrap the thumb across them.
-- Each technique sets the hands' state: closed fists for the guard and strikes, an open throwing hand for Fireball,
-  palms driving forward for Ice Wall, and relaxed when lowered.
+  corkscrew); for pushes the hand is bent back with the palm forward. A closed fist then straightens its wrist so the
+  knuckles run on along the forearm.
+- The hand's turn about the forearm (palm down or up) is shared along it: the twist bones take about half at
+  mid-forearm and most near the wrist, as the radius rolls around the ulna, so the wrist's skin does not twist.
+- The fingers close as real ones do:
+  - each finger draws in alongside its neighbours, then bends on its own hinge (the rest mesh's fingers fan apart, and
+    bending them about one shared axis hooked the outer fingertips out to the sides);
+  - joint angles at full curl are about 92°, 105° and 65° (the end joint follows the middle one);
+  - a relaxed hand falls into a cascade, each finger a little more bent toward the little finger;
+  - a hand closes in a quick wave from the little finger and opens from the index;
+  - the thumb wraps across the middle bones of the index and middle fingers.
+- Each technique sets the hands' state: closed fists for the guard and strikes, a fully open throwing hand for Fireball
+  (fingers spread, wrist bent back, palm to the target), open palms driving forward for Ice Wall, and relaxed when
+  lowered.
+- The block is Oblivion's hand-to-hand stance raised: fists up a little below the middle of the view and well apart,
+  forearms rising from the lower corners.
 
 Because the real arm is shorter than the placeholder's, positions are drawn in toward the shoulder line.
 

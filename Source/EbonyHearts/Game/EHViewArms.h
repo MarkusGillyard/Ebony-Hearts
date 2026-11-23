@@ -93,12 +93,19 @@ private:
 		FVector Knuckles = FVector::ZeroVector;     // wrist to the middle knuckle, rest pose
 		FVector Palm = FVector::ZeroVector;         // out of the palm, rest pose
 		FQuat RefRotation = FQuat::Identity;        // the hand bone's rest rotation (component space)
+		FVector FingerRest[4];                      // each finger's rest direction across the palm (component space)
+		FQuat FingerIn[4];                          // turns each finger from its rest fan to lie alongside its neighbours
+		FVector HingeUpper = FVector::ZeroVector;   // the elbow's hinge axis in the upper arm's and forearm's own space
+		FVector HingeLower = FVector::ZeroVector;
+		FQuat LowerToHand = FQuat::Identity;        // the hand's rest rotation relative to the forearm
+		bool bTwist = false;                        // the skeleton has forearm twist bones
 	};
 	FHandFrame HandFrames[2];
 	float Curl[2] = {0.3f, 0.3f};
 	float Pronate[2] = {0.0f, 0.0f};
 	float Bend[2] = {0.0f, 0.0f};
 	float Spread[2] = {0.0f, 0.0f};
+	float FingerCurl[2][4] = {{0.3f, 0.3f, 0.3f, 0.3f}, {0.3f, 0.3f, 0.3f, 0.3f}};   // each finger follows Curl in a wave
 	float GuardW = 0.0f;                    // 0..1, how far the hands are in the high guard (block held)
 	void CacheHandFrames();
 	void AddHandRotations(TArray<struct FEHAdditiveRotation>& Out, int32 Hand) const;

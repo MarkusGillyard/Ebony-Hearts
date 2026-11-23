@@ -380,19 +380,87 @@ void FEHAnimProxy::ApplyLimbIK(FCompactPose& Pose) const
 		const double Hh = FMath::Sqrt(FMath::Max(0.0, A * A - X * X));
 		const FVector ElbowTo = S + Dir * X + Pole * Hh;
 		const FVector HandTo = S + Dir * D;
+		// A frame from a bone's long axis and its hinge axis.
+		auto Frame = [](const FVector& Along, const FVector& Hinge) {
+			const FVector Xa = Along.GetSafeNormal();
+			const FVector Ya = (Hinge - Xa * FVector::DotProduct(Hinge, Xa)).GetSafeNormal();
+			return FQuat(FMatrix(Xa, Ya, FVector::CrossProduct(Xa, Ya), FVector::ZeroVector));
+		};
+		// The elbow's hinge: the bend carries the forearm from the upper arm's line toward the side away from the pole.
+		const FVector Hinge = FVector::CrossProduct(Pole, Dir).GetSafeNormal();
+		const bool bHinge = Limb.bHinge && !Hinge.IsNearlyZero() && !Limb.HingeUpper.IsNearlyZero();
 		// The upper bone turns so the elbow lands; then the lower bone turns so the hand lands.
-		RotateBoneCS(Pose, Upper, FQuat::FindBetweenNormals((E - S).GetSafeNormal(), (ElbowTo - S).GetSafeNormal()));
+		if (bHinge)
+		{
+			const FVector HingeNow = CS.GetComponentSpaceTransform(Upper).GetRotation().RotateVector(Limb.HingeUpper);
+			RotateBoneCS(Pose, Upper, Frame(ElbowTo - S, Hinge) * Frame(E - S, HingeNow).Inverse());
+		}
+		else
+		{
+			RotateBoneCS(Pose, Upper, FQuat::FindBetweenNormals((E - S).GetSafeNormal(), (ElbowTo - S).GetSafeNormal()));
+		}
 		FCSPose<FCompactPose> CS2;
 		CS2.InitPose(Pose);
 		const FVector E2 = CS2.GetComponentSpaceTransform(Lower).GetLocation();
 		const FVector H2 = CS2.GetComponentSpaceTransform(End).GetLocation();
-		RotateBoneCS(Pose, Lower, FQuat::FindBetweenNormals((H2 - E2).GetSafeNormal(), (HandTo - E2).GetSafeNormal()));
+		if (bHinge)
+		{
+			const FVector HingeNow = CS2.GetComponentSpaceTransform(Lower).GetRotation().RotateVector(Limb.HingeLower);
+			RotateBoneCS(Pose, Lower, Frame(HandTo - E2, Hinge) * Frame(H2 - E2, HingeNow).Inverse());
+		}
+		else
+		{
+			RotateBoneCS(Pose, Lower, FQuat::FindBetweenNormals((H2 - E2).GetSafeNormal(), (HandTo - E2).GetSafeNormal()));
+		}
 		if (Limb.bAimEnd)
 		{
 			FCSPose<FCompactPose> CS3;
 			CS3.InitPose(Pose);
 			const FQuat Now = CS3.GetComponentSpaceTransform(End).GetRotation();
 			RotateBoneCS(Pose, End, Limb.EndRotation * Now.Inverse());
+		}
+		const FCompactPoseBoneIndex Tip = Limb.EndTip.IsNone() ? FCompactPoseBoneIndex(INDEX_NONE) : FindBone(Pose, Limb.EndTip);
+		if (Limb.Straight > 0.001f && Tip != INDEX_NONE)
+		{
+			FCSPose<FCompactPose> CS5;
+			CS5.InitPose(Pose);
+			const FVector LowerP = CS5.GetComponentSpaceTransform(Lower).GetLocation();
+			const FVector EndP = CS5.GetComponentSpaceTransform(End).GetLocation();
+			const FVector TipP = CS5.GetComponentSpaceTransform(Tip).GetLocation();
+			const FQuat Line = FQuat::FindBetweenNormals((TipP - EndP).GetSafeNormal(), (EndP - LowerP).GetSafeNormal());
+			RotateBoneCS(Pose, End, FQuat::Slerp(FQuat::Identity, Line, FMath::Clamp(Limb.Straight, 0.0f, 1.0f)));
+		}
+		if (bHinge && !Limb.Twist[0].IsNone())
+		{
+			// How far the hand has turned about the forearm from where it would sit if the wrist did nothing; the twist
+			// bones take their share of that turn, so the forearm's skin turns progressively from elbow to wrist.
+			FCSPose<FCompactPose> CS4;
+			CS4.InitPose(Pose);
+			const FTransform LowerT = CS4.GetComponentSpaceTransform(Lower);
+			const FTransform EndT = CS4.GetComponentSpaceTransform(End);
+			const FVector Axis = (EndT.GetLocation() - LowerT.GetLocation()).GetSafeNormal();
+			const FQuat Turn = EndT.GetRotation() * (LowerT.GetRotation() * Limb.LowerToEndRef).Inverse();
+			const FVector V(Turn.X, Turn.Y, Turn.Z);
+			const double Along = FVector::DotProduct(V, Axis);
+			FQuat Twist(Axis.X * Along, Axis.Y * Along, Axis.Z * Along, Turn.W);
+			if (Twist.SizeSquared() > 1e-8)
+			{
+				Twist.Normalize();
+				double Angle = 2.0 * FMath::Atan2(FVector(Twist.X, Twist.Y, Twist.Z).Size(), static_cast<double>(Twist.W));
+				if (FVector::DotProduct(FVector(Twist.X, Twist.Y, Twist.Z), Axis) < 0.0)
+				{
+					Angle = -Angle;
+				}
+				Angle = FMath::UnwindRadians(Angle);
+				for (int32 K = 0; K < 2; ++K)
+				{
+					const FCompactPoseBoneIndex T = FindBone(Pose, Limb.Twist[K]);
+					if (T != INDEX_NONE)
+					{
+						RotateBoneCS(Pose, T, FQuat(Axis, Angle * Limb.TwistShare[K]));
+					}
+				}
+			}
 		}
 	}
 }
