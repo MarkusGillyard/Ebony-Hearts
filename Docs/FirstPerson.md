@@ -403,10 +403,33 @@ The single 40–70 ms frames seen in Shipping captures since milestone 4 are mos
 | Stability | also the first reset after launch |
 
 - They repeat at the same moments in the same script, the GPU time stays normal, and runs whose warm-up covers the
-  same views have none.
-- That points to graphics pipelines being created the first time a material is drawn.
-- The usual remedy is a recorded pipeline cache bundled with the package. It is not set up yet.
-- The development build does not show them.
+  same views have none: graphics pipelines being created the first time a material is drawn.
+
+### The bundled pipeline cache
+
+The package carries a recorded pipeline cache (`Build/Linux/PipelineCaches/EbonyHearts_SF_VULKAN_SM6.spc`, cooked into
+`Content/PipelineCaches/Linux/`); the game compiles those pipelines while it starts. PSO precaching stays on; Vulkan
+switches the file cache off when precaching is on, so `r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1` keeps both
+(`Config/DefaultEngine.ini`, which also turns on shader stable keys for the cook).
+
+| Shipping capture (1920 × 1080) | Before (1dfb393): max, frames over 33 ms | With the cache (6316b39) |
+|---|---|---|
+| Spells, VSync off | 53.8 ms, 1 | 12.1 ms, 0 |
+| Spells, VSync on | 46.3 ms, 1 | 16.9 ms, 0 |
+| Stability (7 laps, about 7.5 minutes) | 51.9 ms, 3 (first reset, first turns) | 78.0 ms, 1 (lap 7) |
+| Interior, warm route | under 17.1 ms, 0 | under 17.1 ms, 0 |
+
+The remaining stability frame comes in the seventh lap, which repeats the first six exactly, so it is not a first
+draw; its cause is not known. p99 is unchanged (16.7 ms with VSync).
+
+**Re-recording** (when materials or rendering settings change, new pipelines are not in the cache; they still work,
+compiled on first draw as before): package a Development build, run the scripts with `-logPSO` and
+`-ini:Engine:[ConsoleVariables]:r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1`, collect each
+`Saved/CollectedPSOs/*.rec.upipelinecache`, and expand them with the cook's `.shk` files
+(`Saved/Cooked/Linux/EbonyHearts/Metadata/PipelineCaches/`):
+`UnrealEditor-Cmd EbonyHearts.uproject -run=ShaderPipelineCacheTools expand "<recs>/*.rec.upipelinecache"
+"<recs>/*.shk" Build/Linux/PipelineCaches/EbonyHearts_SF_VULKAN_SM6.spc`. The 2026-11-23 recording: 11 scripts (the
+perf routes, spells, wolf, Chapel, clock, controls, movement and two view tours), 63 pipelines, 113 stable entries.
 
 ## Known limits
 
