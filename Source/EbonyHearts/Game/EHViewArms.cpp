@@ -338,6 +338,15 @@ void UEHViewArms::PoseMeshArms(const FVector& L, const FVector& R)
 			const float B = FMath::DegreesToRadians(Bend[H]);
 			Fwd = (Fwd * FMath::Cos(B) + FVector(0.0f, 0.0f, 1.0f) * FMath::Sin(B)).GetSafeNormal();
 			PalmDir = (PalmDir * FMath::Cos(B) + FVector(1.0f, 0.0f, 0.0f) * FMath::Sin(B)).GetSafeNormal();
+			// The high guard, a forearm shield: fists up, knuckles to the sky, the backs of the hands and forearms turned
+			// toward the threat (and the viewer sees the backs of them, the way a raised block looks from behind it).
+			if (GuardW > 0.01f)
+			{
+				const FVector GFwd = FVector(0.25f, 0.12f * In, 1.0f).GetSafeNormal();
+				const FVector GPalm = FVector(0.55f, 0.85f * In, 0.0f).GetSafeNormal();
+				Fwd = FMath::Lerp(Fwd, GFwd, GuardW).GetSafeNormal();
+				PalmDir = FMath::Lerp(PalmDir, GPalm, GuardW).GetSafeNormal();
+			}
 			Limbs[H].bAimEnd = true;
 			Limbs[H].EndRotation = AimHand(H, Fwd, PalmDir, CamToCS);
 			(void)Fist;
@@ -446,8 +455,9 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		const float V = Smooth(Visible);
 		// The realistic hands guard lower and further out than the placeholder (chin height, not eye height), so the
 		// fists read as fists rather than filling the view from above.
-		const FVector GL = bRealHands ? FVector(50.0f, -11.0f, -7.0f) : GuardL;
-		const FVector GR = bRealHands ? FVector(48.0f, 11.0f, -8.0f) : GuardR;
+		// The realistic hands' guard is a high block: fists up beside the face, forearms upright in front of it.
+		const FVector GL = bRealHands ? FVector(36.0f, -12.0f, -10.0f) : GuardL;
+		const FVector GR = bRealHands ? FVector(35.0f, 12.0f, -11.0f) : GuardR;
 		const FVector TargetL = FMath::Lerp(DownL, FMath::Lerp(ReadyL, GL, Smooth(Guard)), V);
 		const FVector TargetR = FMath::Lerp(DownR, FMath::Lerp(ReadyR, GR, Smooth(Guard)), V);
 		const float K = 1.0f - FMath::Exp(-DeltaSeconds / 0.05f);
@@ -559,6 +569,7 @@ void UEHViewArms::CacheHandFrames()
 		F.ThumbAxis = FVector::CrossProduct(ThumbDir, Palm).GetSafeNormal();
 		// The thumb's sweep across the palm toward the little finger is a turn about the palm's normal.
 		F.ThumbSweepSign = FVector::DotProduct(FVector::CrossProduct(Palm, ThumbDir), F.Lateral) >= 0.0f ? 1.0f : -1.0f;
+		F.SpreadSign = FVector::DotProduct(FVector::CrossProduct(Palm, HandDir), F.Lateral) >= 0.0f ? 1.0f : -1.0f;
 		F.Knuckles = (P(TEXT("middle_01")) - Wrist).GetSafeNormal();
 		F.Thumb[0] = P(TEXT("thumb_01"));
 		F.Thumb[1] = P(TEXT("thumb_02"));
@@ -588,6 +599,15 @@ void UEHViewArms::AddHandRotations(TArray<FEHAdditiveRotation>& Out, int32 Hand)
 	const float C = Curl[Hand];
 	static const TCHAR* Fingers[4] = {TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky")};
 	static const float Joint[3] = {80.0f, 90.0f, 40.0f};   // a closed fist (tuned so the fingertips rest on the palm, not through it)
+	// An open hand fans its fingers apart (index toward the thumb, the little finger furthest out) before any curl.
+	static const float Fan[4] = {-13.0f, -2.0f, 8.0f, 18.0f};
+	for (int32 I = 0; I < 4; ++I)
+	{
+		if (Spread[Hand] > 0.01f)
+		{
+			Out.Add({Name(*FString::Printf(TEXT("%s_01"), Fingers[I])), FQuat(F.Palm, FMath::DegreesToRadians(Fan[I] * Spread[Hand] * F.SpreadSign))});
+		}
+	}
 	for (int32 I = 0; I < 4; ++I)
 	{
 		const float Extra = 1.0f + 0.06f * I;
@@ -607,6 +627,12 @@ void UEHViewArms::AddHandRotations(TArray<FEHAdditiveRotation>& Out, int32 Hand)
 	                         (K * -0.15f + N * 0.20f + X * 1.0f).GetSafeNormal()};
 	const FVector RestDir[3] = {(F.Thumb[1] - F.Thumb[0]).GetSafeNormal(), (F.Thumb[2] - F.Thumb[1]).GetSafeNormal(), (F.Thumb[2] - F.Thumb[1]).GetSafeNormal()};
 	FQuat Above = FQuat::Identity;
+	if (Spread[Hand] > 0.01f)
+	{
+		// An open hand also swings the thumb out, away from the fingers.
+		Above = FQuat(F.Palm, FMath::DegreesToRadians(-24.0f * Spread[Hand] * F.ThumbSweepSign));
+		Out.Add({Name(TEXT("thumb_01")), Above});
+	}
 	static const TCHAR* ThumbBones[3] = {TEXT("thumb_01"), TEXT("thumb_02"), TEXT("thumb_03")};
 	for (int32 K3 = 0; K3 < 3; ++K3)
 	{
@@ -624,14 +650,17 @@ void UEHViewArms::UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds)
 	// forward for an Ice Wall.
 	const EEHFistAction Action = Fists.Action();
 	const FEHFistTuning& T = Fists.GetTuning();
-	float TC[2], TP[2], TB[2];
+	float TC[2], TP[2], TB[2], TS[2];
 	const float Up = Smooth(Visible);
 	for (int32 H = 0; H < 2; ++H)
 	{
-		TC[H] = FMath::Lerp(0.30f, 0.86f + 0.12f * Smooth(Fists.GuardLevel()), Up);
+		TC[H] = FMath::Lerp(0.30f, 0.86f + 0.14f * Smooth(Fists.GuardLevel()), Up);
 		TP[H] = FMath::Lerp(15.0f, 68.0f, Up);
 		TB[H] = 0.0f;
+		TS[H] = 0.0f;
 	}
+	// The high guard: in while the block is held (and not during a technique).
+	GuardW = FMath::FInterpTo(GuardW, Action == EEHFistAction::None ? Smooth(Fists.GuardLevel()) : 0.0f, DeltaSeconds, 18.0f);
 	float Fast = 0.06f;
 	if (Action != EEHFistAction::None)
 	{
@@ -650,16 +679,24 @@ void UEHViewArms::UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds)
 			TP[1] = 68.0f + 26.0f * (bLive ? Out : 0.4f);
 			break;
 		case EEHFistAction::Fireball:
-			TC[0] = bLive ? FMath::Lerp(0.55f, 0.05f, Out) : 0.35f;
-			TP[0] = bLive ? FMath::Lerp(30.0f, 80.0f, Out) : 50.0f;
-			TB[0] = bLive ? 25.0f * Out : 0.0f;
+		{
+			// The fire gathers in a half-closed hand drawn back, then the hand throws open: fingers straight and
+			// spread, the wrist bent back so the full palm faces the target as the fire leaves it.
+			const float Open = bLive ? Out : FMath::Clamp(1.0f - (F - D.Startup - D.Active) / FMath::Max(1.0f, D.Recovery * 0.8f), 0.0f, 1.0f);
+			TC[0] = FMath::Lerp(0.55f, 0.0f, Open);
+			TS[0] = Open;
+			TP[0] = FMath::Lerp(40.0f, 82.0f, Open);
+			TB[0] = 72.0f * Open;
 			break;
+		}
 		default:
 			for (int32 H = 0; H < 2; ++H)
 			{
-				TC[H] = bLive ? FMath::Lerp(0.5f, 0.08f, Out) : 0.35f;
-				TP[H] = bLive ? FMath::Lerp(40.0f, 85.0f, Out) : 55.0f;
-				TB[H] = bLive ? 55.0f * Out : 0.0f;
+				const float Open = bLive ? Out : FMath::Clamp(1.0f - (F - D.Startup - D.Active) / FMath::Max(1.0f, D.Recovery * 0.8f), 0.0f, 1.0f);
+				TC[H] = FMath::Lerp(0.5f, 0.0f, Open);
+				TS[H] = Open;
+				TP[H] = FMath::Lerp(40.0f, 85.0f, Open);
+				TB[H] = 78.0f * Open;
 			}
 			break;
 		}
@@ -671,6 +708,7 @@ void UEHViewArms::UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds)
 		Curl[H] = FMath::Lerp(Curl[H], TC[H], K);
 		Pronate[H] = FMath::Lerp(Pronate[H], TP[H], K);
 		Bend[H] = FMath::Lerp(Bend[H], TB[H], K);
+		Spread[H] = FMath::Lerp(Spread[H], TS[H], K);
 	}
 }
 

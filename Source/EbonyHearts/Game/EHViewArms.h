@@ -88,6 +88,7 @@ private:
 		float PronateSign = 1.0f;                   // which way about Forearm turns the palm down
 		FVector ThumbAxis = FVector::ZeroVector;    // the thumb folds about this, toward the palm
 		float ThumbSweepSign = 1.0f;                // which way about the palm normal sweeps the thumb toward the pinky
+		float SpreadSign = 1.0f;                    // which way about the palm normal turns a finger toward the pinky
 		FVector Thumb[3];                           // the thumb's three joints, rest pose
 		FVector Knuckles = FVector::ZeroVector;     // wrist to the middle knuckle, rest pose
 		FVector Palm = FVector::ZeroVector;         // out of the palm, rest pose
@@ -98,6 +99,7 @@ private:
 	float Pronate[2] = {0.0f, 0.0f};
 	float Bend[2] = {0.0f, 0.0f};
 	float Spread[2] = {0.0f, 0.0f};
+	float GuardW = 0.0f;                    // 0..1, how far the hands are in the high guard (block held)
 	void CacheHandFrames();
 	void AddHandRotations(TArray<struct FEHAdditiveRotation>& Out, int32 Hand) const;
 	// The hand bone's component-space rotation that points the knuckles along Forward (camera space) with the palm
