@@ -42,6 +42,10 @@ struct FEHLimbIK
 	FName End;
 	FVector Target = FVector::ZeroVector;
 	FVector Pole = FVector(0, 0, -1);
+	// Optional: after the reach, turn the end bone (with everything below it) to this component-space rotation, so a
+	// hand can aim its knuckles or palm independently of the forearm's direction.
+	bool bAimEnd = false;
+	FQuat EndRotation = FQuat::Identity;
 };
 
 struct FEHAnimSample

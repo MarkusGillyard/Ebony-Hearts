@@ -6,6 +6,8 @@
 #include "EHAnimInstance.h"
 #include "Engine/SkeletalMesh.h"
 #include "Engine/StaticMesh.h"
+#include "AnimationRuntime.h"
+#include "Materials/MaterialInterface.h"
 #include "Materials/MaterialInstanceDynamic.h"
 
 namespace EHArmsDetail
@@ -77,6 +79,27 @@ UStaticMeshComponent* UEHViewArms::MakePart(UStaticMesh* Mesh, UMaterialInstance
 
 void UEHViewArms::Build()
 {
+	// The realistic hands come first; Wren's cut arms (with her guard clip) and then plain shapes are fallbacks.
+	if (USkeletalMesh* Hands = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/FPHands/SK_FPHands.SK_FPHands"), nullptr, LOAD_NoWarn | LOAD_Quiet))
+	{
+		ArmsMesh = NewObject<USkeletalMeshComponent>(GetOwner(), TEXT("FirstPersonArmsMesh"));
+		ArmsMesh->SetupAttachment(this);
+		ArmsMesh->SetSkeletalMesh(Hands);
+		ArmsMesh->SetAnimInstanceClass(UEHAnimInstance::StaticClass());
+		ArmsMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		ArmsMesh->SetCastShadow(false);
+		ArmsMesh->SetBoundsScale(4.0f);
+		ArmsMesh->SetFirstPersonPrimitiveType(EFirstPersonPrimitiveType::FirstPerson);
+		ArmsMesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+		ArmsMesh->SetRelativeRotation(FRotator(0.0f, -90.0f, 0.0f));
+		ArmsMesh->SetVisibility(false);
+		ArmsMesh->RegisterComponent();
+		FistPose = nullptr;
+		bRealHands = true;
+		CacheHandFrames();
+		BuildGlows();
+		return;
+	}
 	USkeletalMesh* ArmsAsset = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/FPArms/SK_FPArms_Wren.SK_FPArms_Wren"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	FistPose = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/Wren/Anims/A_Wren_Guard.A_Wren_Guard"), nullptr, LOAD_NoWarn | LOAD_Quiet);
 	if (ArmsAsset && FistPose)
@@ -204,7 +227,25 @@ FString UEHViewArms::Describe() const
 	const FBoxSphereBounds B = ArmsMesh->Bounds;
 	const FString Extra = FString::Printf(TEXT(" bounds=%s r=%.1f registered=%d renderstate=%d lod=%d hidden=%d mats=%d"), *Cam.InverseTransformPosition(B.Origin).ToCompactString(), B.SphereRadius,
 		ArmsMesh->IsRegistered() ? 1 : 0, ArmsMesh->IsRenderStateCreated() ? 1 : 0, ArmsMesh->GetPredictedLODLevel(), ArmsMesh->bHiddenInGame ? 1 : 0, ArmsMesh->GetNumMaterials());
-	return Extra + FString::Printf(TEXT(" arms=model visible=%d rel=%s head=%s upperarm_l=%s hand_l=%s hand_r=%s shownL=%s shownR=%s upperarm_r=%s lowerarm_r=%s"), ArmsMesh->IsVisible() ? 1 : 0,
+	FString HandDbg;
+	if (bRealHands)
+	{
+		for (const TCHAR* S : {TEXT("l"), TEXT("r")})
+		{
+			auto BoneAt = [&](const TCHAR* N) { return Local(FName(*FString::Printf(TEXT("%s_%s"), N, S))); };
+			for (const TCHAR* D : {TEXT("thumb"), TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky")})
+			{
+				const FVector Root = BoneAt(*FString::Printf(TEXT("%s_01"), D));
+				const FVector Tip = BoneAt(*FString::Printf(TEXT("%s_03"), D));
+				HandDbg += FString::Printf(TEXT(" %s_%s(root-hand=%s tip-root=%s)"), D, S, *(Root - BoneAt(TEXT("hand"))).ToCompactString(), *(Tip - Root).ToCompactString());
+			}
+			HandDbg += FString::Printf(TEXT(" %s: knuckles=%s middle_tip=%s index_tip=%s thumb_tip=%s curl=%.2f pron=%.0f"), S,
+				*(BoneAt(TEXT("middle_01")) - BoneAt(TEXT("hand"))).GetSafeNormal().ToCompactString(), *(BoneAt(TEXT("middle_03")) - BoneAt(TEXT("middle_01"))).ToCompactString(),
+				*(BoneAt(TEXT("index_03")) - BoneAt(TEXT("index_01"))).ToCompactString(), *(BoneAt(TEXT("thumb_03")) - BoneAt(TEXT("hand"))).ToCompactString(),
+				Curl[S[0] == 'l' ? 0 : 1], Pronate[S[0] == 'l' ? 0 : 1]);
+		}
+	}
+	return Extra + HandDbg + FString::Printf(TEXT(" arms=model visible=%d rel=%s head=%s upperarm_l=%s hand_l=%s hand_r=%s shownL=%s shownR=%s upperarm_r=%s lowerarm_r=%s"), ArmsMesh->IsVisible() ? 1 : 0,
 		*ArmsMesh->GetRelativeLocation().ToCompactString(), *Local(TEXT("head")).ToCompactString(), *Local(TEXT("upperarm_l")).ToCompactString(),
 		*Local(TEXT("hand_l")).ToCompactString(), *Local(TEXT("hand_r")).ToCompactString(), *ShownL.ToCompactString(), *ShownR.ToCompactString(),
 		*Local(TEXT("upperarm_r")).ToCompactString(), *Local(TEXT("lowerarm_r")).ToCompactString());
@@ -231,12 +272,19 @@ void UEHViewArms::PoseMeshArms(const FVector& L, const FVector& R)
 	}
 	A->SetSample(FistPose, 0.0);
 	// The guard clip stands bladed, right shoulder back. Square the shoulders to the view, then turn them into each
-	// blow: the straight drives the right shoulder through, the jab brings the left forward a little.
+	// blow: the straight drives the right shoulder through, the jab brings the left forward a little. (The realistic
+	// hands' rest pose is already square.)
 	const float ExtL = FMath::Clamp((L.X - ReadyL.X) / 22.0f, 0.0f, 1.0f);
 	const float ExtR = FMath::Clamp((R.X - ReadyR.X) / 22.0f, 0.0f, 1.0f);
-	const float Twist = -35.0f - 20.0f * Smooth(ExtR) + 10.0f * Smooth(ExtL);
+	const float Twist = (bRealHands ? 0.0f : -35.0f) - 20.0f * Smooth(ExtR) + 10.0f * Smooth(ExtL);
 	const FQuat Half = FRotator(0.0f, Twist * 0.5f, 0.0f).Quaternion();
-	A->SetAdditive({{TEXT("spine_02"), Half}, {TEXT("spine_03"), Half}});
+	TArray<FEHAdditiveRotation> Add = {{TEXT("spine_02"), Half}, {TEXT("spine_03"), Half}};
+	if (bRealHands)
+	{
+		AddHandRotations(Add, 0);
+		AddHandRotations(Add, 1);
+	}
+	A->SetAdditive(Add);
 	// Place the model so its head sits just behind and below the eyes: its own shoulders then land where the
 	// viewer's would.
 	const FVector HeadCS = ArmsMesh->GetBoneLocation(TEXT("head"), EBoneSpaces::ComponentSpace);
@@ -250,6 +298,27 @@ void UEHViewArms::PoseMeshArms(const FVector& L, const FVector& R)
 	TArray<FEHLimbIK> Limbs;
 	Limbs.Add({TEXT("upperarm_l"), TEXT("lowerarm_l"), TEXT("hand_l"), ToCS(Wrist(L, ShoulderL)), RelRot.UnrotateVector(FVector(0.0f, -0.55f, -1.0f))});
 	Limbs.Add({TEXT("upperarm_r"), TEXT("lowerarm_r"), TEXT("hand_r"), ToCS(Wrist(R, ShoulderR)), RelRot.UnrotateVector(FVector(0.0f, 0.55f, -1.0f))});
+	if (bRealHands)
+	{
+		// Aim each hand: the knuckles toward the target (a little inward and up), the palm turned from facing inward
+		// (a vertical fist) toward facing down as it pronates; bent back, the knuckles lift and the palm faces forward
+		// (an open, pushing hand).
+		const FQuat CamToCS = RelRot.Inverse();
+		for (int32 H = 0; H < 2; ++H)
+		{
+			const float In = H == 0 ? 1.0f : -1.0f;   // toward the midline (camera Y), for this hand
+			const FVector Fist = H == 0 ? L : R;
+			FVector Fwd = FVector(1.0f, 0.14f * In, 0.32f).GetSafeNormal();
+			const float P = FMath::DegreesToRadians(Pronate[H]);
+			FVector PalmDir = FVector(0.0f, In * FMath::Cos(P), -FMath::Sin(P));
+			const float B = FMath::DegreesToRadians(Bend[H]);
+			Fwd = (Fwd * FMath::Cos(B) + FVector(0.0f, 0.0f, 1.0f) * FMath::Sin(B)).GetSafeNormal();
+			PalmDir = (PalmDir * FMath::Cos(B) + FVector(1.0f, 0.0f, 0.0f) * FMath::Sin(B)).GetSafeNormal();
+			Limbs[H].bAimEnd = true;
+			Limbs[H].EndRotation = AimHand(H, Fwd, PalmDir, CamToCS);
+			(void)Fist;
+		}
+	}
 	A->SetLimbIK(Limbs);
 }
 
@@ -296,6 +365,9 @@ void UEHViewArms::PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Han
 
 void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeconds)
 {
+	// The realistic arm is about 5 cm shorter to the wrist than the placeholder's: its targets are drawn in toward the
+	// shoulder line (scaled forward distance) and lifted a little, so a full extension reaches the middle of the view.
+	auto Real = [this](FVector V) { return bRealHands ? FVector(4.0f + V.X * 0.88f, V.Y, V.Z + 3.0f) : V; };
 	const EEHFistAction Action = Fists.Action();
 	if (Action != LastAction)
 	{
@@ -348,8 +420,12 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		const bool bUp = Guard > 0.0f || Fists.IdleSeconds() < T.ArmsLinger;
 		Visible = FMath::FInterpConstantTo(Visible, bUp ? 1.0f : 0.0f, DeltaSeconds, bUp ? 8.0f : 4.0f);
 		const float V = Smooth(Visible);
-		const FVector TargetL = FMath::Lerp(DownL, FMath::Lerp(ReadyL, GuardL, Smooth(Guard)), V);
-		const FVector TargetR = FMath::Lerp(DownR, FMath::Lerp(ReadyR, GuardR, Smooth(Guard)), V);
+		// The realistic hands guard lower and further out than the placeholder (chin height, not eye height), so the
+		// fists read as fists rather than filling the view from above.
+		const FVector GL = bRealHands ? FVector(44.0f, -10.0f, -12.0f) : GuardL;
+		const FVector GR = bRealHands ? FVector(42.0f, 10.0f, -13.0f) : GuardR;
+		const FVector TargetL = FMath::Lerp(DownL, FMath::Lerp(ReadyL, GL, Smooth(Guard)), V);
+		const FVector TargetR = FMath::Lerp(DownR, FMath::Lerp(ReadyR, GR, Smooth(Guard)), V);
 		const float K = 1.0f - FMath::Exp(-DeltaSeconds / 0.05f);
 		RestL = FMath::Lerp(RestL, TargetL, K);
 		RestR = FMath::Lerp(RestR, TargetR, K);
@@ -383,8 +459,14 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 			R += Give;
 		}
 	}
+	L = Real(L);
+	R = Real(R);
 	ShownL = L;
 	ShownR = R;
+	if (bRealHands)
+	{
+		UpdateHandTargets(Fists, DeltaSeconds);
+	}
 	const bool bShow = Visible > 0.01f || Action != EEHFistAction::None;
 	if (bShow != bShown)
 	{
@@ -401,3 +483,171 @@ void UEHViewArms::UpdateArms(const FEHFists& Fists, float Alpha, float DeltaSeco
 		PoseArm(Arms[1], ShoulderR, R, 1.0f);
 	}
 }
+
+void UEHViewArms::CacheHandFrames()
+{
+	// Each hand's axes, from the rest pose in component space, so finger curls, the wrist's turn and the hand's bend
+	// act about anatomical axes whichever way the skeleton's bones happen to be rolled.
+	const USkinnedAsset* Asset = ArmsMesh ? ArmsMesh->GetSkinnedAsset() : nullptr;
+	if (Asset == nullptr)
+	{
+		return;
+	}
+	const FReferenceSkeleton& Ref = Asset->GetRefSkeleton();
+	auto Pos = [&](const TCHAR* Name) -> FVector {
+		const int32 I = Ref.FindBoneIndex(Name);
+		return I == INDEX_NONE ? FVector::ZeroVector : FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, I).GetLocation();
+	};
+	for (int32 H = 0; H < 2; ++H)
+	{
+		const TCHAR* S = H == 0 ? TEXT("l") : TEXT("r");
+		auto P = [&](const TCHAR* Bone) { return Pos(*FString::Printf(TEXT("%s_%s"), Bone, S)); };
+		FHandFrame& F = HandFrames[H];
+		const FVector Wrist = P(TEXT("hand")), Elbow = P(TEXT("lowerarm"));
+		const FVector Index = P(TEXT("index_01")), Pinky = P(TEXT("pinky_01")), MiddleTip = P(TEXT("middle_03"));
+		F.Lateral = (Pinky - Index).GetSafeNormal();
+		F.Forearm = (Wrist - Elbow).GetSafeNormal();
+		const FVector HandDir = (MiddleTip - Wrist).GetSafeNormal();
+		// Out of the palm: perpendicular to the knuckles' direction and to the line across them, on the side where the
+		// thumb sits (the rest pose's palms face partly backward, not simply toward the body).
+		FVector Palm = FVector::CrossProduct(HandDir, F.Lateral).GetSafeNormal();
+		if (FVector::DotProduct(Palm, P(TEXT("thumb_03")) - Wrist) < 0.0f)
+		{
+			Palm = -Palm;
+		}
+		// Rotating d about axis a by +angle moves it along (a x d); flexion moves the fingers toward the palm.
+		F.FlexSign = FVector::DotProduct(FVector::CrossProduct(F.Lateral, HandDir), Palm) >= 0.0f ? 1.0f : -1.0f;
+		// Pronation turns the palm to face down.
+		F.PronateSign = FVector::DotProduct(FVector::CrossProduct(F.Forearm, Palm), FVector(0.0f, 0.0f, -1.0f)) >= 0.0f ? 1.0f : -1.0f;
+		const FVector ThumbDir = (P(TEXT("thumb_03")) - P(TEXT("thumb_01"))).GetSafeNormal();
+		F.ThumbAxis = FVector::CrossProduct(ThumbDir, Palm).GetSafeNormal();
+		// The thumb's sweep across the palm toward the little finger is a turn about the palm's normal.
+		F.ThumbSweepSign = FVector::DotProduct(FVector::CrossProduct(Palm, ThumbDir), F.Lateral) >= 0.0f ? 1.0f : -1.0f;
+		F.Knuckles = (P(TEXT("middle_01")) - Wrist).GetSafeNormal();
+		F.Thumb[0] = P(TEXT("thumb_01"));
+		F.Thumb[1] = P(TEXT("thumb_02"));
+		F.Thumb[2] = P(TEXT("thumb_03"));
+		F.Palm = Palm;
+		const int32 HI = Ref.FindBoneIndex(*FString::Printf(TEXT("hand_%s"), S));
+		F.RefRotation = HI == INDEX_NONE ? FQuat::Identity : FAnimationRuntime::GetComponentSpaceTransformRefPose(Ref, HI).GetRotation();
+		F.bValid = !F.Lateral.IsNearlyZero() && !F.Forearm.IsNearlyZero();
+	}
+}
+
+void UEHViewArms::AddHandRotations(TArray<FEHAdditiveRotation>& Out, int32 Hand) const
+{
+	const FHandFrame& F = HandFrames[Hand];
+	if (!F.bValid)
+	{
+		return;
+	}
+	const TCHAR* S = Hand == 0 ? TEXT("l") : TEXT("r");
+	auto Name = [&](const TCHAR* Bone) { return FName(*FString::Printf(TEXT("%s_%s"), Bone, S)); };
+	// The hand itself is aimed after the reach (AimHand); here only the fingers, relative to it, in the rest pose.
+	const FQuat Turn = FQuat::Identity;
+	const FQuat BendQ = FQuat::Identity;
+	// Fingers: each joint folds toward the palm about the (turned) knuckles' line; the pinky side folds a little
+	// further, as real fists do. Spread fans the fingers apart for an open casting hand.
+	const FVector Lat = (BendQ * Turn).RotateVector(F.Lateral);
+	const float C = Curl[Hand];
+	static const TCHAR* Fingers[4] = {TEXT("index"), TEXT("middle"), TEXT("ring"), TEXT("pinky")};
+	static const float Joint[3] = {92.0f, 106.0f, 66.0f};   // a tight fist: knuckle, middle and end joints
+	for (int32 I = 0; I < 4; ++I)
+	{
+		const float Extra = 1.0f + 0.06f * I;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			const FQuat Q(Lat, FMath::DegreesToRadians(Joint[K] * C * Extra * F.FlexSign));
+			Out.Add({Name(*FString::Printf(TEXT("%s_0%d"), Fingers[I], K + 1)), Q});
+		}
+	}
+	// The thumb swings across the palm toward the little finger and folds over the curled fingers as the fist closes:
+	// its base sweeps about the palm's normal and tips in toward the palm; its two joints fold about its own axis.
+	// Each thumb bone turns toward a direction set in the hand's own frame (K forward along the knuckles, N out of the
+	// palm, X across toward the little finger): the base forward and in front of the palm, the two joints wrapping
+	// across the front of the curled fingers. Applied in order, each from where its parent's turn has left it.
+	const FVector K = F.Knuckles, N = F.Palm, X = F.Lateral;
+	const FVector Want[3] = {(K * 0.80f + N * 0.50f + X * 0.15f).GetSafeNormal(), (K * 0.30f + N * 0.35f + X * 0.90f).GetSafeNormal(),
+	                         (K * -0.15f + N * 0.20f + X * 1.0f).GetSafeNormal()};
+	const FVector RestDir[3] = {(F.Thumb[1] - F.Thumb[0]).GetSafeNormal(), (F.Thumb[2] - F.Thumb[1]).GetSafeNormal(), (F.Thumb[2] - F.Thumb[1]).GetSafeNormal()};
+	FQuat Above = FQuat::Identity;
+	static const TCHAR* ThumbBones[3] = {TEXT("thumb_01"), TEXT("thumb_02"), TEXT("thumb_03")};
+	for (int32 K3 = 0; K3 < 3; ++K3)
+	{
+		const FVector Now = Above.RotateVector(RestDir[K3]);
+		const FQuat Q = FQuat::Slerp(FQuat::Identity, FQuat::FindBetweenNormals(Now, Want[K3]), FMath::Clamp(C, 0.0f, 1.0f));
+		Out.Add({Name(ThumbBones[K3]), Q});
+		Above = Q * Above;
+	}
+}
+
+void UEHViewArms::UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds)
+{
+	// What each hand is doing: a relaxed hand when lowered, a fist in the guard and at the ready that clenches tight
+	// for a blow and turns over as it lands (the corkscrew), an open throwing hand for a Fireball, open palms driving
+	// forward for an Ice Wall.
+	const EEHFistAction Action = Fists.Action();
+	const FEHFistTuning& T = Fists.GetTuning();
+	float TC[2], TP[2], TB[2];
+	const float Up = Smooth(Visible);
+	for (int32 H = 0; H < 2; ++H)
+	{
+		TC[H] = FMath::Lerp(0.30f, 0.86f + 0.12f * Smooth(Fists.GuardLevel()), Up);
+		TP[H] = FMath::Lerp(15.0f, 38.0f, Up);
+		TB[H] = 0.0f;
+	}
+	float Fast = 0.06f;
+	if (Action != EEHFistAction::None)
+	{
+		const FEHStrikeDef& D = T.Def(Action);
+		const float F = static_cast<float>(Fists.Frame());
+		const float Out = Smooth((F - D.Startup * 0.35f) / FMath::Max(1.0f, D.Startup * 0.65f));
+		const bool bLive = F < D.Startup + D.Active;
+		switch (Action)
+		{
+		case EEHFistAction::Jab:
+			TC[0] = 1.0f;
+			TP[0] = 38.0f + 50.0f * (bLive ? Out : 0.4f);
+			break;
+		case EEHFistAction::Straight:
+			TC[1] = 1.0f;
+			TP[1] = 38.0f + 54.0f * (bLive ? Out : 0.4f);
+			break;
+		case EEHFistAction::Fireball:
+			TC[0] = bLive ? FMath::Lerp(0.55f, 0.05f, Out) : 0.35f;
+			TP[0] = bLive ? FMath::Lerp(30.0f, 80.0f, Out) : 50.0f;
+			TB[0] = bLive ? 25.0f * Out : 0.0f;
+			break;
+		default:
+			for (int32 H = 0; H < 2; ++H)
+			{
+				TC[H] = bLive ? FMath::Lerp(0.5f, 0.08f, Out) : 0.35f;
+				TP[H] = bLive ? FMath::Lerp(40.0f, 85.0f, Out) : 55.0f;
+				TB[H] = bLive ? 55.0f * Out : 0.0f;
+			}
+			break;
+		}
+		Fast = 0.03f;
+	}
+	const float K = 1.0f - FMath::Exp(-DeltaSeconds / Fast);
+	for (int32 H = 0; H < 2; ++H)
+	{
+		Curl[H] = FMath::Lerp(Curl[H], TC[H], K);
+		Pronate[H] = FMath::Lerp(Pronate[H], TP[H], K);
+		Bend[H] = FMath::Lerp(Bend[H], TB[H], K);
+	}
+}
+
+FQuat UEHViewArms::AimHand(int32 Hand, const FVector& Forward, const FVector& PalmDir, const FQuat& CamToCS) const
+{
+	const FHandFrame& F = HandFrames[Hand];
+	auto Basis = [](const FVector& X0, const FVector& Y0) {
+		const FVector X = X0.GetSafeNormal();
+		const FVector Y = (Y0 - X * FVector::DotProduct(Y0, X)).GetSafeNormal();
+		return FQuat(FMatrix(X, Y, FVector::CrossProduct(X, Y), FVector::ZeroVector));
+	};
+	const FQuat Rest = Basis(F.Knuckles, F.Palm);
+	const FQuat Want = Basis(CamToCS.RotateVector(Forward), CamToCS.RotateVector(PalmDir));
+	return (Want * Rest.Inverse()) * F.RefRotation;
+}
+

@@ -72,6 +72,35 @@ private:
 	float ShudderTime = 0.0f;
 	bool bShown = false;
 
+	// The realistic first-person hands (Tools/Blender/fphands; CC0 base mesh): posed with no clip, by IK for the reach
+	// and by rotations for each finger, the wrist's turn and the hand's bend. Each hand's state eases toward a target
+	// per technique: curl 0 open .. 1 a tight fist; pronation turns the palm down (degrees); bend tips the hand back.
+	bool bRealHands = false;
+	struct FHandFrame
+	{
+		bool bValid = false;
+		FVector Lateral = FVector::ZeroVector;      // across the knuckles, index to pinky (component space)
+		FVector Forearm = FVector::ZeroVector;      // elbow to wrist
+		float FlexSign = 1.0f;                      // which way about Lateral curls a finger toward the palm
+		float PronateSign = 1.0f;                   // which way about Forearm turns the palm down
+		FVector ThumbAxis = FVector::ZeroVector;    // the thumb folds about this, toward the palm
+		float ThumbSweepSign = 1.0f;                // which way about the palm normal sweeps the thumb toward the pinky
+		FVector Thumb[3];                           // the thumb's three joints, rest pose
+		FVector Knuckles = FVector::ZeroVector;     // wrist to the middle knuckle, rest pose
+		FVector Palm = FVector::ZeroVector;         // out of the palm, rest pose
+		FQuat RefRotation = FQuat::Identity;        // the hand bone's rest rotation (component space)
+	};
+	FHandFrame HandFrames[2];
+	float Curl[2] = {0.3f, 0.3f};
+	float Pronate[2] = {0.0f, 0.0f};
+	float Bend[2] = {0.0f, 0.0f};
+	float Spread[2] = {0.0f, 0.0f};
+	void CacheHandFrames();
+	void AddHandRotations(TArray<struct FEHAdditiveRotation>& Out, int32 Hand) const;
+	// The hand bone's component-space rotation that points the knuckles along Forward (camera space) with the palm
+	// facing Palm.
+	FQuat AimHand(int32 Hand, const FVector& Forward, const FVector& PalmDir, const FQuat& CamToCS) const;
+	void UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds);
 	void PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side);
 	void PoseMeshArms(const FVector& L, const FVector& R);
 	void ShowParts(bool bShow);

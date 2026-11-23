@@ -182,10 +182,14 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 {
 	if (Current.Sequence == nullptr)
 	{
+		// No clip: the rest pose, still turned and reached by the additive rotations and limb IK (the first-person
+		// hands are posed entirely that way).
 		Output.ResetToRefPose();
 		Shown1.Reset();
 		Shown2.Reset();
 		Offsets.Reset();
+		ApplyAdditive(Output.Pose);
+		ApplyLimbIK(Output.Pose);
 		return true;
 	}
 	FAnimationPoseData OutData(Output);
@@ -383,6 +387,13 @@ void FEHAnimProxy::ApplyLimbIK(FCompactPose& Pose) const
 		const FVector E2 = CS2.GetComponentSpaceTransform(Lower).GetLocation();
 		const FVector H2 = CS2.GetComponentSpaceTransform(End).GetLocation();
 		RotateBoneCS(Pose, Lower, FQuat::FindBetweenNormals((H2 - E2).GetSafeNormal(), (HandTo - E2).GetSafeNormal()));
+		if (Limb.bAimEnd)
+		{
+			FCSPose<FCompactPose> CS3;
+			CS3.InitPose(Pose);
+			const FQuat Now = CS3.GetComponentSpaceTransform(End).GetRotation();
+			RotateBoneCS(Pose, End, Limb.EndRotation * Now.Inverse());
+		}
 	}
 }
 
