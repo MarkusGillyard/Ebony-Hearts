@@ -33,7 +33,10 @@ fp_expect ct_outside eq 0
 fp_expect wolf_hostile eq 0
 screenshot ship_text_warning
 
-log == the line expires
+log == walking away, the lines expire (standing beside the wolf it may warn again)
+hold kbA FPBack
+wait 2.0
+release kbA FPBack
 wait 4
 fp_expect ct_visible eq 0
 fp_state end
