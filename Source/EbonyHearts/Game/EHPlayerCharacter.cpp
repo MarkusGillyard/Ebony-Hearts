@@ -121,11 +121,13 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	PlayerHealth = Magic.Stats.Health;
 	StaminaMax = Magic.Stats.Stamina;
 	const TArray<TSharedPtr<FJsonValue>>* SpawnArr = nullptr;
-	if (Root->TryGetArrayField(TEXT("spawn"), SpawnArr))
+	if (Root->HasField(TEXT("spawn")))
 	{
-		if (SpawnArr->Num() != 3)
+		if (!Root->TryGetArrayField(TEXT("spawn"), SpawnArr) || SpawnArr->Num() != 3 || SpawnArr->ContainsByPredicate([](const TSharedPtr<FJsonValue>& Value) {
+			return !Value.IsValid() || Value->Type != EJson::Number || !FMath::IsFinite(Value->AsNumber());
+		}))
 		{
-			OutError = TEXT("Data/firstperson.json: spawn must be [x, y, z] in centimetres.");
+			OutError = TEXT("Data/firstperson.json: spawn must be three finite numbers in centimetres.");
 			return false;
 		}
 		Spawn = FVector((*SpawnArr)[0]->AsNumber(), (*SpawnArr)[1]->AsNumber(), (*SpawnArr)[2]->AsNumber());
@@ -413,6 +415,14 @@ void AEHPlayerCharacter::Emit(FEHFirstPersonEvent::EKind Kind, float Strength)
 	E.WaterDepth = WaterDepth;
 	E.Strength = FMath::Clamp(Strength, 0.0f, 1.0f);
 	Events.Add(E);
+}
+
+void AEHPlayerCharacter::CancelActionsForPrayer()
+{
+	Fists.Reset();
+	JumpBuffer = 0.0f;
+	StopJumping();
+	GetCharacterMovement()->StopMovementImmediately();
 }
 
 void AEHPlayerCharacter::ApplyInput(const FEHFirstPersonInput& In, float DeltaSeconds)

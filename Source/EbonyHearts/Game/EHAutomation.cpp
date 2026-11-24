@@ -390,6 +390,20 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			}
 			return;
 		}
+#if !UE_BUILD_SHIPPING
+		if (Cmd == TEXT("wait_wolf_bite"))
+		{
+			const bool bReady = IsValid(FPWolf) && FPWolf->GetState() == EEHWolfState::BiteWindup;
+			if (!bReady && StepTimer <= 10.0f)
+			{
+				return;
+			}
+			AutoLogLine(bReady ? TEXT("ok wait_wolf_bite") : TEXT("FAIL wait_wolf_bite timed out"));
+			StepTimer = 0.0f;
+			++AutoLine;
+			continue;
+		}
+#endif
 		++AutoLine;
 		StepTimer = 0.0f;
 		if (Cmd == TEXT("log"))
@@ -1244,6 +1258,31 @@ void AEHGameDirector::RunBindingsSelfTest()
 			Warning.Contains(TEXT("Interact")),
 			TEXT("version 9 to 10: the player's own E stays theirs; Interact is left without it and the notice says so ") + Warning);
 	}
+	{
+		const FString NumericPath = FPaths::Combine(Dir, TEXT("settings_numeric_ranges.json"));
+		Check(FFileHelper::SaveStringToFile(TEXT(R"({"resX":1e100,"quality":-1e100,"effectsVolume":-10,"uiScale":1e100,"mouseSensitivity":-1e100,"stickSensitivity":4,"fieldOfView":200})"), *NumericPath),
+			TEXT("numeric settings fixture written"));
+		const FEHSettings Numeric = FEHSettings::Load(nullptr, NumericPath);
+		const FEHSettings Default;
+		Check(Numeric.Resolution.X == Default.Resolution.X && Numeric.Quality == Default.Quality && Numeric.UIScale == Default.UIScale && Numeric.MouseSensitivity == Default.MouseSensitivity,
+			TEXT("unrepresentable settings retain safe defaults"));
+		Check(Numeric.EffectsVolume == 0 && Numeric.StickSensitivity == 3.0f && Numeric.FieldOfView == 110,
+			TEXT("representable settings still clamp to their supported ranges"));
+	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"spawn":[null,{},[]]})"), Error) && Error.Contains(TEXT("spawn")),
+			TEXT("first-person spawn rejects nonnumeric coordinates"));
+		Check(Tuning.Load(TEXT(R"({"spawn":[15,-20,1.5]})"), Error) && Tuning.Spawn == FVector(15, -20, 1.5),
+			TEXT("first-person spawn accepts numeric coordinates"));
+	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"chapel":{"sounds":[{"name":"test","at":[1,false,2]}]}})"), Error) && Error.Contains(TEXT("chapel.sounds[0]")),
+			TEXT("Chapel sound positions reject nonnumeric coordinates"));
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 
@@ -1343,6 +1382,14 @@ void AEHGameDirector::RunInputSelfTest()
 	Check(LastNav() == EEHNav::Count, TEXT("Square / X does nothing in menus"));
 	Tap(EKeys::Gamepad_Special_Right);
 	Check(LastNav() == EEHNav::Pause, TEXT("Options / Menu pauses"));
+
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, true);
+	R.ResetForFocusLoss();
+	Check(LastNav() == EEHNav::Count && R.FindDevice(Dev)->NavHeld == 0 && Sample().y == 0,
+		TEXT("focus loss clears queued navigation and held input"));
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, true);
+	Check(LastNav() == EEHNav::Down, TEXT("the next press works even when focus loss swallowed the old key-up"));
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, false);
 
 	// Directions (toward / away is judged from x when a button is pressed).
 	R.InjectKey(Dev, EKeys::Gamepad_DPad_Right, true);

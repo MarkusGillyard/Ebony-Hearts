@@ -219,6 +219,7 @@ void AEHWolf::ResetWolf()
 	Rig->SetRelativeRotation(FRotator::ZeroRotator);
 	Rig->SetRelativeLocation(FVector(0, 0, -48.0f));
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	bBiteCue = false;
 	BiteCount = LungeCount = ConnectCount = DisengageCount = AbsorbCount = ProtectCount = FreezeCount = 0;
 	RepathCount = StuckCount = StuckFrames = WaitGoalFrames = 0;
 	WaitGoal = FVector(1e9);
@@ -432,7 +433,15 @@ void AEHWolf::Freeze(float Seconds)
 	FrozenLeft = FMath::Max(FrozenLeft, Seconds);
 	++FreezeCount;
 	Stop();
-	GetCharacterMovement()->StopMovementImmediately();
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	Movement->StopMovementImmediately();
+	Movement->ClearAccumulatedForces();
+	if (State == EEHWolfState::BiteWindup || State == EEHWolfState::LungeWindup || State == EEHWolfState::Lunge)
+	{
+		const int32 Recovery = State == EEHWolfState::BiteWindup ? Tuning.BiteRecover : Tuning.LungeRecover;
+		Enter(EEHWolfState::Recover, Recovery);
+		Cooldown = Tuning.AttackCooldown;
+	}
 	IceCuff->SetVisibility(true);
 }
 
@@ -709,6 +718,7 @@ void AEHWolf::StepFrame()
 		if (StateFrame >= StateLength)
 		{
 			++BiteCount;
+			bBiteCue = true;
 			HeadThrust = 1.0f;
 			const float Off = Player.IsValid() ? FMath::Abs(FMath::FindDeltaAngleDegrees(GetActorRotation().Yaw, To.Rotation().Yaw)) : 999.0f;
 			if (Player.IsValid() && Dist <= Tuning.BiteReach && Off <= 45.0f)
