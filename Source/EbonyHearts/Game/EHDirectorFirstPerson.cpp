@@ -842,10 +842,10 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 			PlayImpact(TEXT("StepWater"), 3, 0.55f, 0.8f);
 			PlayImpact(TEXT("AuraFade"), 1, 0.45f, 0.6f);
 			AutoLogLine(TEXT("fp ice_wall melting into water"));
-			PackRepathSoon();
 		}
 		if (W->TakeEnded())
 		{
+			PackRepathSoon();
 			// Counted the moment it stops being a wall (its water lingers a while after).
 			switch (W->EndReason())
 			{
