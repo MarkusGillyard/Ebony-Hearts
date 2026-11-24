@@ -739,6 +739,10 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 		// Files before version 5 were written against the older layout; whatever they leave out is that layout's, and
 		// the version 5 step below moves it to the current one.
 		FEHBindings Loaded = Version < 5 ? FEHBindings::DefaultsV4() : FEHBindings::Defaults();
+		if (Version < 11)
+		{
+			Loaded.Keys[Idx(EEHBindingSet::FPController)][Idx(EEHAction::FPCrouch)][0] = EKeys::Gamepad_RightThumbstick;
+		}
 		if (Version < 4)
 		{
 			// Crouch did not exist and Throw had no buttons of its own: both start unbound and get their defaults
@@ -1073,10 +1077,12 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 		{
 			// Version 11 added Lock on (Middle mouse / V, and R3 on controller with Crouch moved from R3 to D-pad down).
 			FString Taken;
-			if (Loaded.Keys[Idx(EEHBindingSet::FPController)][Idx(EEHAction::FPCrouch)][0] == EKeys::Gamepad_RightThumbstick
-				&& !Loaded.FindConflict(EEHBindingSet::FPController, EEHAction::FPCrouch, 0, EKeys::Gamepad_DPad_Down).IsValid())
+			FKey* Crouch = Loaded.Keys[Idx(EEHBindingSet::FPController)][Idx(EEHAction::FPCrouch)];
+			const bool bMoveDefaultCrouch = Crouch[0] == EKeys::Gamepad_RightThumbstick && !Crouch[1].IsValid() && !Crouch[2].IsValid()
+				&& !Loaded.FindConflict(EEHBindingSet::FPController, EEHAction::FPCrouch, 0, EKeys::Gamepad_DPad_Down).IsValid();
+			if (bMoveDefaultCrouch)
 			{
-				Loaded.Keys[Idx(EEHBindingSet::FPController)][Idx(EEHAction::FPCrouch)][0] = EKeys::Gamepad_DPad_Down;
+				Crouch[0] = EKeys::Gamepad_DPad_Down;
 			}
 			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
 			{
@@ -1094,7 +1100,11 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			}
 			if (Version >= 6)
 			{
-				Notes += FString::Printf(TEXT("%sNew: Lock on (Middle mouse / V, R3; controller Crouch moved to D-pad down)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				Notes += Notes.IsEmpty() ? TEXT("New: Lock on.") : TEXT(" New: Lock on.");
+				if (bMoveDefaultCrouch)
+				{
+					Notes += TEXT(" Default controller Crouch moved to D-pad down.");
+				}
 				if (!Taken.IsEmpty())
 				{
 					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);

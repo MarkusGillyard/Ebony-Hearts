@@ -170,7 +170,7 @@ public:
 	bool IsCalmLike() const;
 	bool IsLying() const { return State == EEHWolfState::Rest || State == EEHWolfState::Sleep || State == EEHWolfState::Beside; }
 	// The player is praying: no wolf attacks them; all stand guard (the director sets it each frame).
-	void SetSanctuary(bool bOn) { bSanctuary = bOn; }
+	void SetSanctuary(bool bOn);
 	// The player is a Shadow: the wolves warn them to pray.
 	void SetShadowPlayer(bool bOn) { bShadow = bOn; }
 	// An evil aura that would not leave: the fight starts (the director spreads it to the pack).

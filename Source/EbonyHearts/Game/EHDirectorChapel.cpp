@@ -63,7 +63,7 @@ void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
 	}
 	// What the player looks at: the nearest interactable whose point lies within its radius of the line of sight,
 	// within reach and not behind a wall.
-	FPInteractFocus = -1;
+	FPInteractFocus = FPWolfFocus = -1;
 	if (FPPlayer && !bSpellSelect)
 	{
 		const FVector Eye = FPPlayer->Camera()->GetComponentLocation();
@@ -88,8 +88,8 @@ void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
 			FPInteractFocus = i;
 		}
 		// A calm wolf looked at within reach can be talked to (it is bigger than most things, so a wider reach).
-		FPWolfFocus = -1;
-		for (int32 i = 0; i < FPWolves.Num(); ++i)
+		const bool bKneelerFocused = FPInteractFocus >= 0 && T.Interactables[FPInteractFocus].bPray;
+		for (int32 i = 0; !bKneelerFocused && i < FPWolves.Num(); ++i)
 		{
 			const AEHWolf* W = FPWolves[i];
 			if (W == nullptr || W->IsDead() || !W->IsCalmLike() || W->GetState() == EEHWolfState::Sleep)
@@ -99,6 +99,12 @@ void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
 			const FVector V = W->LockOnPoint() - Eye;
 			const float Along = FVector::DotProduct(V, Fwd);
 			if (Along < 0.0f || Along > Best + 80.0f || (V - Fwd * Along).Size() > 110.0f)
+			{
+				continue;
+			}
+			FCollisionQueryParams Params(TEXT("EHWolfInteract"), false, FPPlayer);
+			Params.AddIgnoredActor(W);
+			if (GetWorld()->LineTraceTestByChannel(Eye, Eye + V, ECC_Visibility, Params))
 			{
 				continue;
 			}
@@ -154,6 +160,13 @@ void AEHGameDirector::BeginPrayer()
 		CloseSpellSelect(false);
 	}
 	bPraying = true;
+	for (AEHWolf* W : FPWolves)
+	{
+		if (W)
+		{
+			W->SetSanctuary(true);
+		}
+	}
 	if (FPPlayer)
 	{
 		FPPlayer->CancelActionsForPrayer();

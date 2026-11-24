@@ -195,7 +195,12 @@ void AEHGameDirector::Rumble(float Large, float Small, float Seconds)
 void AEHGameDirector::PlayImpact(const TCHAR* Base, int32 Variants, float Volume, float Pitch)
 {
 	const FString Name = Variants > 1 ? FString::Printf(TEXT("%s_%02d"), Base, FMath::RandRange(1, Variants)) : FString(Base);
+	const int32 Before = Audio.PlayedCount();
 	Audio.Play(FName(*Name), EEHSoundCat::Effects, Volume, Pitch * FMath::FRandRange(0.96f, 1.04f));
+	if (bAutomated && Name.StartsWith(TEXT("IceWall")))
+	{
+		AutoLogLine(FString::Printf(TEXT("fp ice audio %s category=effects submitted=%d"), *Name, Audio.PlayedCount() > Before ? 1 : 0));
+	}
 }
 
 void AEHGameDirector::ApplyFieldOfView()
@@ -259,6 +264,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 		OpenSpellSelect();
 	}
 	const bool bSelectorOwnsLook = bSpellSelect;
+	bFPLockSelectorOwnsLook = bSelectorOwnsLook;
 	if (bSelectorOwnsLook)
 	{
 		if (Settings.SpellSelector == 0)
@@ -313,12 +319,12 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 		}
 	}
 	const FVector2D LookMouse = bSelectorOwnsLook ? FVector2D::ZeroVector : Mouse;
+	FPLockRawStickX = static_cast<float>(PadLook.X);
 	if (bSelectorOwnsLook)
 	{
 		PadLook = FVector2D::ZeroVector;
 	}
 	FPLockRawMouseX = static_cast<float>(LookMouse.X);
-	FPLockRawStickX = static_cast<float>(PadLook.X);
 
 	// Look: the mouse in degrees per count; the stick as a turn rate with a response curve, scaled by frame time.
 	const float Invert = Settings.bInvertLook ? -1.0f : 1.0f;
@@ -889,7 +895,6 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 			{
 				W->Melt();
 				PlayImpact(TEXT("FlameHit"), 1, 0.7f, 0.8f);
-				PlayImpact(TEXT("IceWallMelt"), 1, 0.85f, 1.05f);
 				if (Vfx)
 				{
 					// Steam off the melting ice.
@@ -1251,7 +1256,12 @@ void AEHGameDirector::UpdateLockOn(FEHFirstPersonInput& In, float DeltaSeconds)
 			return;
 		}
 	}
-	if (!bSpellSelect)
+	if (bFPLockSelectorOwnsLook)
+	{
+		bFPLockStickHeld = FMath::Abs(FPLockRawStickX) >= 0.35f;
+		FPLockMouseAccum = 0.0f;
+	}
+	else
 	{
 		int32 SwitchDir = 0;
 		if (FMath::Abs(FPLockRawStickX) >= T.SwitchStick && !bFPLockStickHeld && FPLockSwitchCooldown <= 0.0f)
@@ -1787,7 +1797,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		{
 			const FLinearColor Ink(0.08f, 0.07f, 0.09f, T);
 			P.Text(TEXT("Exorcised"), FVector2f(960.0f, 470.0f), Fonts.Sized(Fonts.DisplayLight, 64), Ink, 0.5f, 0.5f);
-			P.Text(TEXT("PLACEHOLDER: a permanent death. The Chapel's wolves banished the Shadow."), FVector2f(960.0f, 560.0f), Fonts.Sized(Fonts.Body, 24), FLinearColor(0.08f, 0.07f, 0.09f, 0.75f * T), 0.5f, 0.5f);
+			P.Text(TEXT("PLACEHOLDER: The wolf encounter has ended."), FVector2f(960.0f, 560.0f), Fonts.Sized(Fonts.Body, 24), FLinearColor(0.08f, 0.07f, 0.09f, 0.75f * T), 0.5f, 0.5f);
 		}
 	}
 	// Every piece of art in this build is a stand-in; say so where a reviewer will see it.

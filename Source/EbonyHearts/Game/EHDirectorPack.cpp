@@ -33,6 +33,7 @@ void AEHGameDirector::SpawnPack(int32 Count)
 		}
 		W->SetAlignment(FPAlignment);
 		W->Setup(WT, FPPlayer, FPDummy);
+		W->AddTickPrerequisiteActor(this);
 		W->SetCoatVariant(i);
 		FPWolves.Add(W);
 	}

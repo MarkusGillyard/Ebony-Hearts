@@ -343,7 +343,7 @@ private:
 	int32 FPReflected = 0;
 	// The "Chapel Wolves" document (2026-11-23). The player as a Shadow (New Direction, "Shadows"; set from the
 	// developer panel until death and Qhi Stones exist): no spells; the wolves tell them to pray, and striking, or
-	// staying in the Chapel without praying, gets them exorcised (a permanent-death ending). Three
+	// staying in the Chapel without praying, ends the prototype encounter. Three
 	// in-game days of prayer at the Chapel restore them.
 	bool bFPShadow = false;
 	double FPShadowPrayHours = 0.0;
@@ -363,6 +363,7 @@ private:
 	float FPLockMouseAccum = 0.0f;
 	float FPLockRawMouseX = 0.0f;
 	float FPLockRawStickX = 0.0f;
+	bool bFPLockSelectorOwnsLook = false;
 	bool bFPLockStickHeld = false;
 	bool bFPLockPressed = false;
 	int32 FPLockSwitches = 0;

@@ -557,6 +557,23 @@ bool AEHWolf::Absorb(float Damage)
 	return true;
 }
 
+void AEHWolf::SetSanctuary(bool bOn)
+{
+	if (bSanctuary == bOn)
+	{
+		return;
+	}
+	bSanctuary = bOn;
+	if (bOn && IsAttacking())
+	{
+		Stop();
+		UCharacterMovementComponent* Movement = GetCharacterMovement();
+		Movement->StopMovementImmediately();
+		Movement->ClearAccumulatedForces();
+		Enter(EEHWolfState::Sanctuary, 0);
+	}
+}
+
 void AEHWolf::Freeze(float Seconds)
 {
 	if (Seconds <= 0.0f || IsDead())

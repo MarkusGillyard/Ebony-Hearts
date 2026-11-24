@@ -1261,6 +1261,23 @@ void AEHGameDirector::RunBindingsSelfTest()
 			!V10D.Bindings.HasConflicts(&V10DReport) && Warning.Contains(TEXT("Lock on")),
 			TEXT("version 10 to 11 (default crouch on R3): controller Crouch moves to D-pad down and Lock on takes R3 ") + Warning);
 
+		const FString V10SparsePath = FPaths::Combine(Dir, TEXT("fp_v10_sparse.json"));
+		Check(FFileHelper::SaveStringToFile(TEXT(R"({"version":10,"bindings":{"fpController":{"FirstPersonJump":["Gamepad_DPad_Down","",""]}}})"), *V10SparsePath),
+			TEXT("version 10 sparse fixture written"));
+		Warning.Reset();
+		const FEHSettings V10Sparse = FEHSettings::Load(&Warning, V10SparsePath);
+		Check(V10Sparse.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_DPad_Down &&
+			V10Sparse.Bindings.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_RightThumbstick &&
+			V10Sparse.Bindings.IsUnbound(S::FPController, A::FPLockOn) && !Warning.Contains(TEXT("moved")),
+			TEXT("version 10 sparse layout keeps custom D-pad down and the old crouch"));
+
+		Check(FFileHelper::SaveStringToFile(TEXT(R"({"version":10,"bindings":{"fpController":{"FirstPersonCrouch":["Gamepad_RightThumbstick","Gamepad_DPad_Up",""]}}})"), *V10SparsePath),
+			TEXT("version 10 alternate fixture written"));
+		const FEHSettings V10Alternate = FEHSettings::Load(nullptr, V10SparsePath);
+		Check(V10Alternate.Bindings.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_RightThumbstick &&
+			V10Alternate.Bindings.Get(S::FPController, A::FPCrouch, 1) == EKeys::Gamepad_DPad_Up &&
+			V10Alternate.Bindings.IsUnbound(S::FPController, A::FPLockOn), TEXT("version 10 migration preserves a customised crouch pair"));
+
 		const FString V10CustomPath = FPaths::Combine(Dir, TEXT("fp_v10_custom_r3.json"));
 		FFileHelper::SaveStringToFile(TEXT("{\"version\":10,\"bindings\":{\"fpKeyboard\":{\"FirstPersonJump\":[\"MiddleMouseButton\",\"V\",\"\"]},\"fpController\":{\"FirstPersonJump\":[\"Gamepad_RightThumbstick\",\"\",\"\"]}}}"), *V10CustomPath);
 		Warning.Reset();

@@ -118,6 +118,29 @@ fp_expect walls eq 0
 fp_expect fireballs eq 0
 fp_expect qhi eq 100
 fp_expect dummy_frozen eq 0
+log == Ice Wall impact and shatter with normal movement and attack input
+fp_reset
+wait 0.5
+press kbA FPIceWall
+wait 0.6
+hold kbA FPForward
+wait 0.7
+release kbA FPForward
+wait 0.2
+press kbA FPStraight
+wait 0.6
+fp_expect wall_hp eq 48
+press kbA FPStraight
+wait 0.6
+press kbA FPStraight
+wait 0.6
+press kbA FPStraight
+wait 0.6
+press kbA FPStraight
+wait 0.6
+fp_expect walls_shattered eq 1
+fp_expect walls eq 0
+
 # Footage capture runs slower than real time; the window stays open until it has every frame.
 wait 12
 quit
