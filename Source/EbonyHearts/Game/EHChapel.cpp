@@ -6,6 +6,17 @@ bool FEHChapelTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError
 	{
 		return true;
 	}
+	auto ReadPoint = [](const TSharedPtr<FJsonObject>& Object, const TCHAR* Name, FVector& Out) {
+		const TArray<TSharedPtr<FJsonValue>>* Values = nullptr;
+		if (!Object->TryGetArrayField(Name, Values) || Values->Num() != 3 || Values->ContainsByPredicate([](const TSharedPtr<FJsonValue>& Value) {
+			return !Value.IsValid() || Value->Type != EJson::Number || !FMath::IsFinite(Value->AsNumber());
+		}))
+		{
+			return false;
+		}
+		Out = FVector((*Values)[0]->AsNumber(), (*Values)[1]->AsNumber(), (*Values)[2]->AsNumber());
+		return true;
+	};
 	bool bOk = true;
 	auto Num = [&](const TSharedPtr<FJsonObject>& O, const FString& Where, const TCHAR* Name, float& Out, float Min, float Max) {
 		double V = 0.0;
@@ -25,17 +36,17 @@ bool FEHChapelTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError
 	Num(Obj, TEXT(""), TEXT("messageWalkAway"), MessageWalkAway, 50, 5000);
 	Num(Obj, TEXT(""), TEXT("prayLookScale"), PrayLookScale, 0, 1);
 	Num(Obj, TEXT(""), TEXT("prayTurnSeconds"), PrayTurnSeconds, 0.05f, 10);
-	const TArray<TSharedPtr<FJsonValue>>* Look = nullptr;
-	if (Obj->TryGetArrayField(TEXT("prayLookAt"), Look) && Look->Num() == 3)
+	if (Obj->HasField(TEXT("prayLookAt")) && !ReadPoint(Obj, TEXT("prayLookAt"), PrayLookAt))
 	{
-		PrayLookAt = FVector((*Look)[0]->AsNumber(), (*Look)[1]->AsNumber(), (*Look)[2]->AsNumber());
+		OutError = TEXT("Data/firstperson.json: chapel.prayLookAt must contain three finite coordinates.");
+		return false;
 	}
 	Num(Obj, TEXT(""), TEXT("sparkRange"), SparkRange, 0, 10000);
 	Num(Obj, TEXT(""), TEXT("sparkGap"), SparkGap, 0.05f, 30);
-	const TArray<TSharedPtr<FJsonValue>>* Spark = nullptr;
-	if (Obj->TryGetArrayField(TEXT("sparkAt"), Spark) && Spark->Num() == 3)
+	if (Obj->HasField(TEXT("sparkAt")) && !ReadPoint(Obj, TEXT("sparkAt"), SparkAt))
 	{
-		SparkAt = FVector((*Spark)[0]->AsNumber(), (*Spark)[1]->AsNumber(), (*Spark)[2]->AsNumber());
+		OutError = TEXT("Data/firstperson.json: chapel.sparkAt must contain three finite coordinates.");
+		return false;
 	}
 	const TArray<TSharedPtr<FJsonValue>>* SoundList = nullptr;
 	if (Obj->TryGetArrayField(TEXT("sounds"), SoundList))
@@ -44,16 +55,14 @@ bool FEHChapelTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError
 		for (int32 i = 0; i < SoundList->Num() && bOk; ++i)
 		{
 			const TSharedPtr<FJsonObject>* It = nullptr;
-			const TArray<TSharedPtr<FJsonValue>>* At = nullptr;
+			FEHChapelSound S;
 			FString Name;
-			if (!(*SoundList)[i]->TryGetObject(It) || !(*It)->TryGetStringField(TEXT("name"), Name) || !(*It)->TryGetArrayField(TEXT("at"), At) || At->Num() != 3)
+			if (!(*SoundList)[i]->TryGetObject(It) || !(*It)->TryGetStringField(TEXT("name"), Name) || !ReadPoint(*It, TEXT("at"), S.At))
 			{
 				OutError = FString::Printf(TEXT("Data/firstperson.json: chapel.sounds[%d] needs a name and \"at\": [x, y, z]."), i);
 				return false;
 			}
-			FEHChapelSound S;
 			S.Name = FName(*Name);
-			S.At = FVector((*At)[0]->AsNumber(), (*At)[1]->AsNumber(), (*At)[2]->AsNumber());
 			const FString Where = FString::Printf(TEXT("sounds[%d]."), i);
 			Num(*It, Where, TEXT("inner"), S.Inner, 0, 10000);
 			Num(*It, Where, TEXT("falloff"), S.Falloff, 1, 20000);
@@ -75,13 +84,11 @@ bool FEHChapelTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError
 			}
 			FEHInteractable E;
 			const TSharedPtr<FJsonObject>& O = *It;
-			const TArray<TSharedPtr<FJsonValue>>* At = nullptr;
-			if (!O->TryGetStringField(TEXT("id"), E.Id) || !O->TryGetArrayField(TEXT("at"), At) || At->Num() != 3)
+			if (!O->TryGetStringField(TEXT("id"), E.Id) || !ReadPoint(O, TEXT("at"), E.At))
 			{
 				OutError = FString::Printf(TEXT("Data/firstperson.json: chapel.interactables[%d] needs an id and \"at\": [x, y, z]."), i);
 				return false;
 			}
-			E.At = FVector((*At)[0]->AsNumber(), (*At)[1]->AsNumber(), (*At)[2]->AsNumber());
 			Num(O, FString::Printf(TEXT("interactables[%d]."), i), TEXT("radius"), E.Radius, 5, 500);
 			O->TryGetStringField(TEXT("prompt"), E.Prompt);
 			O->TryGetStringField(TEXT("text"), E.Text);

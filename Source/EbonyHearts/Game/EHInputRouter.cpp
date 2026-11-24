@@ -372,11 +372,13 @@ bool FEHInputRouter::HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyE
 	{
 		return true;
 	}
-	if (Key == EKeys::F10)
+#if !UE_BUILD_SHIPPING
+	if (bFirstPerson && Key == EKeys::F10)
 	{
 		bDeveloperKey = true;
 		return true;
 	}
+#endif
 	ProcessKeyboardKey(Key, true);
 	return false;
 }
@@ -638,6 +640,22 @@ void FEHInputRouter::ResetHeld()
 	MouseDelta = FVector2D::ZeroVector;
 }
 
+void FEHInputRouter::ResetForFocusLoss()
+{
+	ResetHeld();
+	for (auto& Pair : DeviceMap)
+	{
+		FEHDevice& D = Pair.Value;
+		D.Held = D.StickHeld = 0;
+		D.NavHeld = D.NavKeyHeld = D.NavStickHeld = 0;
+		D.TriggerDown = D.DigitalTriggerDown = 0;
+		FMemory::Memzero(D.Axes);
+	}
+	Nav.Reset();
+	RepeatTimers.Reset();
+	bDeveloperKey = false;
+}
+
 bool FEHInputRouter::PopNav(FEHNavEvent& Out)
 {
 	if (Nav.Num() == 0)
@@ -714,6 +732,7 @@ void FEHInputRouter::OnConnectionChange(EInputDeviceConnectionState State, FPlat
 		D->TriggerDown = D->DigitalTriggerDown = 0;
 		D->KeysDown.Reset();
 		FMemory::Memzero(D->Axes);
+		Nav.RemoveAll([DeviceKey](const FEHNavEvent& E) { return E.Device == DeviceKey; });
 	}
 	ConnectionChanges.Add(TPair<int32, bool>(DeviceKey, bConnected));
 }

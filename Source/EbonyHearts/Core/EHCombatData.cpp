@@ -80,7 +80,7 @@ bool ReadInt(Ctx& ctx, const JsonValue& obj, const char* key, const std::string&
 	}
 	if (v->number < lo || v->number > hi)
 	{
-		return ctx.Fail(p, "value " + std::to_string(static_cast<long long>(v->number)) + " outside [" + std::to_string(lo) + ", " + std::to_string(hi) + "]");
+		return ctx.Fail(p, "value " + std::to_string(v->number) + " outside [" + std::to_string(lo) + ", " + std::to_string(hi) + "]");
 	}
 	out = static_cast<int32_t>(v->number);
 	return true;
@@ -192,7 +192,7 @@ bool ReadRange(Ctx& ctx, const JsonValue& obj, const char* key, const std::strin
 	}
 	if (a < 1 || b < a || b > total)
 	{
-		return ctx.Fail(p, "range [" + std::to_string(static_cast<int>(a)) + ", " + std::to_string(static_cast<int>(b)) + "] must satisfy 1 <= first <= last <= total (" + std::to_string(total) + ")");
+		return ctx.Fail(p, "range [" + std::to_string(a) + ", " + std::to_string(b) + "] must satisfy 1 <= first <= last <= total (" + std::to_string(total) + ")");
 	}
 	out.first = static_cast<int32_t>(a);
 	out.last = static_cast<int32_t>(b);

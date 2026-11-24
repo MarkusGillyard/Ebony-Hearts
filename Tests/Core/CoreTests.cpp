@@ -211,6 +211,30 @@ int main(int argc, char** argv)
 		EXPECT_TRUE(g_ashka.moves[static_cast<size_t>(Move(1, "S"))].hits[0].energy, "Ashka flame specials are energy");
 	});
 
+	Run("json_numbers_reject_malformed_and_nonfinite_values", [] {
+		for (const char* text : {"01", "-01", "1.", "1.e2", "-.5", "1e", "1e+", "1e999", "-1e999"})
+		{
+			JsonValue value;
+			std::string error;
+			EXPECT_TRUE(!ParseJson(text, value, error), std::string("reject malformed or nonfinite number: ") + text);
+			EXPECT_TRUE(!error.empty(), std::string("numeric rejection has diagnostic: ") + text);
+		}
+		for (const char* text : {"0", "-0", "10", "-42", "1.25", "0.5", "1e2", "1E-2", "-2.5e+3", "1e-999"})
+		{
+			JsonValue value;
+			std::string error;
+			EXPECT_TRUE(ParseJson(text, value, error) && value.IsNumber(), std::string("accept valid finite number: ") + text);
+		}
+	});
+
+	Run("oversized_content_numbers_rejected_safely", [] {
+		const std::string good = ReadFile(g_dataDir + "/Fighters/wren.json");
+		EXPECT_TRUE(LoadError(Replace(good, "\"maxHealth\": 1000", "\"maxHealth\": 1e100")).find("character.maxHealth") != std::string::npos,
+			"oversized health reports its JSON field without an integer conversion");
+		EXPECT_TRUE(LoadError(Replace(good, "[8, 9]", "[1e100, 1e100]")).find("frames") != std::string::npos,
+			"oversized frame range reports its field without an integer conversion");
+	});
+
 	Run("malformed_content_rejected_with_paths", [] {
 		const std::string good = ReadFile(g_dataDir + "/Fighters/wren.json");
 		EXPECT_TRUE(LoadError(good).empty(), "baseline loads");

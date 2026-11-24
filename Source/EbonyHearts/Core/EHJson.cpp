@@ -1,6 +1,7 @@
 #include "EHJson.h"
 
 #include <cstdlib>
+#include <cmath>
 
 namespace eh
 {
@@ -299,23 +300,38 @@ struct Reader
 			{
 				++pos;
 			}
-			while (pos < src.size())
+			// JSON has a stricter number grammar than strtod (no leading zero, omitted integer or empty fraction).
+			auto Digit = [this]() { return pos < src.size() && src[pos] >= '0' && src[pos] <= '9'; };
+			if (!Digit())
 			{
-				const char d = src[pos];
-				if ((d >= '0' && d <= '9') || d == '.' || d == 'e' || d == 'E' || d == '+' || d == '-')
-				{
-					++pos;
-				}
-				else
-				{
-					break;
-				}
+				return Fail("malformed number");
+			}
+			if (src[pos] == '0')
+			{
+				++pos;
+			}
+			else
+			{
+				while (Digit()) ++pos;
+			}
+			if (pos < src.size() && src[pos] == '.')
+			{
+				++pos;
+				if (!Digit()) return Fail("malformed number fraction");
+				while (Digit()) ++pos;
+			}
+			if (pos < src.size() && (src[pos] == 'e' || src[pos] == 'E'))
+			{
+				++pos;
+				if (pos < src.size() && (src[pos] == '+' || src[pos] == '-')) ++pos;
+				if (!Digit()) return Fail("malformed number exponent");
+				while (Digit()) ++pos;
 			}
 			const std::string token = src.substr(start, pos - start);
 			char* end = nullptr;
 			out.kind = JsonValue::Kind::Number;
 			out.number = std::strtod(token.c_str(), &end);
-			if (end == nullptr || *end != '\0' || token == "-")
+			if (end == nullptr || *end != '\0' || !std::isfinite(out.number))
 			{
 				pos = start;
 				ok = Fail("malformed number");

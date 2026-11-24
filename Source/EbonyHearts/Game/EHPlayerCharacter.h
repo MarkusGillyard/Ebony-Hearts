@@ -120,6 +120,7 @@ public:
 
 	void ApplyTuning(const FEHFirstPersonTuning& InTuning);
 	void ApplyInput(const FEHFirstPersonInput& In, float DeltaSeconds);
+	void CancelActionsForPrayer();
 	void SetFieldOfView(float HorizontalDegrees);
 	// Camera kicks from contact and hits are scaled by this (0 with Reduce camera shake).
 	void SetShakeScale(float Scale) { ShakeScale = Scale; }

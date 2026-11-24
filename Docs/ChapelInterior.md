@@ -20,7 +20,7 @@ it.
 | Sanctuary | Prayer at the altar | +0.45 m | Unchanged (prayer is stage 2) |
 | Forge (north transept) | Smithing King Dwar: buying items and upgrading weapons | +0.45 m, dry | Built: opened off the north aisle by two arches, steps, barrel vault, end window, warm light (furnishing is stage 2) |
 | Hall of the Six (south transept) | A memorial of past champions, in traces only | +0.45 m, dry | Built: the mirror of the forge's room (alcoves and mural are stage 2) |
-| The way down and the undercroft | A flooded crypt under the sanctuary, with the locked gate to the caverns beneath the Chapel (the Chapel Crowned Cave, not in the prototype) | −3 m, water 0.6 m | Built: doorway in the north aisle's east end (with a window above), 17 steps down, crypt with a central arcade and two vaults, the cave gate (locked) and a sealed door |
+| The way down and the undercroft | A flooded crypt under the sanctuary, with a locked gate | −3 m, water 0.6 m | Built: doorway in the north aisle's east end (with a window above), 17 steps down, crypt with a central arcade and two vaults, the cave gate (locked) and a sealed door |
 
 ## What changed in the map
 
