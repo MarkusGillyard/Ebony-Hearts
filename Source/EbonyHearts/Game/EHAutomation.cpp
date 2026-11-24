@@ -1277,6 +1277,12 @@ void AEHGameDirector::RunBindingsSelfTest()
 		Check(Tuning.Load(TEXT(R"({"spawn":[15,-20,1.5]})"), Error) && Tuning.Spawn == FVector(15, -20, 1.5),
 			TEXT("first-person spawn accepts numeric coordinates"));
 	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"chapel":{"sounds":[{"name":"test","at":[1,false,2]}]}})"), Error) && Error.Contains(TEXT("chapel.sounds[0]")),
+			TEXT("Chapel sound positions reject nonnumeric coordinates"));
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 
