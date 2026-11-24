@@ -12,6 +12,7 @@ loop 84
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 3.0
 press kbA FPIceWall
 wait 0.8

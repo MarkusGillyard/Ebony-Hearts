@@ -40,10 +40,23 @@ void AEHGameDirector::CombatTextEvents(int32 i, EEHWolfState WS, EEHWolfState La
 		Kind = EEHLineKind::Warning;
 		break;
 	case EEHWolfState::Hostile:
-		if (Last == EEHWolfState::Calm || Last == EEHWolfState::Disengage)
+		if (Last == EEHWolfState::Calm || Last == EEHWolfState::Disengage || Last == EEHWolfState::Warn || W->IsCalmLike())
 		{
 			Event = TEXT("wolf.hostile.notice");
 		}
+		break;
+	case EEHWolfState::Warn:
+		// An evil aura: trash talk and the chance to leave. A Shadow: told to pray, or be exorcised.
+		Event = bFPShadow ? TEXT("wolf.shadow.pray") : TEXT("wolf.hostile.warn");
+		Kind = bFPShadow ? EEHLineKind::Warning : EEHLineKind::Hostile;
+		break;
+	case EEHWolfState::Greet:
+		Event = TEXT("wolf.friendly.greet");
+		Kind = EEHLineKind::Friendly;
+		break;
+	case EEHWolfState::Sanctuary:
+		Event = TEXT("wolf.sanctuary");
+		Kind = B == EEHAlignBand::Good ? EEHLineKind::Friendly : EEHLineKind::Warning;
 		break;
 	default:
 		break;
@@ -71,7 +84,7 @@ void AEHGameDirector::CombatTextNearness(float Now)
 	for (int32 i = 0; i < FPWolves.Num(); ++i)
 	{
 		AEHWolf* W = FPWolves[i];
-		if (W == nullptr || W->IsDead() || W->IsHostile() || Now < FPWolfIdleTalkAt[i])
+		if (W == nullptr || W->IsDead() || W->IsHostile() || !W->IsCalmLike() || W->GetState() == EEHWolfState::Sleep || bFPShadow || Now < FPWolfIdleTalkAt[i])
 		{
 			continue;
 		}

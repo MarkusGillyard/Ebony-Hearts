@@ -33,6 +33,7 @@ fp_reset
 fp_stat health 1000
 fp_health 1000
 fp_align 7
+fp_escalate
 wait 0.3
 fp_teleport 0 -900 0 -90 0
 hold kbA FPBlock

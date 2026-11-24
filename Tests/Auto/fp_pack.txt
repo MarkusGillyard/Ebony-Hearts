@@ -13,6 +13,7 @@ fp_health 1000
 fp_wolves 2
 fp_align 7
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 9
 fp_state two
 fp_expect wolves eq 2
@@ -26,6 +27,7 @@ fp_reset
 fp_wolves 3
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 9
 fp_expect wolves eq 3
 fp_expect wolves_fighting eq 3
@@ -37,6 +39,7 @@ fp_reset
 fp_wolves 4
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 9
 fp_state four
 fp_expect wolves eq 4
@@ -48,6 +51,7 @@ log == overwhelmed by Health below half: a one-on-one, the others stand back
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 fp_health 450
 wait 2
 fp_expect overwhelmed eq 1
@@ -61,6 +65,7 @@ log == overwhelmed by being surrounded (three wolves within 4 m)
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 0.2
 fp_pack_ring 250
 wait 0.2
@@ -71,6 +76,7 @@ log == overwhelmed by three hits in four seconds (the wolves held far off, so on
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 0.2
 fp_pack_ring 1000
 wait 0.1
@@ -90,6 +96,7 @@ log == the turn passes cleanly when the holder dies
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 3
 fp_state before_kill
 fp_wolf_kill 0
@@ -103,6 +110,7 @@ log == and when the holder is frozen (an Ice Wall in the water catches the wolve
 fp_reset
 wait 0.3
 fp_teleport 0 -1150 0 -90 0
+fp_escalate
 wait 0.2
 fp_pack_ring 260
 press kbA FPIceWall
@@ -113,6 +121,7 @@ log == an Ice Wall: the wolves re-plan round it, and none stays stuck against it
 fp_reset
 wait 0.3
 fp_teleport 0 -1150 0 -90 0
+fp_escalate
 wait 1
 press kbA FPIceWall
 wait 4

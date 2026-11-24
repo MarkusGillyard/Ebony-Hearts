@@ -1147,8 +1147,9 @@ void AEHGameDirector::RunBindingsSelfTest()
 		D.Get(S::FPKeyboard, A::FPRight, 0) == EKeys::D, TEXT("first person: W A S D move"));
 	Check(D.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::SpaceBar && D.Get(S::FPKeyboard, A::FPCrouch, 0) == EKeys::LeftControl && D.Get(S::FPKeyboard, A::FPSprint, 0) == EKeys::LeftShift,
 		TEXT("first person: Space jumps, Left Ctrl crouches, Left Shift sprints"));
-	Check(D.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Bottom && D.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_RightThumbstick &&
-		D.Get(S::FPController, A::FPSprint, 0) == EKeys::Gamepad_LeftThumbstick, TEXT("first person controller: A / Cross jumps, R3 crouches, L3 sprints"));
+	Check(D.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Bottom && D.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_DPad_Down &&
+		D.Get(S::FPController, A::FPSprint, 0) == EKeys::Gamepad_LeftThumbstick && D.Get(S::FPController, A::FPLockOn, 0) == EKeys::Gamepad_RightThumbstick &&
+		D.Get(S::FPKeyboard, A::FPLockOn, 0) == EKeys::MiddleMouseButton, TEXT("first person controller: A / Cross jumps, D-pad down crouches, L3 sprints, R3 locks on (middle mouse on keyboard)"));
 	Check(!D.HasConflicts(&Report), TEXT("defaults have no conflicts: ") + Report);
 	Check(FEHBindings::IsBindable(S::FPKeyboard, EKeys::LeftMouseButton) && FEHBindings::IsBindable(S::FPKeyboard, EKeys::ThumbMouseButton) &&
 		!FEHBindings::IsBindable(S::KeyboardA, EKeys::LeftMouseButton) && !FEHBindings::IsBindable(S::FPKeyboard, EKeys::Escape) &&
@@ -1232,6 +1233,31 @@ void AEHGameDirector::RunBindingsSelfTest()
 			V8.Bindings.Get(S::FPKeyboard, A::FPInteract, 0) == EKeys::E && V8.Bindings.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
 			V8.SpellSelector == 1 && !V8.Bindings.HasConflicts(&V8Report) && Warning.Contains(TEXT("shove")),
 			TEXT("version 8 to 9 (and on to 10): the shove's E is dropped and later taken by Interact, the player's Tab stays theirs and the notice says so ") + Warning);
+	}
+	// Souls-style lock-on (settings version 11): Middle mouse / V on keyboard, R3 on controller (Crouch moves from R3 to D-pad down).
+	{
+		const FString V10DefaultPath = FPaths::Combine(Dir, TEXT("fp_v10_default.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":10,\"bindings\":{\"fpController\":{\"FirstPersonCrouch\":[\"Gamepad_RightThumbstick\",\"\",\"\"]}}}"), *V10DefaultPath);
+		Warning.Reset();
+		const FEHSettings V10D = FEHSettings::Load(&Warning, V10DefaultPath);
+		FString V10DReport;
+		Check(V10D.Bindings.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_DPad_Down &&
+			V10D.Bindings.Get(S::FPController, A::FPLockOn, 0) == EKeys::Gamepad_RightThumbstick &&
+			V10D.Bindings.Get(S::FPKeyboard, A::FPLockOn, 0) == EKeys::MiddleMouseButton &&
+			!V10D.Bindings.HasConflicts(&V10DReport) && Warning.Contains(TEXT("Lock on")),
+			TEXT("version 10 to 11 (default crouch on R3): controller Crouch moves to D-pad down and Lock on takes R3 ") + Warning);
+
+		const FString V10CustomPath = FPaths::Combine(Dir, TEXT("fp_v10_custom_r3.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":10,\"bindings\":{\"fpKeyboard\":{\"FirstPersonJump\":[\"MiddleMouseButton\",\"V\",\"\"]},\"fpController\":{\"FirstPersonJump\":[\"Gamepad_RightThumbstick\",\"\",\"\"]}}}"), *V10CustomPath);
+		Warning.Reset();
+		const FEHSettings V10C = FEHSettings::Load(&Warning, V10CustomPath);
+		FString V10CReport;
+		Check(V10C.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::MiddleMouseButton &&
+			V10C.Bindings.IsUnbound(S::FPKeyboard, A::FPLockOn) &&
+			V10C.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_RightThumbstick &&
+			V10C.Bindings.IsUnbound(S::FPController, A::FPLockOn) &&
+			!V10C.Bindings.HasConflicts(&V10CReport) && Warning.Contains(TEXT("Lock on")),
+			TEXT("version 10 to 11 (custom bindings on MiddleMouse/V/R3): player's keys stay theirs and Lock on is left unbound ") + Warning);
 	}
 	{
 		const FString V9Path = FPaths::Combine(Dir, TEXT("fp_v9_e_is_jump.json"));

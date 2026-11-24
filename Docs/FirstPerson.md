@@ -31,7 +31,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Move | W A S D (and the arrow keys) | Left stick (always) |
 | Look | Mouse (always) | Right stick (always) |
 | Jump | Space | A / Cross |
-| Crouch | Left Ctrl (and C); hold | Right stick press; toggles |
+| Crouch | Left Ctrl (and C); hold | D-pad down; toggles |
 | Sprint | Left Shift; hold | Left stick press; toggles until you stop moving forward |
 | Jab | Left mouse button | R1 / RB |
 | Straight | Right mouse button | R2 / RT |
@@ -40,6 +40,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Ice Wall | R | Triangle / Y |
 | Choose a spell (hold) | Tab | Square / X |
 | Interact / pray | E | Circle / B |
+| Lock on | Middle mouse button (and V) | Right stick press (R3 / RS) |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -56,14 +57,16 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 10), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 11), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
 first-person action. Version 6 adds the two first-person layouts (`fpKeyboard`, `fpController`) and the look,
 field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techniques and Controller vibration;
 version 8 Fireball and Ice Wall; version 9 removed the shove (its keys are simply free) and added Choose a spell
-and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left. Each new action takes its default key only where the player has not already used
+and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left; version 11 added Lock on
+(Middle mouse / V on keyboard and mouse, R3 / RS on controller, moving controller Crouch to D-pad down when still on
+its previous default). Each new action takes its default key only where the player has not already used
 that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
@@ -325,24 +328,49 @@ and the death reset keep it.
 
 ### Behaviour
 
-- **Good:** friendly. It follows about 2.4 m behind and goes for anything striking at the player: when the training
-  dummy (Strikes back) winds up a punch, the wolf bites it.
-- **Neutral:** wary. It keeps at least 4.6 m away and walks back to its rest when the player leaves.
-- **Evil:** hostile. It senses the menacing aura: it closes, circles at about 3.3 m, then bites (8 damage) or lunges
-  from 3 to 6 m away (12 damage). Both have a wind-up the player can read: a crouch, then the head drawn back.
-- **A threat is not harm.** A jab, straight or cast aimed at the wolf within 4.8 m that does not connect makes it back
-  off for 3 seconds, unprovoked. The player can stop there.
-- **Real harm** (a strike or Fireball that connects) provokes it: hostile whatever the band, until the player leaves
-  the Chapel's floor. The Threshold Hall, by the door, counts as outside (the loft above it does not). After 3 seconds
-  outside it calms, and back inside it
-  treats the player by their band again.
+- **Good:** friendly. It follows about 2.4 m behind, greets a returning friend with a lowered head and wagging tail,
+  lies down beside a badly hurt friend who keeps still, talks when interacted with, and goes for anything striking at
+  the player.
+- **Neutral:** wary. It keeps at least 4.6 m away, offers brief warnings when interacted with, and still protects the
+  player from a strike.
+- **Evil:** senses the menacing aura and warns first: hackles and ceremonial mane raised, holding off at ~5.2 m with
+  growls and insults. Coming too close (< 3 m), swinging at it, or lingering starts the fight (and the whole pack
+  escalates together); leaving the Chapel ends the warning. Once fighting, it closes, circles at about 3.3 m, then
+  bites (8 damage) or lunges from 3 to 6 m away (12 damage).
+- **Prayer as sanctuary:** while the player kneels to pray, no wolf attacks them regardless of alignment; the wolves
+  stand guard nearby and protect them from any threat.
+- **Life at rest:** when no one needs attending to, wolves lie down, sleep, lift their heads as someone passes, and
+  occasionally wander near their resting spot.
+- **A threat is not harm.** A jab, straight or cast aimed at a calm wolf within 4.8 m that does not connect makes it
+  back off for 3 seconds, unprovoked. The player can stop there.
+- **Real harm** (a strike or Fireball that connects) provokes it—and alerts other wolves within 15 m—until the player
+  leaves the Chapel's floor. The Threshold Hall, by the door, counts as outside (the loft above it does not). After
+  3 seconds outside it calms, and back inside it treats the player by their band again.
 - **Hero of Humanity** cannot harm a guardian: a blow at the wolf lands on the player instead. A wolf within 10 m
   takes the blows meant for the player (it is never brought below 1 Health doing so).
+- **Shadows (developer toggle until death/Qhi Stones exist):** a Shadow cannot cast Qhi spells. The wolves warn it to
+  pray; three in-game days of prayer at the kneeler restore it, while striking or ignoring the warning triggers the
+  exorcism ending and returns to the title.
 - **Ice Wall:** the wall blocks the wolf's path. It walks the long way round (in the test, 4.7 m becomes 21 m by the
   side aisle) until the wall melts. A wall rising in water freezes the wolf's feet, like the dummy's.
 
-Strikes reach the wolf even though it stands below the line of a punch: a second sweep at its body's height finds it
-within the same reach. The pause menu has Reset the wolf; the alignment stays.
+### Souls-style lock-on
+
+Press Lock on (`Middle mouse` / `V`, or `R3` / `RS` on controller; `lockOn` in `firstperson.json`) to lock the view
+onto the nearest living wolf or the training dummy in front of the player (a crisp white-gold reticle marks the target;
+with no valid target, the view levels toward the horizon). While locked on, the camera smoothly tracks the target so
+left/right movement orbits cleanly around it and punches and Fireballs aim straight at it. Flicking the mouse or right
+stick left or right switches between targets. Lock-on breaks automatically if the target dies, moves past break range,
+loses line of sight for 1.2 s, or when the player kneels to pray or resets.
+
+### Body and painted coat
+
+The wolf is horse-sized (~1.50 m at the shoulder, ~2.85 m nose to tail), sculpted in Blender
+(`Tools/Blender/wolf/make_wolf.py`, imported by `Tools/Unreal/import_wolf.py`) in five UV-mapped parts: muscular body,
+separate layered pale-silver ceremonial mane (which rises and flares when hackles go up), head with pale amber eyes and
+a battle-notched right ear, articulated legs with broad wet dark paws, and a thick plumed tail. Painterly charcoal,
+silver and ash brush-stroke textures (base colour, roughness and normal maps) give the coat its dark blue-grey spine,
+scars and glossy wet paws, with per-wolf tint variations across the pack.
 
 ### Navigation
 

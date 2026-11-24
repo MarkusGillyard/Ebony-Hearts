@@ -6,7 +6,7 @@
 wait 5
 fp_expect screen eq 12
 fp_expect alignment eq 4
-fp_expect wolf_state eq 0
+fp_expect wolf_calm eq 1
 fp_expect wolf_hostile eq 0
 fp_expect wolf_home_dist lt 60
 
@@ -43,7 +43,7 @@ press kbA Down
 press kbA Confirm
 wait 0.5
 fp_expect paused eq 0
-fp_expect wolf_state eq 0
+fp_expect wolf_calm eq 1
 fp_expect wolf_home_dist lt 60
 fp_expect wolf_health eq 60
 

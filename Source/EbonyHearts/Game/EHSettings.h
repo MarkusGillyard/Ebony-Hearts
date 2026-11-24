@@ -38,6 +38,8 @@ enum class EEHAction : uint8
 	FPSpellSelect,
 	// Interact with what the player looks at; at the Chapel's kneeler, pray (settings version 10).
 	FPInteract,
+	// Souls-style target lock-on (settings version 11).
+	FPLockOn,
 	Count
 };
 
@@ -203,7 +205,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 10;
+constexpr int32 EHSettingsVersion = 11;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

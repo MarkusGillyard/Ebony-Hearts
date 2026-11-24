@@ -1,12 +1,12 @@
 # The Chapel wolf (development build: test positions, the alignment selector and stat changes). Alignment tiers:
 # 0 Hero of Humanity, 1 Honorable, 2 Kindhearted | 3 Well-meaning, 4 Platonic, 5 Self-serving | 6 Ruthless,
 # 7 Malevolent, 8 Forsaken. Covers: navigation, each band's behaviour, a threat versus real harm, leaving and returning,
-# the evil wolf's attacks, killing a guardian, the reset keeping the alignment, Hero of Humanity's bond (blows turned
+# the evil wolf's warning and then its attacks, killing a guardian, the reset keeping the alignment, Hero of Humanity's bond (blows turned
 # back, blows absorbed), the friendly wolf protecting the player, and the Ice Wall rerouting and freezing it.
 wait 7
 fp_expect screen eq 12
 fp_expect alignment eq 4
-fp_expect wolf_state eq 0
+fp_expect wolf_calm eq 1
 fp_expect wolf_path gt 0
 
 log == Neutral (Platonic): keeps its distance
@@ -51,12 +51,16 @@ wait 1.0
 fp_expect wolf_hostile eq 0
 fp_expect health gt 0
 
-log == Evil (Malevolent): naturally hostile; it circles, bites and lunges
+log == Evil (Malevolent): it senses the aura and warns first (hackles up, holding off); staying near starts the fight
 fp_reset
 fp_align 7
 wait 0.3
 fp_teleport 0 -1100 0 -90 0
-wait 6
+wait 3
+fp_expect wolf_warning eq 1
+fp_expect wolf_hostile eq 0
+fp_expect wolf_hackles gt 0.5
+wait 14
 fp_expect wolf_hostile eq 1
 fp_expect wolf_connected gt 0
 fp_expect hurt gt 0

@@ -341,6 +341,38 @@ private:
 	int32 FPWolfHarms = 0;
 	int32 FPWolfKills = 0;
 	int32 FPReflected = 0;
+	// The "Chapel Wolves" document (2026-11-23). The player as a Shadow (New Direction, "Shadows"; set from the
+	// developer panel until death and Qhi Stones exist): no spells; the wolves tell them to pray, and striking, or
+	// staying in the Chapel without praying, gets them exorcised (a permanent-death ending). Three
+	// in-game days of prayer at the Chapel restore them.
+	bool bFPShadow = false;
+	double FPShadowPrayHours = 0.0;
+	float FPExorcism = -1.0f;        // seconds into the exorcism ending, or -1
+	int32 FPExorcisms = 0;
+	int32 FPAlerts = 0;              // wolves provoked by harm to another
+	int32 FPEscalations = 0;         // wolves drawn into a fight another wolf started with an evil aura
+	int32 FPWolfTalks = 0;
+	int32 FPWolfTalkIndex = 0;
+	int32 FPWolfFocus = -1;          // the calm wolf looked at within reach (Interact talks to it), or -1
+	void BeginExorcism(const TCHAR* Why);
+	void TalkToWolf(int32 Index);
+	// Souls-style target lock-on: tracks a wolf or the training dummy; mouse/stick flick switches targets.
+	TWeakObjectPtr<AActor> FPLockTarget;
+	float FPLockLostLos = 0.0f;
+	float FPLockSwitchCooldown = 0.0f;
+	float FPLockMouseAccum = 0.0f;
+	float FPLockRawMouseX = 0.0f;
+	float FPLockRawStickX = 0.0f;
+	bool bFPLockStickHeld = false;
+	bool bFPLockPressed = false;
+	int32 FPLockSwitches = 0;
+	FVector LockOnPoint(const AActor* Target) const;
+	bool HasLockLineOfSight(const AActor* Target) const;
+	AActor* FindLockTarget(int32 SwitchDir) const;
+	void ClearLockOn(const TCHAR* Why);
+	void UpdateLockOn(FEHFirstPersonInput& In, float DeltaSeconds);
+	void PaintLockOn(FEHPainter& P);
+	int32 LockTargetIndex() const;
 	void SpawnWolf();
 	// The pack (EHDirectorPack.cpp).
 	TArray<EEHWolfState> FPWolvesLastState;

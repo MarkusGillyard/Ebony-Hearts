@@ -26,13 +26,14 @@ void AEHGameDirector::SpawnPack(int32 Count)
 			WT.Spawn = WT.Home = T.Spawns[i].At;
 			WT.HomeYaw = T.Spawns[i].Yaw;
 		}
-		AEHWolf* W = GetWorld()->SpawnActor<AEHWolf>(AEHWolf::StaticClass(), FTransform(FRotator(0, WT.HomeYaw, 0), WT.Spawn + FVector(0, 0, 60.0f)), Params);
+		AEHWolf* W = GetWorld()->SpawnActor<AEHWolf>(AEHWolf::StaticClass(), FTransform(FRotator(0, WT.HomeYaw, 0), WT.Spawn + FVector(0, 0, 80.0f)), Params);
 		if (W == nullptr)
 		{
 			break;
 		}
 		W->SetAlignment(FPAlignment);
 		W->Setup(WT, FPPlayer, FPDummy);
+		W->SetCoatVariant(i);
 		FPWolves.Add(W);
 	}
 	FPWolf = FPWolves.Num() > 0 ? FPWolves[0] : nullptr;

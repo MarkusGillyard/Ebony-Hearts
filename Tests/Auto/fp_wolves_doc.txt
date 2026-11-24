@@ -1,0 +1,211 @@
+# The Chapel wolves as the creator's "Chapel Wolves" document describes them (2026-11-23; development build: test
+# positions, the alignment selector, the Shadow item, the pack's size). Alignment tiers: 0 Hero of Humanity,
+# 2 Kindhearted, 4 Platonic, 7 Malevolent. Covers: life at rest (lying down, asleep, lifting its head as someone
+# passes); an evil aura warned before any fight and free to leave, and coming too close starting it; the pack judging
+# together; harm to one wolf bringing the others; prayer as sanctuary (no wolf attacks the one praying, whatever they
+# are; the wolves stand guard and go for anything striking at them); a neutral player protected; a friend greeted on
+# coming back and lain beside when badly hurt; talking with a friend; a Shadow told to pray, unable to cast, restored by
+# three days of prayer, and exorcised for striking or for ignoring the warning.
+wait 6
+fp_expect screen eq 12
+fp_expect alignment eq 4
+
+log == at rest: with no one near it lies down; asleep, it lifts its head when someone passes
+fp_reset
+fp_teleport 0 300 0 -90 0
+wait 1.0
+fp_expect wolf_lying eq 1
+fp_expect wolf_calm eq 1
+fp_wolf_place 330 -1530 90
+fp_wolf_rest 1
+wait 0.5
+fp_expect wolf_asleep eq 1
+fp_teleport 330 -930 0 -90 0
+wait 0.5
+fp_expect wolf_asleep eq 0
+fp_expect wolf_lying eq 1
+fp_expect wolf_hostile eq 0
+
+log == Evil: warned first, hackles up, held off; free to leave
+fp_reset
+fp_align 7
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 3
+fp_state evil_warned
+fp_expect wolf_warning eq 1
+fp_expect wolf_hostile eq 0
+fp_expect wolf_hackles gt 0.5
+fp_expect wolf_dist gt 380
+fp_expect health eq 100
+fp_teleport 0 900 0 -90 0
+wait 4
+fp_expect wolf_warned_for eq 0
+fp_expect wolf_hostile eq 0
+fp_expect wolf_escalated eq 0
+
+log == coming too close starts the fight
+fp_teleport 200 -1450 0 -90 0
+wait 0.5
+fp_expect wolf_escalated eq 1
+fp_expect wolf_hostile eq 1
+
+log == the pack judges together: one wolf's fight is every wolf's
+fp_reset
+fp_wolves 2
+wait 0.3
+fp_teleport 200 -1450 0 -90 0
+wait 1.0
+fp_expect wolf_escalations gt 0
+fp_expect wolves_fighting eq 2
+
+log == harm to one wolf brings the others (Neutral: the struck wolf and the one beside it both turn)
+fp_reset
+fp_align 4
+wait 0.3
+fp_wolf_place 0 -640 90 0 0
+fp_teleport 0 -530 -28 -90 -32
+wait 0.1
+press kbA FPJab
+wait 0.5
+fp_expect wolf_provoked eq 1
+fp_expect wolf_alerts gt 0
+fp_expect wolves_fighting eq 2
+fp_teleport 0 900 0 -90 0
+wait 4
+fp_wolves 1
+fp_align 7
+fp_reset
+wait 0.3
+
+log == prayer is sanctuary: an evil player kneels and no wolf attacks; they stand guard
+fp_teleport 0 -1660 44 -90 -50
+wait 0.2
+press kbA FPInteract
+wait 0.4
+fp_expect praying eq 1
+wait 4
+fp_state sanctuary
+fp_expect wolf_sanctuary eq 1
+fp_expect wolf_hostile eq 0
+fp_expect wolf_dist lt 500
+fp_expect health eq 100
+log the dummy strikes at the one praying: a wolf goes for it
+fp_dummy_place 0 -1560 -90
+fp_dummy strikes
+wait 4
+fp_expect wolf_protects gt 0
+fp_expect praying eq 1
+fp_dummy stand
+press kbA FPInteract
+wait 1.0
+fp_expect praying eq 0
+log rising: the wolves step back to their warning, no fight at once
+fp_expect wolf_hostile eq 0
+fp_reset
+wait 0.3
+
+log == a neutral player is protected too (the wolf keeps its distance, but goes for a strike at them)
+fp_align 4
+fp_dummy_place 0 -150 -90
+fp_dummy strikes
+fp_teleport 0 -40 0 -90 0
+fp_wolf_place 400 -700 90
+wait 4
+fp_expect wolf_protects gt 0
+fp_expect wolf_hostile eq 0
+fp_dummy stand
+fp_reset
+wait 0.3
+
+log == a friend come back is greeted, head lowered
+fp_align 2
+fp_teleport 0 900 0 -90 0
+wait 9
+fp_wolf_place 0 -500 90
+fp_teleport 0 -200 0 -90 0
+wait 0.3
+fp_expect wolf_greeting eq 1
+wait 1.5
+
+log == a friend badly hurt and keeping still: it lies down beside them until they recover
+fp_health 30
+wait 4
+fp_expect wolf_beside eq 1
+fp_expect wolf_lying eq 1
+fp_expect wolf_dist lt 220
+fp_health 100
+wait 0.6
+fp_expect wolf_beside eq 0
+
+log == a friend can talk with it (the lines are placeholders for the creator)
+fp_reset
+wait 0.3
+fp_wolf_place 0 -820 90
+fp_teleport 0 -600 0 -90 -22
+wait 0.2
+fp_expect wolf_focus eq 0
+screenshot wolves_talk_prompt
+press kbA FPInteract
+wait 0.3
+fp_expect wolf_talks eq 1
+screenshot wolves_talk
+
+log == a Shadow: told to pray; no spells
+fp_reset
+fp_align 4
+fp_shadow 1
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 2
+fp_expect shadow eq 1
+fp_expect wolf_warning eq 1
+fp_expect wolf_hostile eq 0
+press kbA FPFireball
+wait 0.6
+fp_expect casts eq 0
+fp_expect refused gt 0
+
+log == praying satisfies the wolves; three days of prayer restore the Shadow
+fp_teleport 0 -1660 44 -90 -50
+wait 0.2
+press kbA FPInteract
+wait 0.5
+fp_expect praying eq 1
+wait 1.5
+fp_expect wolf_sanctuary eq 1
+fp_shadow_hours 430
+wait 2.5
+fp_expect shadow eq 0
+fp_expect exorcisms eq 0
+press kbA FPInteract
+wait 0.5
+
+log == a Shadow that strikes in the Chapel is exorcised: the ending, then a new life from the title
+fp_reset
+fp_shadow 1
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 1
+press kbA FPJab
+wait 0.4
+fp_expect exorcising eq 1
+wait 3.5
+screenshot wolves_exorcism
+wait 4.5
+fp_expect screen eq 1
+fp_expect shadow eq 0
+fp_expect alignment eq 4
+press kbA FPJab
+wait 1.5
+fp_expect screen eq 12
+
+log == a Shadow that will not pray runs out of the wolves' patience
+fp_shadow 1
+fp_teleport 0 -900 0 -90 0
+wait 32
+fp_expect exorcisms eq 2
+wait 8.5
+fp_expect screen eq 1
+fp_state end
+quit

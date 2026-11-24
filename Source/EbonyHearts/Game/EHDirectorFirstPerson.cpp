@@ -316,6 +316,8 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	{
 		PadLook = FVector2D::ZeroVector;
 	}
+	FPLockRawMouseX = static_cast<float>(LookMouse.X);
+	FPLockRawStickX = static_cast<float>(PadLook.X);
 
 	// Look: the mouse in degrees per count; the stick as a turn rate with a response curve, scaled by frame time.
 	const float Invert = Settings.bInvertLook ? -1.0f : 1.0f;
@@ -384,6 +386,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 		In.FistPress = SelectedSpell;          // released on a spell: cast it now
 	}
 	bFPInteractPressed = (AnyPress & Bit(EEHAction::FPInteract)) != 0 && !bSpellSelect;
+	bFPLockPressed = (AnyPress & Bit(EEHAction::FPLockOn)) != 0 && !bSpellSelect;
 	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
 	if (In.FistPress != EEHFistAction::None || In.bBlock)
 	{
@@ -432,7 +435,26 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 		return;
 	}
 	TickWorldClock(FApp::GetDeltaTime());   // real time: the spell selector's slow motion does not slow the world's day
+	FPPlayer->SetShadowForm(bFPShadow);
+	if (FPExorcism >= 0.0f)
+	{
+		// The exorcism ending: nothing the player does matters now. Then a new life begins, from the title.
+		In = FEHFirstPersonInput();
+		FPExorcism += DeltaSeconds;
+		if (FPExorcism >= 7.5f)
+		{
+			bFPShadow = false;
+			FPShadowPrayHours = 0.0;
+			FPAlignment = EHAlign::Platonic;
+			FPPlayer->SetShadowForm(false);
+			ResetFirstPerson(TEXT("exorcised"));
+			AutoLogLine(TEXT("fp exorcism ends: a new life from the title"));
+			GoTo(EEHScreen::Title);
+			return;
+		}
+	}
 	UpdateChapel(In, DeltaSeconds);
+	UpdateLockOn(In, DeltaSeconds);
 	LastFPInput = In;
 	FPPlayer->ApplyInput(In, DeltaSeconds);
 	if (Vfx)
@@ -477,6 +499,8 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 			continue;
 		}
 		W->SetAlignment(FPAlignment);
+		W->SetSanctuary(bPraying);
+		W->SetShadowPlayer(bFPShadow);
 		const EEHWolfState WS = W->GetState();
 		EEHWolfState& Last = FPWolvesLastState[i];
 		if (WS != Last)
@@ -501,6 +525,33 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 		}
 	}
 	FPWolfLastState = FPWolvesLastState.Num() > 0 ? FPWolvesLastState[0] : EEHWolfState::Calm;
+	// The pack judges together: once one wolf has started the fight with an evil aura that would not leave, all do.
+	bool bAnyEscalated = false;
+	for (const AEHWolf* W : FPWolves)
+	{
+		bAnyEscalated |= W && !W->IsDead() && W->IsEscalated();
+	}
+	for (AEHWolf* W : FPWolves)
+	{
+		if (bAnyEscalated && W && !W->IsDead() && !W->IsEscalated())
+		{
+			W->Escalate();
+			++FPEscalations;
+			AutoLogLine(TEXT("fp wolf joins the fight (the pack judges together)"));
+		}
+	}
+	// A Shadow that ignored the wolves' warning to pray.
+	if (bFPShadow && FPExorcism < 0.0f)
+	{
+		for (const AEHWolf* W : FPWolves)
+		{
+			if (W && !W->IsDead() && W->ShadowOutOfPatience())
+			{
+				BeginExorcism(TEXT("did not pray"));
+				break;
+			}
+		}
+	}
 	TickPack(DeltaSeconds);
 	CombatTextNearness(GetWorld()->GetTimeSeconds());
 	CombatText.Tick(DeltaSeconds);
@@ -558,6 +609,11 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			AutoLogLine(FString::Printf(TEXT("fp swing %s"), EHFistActionName(E.Action)));
 			// The body goes with the blow: the view leans in and turns a little with the throwing shoulder.
 			FPPlayer->AddCameraKick(-0.25f, E.Action == EEHFistAction::Straight ? 2.2f : 1.2f, E.Action == EEHFistAction::Straight ? 0.9f : -0.5f);
+			if (bFPShadow && NearestLiveWolf(FPPlayer->GetActorLocation(), 1e7f) && FPPlayer->FeetLocation().Y < FPTuning.Wolf.LeaveLineY)
+			{
+				// "If it does anything but pray": a Shadow raising a hand in the Chapel is exorcised.
+				BeginExorcism(TEXT("struck"));
+			}
 			for (AEHWolf* W : FPWolves)
 			{
 				if (W && W->NoticeThreat(FPPlayer->Camera()->GetComponentLocation(), FPPlayer->Camera()->GetForwardVector()))
@@ -574,6 +630,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				R.Reflected = E.Reflected;
 				R.bKilled = E.bKilled;
 				R.bHarmed = E.Damage > 0.0f;
+				R.WolfAt = E.Target->GetActorLocation();
 				PlayImpact(E.Action == EEHFistAction::Straight ? TEXT("HitHeavy") : TEXT("HitLight"), 3, 0.85f, 1.25f);
 				if (Vfx && R.bHarmed) { Vfx->Hit(E.Location, 1, E.Action == EEHFistAction::Straight, false, false, false); }
 				Rumble(0.5f, 0.4f, 0.1f);
@@ -915,6 +972,19 @@ void AEHGameDirector::WolfStruck(const FEHWolfHit& R, const TCHAR* What)
 		FPAlignment = EHAlign::AfterKill(FPAlignment);
 		PlayImpact(TEXT("BodyFall"), 2, 0.8f, 1.15f);
 	}
+	if (R.bHarmed)
+	{
+		// The others nearby respond to the violence: they are provoked too.
+		for (AEHWolf* W : FPWolves)
+		{
+			if (W && !W->IsDead() && !W->IsProvoked() && FVector::Dist(W->GetActorLocation(), R.WolfAt) <= FPTuning.Wolf.AlertRange)
+			{
+				W->Alert();
+				++FPAlerts;
+				AutoLogLine(TEXT("fp wolf alerted by harm to another"));
+			}
+		}
+	}
 	for (AEHWolf* W : FPWolves)
 	{
 		if (W)
@@ -924,6 +994,328 @@ void AEHGameDirector::WolfStruck(const FEHWolfHit& R, const TCHAR* What)
 	}
 	AutoLogLine(FString::Printf(TEXT("fp wolf struck by %s damage=%.1f reflected=%.1f killed=%d alignment %s -> %s"), What, R.Damage, R.Reflected, R.bKilled ? 1 : 0,
 		EHAlign::Name(Before), EHAlign::Name(FPAlignment)));
+}
+
+void AEHGameDirector::BeginExorcism(const TCHAR* Why)
+{
+	if (FPExorcism >= 0.0f)
+	{
+		return;
+	}
+	FPExorcism = 0.0f;
+	++FPExorcisms;
+	EndPrayer(TEXT("exorcised"));
+	CloseSpellSelect(false);
+	PlayImpact(TEXT("AuraCharge"), 3, 0.9f, 0.6f);
+	AutoLogLine(FString::Printf(TEXT("fp exorcism begins (the Shadow %s)"), Why));
+}
+
+void AEHGameDirector::TalkToWolf(int32 Index)
+{
+	// Only the trusted get a real conversation; a wary wolf tells the player to pray, relax, or leave it alone. The
+	// lines are the creator's to write (Content/Data/firstperson.json, combatText.lines: "wolf.talk.friendly",
+	// "wolf.talk.wary"); the placeholders are marked.
+	const bool bGood = EHAlign::Band(FPAlignment) == EEHAlignBand::Good;
+	const TArray<FEHCombatLine>* Pool = CombatText.Tuning.Lines.Find(bGood ? TEXT("wolf.talk.friendly") : TEXT("wolf.talk.wary"));
+	if (Pool == nullptr || Pool->Num() == 0)
+	{
+		return;
+	}
+	const FEHCombatLine& L = (*Pool)[FPWolfTalkIndex++ % Pool->Num()];
+	FPMessage = FString::Printf(TEXT("Chapel wolf:  %s%s"), L.bPlaceholder ? TEXT("PLACEHOLDER  ") : TEXT(""), *L.Text);
+	FPMessageLeft = FPTuning.Chapel.MessageSeconds;
+	FPMessageFrom = FPPlayer->FeetLocation();
+	++FPWolfTalks;
+	AutoLogLine(FString::Printf(TEXT("fp talk wolf %d (%s): %s"), Index, bGood ? TEXT("friendly") : TEXT("wary"), *L.Text));
+}
+
+FVector AEHGameDirector::LockOnPoint(const AActor* Target) const
+{
+	if (const AEHWolf* W = Cast<AEHWolf>(Target))
+	{
+		return W->LockOnPoint();
+	}
+	if (const AEHTrainingDummy* D = Cast<AEHTrainingDummy>(Target))
+	{
+		return D->GetActorLocation() + FVector(0.0f, 0.0f, 120.0f);
+	}
+	return Target ? Target->GetActorLocation() : FVector::ZeroVector;
+}
+
+bool AEHGameDirector::HasLockLineOfSight(const AActor* Target) const
+{
+	if (!FPPlayer || !Target || !GetWorld())
+	{
+		return false;
+	}
+	const FVector Eye = FPPlayer->Camera()->GetComponentLocation();
+	const FVector Pt = LockOnPoint(Target);
+	FHitResult Hit;
+	FCollisionQueryParams Params(TEXT("EHLockOnLOS"), false, FPPlayer);
+	Params.AddIgnoredActor(Target);
+	return !GetWorld()->LineTraceSingleByChannel(Hit, Eye, Pt, ECC_Visibility, Params);
+}
+
+int32 AEHGameDirector::LockTargetIndex() const
+{
+	const AActor* T = FPLockTarget.Get();
+	if (T == nullptr)
+	{
+		return -1;
+	}
+	if (T == FPDummy)
+	{
+		return 100;
+	}
+	for (int32 i = 0; i < FPWolves.Num(); ++i)
+	{
+		if (FPWolves[i] == T)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+AActor* AEHGameDirector::FindLockTarget(int32 SwitchDir) const
+{
+	if (!FPPlayer)
+	{
+		return nullptr;
+	}
+	const FEHLockOnTuning& T = FPTuning.LockOn;
+	const FVector Eye = FPPlayer->Camera()->GetComponentLocation();
+	const FVector Fwd = FPPlayer->Camera()->GetForwardVector();
+	const FVector Right = FPPlayer->Camera()->GetRightVector();
+	const float MinCos = FMath::Cos(FMath::DegreesToRadians(SwitchDir == 0 ? T.ConeDegrees : 80.0f));
+
+	TArray<AActor*> Candidates;
+	for (AEHWolf* W : FPWolves)
+	{
+		if (W && !W->IsDead())
+		{
+			Candidates.Add(W);
+		}
+	}
+	if (FPDummy)
+	{
+		Candidates.Add(FPDummy);
+	}
+
+	const AActor* Current = FPLockTarget.Get();
+	const FVector CurDir = Current ? (LockOnPoint(Current) - Eye).GetSafeNormal() : Fwd;
+	const float CurSide = FVector::DotProduct(CurDir, Right);
+
+	AActor* Best = nullptr;
+	float BestScore = 1e9f;
+	for (AActor* A : Candidates)
+	{
+		if (SwitchDir != 0 && A == Current)
+		{
+			continue;
+		}
+		const FVector Delta = LockOnPoint(A) - Eye;
+		const float Dist = Delta.Size();
+		if (Dist < 30.0f || Dist > T.Range)
+		{
+			continue;
+		}
+		const FVector Dir = Delta / Dist;
+		const float Dot = FVector::DotProduct(Fwd, Dir);
+		if (Dot < MinCos)
+		{
+			continue;
+		}
+		if (!HasLockLineOfSight(A))
+		{
+			continue;
+		}
+		if (SwitchDir != 0)
+		{
+			const float SideDelta = FVector::DotProduct(Dir, Right) - CurSide;
+			if (SideDelta * static_cast<float>(SwitchDir) <= 0.04f)
+			{
+				continue;
+			}
+			// Prefer the nearest target in the flicked direction, slightly favouring closer ones.
+			const float Score = FMath::Abs(SideDelta) * 1000.0f + Dist * 0.15f;
+			if (Score < BestScore)
+			{
+				BestScore = Score;
+				Best = A;
+			}
+		}
+		else
+		{
+			// Acquire: strongly prefer targets near the centre of the view, with distance as a light tie-breaker.
+			const float Angle = FMath::Acos(FMath::Clamp(Dot, -1.0f, 1.0f));
+			const float Score = Angle * 1000.0f + Dist * 0.2f;
+			if (Score < BestScore)
+			{
+				BestScore = Score;
+				Best = A;
+			}
+		}
+	}
+	return Best;
+}
+
+void AEHGameDirector::ClearLockOn(const TCHAR* Why)
+{
+	if (FPLockTarget.IsValid())
+	{
+		AutoLogLine(FString::Printf(TEXT("fp lock-on cleared (%s)"), Why));
+	}
+	FPLockTarget.Reset();
+	FPLockLostLos = 0.0f;
+	FPLockMouseAccum = 0.0f;
+	bFPLockStickHeld = false;
+}
+
+void AEHGameDirector::UpdateLockOn(FEHFirstPersonInput& In, float DeltaSeconds)
+{
+	if (!FPPlayer)
+	{
+		return;
+	}
+	const FEHLockOnTuning& T = FPTuning.LockOn;
+	FPLockSwitchCooldown = FMath::Max(0.0f, FPLockSwitchCooldown - DeltaSeconds);
+	if (bPraying || FPExorcism >= 0.0f)
+	{
+		if (FPLockTarget.IsValid())
+		{
+			ClearLockOn(TEXT("prayer"));
+		}
+		return;
+	}
+	if (bFPLockPressed)
+	{
+		if (FPLockTarget.IsValid())
+		{
+			ClearLockOn(TEXT("toggle"));
+			PlayImpact(TEXT("UiMove"), 1, 0.4f, 0.9f);
+			return;
+		}
+		if (AActor* Found = FindLockTarget(0))
+		{
+			FPLockTarget = Found;
+			FPLockLostLos = 0.0f;
+			FPLockMouseAccum = 0.0f;
+			FPLockSwitchCooldown = 0.15f;
+			PlayImpact(TEXT("UiMove"), 1, 0.55f, 1.35f);
+			AutoLogLine(FString::Printf(TEXT("fp lock-on acquired target=%d"), LockTargetIndex()));
+		}
+		else if (AController* C = FPPlayer->GetController())
+		{
+			// Souls fallback: with no target in front, level the view back toward the horizon.
+			FRotator R = C->GetControlRotation();
+			R.Pitch = 0.0f;
+			R.Roll = 0.0f;
+			C->SetControlRotation(R);
+			AutoLogLine(TEXT("fp lock-on recenter (no target)"));
+		}
+	}
+	AActor* Target = FPLockTarget.Get();
+	if (Target == nullptr)
+	{
+		return;
+	}
+	if (const AEHWolf* W = Cast<AEHWolf>(Target); W && W->IsDead())
+	{
+		ClearLockOn(TEXT("target dead"));
+		return;
+	}
+	const FVector Eye = FPPlayer->Camera()->GetComponentLocation();
+	const FVector Pt = LockOnPoint(Target);
+	if (FVector::Dist(Eye, Pt) > T.BreakRange)
+	{
+		ClearLockOn(TEXT("out of range"));
+		return;
+	}
+	if (HasLockLineOfSight(Target))
+	{
+		FPLockLostLos = 0.0f;
+	}
+	else
+	{
+		FPLockLostLos += DeltaSeconds;
+		if (FPLockLostLos >= T.LosGrace)
+		{
+			ClearLockOn(TEXT("lost sight"));
+			return;
+		}
+	}
+	if (!bSpellSelect)
+	{
+		int32 SwitchDir = 0;
+		if (FMath::Abs(FPLockRawStickX) >= T.SwitchStick && !bFPLockStickHeld && FPLockSwitchCooldown <= 0.0f)
+		{
+			bFPLockStickHeld = true;
+			SwitchDir = FPLockRawStickX > 0.0f ? 1 : -1;
+		}
+		else if (FMath::Abs(FPLockRawStickX) < 0.35f)
+		{
+			bFPLockStickHeld = false;
+		}
+		FPLockMouseAccum = FMath::FInterpTo(FPLockMouseAccum, 0.0f, DeltaSeconds, 5.0f) + FPLockRawMouseX;
+		if (SwitchDir == 0 && FMath::Abs(FPLockMouseAccum) >= T.SwitchMouse && FPLockSwitchCooldown <= 0.0f)
+		{
+			SwitchDir = FPLockMouseAccum > 0.0f ? 1 : -1;
+			FPLockMouseAccum = 0.0f;
+		}
+		if (SwitchDir != 0)
+		{
+			if (AActor* Next = FindLockTarget(SwitchDir))
+			{
+				FPLockTarget = Next;
+				Target = Next;
+				FPLockLostLos = 0.0f;
+				FPLockSwitchCooldown = T.SwitchCooldown;
+				++FPLockSwitches;
+				PlayImpact(TEXT("UiMove"), 1, 0.45f, 1.5f);
+				AutoLogLine(FString::Printf(TEXT("fp lock-on switch dir=%d target=%d"), SwitchDir, LockTargetIndex()));
+			}
+		}
+		// Track the locked target smoothly; manual look is suppressed so strafing orbits cleanly around it.
+		In.Look = FVector2D::ZeroVector;
+		if (AController* C = FPPlayer->GetController())
+		{
+			FRotator Want = (LockOnPoint(Target) - Eye).Rotation();
+			Want.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Want.Pitch), -FPTuning.PitchLimit, FPTuning.PitchLimit);
+			Want.Roll = 0.0f;
+			FRotator Next = FMath::RInterpTo(C->GetControlRotation(), Want, DeltaSeconds, T.TrackSpeed);
+			Next.Pitch = FMath::Clamp(FRotator::NormalizeAxis(Next.Pitch), -FPTuning.PitchLimit, FPTuning.PitchLimit);
+			Next.Roll = 0.0f;
+			C->SetControlRotation(Next);
+		}
+	}
+}
+
+void AEHGameDirector::PaintLockOn(FEHPainter& P)
+{
+	const AActor* Target = FPLockTarget.Get();
+	if (!Target || !FPPlayer || bPaused || bPraying || FPExorcism >= 0.0f)
+	{
+		return;
+	}
+	APlayerController* PC = GetWorld()->GetFirstPlayerController();
+	FVector2D S;
+	if (!PC || !PC->ProjectWorldLocationToScreen(LockOnPoint(Target), S, true))
+	{
+		return;
+	}
+	const float AppScale = FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale());
+	const FVector2f At = P.ToVirtual(FVector2f(S.X, S.Y) / AppScale);
+	// Souls-style reticle: crisp white-gold core dot with a subtle dark halo and four fine ticks.
+	const FLinearColor Halo(0.04f, 0.04f, 0.05f, 0.62f);
+	const FLinearColor Core(0.98f, 0.95f, 0.86f, 0.95f);
+	const FLinearColor Tick(0.95f, 0.91f, 0.78f, 0.72f);
+	P.Round(At - FVector2f(8.0f, 8.0f), FVector2f(16.0f, 16.0f), Halo, 8.0f);
+	P.Round(At - FVector2f(4.5f, 4.5f), FVector2f(9.0f, 9.0f), Core, 4.5f);
+	P.Rect(At + FVector2f(-18.0f, -1.0f), FVector2f(7.0f, 2.0f), Tick);
+	P.Rect(At + FVector2f(11.0f, -1.0f), FVector2f(7.0f, 2.0f), Tick);
+	P.Rect(At + FVector2f(-1.0f, -18.0f), FVector2f(2.0f, 7.0f), Tick);
+	P.Rect(At + FVector2f(-1.0f, 11.0f), FVector2f(2.0f, 7.0f), Tick);
 }
 
 void AEHGameDirector::OpenSpellSelect()
@@ -1099,6 +1491,14 @@ void AEHGameDirector::BuildDeveloperPanel()
 	}
 	Menu.Add(FPButton(TEXT("Reset the wolves"), [this] { ResetWolves(); }, TEXT("Calm, unhurt, at their rest.")));
 	{
+		FEHMenuItem I;
+		I.Label = TEXT("Shadow");
+		I.Value = [this] { return FString(bFPShadow ? TEXT("Yes") : TEXT("No")); };
+		I.Change = [this](int32) { bFPShadow = !bFPShadow; FPShadowPrayHours = 0.0; };
+		I.Hint = TEXT("Play as a Shadow (until death and Qhi Stones exist): no spells; the wolves say pray, or be exorcised.");
+		Menu.Add(I);
+	}
+	{
 		// The pack (milestone 6): one to four wolves, spawned at their rests.
 		FEHMenuItem I;
 		I.Label = TEXT("Wolves");
@@ -1193,7 +1593,11 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 	{
 		FPDummy->ResetDummy();
 	}
-	ResetWolves();   // the alignment stays: a case can be repeated
+	ResetWolves();   // the alignment stays: a case can be repeated (and a Shadow stays a Shadow)
+	ClearLockOn(TEXT("reset"));
+	FPLockSwitches = 0;
+	FPExorcism = -1.0f;
+	FPWolfFocus = -1;
 	CombatText.Clear();
 	FPWolfIdleTalkAt.Reset();
 	EndPrayer(TEXT("reset"));
@@ -1361,8 +1765,23 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 	}
 	if (!bPaused)
 	{
+		PaintLockOn(P);
 		PaintChapel(P);
 		PaintSpellSelect(P);
+	}
+	if (FPExorcism >= 0.0f)
+	{
+		// The exorcism: the view whitens, then the ending's words (the creator's to write) over the light.
+		P.NextLayer();
+		const float W = FMath::Clamp(FPExorcism / 2.5f, 0.0f, 1.0f);
+		P.Fill(FLinearColor(0.96f, 0.95f, 0.90f, W * W));
+		const float T = FMath::Clamp((FPExorcism - 2.5f) / 1.0f, 0.0f, 1.0f);
+		if (T > 0.0f)
+		{
+			const FLinearColor Ink(0.08f, 0.07f, 0.09f, T);
+			P.Text(TEXT("Exorcised"), FVector2f(960.0f, 470.0f), Fonts.Sized(Fonts.DisplayLight, 64), Ink, 0.5f, 0.5f);
+			P.Text(TEXT("PLACEHOLDER: a permanent death. The Chapel's wolves banished the Shadow."), FVector2f(960.0f, 560.0f), Fonts.Sized(Fonts.Body, 24), FLinearColor(0.08f, 0.07f, 0.09f, 0.75f * T), 0.5f, 0.5f);
+		}
 	}
 	// Every piece of art in this build is a stand-in; say so where a reviewer will see it.
 	P.Text(TEXT("First-person prototype - placeholder art and animation"), FVector2f(P.VirtualMin.X + 28.0f, P.VirtualMax.Y - 24.0f),
@@ -1511,6 +1930,27 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("wolf_kills")) V = static_cast<float>(FPWolfKills);
 		else if (Field == TEXT("reflected")) V = static_cast<float>(FPReflected);
 		else if (FPWolf && Field == TEXT("wolf_state")) V = static_cast<float>(static_cast<int32>(FPWolf->GetState()));
+		else if (FPWolf && Field == TEXT("wolf_calm")) V = FPWolf->IsCalmLike() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_lying")) V = FPWolf->IsLying() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_asleep")) V = FPWolf->GetState() == EEHWolfState::Sleep ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_warning")) V = FPWolf->GetState() == EEHWolfState::Warn ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_escalated")) V = FPWolf->IsEscalated() ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_sanctuary")) V = FPWolf->GetState() == EEHWolfState::Sanctuary ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_greeting")) V = FPWolf->GetState() == EEHWolfState::Greet ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_beside")) V = FPWolf->GetState() == EEHWolfState::Beside ? 1.0f : 0.0f;
+		else if (FPWolf && Field == TEXT("wolf_hackles")) V = FPWolf->Hackles();
+		else if (FPWolf && Field == TEXT("wolf_warned_for")) V = FPWolf->WarnedFor();
+		else if (Field == TEXT("wolf_alerts")) V = static_cast<float>(FPAlerts);
+		else if (Field == TEXT("wolf_escalations")) V = static_cast<float>(FPEscalations);
+		else if (Field == TEXT("wolf_talks")) V = static_cast<float>(FPWolfTalks);
+		else if (Field == TEXT("wolf_focus")) V = static_cast<float>(FPWolfFocus);
+		else if (Field == TEXT("shadow")) V = bFPShadow ? 1.0f : 0.0f;
+		else if (Field == TEXT("shadow_pray_hours")) V = static_cast<float>(FPShadowPrayHours);
+		else if (Field == TEXT("exorcising")) V = FPExorcism >= 0.0f ? 1.0f : 0.0f;
+		else if (Field == TEXT("exorcisms")) V = static_cast<float>(FPExorcisms);
+		else if (Field == TEXT("locked_on")) V = FPLockTarget.IsValid() ? 1.0f : 0.0f;
+		else if (Field == TEXT("lock_target")) V = static_cast<float>(LockTargetIndex());
+		else if (Field == TEXT("lock_switches")) V = static_cast<float>(FPLockSwitches);
 		else if (FPWolf && Field == TEXT("wolf_hostile")) V = FPWolf->IsHostile() ? 1.0f : 0.0f;
 		else if (FPWolf && Field == TEXT("wolf_provoked")) V = FPWolf->IsProvoked() ? 1.0f : 0.0f;
 		else if (FPWolf && Field == TEXT("wolf_dead")) V = FPWolf->IsDead() ? 1.0f : 0.0f;
@@ -1672,6 +2112,45 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, EHAlign::Name(FPAlignment)));
 		return true;
 	}
+	if (Cmd == TEXT("fp_wolf_rest"))
+	{
+		// fp_wolf_rest <0|1> [wolf index]: lie down now (1: asleep), as at rest.
+		const int32 Index = T.Num() > 2 ? FCString::Atoi(*T[2]) : 0;
+		if (AEHWolf* W = FPWolves.IsValidIndex(Index) ? FPWolves[Index].Get() : nullptr)
+		{
+			W->RestForTest(FCString::Atoi(*Arg(1, TEXT("0"))) != 0);
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_escalate"))
+	{
+		// fp_escalate: the warning an evil aura gets is over at once and the fight starts (pack tests start there).
+		for (AEHWolf* W : FPWolves)
+		{
+			if (W && !W->IsDead())
+			{
+				W->Escalate();
+			}
+		}
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_shadow_hours"))
+	{
+		// fp_shadow_hours <h>: in-game hours a Shadow has already prayed (three days, 432 hours, restore it).
+		FPShadowPrayHours = F(1, 0.0f);
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_shadow"))
+	{
+		// fp_shadow <0|1>: the player as a Shadow (the developer panel's Shadow item).
+		bFPShadow = FCString::Atoi(*Arg(1, TEXT("1"))) != 0;
+		FPShadowPrayHours = 0.0;
+		AutoLogLine(FString::Printf(TEXT("%s -> shadow=%d"), *Line, bFPShadow ? 1 : 0));
+		return true;
+	}
 	if (Cmd == TEXT("fp_clock"))
 	{
 		// fp_clock <hour>: sets the hour of the current day (0 = midnight; the day is clock.dayHours long).
@@ -1808,14 +2287,15 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 	}
 	if (Cmd == TEXT("fp_wolf_place"))
 	{
-		// fp_wolf_place <x> <y> [yaw] [health]
-		if (FPWolf)
+		// fp_wolf_place <x> <y> [yaw] [health] [wolf index, from 0]
+		const int32 Index = T.Num() > 5 ? FCString::Atoi(*T[5]) : 0;
+		if (AEHWolf* W = FPWolves.IsValidIndex(Index) ? FPWolves[Index].Get() : nullptr)
 		{
-			FPWolf->TeleportTo(FVector(F(1, 0.0f), F(2, -1450.0f), 60.0f), FRotator(0, F(3, 90.0f), 0), false, true);
-			FPWolf->HaltForTest();
-			if (T.Num() > 4)
+			W->TeleportTo(FVector(F(1, 0.0f), F(2, -1450.0f), 125.0f), FRotator(0, F(3, 90.0f), 0), false, true);
+			W->HaltForTest();
+			if (T.Num() > 4 && FCString::Atof(*T[4]) > 0.0f)
 			{
-				FPWolf->SetHealthForTest(F(4, 60.0f));
+				W->SetHealthForTest(F(4, 60.0f));
 			}
 		}
 		AutoLogLine(Line);

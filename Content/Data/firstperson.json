@@ -143,7 +143,7 @@
     "freezeSeconds": 2
   },
   "wolf": {
-    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY / leaveMaxZ: the Chapel's floor ends here; the Threshold Hall's floor beyond (below leaveMaxZ) counts as outside, the loft above it does not.",
+    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY / leaveMaxZ: the Chapel's floor ends here; the Threshold Hall's floor beyond (below leaveMaxZ) counts as outside, the loft above it does not. The creator's 'Chapel Wolves' document (2026-11-23): warnRange / warnRadius / warnClose / warnSeconds: an evil aura is warned before a fight (held off at warnRadius; coming closer than warnClose, or staying within warnRange for warnSeconds, starts it). alertRange: harm to one wolf provokes the others this close. sanctuaryGuard: while the player prays, the wolves stand guard this far away. shadowPatience: seconds a Shadow may stay in the Chapel without praying. friendRange, noticeRange, restSeconds, sleepSeconds, wanderRadius, besideHealth, besideStill: life at rest.",
     "health": 60,
     "spawn": [
       330,
@@ -181,7 +181,32 @@
     "attackCooldown": 45,
     "hitstun": 18,
     "absorbRange": 1000,
-    "protectRange": 1200
+    "protectRange": 1200,
+    "warnRange": 900,
+    "warnRadius": 520,
+    "warnClose": 300,
+    "warnSeconds": 8,
+    "alertRange": 1500,
+    "sanctuaryGuard": 330,
+    "shadowPatience": 30,
+    "friendRange": 6000,
+    "noticeRange": 650,
+    "restSeconds": 8,
+    "sleepSeconds": 26,
+    "wanderRadius": 700,
+    "besideHealth": 0.5,
+    "besideStill": 2
+  },
+  "lockOn": {
+    "comment": "Souls-style target lock-on. Distances in cm, angles in degrees, speeds in 1/s. range / breakRange: acquire and hold distances. coneDegrees: half-angle from view centre to acquire. trackSpeed: how smoothly the view follows the target. losGrace: seconds of blocked line of sight before the lock breaks. switchMouse / switchStick / switchCooldown: horizontal flick to switch targets.",
+    "range": 1800,
+    "breakRange": 2200,
+    "coneDegrees": 55,
+    "trackSpeed": 14,
+    "losGrace": 1.2,
+    "switchMouse": 90,
+    "switchStick": 0.72,
+    "switchCooldown": 0.25
   },
   "chapel": {
     "comment": "The Drowned Chapel's interactions (interior stage 2). Each interactable: id, at [x, y, z] in cm, radius (how far off the line of sight it still counts), prompt (shown after the Interact key), text (shown when used; bracketed text marks a placeholder until the creator writes the real words), pray (the kneeler). reach: how far from the eye something can be used. sounds: looping ambience placed in the rooms (Ambience/S_<name>), full volume within inner, silent at inner + falloff, scaled by the ambience setting. sparkAt / sparkRange / sparkGap: embers rising off the forge's coals while the player is near.",
@@ -681,6 +706,86 @@
         },
         {
           "text": "[Player, overwhelmed: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.hostile.warn": [
+        {
+          "text": "[Wolf sensing an evil aura: insulting the player, telling them to leave while they can: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf sensing an evil aura: insulting the player, telling them to leave while they can: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf sensing an evil aura: insulting the player, telling them to leave while they can: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.shadow.pray": [
+        {
+          "text": "[Wolf to a Shadow: pray, or be exorcised: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf to a Shadow: pray, or be exorcised: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf to a Shadow: pray, or be exorcised: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.friendly.greet": [
+        {
+          "text": "[Friendly wolf greeting the player back: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf greeting the player back: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf greeting the player back: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.sanctuary": [
+        {
+          "text": "[Wolf standing guard while the player prays: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf standing guard while the player prays: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf standing guard while the player prays: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.talk.friendly": [
+        {
+          "text": "[Friendly wolf, talking with a trusted player: an ordinary remark (resting, company, the peace of the Chapel)]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf: a second line of easy conversation]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf: a third line, a little playful]",
+          "placeholder": true
+        }
+      ],
+      "wolf.talk.wary": [
+        {
+          "text": "[Wary wolf to a neutral player: pray, relax, or leave us alone]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wary wolf: a second brief line, telling them to keep their distance and stay safe]",
           "placeholder": true
         }
       ]
