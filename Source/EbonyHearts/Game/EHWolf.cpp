@@ -218,6 +218,7 @@ void AEHWolf::ResetWolf()
 	Rig->SetRelativeRotation(FRotator::ZeroRotator);
 	Rig->SetRelativeLocation(FVector(0, 0, -48.0f));
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	bBiteCue = false;
 	BiteCount = LungeCount = ConnectCount = DisengageCount = AbsorbCount = ProtectCount = FreezeCount = 0;
 	Enter(EEHWolfState::Calm, 0);
 }
@@ -626,6 +627,7 @@ void AEHWolf::StepFrame()
 		if (StateFrame >= StateLength)
 		{
 			++BiteCount;
+			bBiteCue = true;
 			HeadThrust = 1.0f;
 			const float Off = Player.IsValid() ? FMath::Abs(FMath::FindDeltaAngleDegrees(GetActorRotation().Yaw, To.Rotation().Yaw)) : 999.0f;
 			if (Player.IsValid() && Dist <= Tuning.BiteReach && Off <= 45.0f)

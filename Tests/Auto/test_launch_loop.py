@@ -38,7 +38,7 @@ class LaunchLoopSafetyTests(unittest.TestCase):
         for option, value in (("--runs", "0"), ("--runs", "-1"),
                               ("--timeout", "0"), ("--timeout", "nan"),
                               ("--timeout", "inf"), ("--gap", "-1"),
-                              ("--gap", "nan"), ("--gap", "inf")):
+                              ("--gap", "nan"), ("--gap", "inf"), ("--gap", "1e100")):
             with self.subTest(option=option, value=value), tempfile.TemporaryDirectory() as output:
                 args = ["launch_loop.py", "--launcher", "/does/not/exist", "--out", output,
                         "--runs", "1", option, value]

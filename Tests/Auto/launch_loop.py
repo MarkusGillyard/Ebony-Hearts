@@ -135,8 +135,8 @@ def main():
         ap.error("--runs must be positive")
     if not math.isfinite(a.timeout) or a.timeout <= 0:
         ap.error("--timeout must be finite and positive")
-    if not math.isfinite(a.gap) or a.gap < 0:
-        ap.error("--gap must be finite and nonnegative")
+    if not 0 <= a.gap < sys.maxsize / 1_000_000_000:
+        ap.error("--gap must be nonnegative and representable as a sleep duration")
 
     launcher = os.path.abspath(a.launcher)
     script = os.path.abspath(a.script)
