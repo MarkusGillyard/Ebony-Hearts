@@ -456,5 +456,234 @@
     "holdBackRadius": 650,
     "waitRadius": 520,
     "turnTimeout": 6
+  },
+  "combatText": {
+    "comment": "Comic-book combat text (milestone 7). Every line is the creator's to write: replace a placeholder object with a plain string (\"Your line\") and it shows without the PLACEHOLDER tag. Lines of an event take turns in order. chance: after a speaker's first line of an event, the chance a later one is said. globalGap / speakerGap: seconds after any line / after the same speaker's last line. maxVisible: lines on screen at once. life*: seconds on screen (base + per character, clamped). popSeconds: the jump-out (reduced flashing fades in over fadeIn instead). maxWidth: virtual canvas units (1920 x 1080) before a line wraps.",
+    "enabled": true,
+    "chance": 0.4,
+    "globalGap": 1.5,
+    "speakerGap": 5,
+    "maxVisible": 3,
+    "lifeBase": 1.4,
+    "lifePerChar": 0.045,
+    "lifeMin": 2.0,
+    "lifeMax": 3.6,
+    "popSeconds": 0.18,
+    "fadeIn": 0.25,
+    "fadeOut": 0.35,
+    "maxWidth": 440,
+    "fontSize": 22,
+    "lines": {
+      "wolf.hostile.notice": [
+        {
+          "text": "[Hostile wolf, sensing the player: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, sensing the player: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, sensing the player: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.hostile.attack": [
+        {
+          "text": "[Hostile wolf, trash talk as it attacks: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, trash talk as it attacks: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, trash talk as it attacks: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.hostile.hurt": [
+        {
+          "text": "[Hostile wolf, hurt: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, hurt: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, hurt: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.hostile.turn": [
+        {
+          "text": "[Hostile wolf, taking its turn: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, taking its turn: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Hostile wolf, taking its turn: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.warning.near": [
+        {
+          "text": "[Neutral wolf, warning the player off: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Neutral wolf, warning the player off: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Neutral wolf, warning the player off: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.warning.threat": [
+        {
+          "text": "[Wolf backing off from a threat: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf backing off from a threat: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Wolf backing off from a threat: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.warning.hurt": [
+        {
+          "text": "[Neutral wolf, hurt: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Neutral wolf, hurt: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Neutral wolf, hurt: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.warning.guard": [
+        {
+          "text": "[Provoked wolf, guarding the edge: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Provoked wolf, guarding the edge: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Provoked wolf, guarding the edge: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.friendly.near": [
+        {
+          "text": "[Friendly wolf, a greeting: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf, a greeting: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf, a greeting: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.friendly.protect": [
+        {
+          "text": "[Friendly wolf, protecting the player: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf, protecting the player: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf, protecting the player: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "wolf.friendly.hurt": [
+        {
+          "text": "[Friendly wolf, hurt: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf, hurt: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Friendly wolf, hurt: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "player.hurt": [
+        {
+          "text": "[Player, hurt: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, hurt: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, hurt: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "player.hit": [
+        {
+          "text": "[Player, landing a blow: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, landing a blow: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, landing a blow: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "player.kill": [
+        {
+          "text": "[Player, after a kill: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, after a kill: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, after a kill: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ],
+      "player.overwhelmed": [
+        {
+          "text": "[Player, overwhelmed: short]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, overwhelmed: a medium-length line]",
+          "placeholder": true
+        },
+        {
+          "text": "[Player, overwhelmed: a long placeholder line that tests how the bubble wraps onto more than one row]",
+          "placeholder": true
+        }
+      ]
+    }
   }
 }

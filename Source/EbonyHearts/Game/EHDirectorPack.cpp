@@ -130,7 +130,12 @@ void AEHGameDirector::PassTurn(const TArray<int32>& Fighting, const TCHAR* Why)
 		++PackPasses;
 		AutoLogLine(FString::Printf(TEXT("fp pack turn: wolf %d -> wolf %d (%s)"), PackHolder, Next, Why));
 	}
+	const bool bNewHolder = Next != PackHolder && Next >= 0;
 	PackHolder = Next;
+	if (bNewHolder && CombatText.Offer(TEXT("wolf.hostile.turn"), FPWolves[PackHolder], EEHLineKind::Hostile, GetWorld()->GetTimeSeconds()))
+	{
+		AutoLogLine(FString::Printf(TEXT("fp text wolf %d: %s"), PackHolder, *CombatText.LastText));
+	}
 	if (PackHolder >= 0)
 	{
 		PackWaiting[PackHolder] = 0.0f;
@@ -192,6 +197,12 @@ void AEHGameDirector::TickPack(float DeltaSeconds)
 			bOneOnOne = true;
 			++PackOneOnOnes;
 			AutoLogLine(TEXT("fp pack allows a one-on-one"));
+			// The player's breath gives out; the holder calls the others off.
+			const float Now2 = GetWorld()->GetTimeSeconds();
+			if (CombatText.Offer(TEXT("player.overwhelmed"), nullptr, EEHLineKind::Player, Now2))
+			{
+				AutoLogLine(FString::Printf(TEXT("fp text player: %s"), *CombatText.LastText));
+			}
 		}
 		OneOnOneLeft = T.OneOnOneLinger;
 	}

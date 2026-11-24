@@ -1,0 +1,64 @@
+# The final prototype's stability run (milestone 7; development build: the pack's size, the alignment, test
+# positions, raised Health so the fight never ends in death). About 30 minutes of the completed fight: four evil
+# wolves taking turns, Ice Walls rising and melting among them, Fireballs, strikes, combat text, a pause and resume
+# and a settings save and reload every round, and a reset back to the start. Frame times over the whole run.
+wait 6
+fp_stat health 100000
+fp_health 100000
+fp_wolves 4
+fp_align 7
+perf_begin
+loop 84
+fp_reset
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+wait 3.0
+press kbA FPIceWall
+wait 0.8
+loop 24
+look 60 0
+wait 0.05
+endloop
+loop 24
+look -60 0
+wait 0.05
+endloop
+press kbA FPFireball
+wait 1.4
+press kbA FPJab
+wait 0.3
+press kbA FPStraight
+wait 0.8
+press kbA FPFireball
+wait 1.4
+hold kbA FPForward
+wait 1.2
+release kbA FPForward
+hold kbA FPLeft
+wait 0.8
+release kbA FPLeft
+loop 12
+look 120 0
+wait 0.05
+endloop
+loop 12
+look -120 0
+wait 0.05
+endloop
+press kbA FPJab
+wait 6.0
+press kbA Pause
+wait 0.5
+press kbA Pause
+settings_roundtrip
+mem lap
+fp_state lap
+endloop
+perf_end fp_soak_pack
+fp_expect wolves eq 4
+fp_expect pack_max_attackers lt 2
+fp_expect ct_overlaps eq 0
+fp_expect ct_shown gt 50
+fp_expect deaths eq 0
+mem end
+quit

@@ -310,6 +310,28 @@ floor with the player they fight as a pack (`Source/EbonyHearts/Game/EHDirectorP
 In development builds each wolf's label shows its number, state and part (turn, waiting, standing back). The pause
 menu's Reset the wolves puts them all back at rest.
 
+## Combat text (milestone 7)
+
+An experiment: short comic-book lines that sometimes jump out beside a speaker mid-fight, with no voice
+(`Source/EbonyHearts/Game/EHCombatText.h`, `EHDirectorText.cpp`).
+
+- **Who speaks.** The wolves in their alignment's voice: friendly remarks when the player is good (a greeting as
+  they come close, protecting them, being hurt), warnings when neutral (keep away, backing off from a threat, guarding
+  the edge), and hostile trash talk when evil or provoked (sensing the player, attacking, being hurt, taking the
+  pack's turn). The player answers: hurt, landing a blow, a kill, being overwhelmed.
+- **Occasional.** A speaker's first line about something always comes. After that a line is said by chance (40%),
+  at least 1.5 s after any line and 5 s after the same speaker's last, with at most three on screen.
+- **Placement.** Beside the speaker's head, with a tail toward it. Bubbles never overlap: a newer one moves beside an
+  older one, or waits a frame if there is no room. Everything stays inside the view. A speaker off screen speaks from
+  the nearest edge. The player's lines are captions low on the screen. Each line lasts 2–3.6 s, by length, and fades
+  out.
+- **Accessibility.** Lines jump out with a quick overshoot; with **Reduce flashing** they fade in instead. The
+  **Interface scale** setting scales them with the HUD.
+- **Words.** Every line is the creator's to write. The lines in `Content/Data/firstperson.json` (`combatText.lines`,
+  by event) are marked placeholders that test timing and layout: short, medium and long. Replace a placeholder object
+  with a plain string and it shows without the PLACEHOLDER tag. The timing and limits are data in the same block.
+- A reset, the death reset included, clears every line.
+
 ## The Chapel in first person
 
 The slice built the Chapel for a camera looking down the nave from one side. Walking it from eye height
@@ -369,7 +391,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path, praying, prayers, prayer_seconds, interact_focus, interact_messages, placed_loops, sparks, clock_hour, clock_day, sky_light, glass_glow, wolves, wolves_alive, wolves_fighting, overwhelmed, one_on_one, one_on_ones, pack_passes, pack_max_attackers, pack_holder, pack_attacks, pack_repaths, pack_stuck, pack_hits, pack_holdback_min |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path, praying, prayers, prayer_seconds, interact_focus, interact_messages, placed_loops, sparks, clock_hour, clock_day, sky_light, glass_glow, wolves, wolves_alive, wolves_fighting, overwhelmed, one_on_one, one_on_ones, pack_passes, pack_max_attackers, pack_holder, pack_attacks, pack_repaths, pack_stuck, pack_hits, pack_holdback_min, ct_visible, ct_shown, ct_friendly, ct_warning, ct_hostile, ct_player, ct_max_visible, ct_overlaps, ct_offscreen, ct_outside, ct_popping, ct_placeholders, ct_height, ct_suppressed, ct_refused |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -383,6 +405,7 @@ path as a player. New commands:
 | `fp_hide <mesh name prefix \| lights> <0\|1>` | development only | hides static meshes by mesh name, or switches off the interior's lights, to measure what a view's frame time is made of |
 | `fp_wolf_reset` | all | what the pause menu's Reset the wolves does |
 | `fp_wolves <1..4>`, `fp_pack_ring <radius>`, `fp_hurt <damage>`, `fp_wolf_kill <index>` | development only | the pack's size; every living wolf placed round the player; a blow from straight ahead; one wolf killed at once (no alignment change) |
+| `fp_say <wolf index\|player> <event> [kind]`, `fp_text_natural <0\|1>`, `fp_text_stats`, `fp_setting <reduceflash\|uiscale> <value>` | development only | a combat-text line said at once; lines arising on their own off or on; clear the most-visible and overlap evidence; the Accessibility settings the text follows |
 | `fp_align <0..8>`, `fp_wolf_place <x> <y> [yaw] [health]` | development only | the developer panel's alignment; a test position (and Health) for the wolf |
 | `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
 
@@ -406,7 +429,11 @@ a threat against real harm, leaving and returning, the evil wolf's attacks, a ki
 Hero of Humanity's bond, the friendly wolf protecting the player, the Ice Wall rerouting and freezing it) and
 `fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping), and the Chapel interior's `fp_interior.txt`,
 `fp_chapel.txt`, `fp_ship_chapel.txt`, `fp_clock.txt` and `fp_perf_interior.txt` (`Docs/ChapelInterior.md`), and the pack's `fp_pack.txt` (two, three and four wolves taking turns, each of the three
-overwhelmed conditions, the turn passing on a death and a freeze, the Ice Wall re-plan, the reset, back to one wolf).
+overwhelmed conditions, the turn passing on a death and a freeze, the Ice Wall re-plan, the reset, back to one wolf)), the combat text's `fp_combat_text.txt` (the player's lines, a real four-wolf fight, several speakers side by side,
+expiry, the jump-out and reduced flashing, the interface scale, a speaker off screen, the neutral warning and friendly
+greeting arising on their own, the reset) and `fp_ship_text.txt` (the neutral wolf's warning with inputs only, for
+Shipping), and the final stability run `fp_soak_pack.txt` (about 30 minutes of the four-wolf fight with spells, text,
+pauses and settings round trips).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.
