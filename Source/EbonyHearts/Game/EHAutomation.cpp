@@ -1283,6 +1283,12 @@ void AEHGameDirector::RunBindingsSelfTest()
 		Check(!Tuning.Load(TEXT(R"({"chapel":{"sounds":[{"name":"test","at":[1,false,2]}]}})"), Error) && Error.Contains(TEXT("chapel.sounds[0]")),
 			TEXT("Chapel sound positions reject nonnumeric coordinates"));
 	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"pack":{"spawns":[[0,0,1e100],[0,0,0],[0,0,0],[0,0,0]]}})"), Error) && Error.Contains(TEXT("pack.spawns[0]")),
+			TEXT("pack spawn rejects a yaw outside the supported range"));
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 
