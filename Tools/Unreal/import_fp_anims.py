@@ -3,15 +3,17 @@ Headless:
     EH_FPANIM_DIR=<dir with A_FPH_*.fbx> bin/editor_py.sh Tools/Unreal/import_fp_anims.py
 Each clip is sampled at 60 fps over its exported frames, keys kept as authored, into /Game/Characters/FPHands/Anims.
 """
-import glob
 import os
+from pathlib import Path
+import sys
 
 import unreal
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from import_checked import import_checked, require_sources, save_checked
+
 SRC = os.environ["EH_FPANIM_DIR"]
 DEST = "/Game/Characters/FPHands/Anims"
-tools = unreal.AssetToolsHelpers.get_asset_tools()
-eal = unreal.EditorAssetLibrary
 
 
 def log(msg):
@@ -23,17 +25,16 @@ def setp(obj, name, value):
 
 
 def main():
+    clips = ("Ready", "Guard", "Jab", "Straight", "Fireball", "IceWall")
+    files = [Path(SRC) / f"A_FPH_{clip}.fbx" for clip in clips]
+    require_sources(files)
     skel = unreal.load_asset("/Game/Characters/FPHands/SK_FPHands_Skeleton")
     if skel is None:
         raise RuntimeError("no skeleton: import the hands first (import_fp_hands.py)")
-    files = sorted(glob.glob(os.path.join(SRC, "A_FPH_*.fbx")))
-    count = 0
-    for f in files:
-        name = os.path.splitext(os.path.basename(f))[0]
-        if eal.does_asset_exist(f"{DEST}/{name}"):
-            eal.delete_asset(f"{DEST}/{name}")
+    for source in files:
+        name = source.stem
         task = unreal.AssetImportTask()
-        task.filename = f
+        task.filename = str(source)
         task.destination_path = DEST
         task.destination_name = name
         task.replace_existing = True
@@ -55,18 +56,10 @@ def main():
         setp(ad, "convert_scene", True)
         setp(ad, "force_front_x_axis", False)
         task.options = opts
-        tools.import_asset_tasks([task])
-        anim = unreal.load_asset(f"{DEST}/{name}")
-        if anim is None:
-            log(f"FAIL {f}")
-            continue
-        eal.save_asset(anim.get_path_name(), only_if_is_dirty=False)
-        log(f"{name} length={anim.get_editor_property('sequence_length') if hasattr(anim, 'get_editor_property') else '?'}")
-        count += 1
-    eal.save_directory(DEST, only_if_is_dirty=False, recursive=True)
-    log(f"DONE {count}/{len(files)}")
-    if count != len(files) or not files:
-        raise RuntimeError(f"clip import incomplete: {count}/{len(files)}")
+        anim = import_checked(task, unreal.AnimSequence, legacy_fbx=True)
+        save_checked(anim)
+        log(f"{name} length={anim.get_editor_property('sequence_length')}")
+    log(f"DONE {len(files)}/{len(clips)}")
 
 
 main()

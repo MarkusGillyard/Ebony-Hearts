@@ -42,9 +42,11 @@ bool FEHPackTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
 		for (int32 i = 0; i < List->Num(); ++i)
 		{
 			const TArray<TSharedPtr<FJsonValue>>* P = nullptr;
-			if (!(*List)[i]->TryGetArray(P) || P->Num() != 3)
+			if (!(*List)[i]->TryGetArray(P) || P->Num() != 3 || P->ContainsByPredicate([](const TSharedPtr<FJsonValue>& Value) {
+				return !Value.IsValid() || Value->Type != EJson::Number || !FMath::IsFinite(Value->AsNumber());
+			}) || FMath::Abs((*P)[2]->AsNumber()) > 360.0)
 			{
-				OutError = FString::Printf(TEXT("Data/firstperson.json: pack.spawns[%d] must be [x, y, yaw]."), i);
+				OutError = FString::Printf(TEXT("Data/firstperson.json: pack.spawns[%d] must contain finite x and y coordinates and a yaw in -360..360 degrees."), i);
 				return false;
 			}
 			FEHPackSpawn S;

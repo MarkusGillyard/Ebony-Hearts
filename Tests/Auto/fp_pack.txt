@@ -116,6 +116,9 @@ fp_pack_ring 260
 press kbA FPIceWall
 wait 0.6
 fp_expect wolves_fighting lt 4
+wait 2.2
+fp_expect wolves_fighting gt 2
+fp_expect pack_max_attackers lt 2
 
 log == an Ice Wall: the wolves re-plan round it, and none stays stuck against it
 fp_reset

@@ -120,6 +120,10 @@ void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
 			BeginPrayer();
 			In.Move = FVector2D::ZeroVector;
 			In.bCrouch = true;
+			In.bBlock = false;
+			In.bSprint = false;
+			In.bJumpPressed = false;
+			In.FistPress = EEHFistAction::None;
 		}
 		else
 		{
@@ -150,6 +154,10 @@ void AEHGameDirector::BeginPrayer()
 		CloseSpellSelect(false);
 	}
 	bPraying = true;
+	if (FPPlayer)
+	{
+		FPPlayer->CancelActionsForPrayer();
+	}
 	PrayerSeconds = 0.0f;
 	++FPPrayers;
 	FPMessageLeft = 0.0f;

@@ -199,6 +199,12 @@ public:
 	FString Describe() const;
 	// Counters for tests and the developer readout.
 	int32 Bites() const { return BiteCount; }
+	bool TakeBiteCue()
+	{
+		const bool bCue = bBiteCue;
+		bBiteCue = false;
+		return bCue;
+	}
 	int32 Lunges() const { return LungeCount; }
 	int32 Connected() const { return ConnectCount; }
 	int32 Disengages() const { return DisengageCount; }
@@ -265,6 +271,7 @@ private:
 	float HacklesNow = 0.0f;
 	bool TryProtect();             // something winding up a strike at the player: go for it
 	void StartRest(bool bSleep);
+	bool bBiteCue = false;
 	int32 BiteCount = 0, LungeCount = 0, ConnectCount = 0, DisengageCount = 0, AbsorbCount = 0, ProtectCount = 0, FreezeCount = 0;
 	// Physical hit reactions: body tilt (pitch, roll) and head snap (pitch, yaw), degrees, on springs.
 	FVector2D Tilt = FVector2D::ZeroVector, TiltVel = FVector2D::ZeroVector;

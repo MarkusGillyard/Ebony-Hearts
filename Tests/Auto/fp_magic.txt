@@ -275,6 +275,7 @@ press kbA FPStraight
 wait 0.8
 fp_expect walls eq 0
 fp_expect walls_shattered eq 1
+fp_expect pack_repath_pending gt 0
 fp_reset
 wait 0.5
 

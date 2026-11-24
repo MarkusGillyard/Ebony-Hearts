@@ -223,7 +223,8 @@ void AEHGameDirector::TickPack(float DeltaSeconds)
 		{
 			if (W)
 			{
-				W->SetPackRole(EEHPackRole::Free, T.HoldBackRadius, T.WaitRadius);
+				const EEHPackRole Role = FPWolves.Num() > 1 && W->IsFrozen() ? EEHPackRole::Waiting : EEHPackRole::Free;
+				W->SetPackRole(Role, T.HoldBackRadius, T.WaitRadius);
 			}
 		}
 		PackHolder = -1;
@@ -257,7 +258,8 @@ void AEHGameDirector::TickPack(float DeltaSeconds)
 		}
 		if (!Fighting.Contains(i))
 		{
-			W->SetPackRole(EEHPackRole::Free, T.HoldBackRadius, T.WaitRadius);
+			const EEHPackRole Role = W->IsFrozen() ? EEHPackRole::Waiting : EEHPackRole::Free;
+			W->SetPackRole(Role, T.HoldBackRadius, T.WaitRadius);
 			continue;
 		}
 		W->SetPackRole(i == PackHolder ? EEHPackRole::Attacker : (bOneOnOne ? EEHPackRole::HoldBack : EEHPackRole::Waiting), T.HoldBackRadius, T.WaitRadius);
@@ -291,6 +293,7 @@ bool AEHGameDirector::PackField(const FString& Field, float& V) const
 	if (Field == TEXT("pack_holder")) { V = static_cast<float>(PackHolder); return true; }
 	if (Field == TEXT("pack_attacks")) { V = Sum([](const AEHWolf* W) { return W->AttacksStarted(); }); return true; }
 	if (Field == TEXT("pack_repaths")) { V = Sum([](const AEHWolf* W) { return W->Repaths(); }); return true; }
+	if (Field == TEXT("pack_repath_pending")) { V = static_cast<float>(PackRepathAt.Num()); return true; }
 	if (Field == TEXT("pack_stuck")) { V = Sum([](const AEHWolf* W) { return W->StuckRepaths(); }); return true; }
 	if (Field == TEXT("pack_hits")) { V = static_cast<float>(FPHurtTimes.Num()); return true; }
 	if (Field == TEXT("pack_holdback_min"))

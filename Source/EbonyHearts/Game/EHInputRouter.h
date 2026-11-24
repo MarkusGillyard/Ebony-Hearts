@@ -87,6 +87,7 @@ public:
 	void ClearLatches();
 	// Forget held gameplay state, e.g. after the bindings change under a held key.
 	void ResetHeld();
+	void ResetForFocusLoss();
 
 	bool PopNav(FEHNavEvent& Out);
 	void ClearNav() { Nav.Reset(); }

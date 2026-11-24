@@ -23,8 +23,18 @@ fp_teleport 0 -1660 44 -90 -50
 wait 0.6
 fp_expect interact_focus eq 0
 screenshot chapel_prompt
+log == entering prayer during a Fireball wind-up cancels the release
+press kbA FPFireball
+fp_expect action eq 3
 press kbA FPInteract
-wait 1.6
+hold kbA FPSpellSelect
+wait 0.4
+fp_expect selecting eq 0
+fp_expect action eq 0
+fp_expect casts eq 0
+fp_expect fireballs eq 0
+release kbA FPSpellSelect
+wait 1.2
 fp_expect praying eq 1
 fp_expect pitch gt 10
 fp_mark

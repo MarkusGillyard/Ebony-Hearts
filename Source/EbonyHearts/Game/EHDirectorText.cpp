@@ -114,6 +114,7 @@ bool AEHGameDirector::CombatTextField(const FString& Field, float& V) const
 	if (Field == TEXT("ct_max_visible")) { V = static_cast<float>(C.MaxVisibleSeen); return true; }
 	if (Field == TEXT("ct_overlaps")) { V = static_cast<float>(C.OverlapsSeen); return true; }
 	if (Field == TEXT("ct_offscreen")) { V = static_cast<float>(C.Offscreen); return true; }
+	if (Field == TEXT("ct_offscreen_x")) { V = C.LastOffscreenX; return true; }
 	if (Field == TEXT("ct_outside")) { V = static_cast<float>(C.OutsideView); return true; }
 	if (Field == TEXT("ct_popping")) { V = static_cast<float>(C.Popping); return true; }
 	if (Field == TEXT("ct_placeholders")) { V = static_cast<float>(C.Placeholders); return true; }
