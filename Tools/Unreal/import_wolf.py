@@ -9,8 +9,13 @@ Headless:
     EH_WOLF_FBX_DIR=/home/cinqic/EH-Proto/sourceart/wolf bin/editor_py.sh Tools/Unreal/import_wolf.py
 """
 import os
+from pathlib import Path
+import sys
 
 import unreal
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from import_checked import import_checked, require_sources, save_checked
 
 DIR = "/Game/Wolf"
 FBX_DIR = os.environ["EH_WOLF_FBX_DIR"]
@@ -43,32 +48,37 @@ def setp(obj, name, value):
 def import_textures():
     out = {}
     for name, srgb, comp in TEXTURES:
-        path = f"{DIR}/{name}"
-        if eal.does_asset_exist(path):
-            eal.delete_asset(path)
         task = unreal.AssetImportTask()
         task.filename = os.path.join(FBX_DIR, name + ".png")
         task.destination_path = DIR
         task.destination_name = name
         task.replace_existing = True
         task.automated = True
-        tools.import_asset_tasks([task])
-        tex = unreal.load_asset(path)
-        if tex is None:
-            raise RuntimeError(f"texture import failed {name}")
+        tex = import_checked(task, unreal.Texture2D)
         setp(tex, "srgb", srgb)
         setp(tex, "compression_settings", comp)
-        eal.save_asset(path, only_if_is_dirty=False)
+        save_checked(tex)
         out[name] = tex
         log(f"texture {name} srgb={srgb}")
     return out
 
 
-def make_pbr_material(name, bc_tex, r_tex, n_tex, tint_param, default_tint, spec=0.28):
+def get_material(name):
     path = f"{DIR}/{name}"
     if eal.does_asset_exist(path):
-        eal.delete_asset(path)
+        mat = unreal.load_asset(path)
+        if not isinstance(mat, unreal.Material):
+            raise RuntimeError(f"Expected a Material at {path}")
+        mel.delete_all_material_expressions(mat)
+        return mat
     mat = tools.create_asset(name, DIR, unreal.Material, unreal.MaterialFactoryNew())
+    if not isinstance(mat, unreal.Material):
+        raise RuntimeError(f"Could not create {path}")
+    return mat
+
+
+def make_pbr_material(name, bc_tex, r_tex, n_tex, tint_param, default_tint, spec=0.28):
+    mat = get_material(name)
 
     bc = mel.create_material_expression(mat, unreal.MaterialExpressionTextureSample, -600, -100)
     setp(bc, "texture", bc_tex)
@@ -96,15 +106,12 @@ def make_pbr_material(name, bc_tex, r_tex, n_tex, tint_param, default_tint, spec
         mel.connect_material_property(n, "", MP.MP_NORMAL)
 
     mel.recompile_material(mat)
-    eal.save_asset(path, only_if_is_dirty=False)
+    save_checked(mat)
     return mat
 
 
 def make_eye_material():
-    path = f"{DIR}/M_Wolf_Eyes"
-    if eal.does_asset_exist(path):
-        eal.delete_asset(path)
-    mat = tools.create_asset("M_Wolf_Eyes", DIR, unreal.Material, unreal.MaterialFactoryNew())
+    mat = get_material("M_Wolf_Eyes")
     base = mel.create_material_expression(mat, unreal.MaterialExpressionConstant3Vector, -500, -100)
     setp(base, "constant", unreal.LinearColor(0.88, 0.62, 0.20, 1.0))
     mel.connect_material_property(base, "", MP.MP_BASE_COLOR)
@@ -121,11 +128,14 @@ def make_eye_material():
     setp(sp, "r", 0.75)
     mel.connect_material_property(sp, "", MP.MP_SPECULAR)
     mel.recompile_material(mat)
-    eal.save_asset(path, only_if_is_dirty=False)
+    save_checked(mat)
     return mat
 
 
 def main():
+    source = Path(FBX_DIR)
+    require_sources([source / f"{name}.fbx" for name in PARTS] +
+                    [source / f"{name}.png" for name, _, _ in TEXTURES])
     tex = import_textures()
     m_coat = make_pbr_material("M_PH_Wolf", tex["T_Wolf_Coat_BC"], tex["T_Wolf_Coat_R"], tex["T_Wolf_Coat_N"],
                                "CoatTint", (1.0, 1.0, 1.0, 1.0), spec=0.25)
@@ -144,8 +154,6 @@ def main():
     }
 
     for name in PARTS:
-        if eal.does_asset_exist(f"{DIR}/{name}"):
-            eal.delete_asset(f"{DIR}/{name}")
         task = unreal.AssetImportTask()
         task.filename = os.path.join(FBX_DIR, name + ".fbx")
         task.destination_path = DIR
@@ -162,16 +170,14 @@ def main():
         smd.set_editor_property("convert_scene", True)
         smd.set_editor_property("force_front_x_axis", False)
         task.options = opts
-        tools.import_asset_tasks([task])
-        mesh = unreal.load_asset(f"{DIR}/{name}")
-        if mesh is None:
-            raise RuntimeError(f"import failed {name}")
+        mesh = import_checked(task, unreal.StaticMesh, legacy_fbx=True)
+        if len(mesh.static_materials) != len(part_mats[name]):
+            raise RuntimeError(f"{name} has {len(mesh.static_materials)} material slots; expected {len(part_mats[name])}")
         for idx, mat in enumerate(part_mats[name]):
-            if idx < len(mesh.static_materials):
-                mesh.set_material(idx, mat)
+            mesh.set_material(idx, mat)
         b = mesh.get_bounds()
         log(f"{name} mats={len(mesh.static_materials)} origin=({b.origin.x:.0f},{b.origin.y:.0f},{b.origin.z:.0f}) extent=({b.box_extent.x:.0f},{b.box_extent.y:.0f},{b.box_extent.z:.0f})")
-        eal.save_asset(mesh.get_path_name(), only_if_is_dirty=False)
+        save_checked(mesh)
     log("DONE")
 
 
