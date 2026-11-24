@@ -379,7 +379,15 @@ void AEHWolf::Freeze(float Seconds)
 	FrozenLeft = FMath::Max(FrozenLeft, Seconds);
 	++FreezeCount;
 	Stop();
-	GetCharacterMovement()->StopMovementImmediately();
+	UCharacterMovementComponent* Movement = GetCharacterMovement();
+	Movement->StopMovementImmediately();
+	Movement->ClearAccumulatedForces();
+	if (State == EEHWolfState::BiteWindup || State == EEHWolfState::LungeWindup || State == EEHWolfState::Lunge)
+	{
+		const int32 Recovery = State == EEHWolfState::BiteWindup ? Tuning.BiteRecover : Tuning.LungeRecover;
+		Enter(EEHWolfState::Recover, Recovery);
+		Cooldown = Tuning.AttackCooldown;
+	}
 	IceCuff->SetVisibility(true);
 }
 

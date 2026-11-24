@@ -358,6 +358,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 		}
 		Menu.Add(Button(TEXT("Apply"), [this] {
 			DisplayRevert = FEHSettings::Load();
+			DisplayRevert.FieldOfView = Settings.FieldOfView;
 			ApplySettings(true);
 			GoTo(EEHScreen::DisplayConfirm);
 		}, TEXT("Reverts automatically unless you confirm.")));

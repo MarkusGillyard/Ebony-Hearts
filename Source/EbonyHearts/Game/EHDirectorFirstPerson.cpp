@@ -1169,12 +1169,13 @@ void AEHGameDirector::HandleFirstPersonNav(const FEHNavEvent& E)
 
 void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 {
+	const float QhiY = FMath::Min(1014.0f, P.VirtualMax.Y - 28.0f);
 	if (FPPlayer && QhiMeterAlpha > 0.01f && !bPaused)
 	{
 		// Qhi: the same thin line under Stamina, in a cold blue; it flashes the warning colour when a cast is refused.
 		const float W = 280.0f;
 		const float Frac = FPPlayer->QhiFraction();
-		const FVector2f Pos(960.0f - W * 0.5f, 1014.0f);
+		const FVector2f Pos(960.0f - W * 0.5f, QhiY);
 		const float Denied = FMath::Clamp(1.0f - FPPlayer->SecondsSinceRefused() / 0.6f, 0.0f, 1.0f);
 		P.Rect(Pos, FVector2f(W, 4.0f), EHStyle::Alpha(Denied > 0.0f ? FLinearColor::LerpUsingHSV(EHStyle::Abyss, EHStyle::HealthLow, 0.6f * Denied) : EHStyle::Abyss, 0.45f * QhiMeterAlpha + 0.4f * Denied));
 		P.Rect(FVector2f(960.0f - W * 0.5f * Frac, Pos.Y), FVector2f(W * Frac, 4.0f), FLinearColor(0.42f, 0.66f, 1.0f, 0.8f * QhiMeterAlpha));
@@ -1184,7 +1185,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		// Placeholder readout for the playtest (see Docs/FirstPerson.md): a thin line that shortens as Stamina drains.
 		const float W = 280.0f;
 		const float Frac = FPPlayer->StaminaFraction();
-		const FVector2f Pos(960.0f - W * 0.5f, 1004.0f);
+		const FVector2f Pos(960.0f - W * 0.5f, QhiY - 10.0f);
 		P.Rect(Pos, FVector2f(W, 4.0f), EHStyle::Alpha(EHStyle::Abyss, 0.45f * StaminaMeterAlpha));
 		const FLinearColor Fill = FPPlayer->IsExhausted() ? EHStyle::Alpha(EHStyle::HealthLow, 0.85f * StaminaMeterAlpha) : EHStyle::Alpha(EHStyle::TextPrimary, 0.75f * StaminaMeterAlpha);
 		P.Rect(FVector2f(960.0f - W * 0.5f * Frac, Pos.Y), FVector2f(W * Frac, 4.0f), Fill);
@@ -1197,8 +1198,8 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		{
 			const float W = 280.0f;
 			const float Frac = FPPlayer->HealthFraction();
-			P.Rect(FVector2f(960.0f - W * 0.5f, 994.0f), FVector2f(W, 4.0f), EHStyle::Alpha(EHStyle::Abyss, 0.45f * HealthAlpha));
-			P.Rect(FVector2f(960.0f - W * 0.5f * Frac, 994.0f), FVector2f(W * Frac, 4.0f), EHStyle::Alpha(EHStyle::HealthLow, 0.85f * HealthAlpha));
+			P.Rect(FVector2f(960.0f - W * 0.5f, QhiY - 20.0f), FVector2f(W, 4.0f), EHStyle::Alpha(EHStyle::Abyss, 0.45f * HealthAlpha));
+			P.Rect(FVector2f(960.0f - W * 0.5f * Frac, QhiY - 20.0f), FVector2f(W * Frac, 4.0f), EHStyle::Alpha(EHStyle::HealthLow, 0.85f * HealthAlpha));
 		}
 		if (HurtFlash > 0.0f)
 		{
@@ -1457,17 +1458,6 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(Line);
 		return true;
 	}
-	if (Cmd == TEXT("fp_frames"))
-	{
-		// fp_frames <count> <name>: one screenshot per rendered frame, starting next frame.
-		FrameCaptureLeft = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("30"))), 1, 600);
-		FrameCaptureName = Arg(2, TEXT("frame"));
-		FrameCaptureIndex = 0;
-		FrameCaptureNext = 0.0;
-		UGameplayStatics::SetGlobalTimeDilation(this, 0.05f);
-		AutoLogLine(Line);
-		return true;
-	}
 	if (Cmd == TEXT("fp_wolf_reset"))
 	{
 		// What the pause menu's Reset the wolf does.
@@ -1495,7 +1485,7 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 	if (Cmd == TEXT("fp_focus_lost"))
 	{
 		// What the frame loop does when the window loses focus: pause and drop every held input.
-		RouterPtr->ResetHeld();
+		RouterPtr->ResetForFocusLoss();
 		if (Screen == EEHScreen::FirstPerson && !bPaused)
 		{
 			SetPaused(true, EHDeviceNone);
@@ -1505,6 +1495,17 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 	}
 #if !UE_BUILD_SHIPPING
 	// Development-only test tools: they move the player or change the world, so Shipping builds leave them out.
+	if (Cmd == TEXT("fp_frames"))
+	{
+		// fp_frames <count> <name>: one screenshot per rendered frame, starting next frame.
+		FrameCaptureLeft = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("30"))), 1, 600);
+		FrameCaptureName = Arg(2, TEXT("frame"));
+		FrameCaptureIndex = 0;
+		FrameCaptureNext = 0.0;
+		UGameplayStatics::SetGlobalTimeDilation(this, 0.05f);
+		AutoLogLine(Line);
+		return true;
+	}
 	if (Cmd == TEXT("fp_stat"))
 	{
 		// fp_stat <health|qhi|stamina|intelligence|faith|dexterity|martial> <value>: the developer panel's stat change.
@@ -1535,6 +1536,15 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		// fp_align <0..8>: the developer selector's alignment tier (0 Hero of Humanity, 4 Platonic, 8 Forsaken).
 		FPAlignment = FMath::Clamp(FCString::Atoi(*Arg(1, TEXT("4"))), 0, EHAlign::Count - 1);
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, EHAlign::Name(FPAlignment)));
+		return true;
+	}
+	if (Cmd == TEXT("fp_wolf_freeze"))
+	{
+		if (FPWolf)
+		{
+			FPWolf->Freeze(2.0f);
+		}
+		AutoLogLine(FPWolf ? TEXT("ok fp_wolf_freeze") : TEXT("FAIL fp_wolf_freeze (no wolf)"));
 		return true;
 	}
 	if (Cmd == TEXT("fp_wolf_place"))
