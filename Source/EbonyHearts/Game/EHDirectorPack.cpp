@@ -231,6 +231,21 @@ void AEHGameDirector::TickPack(float DeltaSeconds)
 	}
 	if (!Fighting.Contains(PackHolder))
 	{
+		// A wolf may already be attacking when another wolf thaws and the pack reforms.
+		for (int32 i : Fighting)
+		{
+			if (FPWolves[i]->IsAttacking())
+			{
+				PackHolder = i;
+				PackWaiting[i] = 0.0f;
+				PackHolderAttacks = FPWolves[i]->AttacksStarted() - 1;
+				PackHolderSince = Now;
+				break;
+			}
+		}
+	}
+	if (!Fighting.Contains(PackHolder))
+	{
 		PassTurn(Fighting, PackHolder < 0 ? TEXT("the fight starts") : TEXT("out of the fight"));
 	}
 	else
