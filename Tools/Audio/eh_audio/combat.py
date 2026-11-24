@@ -407,6 +407,195 @@ def flame_roar(c, v):
     return room(y, c.room_ir, 0.14), dur, 0.15
 
 
+# ============================================================================ ice wall (first-person magic)
+def _crystal_ping(rng, dur, f0, decay_scale=1.0, shimmer=0.0):
+    """Inharmonic crystalline/glassy modal strike: sharp attack and ringing quartz/ice overtones."""
+    n = ns(dur)
+    t = tvec(n)
+    # Inharmonic bar/plate ratios characteristic of brittle ice crystal shards.
+    ratios = (1.0, 2.31, 3.84, 5.47, 7.12)
+    amps = (1.0, 0.58, 0.34, 0.20, 0.11)
+    y = np.zeros(n)
+    for r, a in zip(ratios, amps):
+        f = f0 * r * rng.uniform(0.985, 1.015)
+        if f >= dsp.SR * 0.44:
+            continue
+        tau = max(0.012, (0.28 / (r ** 0.85)) * decay_scale * rng.uniform(0.8, 1.25))
+        ph = 2.0 * math.pi * f * t + rng.uniform(0.0, 2.0 * math.pi)
+        if shimmer > 0.0:
+            ph += shimmer * np.sin(2.0 * math.pi * rng.uniform(6.0, 14.0) * t)
+        y += a * np.sin(ph) * np.exp(-t / tau)
+    env = dsp.smoothstep(t / 0.0012)
+    return dsp.normalize(y * env)
+
+
+def _ice_crack(rng, dur=0.06, center=3200.0):
+    """Razor-sharp brittle fracture transient (short snap + resonant crystal edge)."""
+    snap = burst(rng, dur, 0.00018, 0.0045, [("hp", 1400, 2), ("peak", center, 2.2, 6.0), ("lp", 11500, 2)])
+    body = burst(rng, dur, 0.0004, 0.011, [("bp", center * 0.42, 1.8)])
+    return dsp.normalize(snap * 0.85 + body * 0.45)
+
+
+def ice_wall_charge(c, v):
+    """Cast wind-up (~0.36 s): cold rushing air pulling inward + rising crystalline frost shimmer."""
+    name = f"IceWallCharge_{v + 1:02d}"
+    rng = dsp.rng_for(name)
+    dur = 0.38
+    n = ns(dur)
+    out = np.zeros(n)
+    t = tvec(n)
+
+    # Cold frosty rush sweeping up in frequency as frost gathers in the hands.
+    def g(tt, f):
+        e = dsp.smoothstep(tt / 0.14) * (1.0 - 0.35 * dsp.smoothstep((tt - 0.28) / 0.09))
+        fc = 950.0 + 3600.0 * np.clip(tt / 0.30, 0.0, 1.0) ** 1.4
+        return e * dsp.mag_bp(f, fc, 1.4) * dsp.mag_hp(f, 500, 2)
+
+    rush = dsp.shaped_noise(rng, n, g, 1.0)
+    out += dsp.normalize(rush) * 0.62
+
+    # Rising crystalline harmonic shimmer (cold glass bell cluster).
+    base_f = [1480.0, 1620.0][v]
+    shimmer = np.zeros(n)
+    for k, mult in enumerate((1.0, 1.498, 2.24, 3.16)):
+        f_curve = base_f * mult * (0.88 + 0.24 * (t / dur) ** 1.3)
+        ph = 2.0 * math.pi * np.cumsum(f_curve) / dsp.SR + rng.uniform(0, 2 * math.pi)
+        shimmer += (0.55 ** k) * np.sin(ph)
+    s_env = dsp.smoothstep(t / 0.18) * np.exp(-np.maximum(t - 0.24, 0.0) / 0.09)
+    out += dsp.normalize(shimmer * s_env) * 0.44
+
+    # Micro frost-crystal snaps accelerating toward release.
+    for k in range(7):
+        at = 0.05 + (k / 7.0) ** 1.35 * 0.24 + rng.uniform(-0.008, 0.008)
+        place(out, _ice_crack(rng, 0.035, rng.uniform(2800, 6200)) * (0.14 + 0.04 * k), ns(max(0.0, at)))
+
+    return room(out, c.room_ir, 0.18), dur, 0.07
+
+
+def ice_wall_raise(c, v):
+    """Ice Wall erupting out of stone/water (~1.25 s): glacial sub-heave, cascading crystal pillars,
+    flash-freeze crackle and cold Chapel tail."""
+    name = f"IceWallRaise_{v + 1:02d}"
+    rng = dsp.rng_for(name)
+    dur = 1.28
+    n = ns(dur + 0.35)
+    out = np.zeros(n)
+    t = tvec(n)
+
+    # 1) Monumental glacial sub-heave & stone crack at onset (weight of a 3 m x 2.4 m ice barrier).
+    f_hi = [98.0, 92.0, 104.0][v]
+    f_lo = [36.0, 34.0, 38.0][v]
+    place(out, thump(0.46, f_hi, f_lo, 0.045, 0.19, drive=1.9) * 0.85, 0)
+    heave = burst(rng, 0.55, 0.015, 0.18, [("lp", 260, 3), ("hp", 32, 2)], exponent=1.1)
+    place(out, heave * 0.62, ns(0.01))
+
+    # 2) Cascading crystal shard eruption across the 0.30 s rise: staggered cracks + ringing ice pillars.
+    shard_freqs = [880.0, 1120.0, 1340.0, 1580.0, 1890.0, 2240.0, 2650.0, 3100.0]
+    n_shards = 16
+    for k in range(n_shards):
+        frac = k / float(n_shards - 1)
+        at = frac * 0.30 + rng.uniform(0.0, 0.018)
+        amp = (0.38 + 0.45 * math.sin(math.pi * frac)) * rng.uniform(0.8, 1.15)
+        place(out, _ice_crack(rng, 0.065, rng.uniform(2200, 6800)) * amp * 0.55, ns(at))
+        f0 = shard_freqs[k % len(shard_freqs)] * rng.uniform(0.92, 1.12) * (0.94 + 0.05 * v)
+        ping = _crystal_ping(rng, 0.48, f0, decay_scale=rng.uniform(0.65, 1.25), shimmer=0.18)
+        place(out, ping * amp * 0.24, ns(at + 0.002))
+
+    # 3) Deep locking crunch right as the wall finishes rising (~0.24 s).
+    place(out, thump(0.28, 145.0, 52.0, 0.02, 0.09, drive=1.5) * 0.48, ns(0.23))
+    place(out, _ice_crack(rng, 0.08, 1950.0) * 0.65, ns(0.24))
+
+    # 4) Flash-freeze surface crackle spreading across nearby water + cold frosty air tail.
+    cr = synth.crackle(rng, dur,
+                       lambda x: np.where(x > 0.06, 135.0 * np.exp(-(x - 0.06) / 0.28) + 8.0, 0.0),
+                       lambda x: np.exp(-np.maximum(x - 0.06, 0.0) / 0.42))
+    cr_hp = filt(cr, [("hp", 2200, 2), ("lp", 11000, 2)])
+    place(out, dsp.normalize(cr_hp) * 0.48, 0)
+
+    def frost_air(tt, f):
+        e = dsp.smoothstep(tt / 0.06) * np.exp(-np.maximum(tt - 0.12, 0.0) / 0.42)
+        fc = 4200.0 * np.exp(-tt / 0.55) + 900.0
+        return e * dsp.mag_bp(f, fc, 1.0) * dsp.mag_hp(f, 700, 2)
+
+    air = dsp.shaped_noise(rng, n, frost_air, 1.0)
+    out += dsp.normalize(air) * 0.34
+
+    # High icy cathedral resonance tail.
+    wet = dsp.fit(dsp.fftconv(out, c.chapel_ir), n)
+    out = out + 0.24 * wet
+    return out[:ns(dur)], dur, 0.25
+
+
+def ice_wall_hit(c, v):
+    """Strike hitting an Ice Wall (~0.40 s): dense frozen thud + brittle crystal chip + short ring."""
+    name = f"IceWallHit_{v + 1:02d}"
+    rng = dsp.rng_for(name)
+    dur = 0.42
+    n = ns(dur + 0.15)
+    out = np.zeros(n)
+    place(out, thump(0.16, 165 + 15 * v, 68 + 8 * v, 0.015, 0.055, drive=1.5) * 0.65, 0)
+    place(out, _ice_crack(rng, 0.06, 3100 + 500 * v) * 0.85, 0)
+    place(out, _ice_crack(rng, 0.045, 5200 - 400 * v) * 0.45, ns(0.016))
+    place(out, _crystal_ping(rng, 0.36, [1320.0, 1540.0][v], decay_scale=0.65) * 0.42, ns(0.002))
+    return room(out, c.room_ir, 0.22)[:ns(dur)], dur, 0.09
+
+
+def ice_wall_shatter(c):
+    """Ice Wall shattered by strikes (~1.15 s): violent crystal rupture + cascading shard shower."""
+    name = "IceWallShatter"
+    rng = dsp.rng_for(name)
+    dur = 1.15
+    n = ns(dur + 0.35)
+    out = np.zeros(n)
+    place(out, thump(0.32, 130.0, 40.0, 0.025, 0.11, drive=2.0) * 0.72, 0)
+    place(out, _ice_crack(rng, 0.09, 2600.0) * 0.95, 0)
+    place(out, _ice_crack(rng, 0.08, 4400.0) * 0.80, ns(0.014))
+    place(out, burst(rng, 0.25, 0.001, 0.045, [("hp", 1800, 2), ("lp", 11000, 2)]) * 0.52, ns(0.004))
+    # Cascading shower of broken crystal shards tinkling onto the stone floor.
+    for k in range(28):
+        at = 0.02 + (k / 28.0) ** 1.35 * 0.72 + rng.uniform(0.0, 0.035)
+        amp = (0.52 * math.exp(-at / 0.45) + 0.10) * rng.uniform(0.65, 1.2)
+        f0 = rng.uniform(1150.0, 4800.0)
+        place(out, _crystal_ping(rng, 0.30, f0, decay_scale=rng.uniform(0.28, 0.75)) * amp * 0.32, ns(at))
+        if k % 2 == 0:
+            place(out, _ice_crack(rng, 0.032, rng.uniform(3200, 7600)) * amp * 0.42, ns(at))
+    wet = dsp.fit(dsp.fftconv(out, c.chapel_ir), n)
+    out = out + 0.26 * wet
+    return out[:ns(dur)], dur, 0.24
+
+
+def ice_wall_melt(c):
+    """Ice Wall thawing or melted by Fireball (~1.25 s): steam hiss, settling ice creaks, wet trickle."""
+    name = "IceWallMelt"
+    rng = dsp.rng_for(name)
+    dur = 1.25
+    n = ns(dur + 0.2)
+    out = np.zeros(n)
+
+    def steam(tt, f):
+        e = dsp.smoothstep(tt / 0.08) * np.exp(-np.maximum(tt - 0.14, 0.0) / 0.45)
+        fc = 5200.0 * np.exp(-tt / 0.55) + 1100.0
+        return e * dsp.mag_bp(f, fc, 0.85) * dsp.mag_hp(f, 800, 2)
+
+    hiss = dsp.shaped_noise(rng, n, steam, 1.0)
+    out += dsp.normalize(hiss) * 0.72
+
+    # Gentle settling fracture ticks & water droplets falling into the flooded nave.
+    for k in range(14):
+        at = 0.08 + (k / 14.0) * 0.92 + rng.uniform(-0.02, 0.02)
+        if k % 3 == 0:
+            place(out, _ice_crack(rng, 0.03, rng.uniform(2400, 5000)) * rng.uniform(0.14, 0.28), ns(max(0.0, at)))
+        else:
+            # Tiny resonant water drop plink (rising pitch chirp).
+            dn = ns(0.045)
+            dt = tvec(dn)
+            f_drop = rng.uniform(750, 1650) * (1.0 + 1.1 * (dt / 0.045) ** 1.2)
+            drop = np.sin(2.0 * math.pi * np.cumsum(f_drop) / dsp.SR) * dsp.smoothstep(dt / 0.002) * np.exp(-dt / 0.012)
+            place(out, dsp.normalize(drop) * rng.uniform(0.10, 0.22), ns(max(0.0, at)))
+
+    return room(out, c.room_ir, 0.22)[:ns(dur)], dur, 0.28
+
+
 # ============================================================================ stingers
 def round_bell(c):
     rng = dsp.rng_for("RoundBell")
@@ -487,5 +676,12 @@ def builders():
             ("FlameIgnite", flame_ignite), ("FlameHit", flame_hit)]
     for v in range(3):
         out.append((f"FlameRoar_{v + 1:02d}", lambda c, v=v: flame_roar(c, v)))
+    for v in range(2):
+        out.append((f"IceWallCharge_{v + 1:02d}", lambda c, v=v: ice_wall_charge(c, v)))
+    for v in range(3):
+        out.append((f"IceWallRaise_{v + 1:02d}", lambda c, v=v: ice_wall_raise(c, v)))
+    for v in range(2):
+        out.append((f"IceWallHit_{v + 1:02d}", lambda c, v=v: ice_wall_hit(c, v)))
+    out += [("IceWallShatter", ice_wall_shatter), ("IceWallMelt", ice_wall_melt)]
     out += [("RoundBell", round_bell), ("FightStinger", fight_stinger), ("KO", ko)]
     return out

@@ -279,8 +279,9 @@ go straight into a Fireball and a Fireball straight into a straight.
   faceted crystal shards that pushes up out of the floor in a burst of frost and mist; a faint cold light inside it lights the ice and the floor. The frozen water is an irregular floe and frozen
   feet get a ring of small shards (meshes from `Tools/Blender/magic/make_ice.py`). The ice material
   (`/Game/Magic/M_PH_Ice`, `Tools/Unreal/make_magic_materials.py`) is clear blue, refractive, glossy and frosted at
-  its feet and in streaks. The sounds are the slice's (flame ignite,
-  roar and hit for Fireball; aura charge, deflect and a body slam for the wall; water steps and a fading hiss as it melts).
+  its feet and in streaks. Fireball reuses the slice's flame sounds; Ice Wall uses its own synthesized crystalline
+  sound set (`S_IceWallCharge_01-02`, `S_IceWallRaise_01-03`, `S_IceWallHit_01-02`, `S_IceWallShatter`, `S_IceWallMelt`
+  from `Tools/Audio/eh_audio/combat.py`).
 - **Navigation.** The wall's blocking box is marked to affect navigation for the wolves of milestone 5; nothing
   navigates yet.
 

@@ -678,7 +678,14 @@ void AEHGameDirector::PlayFirstPersonEvents()
 		case FEHFirstPersonEvent::EKind::Wall:
 			if (E.bIce)
 			{
-				PlayImpact(TEXT("Deflect"), 1, E.bShattered ? 0.9f : 0.55f, E.bShattered ? 0.55f : 1.3f);
+				if (E.bShattered)
+				{
+					PlayImpact(TEXT("IceWallShatter"), 1, 0.95f, 1.0f);
+				}
+				else
+				{
+					PlayImpact(TEXT("IceWallHit"), 2, 0.72f, 1.0f);
+				}
 				if (Vfx) { Vfx->IceBurst(E.Location, E.bShattered ? 2.0f : 0.6f); }
 				Rumble(E.bShattered ? 0.6f : 0.1f, 0.35f, E.bShattered ? 0.2f : 0.06f);
 			}
@@ -723,7 +730,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 			}
 			else
 			{
-				PlayImpact(TEXT("AuraCharge"), 3, 0.5f, 1.35f);
+				PlayImpact(TEXT("IceWallCharge"), 2, 0.68f, 1.0f);
 			}
 			AutoLogLine(FString::Printf(TEXT("fp cast_start %s qhi=%.1f"), EHFistActionName(E.Action), FPPlayer->Qhi()));
 			for (AEHWolf* W : FPWolves)
@@ -792,8 +799,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 						Vfx->Steam(P + FVector(0, 0, 10.0f), 0.9f);
 					}
 				}
-				PlayImpact(TEXT("Deflect"), 1, 0.8f, 0.6f);
-				PlayImpact(TEXT("BodySlam"), 2, 0.45f, 0.7f);
+				PlayImpact(TEXT("IceWallRaise"), 3, 0.92f, 1.0f);
 				Rumble(0.6f, 0.2f, 0.25f);
 				AutoLogLine(FString::Printf(TEXT("fp ice_wall at=(%.0f,%.0f,%.0f) froze_water=%d frozen=%d"), E.Location.X, E.Location.Y, E.Location.Z, Wall->FroseWater() ? 1 : 0, Wall->Frozen()));
 			}
@@ -882,7 +888,7 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 			{
 				W->Melt();
 				PlayImpact(TEXT("FlameHit"), 1, 0.7f, 0.8f);
-				PlayImpact(TEXT("AuraFade"), 1, 0.8f, 0.7f);
+				PlayImpact(TEXT("IceWallMelt"), 1, 0.85f, 1.05f);
 				if (Vfx)
 				{
 					// Steam off the melting ice.
@@ -918,9 +924,8 @@ void AEHGameDirector::TickSpells(float DeltaSeconds)
 		}
 		if (W->TakeMeltStarted())
 		{
-			// Turning to water: a trickle and the hiss of thawing ice.
-			PlayImpact(TEXT("StepWater"), 3, 0.55f, 0.8f);
-			PlayImpact(TEXT("AuraFade"), 1, 0.45f, 0.6f);
+			// Turning to water: steam hiss, settling ice creaks and water droplets.
+			PlayImpact(TEXT("IceWallMelt"), 1, 0.72f, 0.96f);
 			AutoLogLine(TEXT("fp ice_wall melting into water"));
 			PackRepathSoon();
 		}
