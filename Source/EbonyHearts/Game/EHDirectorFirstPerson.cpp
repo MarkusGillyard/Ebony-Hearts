@@ -197,7 +197,7 @@ void AEHGameDirector::PlayImpact(const TCHAR* Base, int32 Variants, float Volume
 	const FString Name = Variants > 1 ? FString::Printf(TEXT("%s_%02d"), Base, FMath::RandRange(1, Variants)) : FString(Base);
 	const int32 Before = Audio.PlayedCount();
 	Audio.Play(FName(*Name), EEHSoundCat::Effects, Volume, Pitch * FMath::FRandRange(0.96f, 1.04f));
-	if (bAutomated && Name.StartsWith(TEXT("IceWall")))
+	if (!EvidenceDir.IsEmpty() && Name.StartsWith(TEXT("IceWall")))
 	{
 		AutoLogLine(FString::Printf(TEXT("fp ice audio %s category=effects submitted=%d"), *Name, Audio.PlayedCount() > Before ? 1 : 0));
 	}
