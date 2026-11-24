@@ -96,19 +96,32 @@ screenshot ct_scale_140
 wait 4
 fp_setting uiscale 1.0
 
-log == a speaker off screen speaks from the edge of the view
+log == speakers in either rear quadrant appear on the corresponding edge at 140 percent scale
+fp_setting uiscale 1.4
+fp_align 4
 fp_wolves 1
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
-fp_wolf_place 0 -450 90
+fp_wolf_place -250 -450 90
 wait 0.2
 fp_say 0 wolf.hostile.attack
 wait 0.3
 fp_expect ct_offscreen eq 1
+fp_expect ct_offscreen_x lt 0
 fp_expect ct_outside eq 0
-screenshot ct_offscreen
+screenshot ct_offscreen_left
 wait 4
+fp_wolf_place 250 -450 90
+wait 0.2
+fp_say 0 wolf.hostile.attack
+wait 0.3
+fp_expect ct_offscreen eq 1
+fp_expect ct_offscreen_x gt 0
+fp_expect ct_outside eq 0
+screenshot ct_offscreen_right
+wait 4
+fp_setting uiscale 1.0
 
 log == a neutral wolf warns the player off when they come close (on its own)
 fp_text_natural 1

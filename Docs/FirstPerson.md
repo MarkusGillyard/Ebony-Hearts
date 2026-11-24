@@ -468,7 +468,7 @@ path as a player. New commands:
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
 | `fp_dummy <stand\|guard\|strikes>`, `fp_dummy_reset` | all | what the pause menu's dummy controls do |
-| `fp_frames <count> <name>` | all | slows the world to 1/20 and saves one screenshot per combat frame |
+| `fp_frames <count> <name>` | development only | slows the world to 1/20 and saves one screenshot per combat frame |
 | `fp_teleport`, `fp_view`, `fp_box`, `fp_clear_boxes`, `fp_body_visible`, `fp_planar`, `fp_dummy_place`, `fp_health`, `fp_arms_fp` | development only | test positions, a blocking test box, the body and reflection experiments, placing the dummy, test Health, arms drawn as ordinary geometry |
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 | `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |

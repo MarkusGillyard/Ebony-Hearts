@@ -189,8 +189,9 @@ TArray<FString> FEHCombatText::Wrap(const FString& Text, const FEHPainter& P, co
 	return Out;
 }
 
-void FEHCombatText::Paint(FEHPainter& P, const FEHFonts& Fonts, TFunctionRef<bool(const FVector&, FVector2f&)> ViewTo, bool bReduceFlash)
+void FEHCombatText::Paint(FEHPainter& P, const FEHFonts& Fonts, const FTransform& View, TFunctionRef<bool(const FVector&, FVector2f&)> ViewTo, bool bReduceFlash)
 {
+	LastOffscreenX = 0.0f;
 	Offscreen = OutsideView = Popping = Placeholders = Suppressed = 0;
 	if (Bubbles.Num() == 0)
 	{
@@ -250,23 +251,29 @@ void FEHCombatText::Paint(FEHPainter& P, const FEHFonts& Fonts, TFunctionRef<boo
 			FVector2f At;
 			const AActor* S = B.Speaker.Get();
 			const FVector Head = S ? S->GetActorLocation() + FVector(0, 0, 70.0f) : FVector::ZeroVector;
-			const bool bOn = S && ViewTo(Head, At) && At.X >= ViewMin.X && At.X <= ViewMax.X && At.Y >= ViewMin.Y && At.Y <= ViewMax.Y;
+			const bool bProjected = S && ViewTo(Head, At);
+			const bool bOn = bProjected && At.X >= ViewMin.X && At.X <= ViewMax.X && At.Y >= ViewMin.Y && At.Y <= ViewMax.Y;
 			if (!bOn)
 			{
 				// Off screen (or behind the camera): speak from the nearest edge in the speaker's direction.
 				L.bOff = true;
 				++Offscreen;
-				FVector2f Dir = (S && ViewTo(Head, At)) ? (At - FVector2f(960.0f, 540.0f)) : FVector2f(0.0f, 1.0f);
-				if (S && !ViewTo(Head, At))
+				FVector2f Dir = bProjected ? (At - FVector2f(960.0f, 540.0f)) : FVector2f(0.0f, 1.0f);
+				if (S && !bProjected)
 				{
-					// Behind: the projection is unusable; use the speaker's side relative to the view instead.
-					Dir = FVector2f(1.0f, 0.6f);
+					// The projection cannot locate a rear speaker. Use the camera's lateral axis.
+					const double Side = View.InverseTransformPositionNoScale(Head).Y;
+					if (!FMath::IsNearlyZero(Side))
+					{
+						Dir = FVector2f(Side < 0.0 ? -1.0f : 1.0f, 0.0f);
+					}
 				}
 				Dir = Dir.GetSafeNormal();
 				const FVector2f C(960.0f, 540.0f);
 				const float Kx = Dir.X != 0.0f ? ((Dir.X > 0 ? ViewMax.X : ViewMin.X) - C.X) / Dir.X : 1e9f;
 				const float Ky = Dir.Y != 0.0f ? ((Dir.Y > 0 ? ViewMax.Y : ViewMin.Y) - C.Y) / Dir.Y : 1e9f;
 				At = C + Dir * FMath::Min(Kx, Ky);
+				LastOffscreenX = At.X - C.X;
 			}
 			L.Anchor = At;
 			// Beside the head: above it and a little to the side, so the speaker stays visible.

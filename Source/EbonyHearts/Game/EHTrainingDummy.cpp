@@ -220,6 +220,11 @@ void AEHTrainingDummy::Freeze(float Seconds)
 	FrozenLeft = FMath::Max(FrozenLeft, Seconds);
 	++FreezeCount;
 	Knockback = FVector::ZeroVector;
+	if (State == EState::Windup)
+	{
+		Enter(EState::Recover, Tuning.StrikeRecovery);
+		Cooldown = Tuning.StrikeCooldown;
+	}
 	IceCuff->SetVisibility(true);
 }
 
@@ -409,7 +414,7 @@ void AEHTrainingDummy::StepFrame()
 	switch (State)
 	{
 	case EState::Idle:
-		if (Mode == EEHDummyMode::Strikes && Cooldown == 0 && Player.IsValid() && To.Size() <= Tuning.StrikeRange)
+		if (Mode == EEHDummyMode::Strikes && FrozenLeft <= 0.0f && Cooldown == 0 && Player.IsValid() && To.Size() <= Tuning.StrikeRange)
 		{
 			const float Off = FMath::Abs(FMath::FindDeltaAngleDegrees(GetActorRotation().Yaw, To.Rotation().Yaw));
 			if (Off <= Tuning.StrikeArc)

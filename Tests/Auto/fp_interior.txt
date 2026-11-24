@@ -70,7 +70,7 @@ fp_expect y lt -2700
 fp_expect z lt -280
 fp_expect water gt 50
 
-log == the Hearted Dungeons gate and the sealed door stay shut
+log == the lower gate and the sealed door stay shut
 fp_teleport -400 -3300 -300 -90 0
 wait 0.4
 hold kbA FPForward
