@@ -3,14 +3,18 @@ with a plain skin material until the creator paints one. Headless:
     EH_FPHANDS_FBX=<SK_FPHands.fbx> bin/editor_py.sh Tools/Unreal/import_fp_hands.py
 """
 import os
+from pathlib import Path
+import sys
 
 import unreal
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from import_checked import import_checked, require_sources, save_checked
 
 FBX = os.environ["EH_FPHANDS_FBX"]
 DEST = "/Game/Characters/FPHands"
 NAME = "SK_FPHands"
 tools = unreal.AssetToolsHelpers.get_asset_tools()
-eal = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
 MP = unreal.MaterialProperty
 
@@ -23,11 +27,17 @@ def setp(obj, name, value):
     obj.set_editor_property(name, value)
 
 
-def skin_material():
+def skin_material(noise):
     path = f"{DEST}/M_FPHands_Skin"
-    if eal.does_asset_exist(path):
-        eal.delete_asset(path)
-    mat = tools.create_asset("M_FPHands_Skin", DEST, unreal.Material, unreal.MaterialFactoryNew())
+    if unreal.EditorAssetLibrary.does_asset_exist(path):
+        mat = unreal.load_asset(path)
+        if not isinstance(mat, unreal.Material):
+            raise RuntimeError(f"Expected a Material at {path}")
+        mel.delete_all_material_expressions(mat)
+    else:
+        mat = tools.create_asset("M_FPHands_Skin", DEST, unreal.Material, unreal.MaterialFactoryNew())
+        if not isinstance(mat, unreal.Material):
+            raise RuntimeError(f"Could not create {path}")
     # A warm, slightly varied skin with soft light bleeding through thin parts (subsurface), no texture yet.
     base = mel.create_material_expression(mat, unreal.MaterialExpressionVectorParameter, -900, -100)
     setp(base, "parameter_name", "SkinColor")
@@ -36,7 +46,7 @@ def skin_material():
     setp(uv, "u_tiling", 9.0)
     setp(uv, "v_tiling", 9.0)
     nz = mel.create_material_expression(mat, unreal.MaterialExpressionTextureSample, -900, 150)
-    setp(nz, "texture", unreal.load_asset("/Game/VFX/T_FX_Noise"))
+    setp(nz, "texture", noise)
     mel.connect_material_expressions(uv, "", nz, "UVs")
     rng = mel.create_material_expression(mat, unreal.MaterialExpressionLinearInterpolate, -650, 150)
     a = mel.create_material_expression(mat, unreal.MaterialExpressionConstant, -800, 300)
@@ -66,15 +76,21 @@ def skin_material():
     mel.connect_material_property(op, "", MP.MP_OPACITY)
     setp(mat, "used_with_skeletal_mesh", True)
     mel.recompile_material(mat)
-    eal.save_asset(path, only_if_is_dirty=False)
+    save_checked(mat)
     return mat
 
 
 def main():
-    mat = skin_material()
-    for n in (NAME, f"{NAME}_Skeleton", f"{NAME}_PhysicsAsset"):
-        if eal.does_asset_exist(f"{DEST}/{n}"):
-            eal.delete_asset(f"{DEST}/{n}")
+    require_sources([FBX])
+    noise = unreal.load_asset("/Game/VFX/T_FX_Noise")
+    if not isinstance(noise, unreal.Texture2D):
+        raise RuntimeError("Missing first-person hand texture /Game/VFX/T_FX_Noise")
+    skeleton_path = f"{DEST}/{NAME}_Skeleton"
+    skeleton = None
+    if unreal.EditorAssetLibrary.does_asset_exist(skeleton_path):
+        skeleton = unreal.load_asset(skeleton_path)
+        if not isinstance(skeleton, unreal.Skeleton):
+            raise RuntimeError(f"Expected a Skeleton at {skeleton_path}")
     task = unreal.AssetImportTask()
     task.filename = FBX
     task.destination_path = DEST
@@ -88,29 +104,27 @@ def main():
     opts.import_textures = False
     opts.import_animations = False
     opts.create_physics_asset = False
+    if skeleton is not None:
+        opts.skeleton = skeleton
     opts.mesh_type_to_import = unreal.FBXImportType.FBXIT_SKELETAL_MESH
     smd = opts.skeletal_mesh_import_data
     smd.set_editor_property("convert_scene", True)
     smd.set_editor_property("force_front_x_axis", False)
     smd.set_editor_property("normal_import_method", unreal.FBXNormalImportMethod.FBXNIM_COMPUTE_NORMALS)
     task.options = opts
-    tools.import_asset_tasks([task])
-    mesh = unreal.load_asset(f"{DEST}/{NAME}")
-    if mesh is None:
-        raise RuntimeError("import failed")
-    mats = list(mesh.materials)
-    for i, m in enumerate(mats):
-        m.material_interface = mat
-        mats[i] = m
-    mesh.materials = mats
-    eal.save_asset(mesh.get_path_name(), only_if_is_dirty=False)
+    mesh = import_checked(task, unreal.SkeletalMesh, legacy_fbx=True)
     skel = mesh.get_editor_property("skeleton")
-    if skel is None:
-        raise RuntimeError("no skeleton was created")
-    # The skeleton (and anything else the import made) must be saved too, or the game loads a mesh with no skeleton.
-    eal.save_asset(skel.get_path_name(), only_if_is_dirty=False)
-    eal.save_directory(DEST, only_if_is_dirty=False, recursive=True)
-    log(f"DONE {mesh.get_path_name()} skeleton={skel.get_path_name() if skel else None} slots={len(mats)}")
+    if not isinstance(skel, unreal.Skeleton) or skel.get_path_name() != f"{skeleton_path}.{NAME}_Skeleton":
+        raise RuntimeError(f"Unexpected skeleton on {mesh.get_path_name()}")
+    mats = list(mesh.materials)
+    if len(mats) != 1:
+        raise RuntimeError(f"Expected one material slot on {mesh.get_path_name()}, got {len(mats)}")
+    slot = mats[0]
+    slot.material_interface = skin_material(noise)
+    mesh.materials = [slot]
+    save_checked(skel)
+    save_checked(mesh)
+    log(f"DONE {mesh.get_path_name()} skeleton={skel.get_path_name()} slots={len(mats)}")
 
 
 main()
