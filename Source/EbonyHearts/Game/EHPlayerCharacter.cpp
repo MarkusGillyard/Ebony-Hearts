@@ -405,6 +405,14 @@ void AEHPlayerCharacter::Emit(FEHFirstPersonEvent::EKind Kind, float Strength)
 	Events.Add(E);
 }
 
+void AEHPlayerCharacter::CancelActionsForPrayer()
+{
+	Fists.Reset();
+	JumpBuffer = 0.0f;
+	StopJumping();
+	GetCharacterMovement()->StopMovementImmediately();
+}
+
 void AEHPlayerCharacter::ApplyInput(const FEHFirstPersonInput& In, float DeltaSeconds)
 {
 	AController* C = GetController();

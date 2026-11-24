@@ -252,11 +252,12 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	// The spell selector: held, it takes the mouse and the right stick for choosing instead of looking.
 	const bool bSelectHeld = ((KeyHeld | PadHeld) & Bit(EEHAction::FPSpellSelect)) != 0;
 	EEHFistAction SelectedSpell = EEHFistAction::None;
-	if (bSelectHeld && !bSpellSelect)
+	if (bSelectHeld && !bSpellSelect && !bPraying)
 	{
 		OpenSpellSelect();
 	}
-	if (bSpellSelect)
+	const bool bSelectorOwnsLook = bSpellSelect;
+	if (bSelectorOwnsLook)
 	{
 		if (Settings.SpellSelector == 0)
 		{
@@ -309,8 +310,8 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 			SelectedSpell = CloseSpellSelect(true);
 		}
 	}
-	const FVector2D LookMouse = bSpellSelect ? FVector2D::ZeroVector : Mouse;
-	if (bSpellSelect)
+	const FVector2D LookMouse = bSelectorOwnsLook ? FVector2D::ZeroVector : Mouse;
+	if (bSelectorOwnsLook)
 	{
 		PadLook = FVector2D::ZeroVector;
 	}
