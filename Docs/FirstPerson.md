@@ -1,14 +1,13 @@
 # First-person prototype
 
-This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space. Milestone 2, Walk the Chapel:
-the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
-and a held block, practised on a training dummy (the shove was removed on 2026-11-22: quality over quantity). Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
-Wall, with the wall's water freeze and Fireball's melt. Milestone 5, One Wolf: a Chapel wolf that treats the player by
-their alignment (nine tiers), with navigation through the Chapel. The game opens on the title (the name typeset in Cinzel on
-plain black, since 2026-11-23); any button goes straight into the Chapel. The 2.5D slice stays intact in `main`'s
-history. Its fighting code is still compiled here but is not reachable from the first-person flow (the creator chose to
-hide it, 2026-11-23). Automated runs start in the Chapel unless `-EHTitle` is given; development builds open the slice's
-own title and menus with `-EHSlice`.
+Walk, sprint, jump and crouch through the Drowned Chapel. Practice the jab, straight and held guard on the training
+dummy, then use Fireball and Ice Wall against one to four wolves. Ice Wall freezes nearby shallow water and Fireball
+melts the wall. The Chapel supports interactions, prayer and a prototype clock. Wolf encounters use nine alignment
+tiers and placeholder combat text.
+
+The game opens on a black title with the name typeset in Cinzel. Any button enters the Chapel. Automated runs start
+in the Chapel by default and can exercise the title with `-EHTitle`. Development builds open the 2.5D slice's own
+title and menus with `-EHSlice`.
 
 Every model, animation and blockout in this build is a placeholder. The game says so in a small line at the bottom
 left of the screen.
@@ -322,7 +321,7 @@ names (`Source/EbonyHearts/Game/EHAlignment.h`).
 | Neutral | Well-meaning, Platonic (the start), Self-serving |
 | Evil | Ruthless, Malevolent, Forsaken |
 
-The prototype has no alignment meter yet. The developer panel (development builds) sets the tier directly, and the
+The untitled alignment meter appears while praying. The Development panel sets the tier directly, and the
 wolf moves it: harming the wolf pushes the player one tier toward evil, and killing it drops them to at least
 Malevolent (one tier deeper if they are already evil). The alignment lasts until the game closes; Return to the start
 and the death reset keep it.
@@ -339,7 +338,7 @@ and the death reset keep it.
   escalates together); leaving the Chapel ends the warning. Once fighting, it closes, circles at about 3.3 m, then
   bites (8 damage) or lunges from 3 to 6 m away (12 damage).
 - **Prayer as sanctuary:** while the player kneels to pray, no wolf attacks them regardless of alignment; the wolves
-  stand guard nearby and protect them from any threat.
+  stand guard nearby and can intercept the prototype training dummy when it threatens the player.
 - **Life at rest:** when no one needs attending to, wolves lie down, sleep, lift their heads as someone passes, and
   occasionally wander near their resting spot.
 - **A threat is not harm.** A jab, straight or cast aimed at a calm wolf within 4.8 m that does not connect makes it
@@ -351,7 +350,7 @@ and the death reset keep it.
   takes the blows meant for the player (it is never brought below 1 Health doing so).
 - **Shadows (developer toggle until death/Qhi Stones exist):** a Shadow cannot cast Qhi spells. The wolves warn it to
   pray; three in-game days of prayer at the kneeler restore it, while striking or ignoring the warning triggers the
-  exorcism ending and returns to the title.
+  prototype encounter outcome and returns to the title.
 - **Ice Wall:** the wall blocks the wolf's path. It walks the long way round (in the test, 4.7 m becomes 21 m by the
   side aisle) until the wall melts. A wall rising in water freezes the wolf's feet, like the dummy's.
 
@@ -379,7 +378,7 @@ The wolf moves on a Recast navigation mesh built when first person starts (about
 its render geometry (complex as simple), which navigation does not read, so 85 invisible boxes (`EH_NavProxy_*`,
 no collision, navigation only) stand in for the floors, steps, piers, pews and the altar. `EH_FP_STAGE=nav
 Tools/Unreal/adapt_chapel_fp.py` places them and the navigation bounds. Ice Walls update the mesh when they rise and
-when they start to melt.
+when they melt, expire or shatter.
 
 ### Placeholder body
 
@@ -542,22 +541,17 @@ would override injected stick values on `pad0`.
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
-## Sound loading and the single slow frames
+## Sound preload and frame-time evidence
 
-First person loads every combat, UI and ambience sound when it starts: 59 sounds, in 10–13 ms in a Shipping build.
-Before that, each sound loaded from the package the first time it played, which is a synchronous read in the middle
-of a frame.
+First person preloads combat, UI and ambience cues on entry. Historical Shipping logs at `d1da055` loaded 59 cues.
+The Ice Wall sound set adds nine cues across charge, raise, hit, shatter and melt. The `25d2ef3` Development Editor
+run logged 68 preloads. These counts describe different builds and establish load coverage.
 
-The single 40–70 ms frames seen in Shipping captures since milestone 4 are mostly something else.
-
-| Capture | When the slow frame comes |
-|---|---|
-| Spells | the first time the view turns that way in a session |
-| Stability | the first 360° turn, the first time the west end comes into view |
-| Stability | also the first reset after launch |
-
-- They repeat at the same moments in the same script, the GPU time stays normal, and runs whose warm-up covers the
-  same views have none: graphics pipelines being created the first time a material is drawn.
+The recorded cache comparison below describes `1dfb393` and `6316b39`. On the later `d1da055` warm Shipping spell
+run at 1920 × 1080 with VSync, 3,626 frames had a 16.758 ms p99 and two frames over 33.3 ms (maximum 56.779 ms).
+The GPU samples at those two frames were 7.131 and 7.844 ms. The trace does not identify the stall cause. The warm
+Development four-wolf run had 3,562 frames, a 16.854 ms p99, and no frames over 33.3 ms. The older 32.7-minute
+soak applies to `63a08b2`.
 
 ### The bundled pipeline cache
 
@@ -587,16 +581,15 @@ perf routes, spells, wolf, Chapel, clock, controls, movement and two view tours)
 
 ## Known limits
 
-- Fists: the arms are Wren's, cut from her test model, and both casts use the same fists as the punches;
-  final arms and animation are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
+- Fists use the CC0-derived hands with six placeholder keyed clips and open casting palms. Final arms and animation
+  are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
   fighting clip.
 - Magic: the stat shares are engineering guesses; the ice, fire and their sounds are placeholders; the frozen sheet is
   a plain disc that can reach over a dry edge; Enchanted
   strikes and lesser ice spells that strengthen the wall wait for their own specs.
 
 - Wolf: the body is placeholder parts with code animation, so it slides a little on turns and has no fur. The
-  harm and kill shifts and the six new tier names are the prototype's reading of the design. The alignment has no
-  meter; only the developer panel and the wolf change it. One wolf only: the pack is milestone 6. The navigation
+  harm and kill shifts and the six new tier names are the prototype's reading of the design. The numeric tuning and text are provisional. The navigation
   proxies must be re-placed if the Chapel's layout changes.
 
 - Footsteps sound only in water (`S_StepWater`). Dry surfaces (pews, altar steps, rubble) are silent; there is no dry

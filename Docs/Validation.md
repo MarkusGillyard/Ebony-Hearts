@@ -1,5 +1,8 @@
 # Validation report
 
+The dated results below describe the 2.5D slice. The [first-person validation notes](FirstPerson.md#automation)
+identify the Chapel tests, their build configurations, and historical frame traces.
+
 **Independent review update (2026-11-11).** The candidate records below are dated implementer evidence. The latest
 local Shipping review package is `sol-review-f3c5abd`, from source
 `f3c5abd7ee122f1292bb9f250915d20839c4b06a` and content

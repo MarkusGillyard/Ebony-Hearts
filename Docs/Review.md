@@ -1,5 +1,8 @@
 # Review guide: combat, animation and character pass (2026-11-08), controls and Ashka (2026-11-09)
 
+The dated review records on this page concern the 2.5D slice. See the [first-person guide](FirstPerson.md)
+for the current Chapel implementation and its revision-specific performance record.
+
 ## Independent review record (2026-11-11; integration completed)
 
 This section is the current independent review record. The implementer's earlier reviews and failed or superseded
