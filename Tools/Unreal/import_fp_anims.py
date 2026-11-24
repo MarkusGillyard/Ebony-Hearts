@@ -29,8 +29,14 @@ def main():
     files = [Path(SRC) / f"A_FPH_{clip}.fbx" for clip in clips]
     require_sources(files)
     skel = unreal.load_asset("/Game/Characters/FPHands/SK_FPHands_Skeleton")
-    if skel is None:
+    if not isinstance(skel, unreal.Skeleton):
         raise RuntimeError("no skeleton: import the hands first (import_fp_hands.py)")
+    for source in files:
+        path = f"{DEST}/{source.stem}"
+        if unreal.EditorAssetLibrary.does_asset_exist(path):
+            existing = unreal.load_asset(path)
+            if not isinstance(existing, unreal.AnimSequence) or existing.get_editor_property("skeleton") != skel:
+                raise RuntimeError(f"Expected an animation on {skel.get_path_name()} at {path}")
     for source in files:
         name = source.stem
         task = unreal.AssetImportTask()
@@ -57,6 +63,8 @@ def main():
         setp(ad, "force_front_x_axis", False)
         task.options = opts
         anim = import_checked(task, unreal.AnimSequence, legacy_fbx=True)
+        if anim.get_editor_property("skeleton") != skel:
+            raise RuntimeError(f"Imported {name} on the wrong skeleton")
         save_checked(anim)
         log(f"{name} length={anim.get_editor_property('sequence_length')}")
     log(f"DONE {len(files)}/{len(clips)}")
