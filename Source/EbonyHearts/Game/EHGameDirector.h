@@ -10,6 +10,8 @@
 #include "EHCombatData.h"
 #include "EHInputRouter.h"
 #include "EHMatch.h"
+#include "EHAlignment.h"
+#include "EHPlayerCharacter.h"
 #include "EHPresentation.h"
 #include "EHSettings.h"
 #include "EHUICanvas.h"
@@ -21,6 +23,8 @@
 
 class ACameraActor;
 class AEHFighterVisual;
+class AEHPlayerCharacter;
+class AEHTrainingDummy;
 class AEHVfx;
 class UTexture2D;
 
@@ -54,6 +58,7 @@ enum class EEHScreen : uint8
 	Credits,
 	QuitConfirm,
 	DisplayConfirm,
+	FirstPerson, // first-person play in the Chapel (the prototype's only mode)
 };
 
 enum class EEHMode : uint8
@@ -175,6 +180,32 @@ public:
 	bool IsPaused() const { return bPaused; }
 
 private:
+	// Object references come first: reflected property offsets must stay below 64 KiB, and the settings copies below are large.
+	UPROPERTY()
+	TObjectPtr<AEHFighterVisual> Visual[2];
+	UPROPERTY()
+	TObjectPtr<AEHVfx> Vfx;
+	UPROPERTY()
+	TObjectPtr<ACameraActor> Camera;
+	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
+	UPROPERTY()
+	TObjectPtr<UTexture2D> TitleTexture;
+	UPROPERTY()
+	TObjectPtr<UTexture2D> LogoSmallTexture;
+	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
+	UPROPERTY()
+	TObjectPtr<UTexture2D> KeyArtTexture;
+	UPROPERTY()
+	TObjectPtr<AEHPlayerCharacter> FPPlayer;
+	UPROPERTY()
+	TObjectPtr<AEHTrainingDummy> FPDummy;
+	UPROPERTY()
+	TObjectPtr<AEHWolf> FPWolf;
+	UPROPERTY()
+	TArray<TObjectPtr<AEHFireball>> FPFireballs;
+	UPROPERTY()
+	TArray<TObjectPtr<AEHIceWall>> FPWalls;
+
 	// Data
 	eh::Rules Rules;
 	eh::CharacterDef Chars[2];       // 0 Wren, 1 Ashka
@@ -253,22 +284,8 @@ private:
 	int8 LessonWalkDir = 0;
 
 	// Presentation
-	UPROPERTY()
-	TObjectPtr<AEHFighterVisual> Visual[2];
-	UPROPERTY()
-	TObjectPtr<AEHVfx> Vfx;
-	UPROPERTY()
-	TObjectPtr<ACameraActor> Camera;
-	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
-	UPROPERTY()
-	TObjectPtr<UTexture2D> TitleTexture;
 	FSlateBrush TitleBrush;
-	UPROPERTY()
-	TObjectPtr<UTexture2D> LogoSmallTexture;
 	FSlateBrush LogoSmallBrush;
-	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
-	UPROPERTY()
-	TObjectPtr<UTexture2D> KeyArtTexture;
 	FSlateBrush KeyArtBrush;
 	FVector CamPos = FVector(0, 600, 140);
 	float CamShake = 0.0f;
@@ -293,6 +310,82 @@ private:
 	float DisplayVerifyIn = 0.0f;
 	int32 DisplayReasserts = 0;
 	int32 TotalDisplayReasserts = 0;
+
+	// First person
+	bool bFirstPersonMode = true;
+	FEHFirstPersonTuning FPTuning;
+	bool bFPCrouchToggled = false;   // controller stick press, or the keyboard with toggle crouch
+	bool bFPSprintToggled = false;
+	bool bFPKeyCrouchHeld = false;
+	bool bFPKeySprintHeld = false;
+	int32 FPDevice = EHDeviceKeyboardA;   // the device the player last moved or looked with
+	float StaminaMeterAlpha = 0.0f;
+	int32 FPResets = 0;
+	TArray<FEHFirstPersonEvent> FPEvents;
+	FEHFirstPersonInput LastFPInput;
+	FVector FPMark = FVector::ZeroVector;   // automation: fp_mark / fp_expect moved
+	bool bHadFocus = true;
+	float HurtFlash = 0.0f;
+	int32 FPDeaths = 0;
+	int32 FPGuardedCount = 0;
+	int32 FPHurtCount = 0;
+	// Spells
+	FEHWater FPWater;
+	float QhiMeterAlpha = 0.0f;
+	int32 FPFireballHits = 0;       // fireballs that reached the dummy
+	int32 FPWallsMelted = 0;
+	int32 FPWallsShattered = 0;
+	int32 FPWallsExpired = 0;
+	int32 FPWallsRaised = 0;
+	int32 FPFizzles = 0;
+	int32 FPRefusedNoQhi = 0;
+	int32 FPRefusedNoRoom = 0;
+	bool bDevPanel = false;          // development builds: F10 panel (stats, resources, dummy)
+	// The player's alignment tier (EHAlignment.h): set by the developer selector, pushed toward evil by harming or
+	// killing a Chapel wolf. It survives the death reset, so a case can be repeated.
+	int32 FPAlignment = EHAlign::Platonic;
+	EEHWolfState FPWolfLastState = EEHWolfState::Calm;
+	int32 FPWolfHarms = 0;
+	int32 FPWolfKills = 0;
+	int32 FPReflected = 0;
+	void SpawnWolf();
+	void WolfStruck(const FEHWolfHit& R, const TCHAR* What);
+	// The spell selector (hold FPSpellSelect): a wheel or a list of every spell; release casts the highlighted one.
+	bool bSpellSelect = false;
+	int32 SpellHighlight = -1;       // index into the spell list, -1 none (the wheel's centre)
+	FVector2D SpellPointer = FVector2D::ZeroVector;   // wheel: where the mouse or stick points (unit circle)
+	float SpellListScroll = 0.0f;    // list: mouse travel toward the next row
+	bool bSpellStickHeld = false;    // list: the stick's flick already moved one row
+	float SpellSelectAlpha = 0.0f;
+	int32 SpellSelectCasts = 0;
+	void OpenSpellSelect();
+	// Closes the selector; with bCast, returns the highlighted spell to cast (None to cancel).
+	EEHFistAction CloseSpellSelect(bool bCast);
+	void PaintSpellSelect(FEHPainter& P);
+	void TickSpells(float DeltaSeconds);
+	void ClearSpells();
+	void BuildDeveloperPanel();
+	int32 FrameCaptureLeft = 0;     // automation: fp_frames screenshots every rendered frame
+	int32 FrameCaptureIndex = 0;
+	double FrameCaptureNext = 0.0;
+	FString FrameCaptureName;
+	bool LoadFirstPersonData();
+	void BeginFirstPerson();
+	void TickFirstPerson(float DeltaSeconds);
+	FEHFirstPersonInput GatherFirstPersonInput(float DeltaSeconds);
+	void PlayFirstPersonEvents();
+	void ResetFirstPerson(const TCHAR* Why);
+	void BuildFirstPersonPause();
+	void HandleFirstPersonNav(const FEHNavEvent& E);
+	void PaintFirstPerson(FEHPainter& P);
+	void ApplyFieldOfView();
+	// Rumble on the controller the player is using (when vibration is on). Large and small motor strengths 0..1.
+	void Rumble(float Large, float Small, float Seconds);
+	// One variant of a numbered sound (S_<Base>_01..N) at a pitch.
+	void PlayImpact(const TCHAR* Base, int32 Variants, float Volume, float Pitch);
+	int32 RumbleCount = 0;
+	bool RunFirstPersonCommand(const TArray<FString>& T, const FString& Line);
+	FString DescribeFirstPerson() const;
 
 	// Automation
 	FString AutoScript;

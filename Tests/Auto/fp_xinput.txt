@@ -1,0 +1,11 @@
+# Companion of fp_xinput_drive.py: real X11 keyboard and mouse input. This script only observes: it binds the left
+# mouse button as a second Jump, logs every press and held-state change, and samples the player once a second.
+wait 3
+remap fpKeyboard FPJump 1 LeftMouseButton
+log_input 80
+loop 60
+fp_state tick
+wait 1
+endloop
+reset_layout fpKeyboard
+quit

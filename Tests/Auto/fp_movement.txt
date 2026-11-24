@@ -1,0 +1,316 @@
+# First-person movement battery (development builds: uses fp_teleport and test boxes). Every check logs ok/FAIL.
+# Inputs go through the router as device presses (keyboard A, a virtual controller pad7, injected mouse counts).
+wait 6
+ui_hidden 0
+log (the training dummy is moved out of the nave's central aisle)
+fp_dummy_place 600 -1500 90
+log == spawn
+fp_expect screen eq 12
+fp_expect y near 300 5
+fp_expect z near 0 5
+fp_expect stamina eq 100
+fp_expect water near 3 0.5
+fp_expect fov near 90 0.5
+
+log == walk: W held, 4 m/s
+fp_teleport 0 350 0 -90 0
+wait 0.3
+hold kbA FPForward
+wait 1.2
+fp_expect speed near 400 15
+fp_state walking
+release kbA FPForward
+wait 0.6
+fp_expect speed lt 5
+
+log == strafe and back
+fp_teleport 0 300 0 -90 0
+wait 0.3
+hold kbA FPLeft
+wait 0.8
+fp_expect speed near 400 15
+release kbA FPLeft
+fp_teleport 0 0 0 -90 0
+wait 0.3
+hold kbA FPBack
+wait 0.5
+fp_expect speed gt 300
+release kbA FPBack
+wait 0.5
+
+log == diagonal is not faster
+fp_teleport 0 350 0 -90 0
+wait 0.3
+hold kbA FPForward
+hold kbA FPRight
+wait 1.0
+fp_expect speed near 400 15
+release kbA FPForward
+release kbA FPRight
+wait 0.5
+
+log == sprint: 7 m/s, drains a full bar in 6 s of running
+fp_teleport 0 350 0 -90 0
+wait 0.3
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.2
+fp_expect speed near 700 20
+fp_expect sprinting eq 1
+fp_expect stamina lt 90
+fp_teleport 0 350 0 -90 0
+wait 2.0
+fp_teleport 0 350 0 -90 0
+wait 2.0
+fp_teleport 0 350 0 -90 0
+wait 1.8
+fp_state after_sprint
+fp_expect exhausted eq 1
+fp_expect sprinting eq 0
+fp_expect speed near 400 20
+release kbA FPSprint
+release kbA FPForward
+wait 4.5
+fp_expect exhausted eq 0
+fp_expect stamina eq 100
+
+log == recovery waits 0.8 s after the last drain, then refills 25 per second
+fp_teleport 0 350 0 -90 0
+wait 0.3
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.2
+release kbA FPSprint
+release kbA FPForward
+fp_state drained_a
+wait 0.5
+fp_state drained_b
+fp_expect stamina lt 85
+wait 0.9
+fp_state recovering
+fp_expect stamina gt 86
+wait 2.5
+fp_expect stamina eq 100
+
+log == sprint needs forward input
+fp_teleport 0 300 0 -90 0
+wait 0.3
+hold kbA FPLeft
+hold kbA FPSprint
+wait 0.8
+fp_expect sprinting eq 0
+fp_expect speed near 400 15
+release kbA FPSprint
+release kbA FPLeft
+wait 0.5
+
+log == jump
+fp_teleport 0 300 0 -90 0
+wait 0.5
+press kbA FPJump
+fp_expect falling eq 1
+fp_expect vz gt 100
+wait 1.2
+fp_expect falling eq 0
+fp_expect z near 0 5
+
+log == jump into a low ceiling (bottom 200 cm)
+fp_box 300 250 225 120 120 25
+fp_teleport 300 250 0 -90 0
+wait 0.5
+press kbA FPJump
+wait 1.0
+fp_expect falling eq 0
+fp_expect z near 0 5
+fp_state ceiling_jump
+
+log == standing walk into a 140 cm opening is blocked
+fp_box 0 0 165 150 150 25
+fp_teleport 0 280 0 -90 0
+wait 0.4
+hold kbA FPForward
+wait 1.2
+fp_expect y gt 150
+release kbA FPForward
+wait 0.3
+
+log == crouch, walk under, stay down while blocked, stand once clear
+hold kbA FPCrouch
+wait 0.7
+fp_expect crouched eq 1
+fp_expect eye near 100 1
+hold kbA FPForward
+wait 0.6
+fp_expect speed near 200 10
+wait 0.3
+fp_state under_ceiling
+release kbA FPCrouch
+wait 0.3
+fp_expect crouched eq 1
+fp_expect y lt 150
+wait 1.4
+release kbA FPForward
+wait 0.6
+fp_state cleared_ceiling
+fp_expect crouched eq 0
+fp_expect eye near 165 2
+fp_clear_boxes
+
+log == jump from a crouch stands up first
+fp_teleport 0 300 0 -90 0
+wait 0.3
+hold kbA FPCrouch
+wait 0.4
+release kbA FPCrouch
+press kbA FPJump
+wait 0.3
+fp_expect crouched eq 0
+
+log == controller: left stick moves, dead zone holds still, right stick turns
+fp_teleport 0 350 0 -90 0
+wait 0.3
+axis pad7 Gamepad_LeftY 1.0
+wait 1.2
+fp_expect speed near 400 15
+axis pad7 Gamepad_LeftY 0.12
+wait 0.6
+fp_expect speed lt 5
+axis pad7 Gamepad_LeftY 0.5
+wait 1.0
+fp_expect speed gt 100
+fp_expect speed lt 300
+axis pad7 Gamepad_LeftY 0
+wait 0.5
+fp_teleport 0 300 0 -90 0
+axis pad7 Gamepad_RightX 1.0
+wait 1.0
+axis pad7 Gamepad_RightX 0
+fp_state stick_turn
+fp_expect yaw near 110 30
+axis pad7 Gamepad_RightX 0.1
+wait 0.5
+fp_expect yaw near 110 30
+axis pad7 Gamepad_RightX 0
+
+log == controller: stick-press sprint toggles until the player stops; crouch toggles
+fp_teleport 0 350 0 -90 0
+wait 0.3
+axis pad7 Gamepad_LeftY 1.0
+press pad7 FPSprint
+wait 1.0
+fp_expect sprinting eq 1
+fp_expect speed near 700 20
+axis pad7 Gamepad_LeftY 0
+wait 0.4
+axis pad7 Gamepad_LeftY 1.0
+wait 0.6
+fp_expect sprinting eq 0
+axis pad7 Gamepad_LeftY 0
+press pad7 FPCrouch
+wait 0.4
+fp_expect crouched eq 1
+press pad7 FPCrouch
+wait 0.4
+fp_expect crouched eq 0
+press pad7 FPJump
+wait 0.2
+fp_expect falling eq 1
+wait 1.0
+
+log == mouse look: 0.08 degrees per count, pitch stops short of vertical
+fp_teleport 0 300 0 -90 0
+wait 0.2
+look 1000 0
+wait 0.1
+fp_expect yaw near -10 0.5
+look 0 -500
+wait 0.1
+fp_expect pitch near 40 0.5
+look 0 -5000
+wait 0.1
+fp_expect pitch near 85 0.1
+look 0 10000
+wait 0.1
+fp_expect pitch near -85 0.1
+
+log == water and steps
+fp_teleport 0 -900 0 -90 0
+wait 0.8
+fp_expect water gt 25
+hold kbA FPForward
+wait 1.0
+fp_expect speed near 400 20
+release kbA FPForward
+fp_teleport 0 -1450 0 -90 0
+wait 0.5
+hold kbA FPForward
+wait 2.0
+release kbA FPForward
+wait 0.3
+fp_state altar_steps
+fp_expect z gt 20
+
+log == pause stops the world and holds
+fp_teleport 0 300 0 -90 0
+wait 0.3
+hold kbA FPForward
+wait 0.5
+press kbA Pause
+wait 0.3
+fp_expect paused eq 1
+fp_mark
+wait 1.0
+fp_state paused
+fp_expect moved lt 0.1
+release kbA FPForward
+press kbA Pause
+wait 0.3
+fp_expect paused eq 0
+wait 0.5
+fp_expect speed lt 5
+
+log == focus loss pauses and drops held input
+hold kbA FPForward
+wait 0.5
+fp_focus_lost
+wait 0.3
+fp_expect paused eq 1
+press kbA Back
+wait 0.4
+fp_expect paused eq 0
+wait 0.6
+fp_expect speed lt 5
+release kbA FPForward
+
+log == pause menu: Return to the start
+fp_teleport 0 -900 0 -90 0
+wait 0.5
+press kbA Pause
+press kbA Down
+press kbA Confirm
+wait 0.5
+fp_expect paused eq 0
+fp_expect y near 300 5
+fp_expect stamina eq 100
+
+log == out of the map resets
+fp_teleport 0 300 -2000 -90 0
+wait 1.0
+fp_expect y near 300 5
+
+log == Settings opens from the pause menu and returns to it
+press kbA Pause
+press kbA Down
+press kbA Down
+press kbA Confirm
+wait 0.3
+fp_expect screen eq 6
+press kbA Back
+wait 0.3
+fp_expect screen eq 12
+fp_expect paused eq 1
+press kbA Back
+wait 0.3
+fp_expect paused eq 0
+settings_roundtrip
+quit

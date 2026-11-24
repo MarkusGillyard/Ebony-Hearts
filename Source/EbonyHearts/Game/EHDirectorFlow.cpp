@@ -103,7 +103,13 @@ void AEHGameDirector::BuildMenu()
 			AutoLogLine(TEXT("quit requested"));
 			UKismetSystemLibrary::QuitGame(this, GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, false);
 		}));
-		Menu.Add(Button(TEXT("Cancel"), [this] { GoTo(EEHScreen::Main); }));
+		Menu.Add(Button(TEXT("Cancel"), [this] { GoTo(bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Main); }));
+		break;
+	case EEHScreen::FirstPerson:
+		if (bPaused)
+		{
+			BuildFirstPersonPause();
+		}
 		break;
 	case EEHScreen::Results:
 		MenuTitle = TEXT("");
@@ -234,6 +240,54 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 	case 1:
 	{
 		MenuTitle = TEXT("Controls");
+		if (bFirstPersonMode)
+		{
+			auto OpenFP = [this](EEHBindingSet Set) {
+				BindingSet = Set;
+				BindingPage = 0;
+				BindingListIndex = 0;
+				GoTo(EEHScreen::Bindings);
+			};
+			Menu.Add(Button(TEXT("Keyboard and mouse"), [OpenFP] { OpenFP(EEHBindingSet::FPKeyboard); }, TEXT("Remap movement keys and mouse buttons. The mouse always looks.")));
+			Menu.Add(Button(TEXT("Controller"), [OpenFP] { OpenFP(EEHBindingSet::FPController); }, TEXT("Remap buttons. The left stick always moves and the right stick always looks.")));
+			Menu.Add(Header(TEXT("Look")));
+			Menu.Add(Choice(TEXT("Mouse sensitivity"), [this] { return FString::Printf(TEXT("%.2f"), Settings.MouseSensitivity); },
+				[this](int32 D) { Settings.MouseSensitivity = FMath::Clamp(FMath::RoundToFloat((Settings.MouseSensitivity + D * 0.01f) * 100.0f) / 100.0f, 0.01f, 0.5f); },
+				TEXT("Degrees of turn per mouse count. Hold the arrow for larger steps.")));
+			Menu.Add(Choice(TEXT("Controller look speed"), [this] { return FString::Printf(TEXT("%d%%"), FMath::RoundToInt(Settings.StickSensitivity * 100.0f)); },
+				[this](int32 D) { Settings.StickSensitivity = FMath::Clamp(FMath::RoundToFloat((Settings.StickSensitivity + D * 0.1f) * 10.0f) / 10.0f, 0.3f, 3.0f); },
+				TEXT("How fast the right stick turns the view at full tilt.")));
+			Menu.Add(Choice(TEXT("Invert look"), [this] { return OnOff(Settings.bInvertLook); }, [this](int32) { Settings.bInvertLook = !Settings.bInvertLook; },
+				TEXT("Up looks down, for the mouse and the right stick.")));
+			Menu.Add(Choice(TEXT("Controller vibration"), [this] { return OnOff(Settings.bVibration); }, [this](int32) { Settings.bVibration = !Settings.bVibration; },
+				TEXT("Rumble when a technique lands, is blocked, or you are hit.")));
+			Menu.Add(Header(TEXT("Spells")));
+			Menu.Add(Choice(TEXT("Spell selector"), [this] { return FString(Settings.SpellSelector == 1 ? TEXT("List") : TEXT("Wheel")); },
+				[this](int32) { Settings.SpellSelector = Settings.SpellSelector == 1 ? 0 : 1; },
+				TEXT("Hold Choose a spell to open your spells; point or scroll to one and let go to cast it.")));
+			Menu.Add(Header(TEXT("Keyboard")));
+			Menu.Add(Choice(TEXT("Sprint"), [this] { return FString(Settings.bSprintToggle ? TEXT("Toggle") : TEXT("Hold")); }, [this](int32) { Settings.bSprintToggle = !Settings.bSprintToggle; bFPSprintToggled = false; },
+				TEXT("A controller's stick press always toggles sprint.")));
+			Menu.Add(Choice(TEXT("Crouch"), [this] { return FString(Settings.bCrouchToggle ? TEXT("Toggle") : TEXT("Hold")); }, [this](int32) { Settings.bCrouchToggle = !Settings.bCrouchToggle; bFPCrouchToggled = false; },
+				TEXT("A controller's stick press always toggles crouch.")));
+			Menu.Add(Header(FString()));
+			Menu.Add(Choice(TEXT("Button prompts"), [this] {
+				switch (Settings.PromptStyle)
+				{
+				case EEHPromptStyle::Keyboard: return FString(TEXT("Keyboard"));
+				case EEHPromptStyle::PlayStation: return FString(TEXT("PlayStation"));
+				case EEHPromptStyle::Xbox: return FString(TEXT("Xbox"));
+				default: return FString(TEXT("Automatic"));
+				}
+			}, [this](int32 D) { Settings.PromptStyle = static_cast<EEHPromptStyle>((static_cast<int32>(Settings.PromptStyle) + D + 4) % 4); }, TEXT("Automatic follows the device you use.")));
+			Menu.Add(Button(TEXT("Restore default controls"), [this] {
+				bResetAllLayouts = true;
+				BindingPage = 3;
+				GoTo(EEHScreen::Bindings);
+			}, TEXT("Both first-person layouts return to the defaults.")));
+			Menu.Add(Button(TEXT("Back"), Back));
+			break;
+		}
 		Menu.Add(Choice(TEXT("Button prompts"), [this] {
 			switch (Settings.PromptStyle)
 			{
@@ -280,6 +334,13 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			Settings.FrameCap = Caps[(Index + D + 6) % 6];
 		}, TEXT("Combat always runs at 60 steps per second.")));
 		Menu.Add(Choice(TEXT("VSync"), [this] { return OnOff(Settings.bVSync); }, [this](int32) { Settings.bVSync = !Settings.bVSync; }));
+		if (bFirstPersonMode)
+		{
+			// Applies at once; it is not part of the display change that asks for confirmation.
+			Menu.Add(Choice(TEXT("Field of view"), [this] { return FString::Printf(TEXT("%d"), Settings.FieldOfView); },
+				[this](int32 D) { Settings.FieldOfView = FMath::Clamp(Settings.FieldOfView + D * 5, 70, 110); ApplyFieldOfView(); },
+				TEXT("Horizontal degrees. Applies immediately.")));
+		}
 		{
 			// Mark what Apply would change (the first six rows, in order).
 			const TFunction<bool()> Differs[] = {
@@ -297,6 +358,7 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 		}
 		Menu.Add(Button(TEXT("Apply"), [this] {
 			DisplayRevert = FEHSettings::Load();
+			DisplayRevert.FieldOfView = Settings.FieldOfView;
 			ApplySettings(true);
 			GoTo(EEHScreen::DisplayConfirm);
 		}, TEXT("Reverts automatically unless you confirm.")));
@@ -325,7 +387,15 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 		Menu.Add(Choice(TEXT("Reduce camera shake"), [this] { return OnOff(Settings.bReduceShake); }, [this](int32) { Settings.bReduceShake = !Settings.bReduceShake; }));
 		Menu.Add(Choice(TEXT("Reduce flashes"), [this] { return OnOff(Settings.bReduceFlash); }, [this](int32) { Settings.bReduceFlash = !Settings.bReduceFlash; ApplySettings(false); }, TEXT("Dims impact flashes and the aura.")));
 		Menu.Add(Choice(TEXT("Input hints"), [this] { return OnOff(Settings.bInputHints); }, [this](int32) { Settings.bInputHints = !Settings.bInputHints; }, TEXT("Button prompts along the bottom of menus.")));
-		Menu.Add(Choice(TEXT("Default CPU level"), [this] { return FString(Settings.CpuLevel == 0 ? TEXT("Easy") : (Settings.CpuLevel == 1 ? TEXT("Normal") : TEXT("Hard"))); }, [this](int32 D) { Settings.CpuLevel = (Settings.CpuLevel + D + 3) % 3; CpuLevel = Settings.CpuLevel; }));
+		if (bFirstPersonMode)
+		{
+			Menu.Add(Choice(TEXT("Stamina meter"), [this] { return FString(Settings.StaminaMeter == 0 ? TEXT("Off") : (Settings.StaminaMeter == 1 ? TEXT("While it changes") : TEXT("Always"))); },
+				[this](int32 D) { Settings.StaminaMeter = (Settings.StaminaMeter + D + 3) % 3; }, TEXT("A thin line under the centre of the view.")));
+		}
+		else
+		{
+			Menu.Add(Choice(TEXT("Default CPU level"), [this] { return FString(Settings.CpuLevel == 0 ? TEXT("Easy") : (Settings.CpuLevel == 1 ? TEXT("Normal") : TEXT("Hard"))); }, [this](int32 D) { Settings.CpuLevel = (Settings.CpuLevel + D + 3) % 3; CpuLevel = Settings.CpuLevel; }));
+		}
 		Menu.Add(Button(TEXT("Back"), Back));
 		break;
 	default:
@@ -337,10 +407,8 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 {
 	// Order follows the controller: attacks and defence first, then movement and the training shortcut.
 	// Throw is listed while throws are in the game (rules.json "throws"); its bindings are kept either way.
-	static const EEHAction AllActions[] = {EEHAction::Light, EEHAction::Heavy, EEHAction::Dodge, EEHAction::Throw, EEHAction::Block,
-		EEHAction::Special, EEHAction::Left, EEHAction::Right, EEHAction::Jump, EEHAction::Down, EEHAction::Reset};
 	TArray<EEHAction> Order;
-	for (EEHAction A : AllActions)
+	for (EEHAction A : EHActionsFor(Set))
 	{
 		if (A != EEHAction::Throw || Rules.ThrowsEnabled())
 		{
@@ -367,7 +435,9 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 				BuildBindingsMenu(BindingSet);
 				MenuIndex = 0;
 			};
-			I.Hint = A == EEHAction::Reset ? FString(TEXT("Training only: puts both fighters back at their start positions."))
+			I.Hint = EHIsFirstPersonSet(Set) ? FString(bPad ? TEXT("Confirm to change. The sticks always move and look; Options / Menu always pauses.")
+					: TEXT("Confirm to change. Mouse buttons can be used. Escape always pauses."))
+				: A == EEHAction::Reset ? FString(TEXT("Training only: puts both fighters back at their start positions."))
 				: A == EEHAction::Down ? FString(bPad ? TEXT("Hold to crouch; with Heavy, the uppercut; with Light, the low attack. The stick's down also crouches.")
 				                                      : TEXT("Hold to crouch; with Heavy, the uppercut; with Light, the low attack."))
 				: A == EEHAction::Throw ? FString(TEXT("Throws beat any guard up close; right after a light that hits, the throw cannot be escaped."))
@@ -383,7 +453,9 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 		Menu.Add(Button(TEXT("Back"), [this] {
 			SaveSettings();
 			FString Missing;
-			for (EEHAction A : {EEHAction::Light, EEHAction::Heavy, EEHAction::Special, EEHAction::Throw, EEHAction::Dodge, EEHAction::Block, EEHAction::Left, EEHAction::Right, EEHAction::Down})
+			const TArray<EEHAction> Needed = EHIsFirstPersonSet(BindingSet) ? EHActionsFor(BindingSet)
+				: TArray<EEHAction>{EEHAction::Light, EEHAction::Heavy, EEHAction::Special, EEHAction::Throw, EEHAction::Dodge, EEHAction::Block, EEHAction::Left, EEHAction::Right, EEHAction::Down};
+			for (EEHAction A : Needed)
 			{
 				if (Settings.Bindings.IsUnbound(BindingSet, A) && (A != EEHAction::Throw || Rules.ThrowsEnabled()))
 				{
@@ -462,7 +534,12 @@ void AEHGameDirector::BuildBindingsMenu(EEHBindingSet Set)
 			: FString::Printf(TEXT("Restore %s to the official defaults?"), EHSetLabel(Set));
 		Menu.Add(Button(TEXT("Restore defaults"), [this] {
 			const bool bAll = bResetAllLayouts;
-			if (bAll)
+			if (bAll && bFirstPersonMode)
+			{
+				Settings.Bindings.ResetSet(EEHBindingSet::FPKeyboard);
+				Settings.Bindings.ResetSet(EEHBindingSet::FPController);
+			}
+			else if (bAll)
 			{
 				Settings.Bindings = FEHBindings::Defaults();
 			}
@@ -792,7 +869,7 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 	case EEHNav::Back:
 	case EEHNav::Pause:
 		Audio.Play(TEXT("UiBack"), EEHSoundCat::Ui, 0.8f);
-		if (Screen == EEHScreen::Match && bPaused)
+		if ((Screen == EEHScreen::Match || Screen == EEHScreen::FirstPerson) && bPaused)
 		{
 			SetPaused(false, EHDeviceNone);
 		}
@@ -819,7 +896,7 @@ void AEHGameDirector::HandleMenuNav(const FEHNavEvent& E)
 		}
 		else if (Screen == EEHScreen::QuitConfirm)
 		{
-			GoTo(EEHScreen::Main);
+			GoTo(bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Main);
 		}
 		else if (Screen == EEHScreen::Main && E.Nav == EEHNav::Back)
 		{
@@ -961,6 +1038,9 @@ void AEHGameDirector::HandleNav()
 			break;
 		case EEHScreen::Match:
 			HandleMatchNav(E);
+			break;
+		case EEHScreen::FirstPerson:
+			HandleFirstPersonNav(E);
 			break;
 		case EEHScreen::MoveList:
 			if ((E.Nav == EEHNav::Left || E.Nav == EEHNav::Right) && !E.bRepeat)

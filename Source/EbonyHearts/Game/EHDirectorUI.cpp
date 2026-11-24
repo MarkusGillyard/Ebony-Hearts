@@ -151,6 +151,10 @@ EEHBindingSet AEHGameDirector::PromptSet(int32 Device) const
 	const int32 D = Device == EHDeviceNone ? RouterPtr->MostRecentDevice() : Device;
 	if (PromptKind(Device) == EEHDeviceKind::Keyboard)
 	{
+		if (RouterPtr->IsFirstPerson())
+		{
+			return EEHBindingSet::FPKeyboard;
+		}
 		return D == EHDeviceKeyboardB ? EEHBindingSet::KeyboardB : EEHBindingSet::KeyboardA;
 	}
 	return D >= EHDeviceGamepadBase ? RouterPtr->SetFor(D) : EEHBindingSet::GamepadP1;
@@ -161,7 +165,7 @@ FKey AEHGameDirector::PromptKey(const FEHHint& Hint, int32 Device) const
 	const EEHBindingSet Set = PromptSet(Device);
 	if (Hint.Nav != EEHNav::Count)
 	{
-		return EHMenuKey(EHIsKeyboardSet(Set) ? Set : EEHBindingSet::GamepadP1, Hint.Nav);
+		return EHMenuKey(EHMenuClass(Set), Hint.Nav);
 	}
 	return Hint.Action == EEHAction::Count ? FKey(EKeys::Invalid) : Settings.Bindings.First(Set, Hint.Action);
 }
@@ -362,7 +366,7 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 		PaintError(P);
 		return;
 	}
-	if (!bMatchActive || Screen != EEHScreen::Match)
+	if ((!bMatchActive || Screen != EEHScreen::Match) && Screen != EEHScreen::FirstPerson)
 	{
 		if (Screen != EEHScreen::Results)
 		{
@@ -370,7 +374,7 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 		}
 	}
 	// Screens fade in over 0.15 s. Visual only: input acts at once, and a press during the fade is never lost.
-	if (Screen != EEHScreen::Match && Screen != EEHScreen::Title && Screen != EEHScreen::Error)
+	if (Screen != EEHScreen::Match && Screen != EEHScreen::Title && Screen != EEHScreen::Error && Screen != EEHScreen::FirstPerson)
 	{
 		P.Opacity = FMath::Clamp(ScreenAge / 0.15f, 0.0f, 1.0f);
 	}
@@ -413,6 +417,9 @@ void AEHGameDirector::PaintUI(FEHPainter& P)
 				PaintMenu(P, MenuTitle, true);
 			}
 		}
+		break;
+	case EEHScreen::FirstPerson:
+		PaintFirstPerson(P);
 		break;
 	case EEHScreen::Results:
 		PaintResults(P);

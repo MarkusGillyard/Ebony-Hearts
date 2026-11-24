@@ -33,7 +33,8 @@ def ledger_table():
     """The third-party table from Docs/AssetLedger.md as plain text."""
     lines = open(os.path.join(REPO, "Docs", "AssetLedger.md"), encoding="utf-8").read().splitlines()
     start = lines.index("## Third-party inputs")
-    rows = [l for l in lines[start:] if l.startswith("|")]
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    rows = [l for l in lines[start:end] if l.startswith("|")]
     rows = [r for r in rows if not re.match(r"^\|[-| ]+\|$", r)]
     out = []
     for r in rows[1:]:
@@ -137,7 +138,7 @@ def main():
         f.write(notices(package))
     built = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(os.path.getmtime(os.path.join(package, "EbonyHearts.sh"))))
     with open(os.path.join(release, "VERSION.txt"), "w", encoding="utf-8") as f:
-        f.write(f"Ebony Hearts - first playable slice ({name})\n"
+        f.write(f"Ebony Hearts ({name})\n"
                 f"Source commit: {commit}\n"
                 f"Content hash (SHA-256 over the pak files): {content_hash(package)}\n"
                 f"Engine: Unreal Engine 5.8.4, {config}, Linux x86-64 (Vulkan SM6)\n"

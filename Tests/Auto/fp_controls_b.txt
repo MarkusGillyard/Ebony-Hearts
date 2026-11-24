@@ -1,0 +1,22 @@
+# First-person controls, launch B of two: the remaps from launch A were saved; restoring the defaults works.
+wait 5
+expect_binding fpKeyboard FPForward 0 I
+expect_binding fpKeyboard FPJump 0 LeftMouseButton
+expect_binding fpKeyboard FPSprint 0 D
+expect_binding fpKeyboard FPRight 0 LeftShift
+expect_binding fpController FPJump 0 Gamepad_FaceButton_Right
+reset_layout fpKeyboard
+reset_layout fpController
+expect_binding fpKeyboard FPForward 0 W
+expect_binding fpKeyboard FPJump 0 SpaceBar
+expect_binding fpKeyboard FPSprint 0 LeftShift
+expect_binding fpController FPJump 0 Gamepad_FaceButton_Bottom
+fp_reset
+log (turned along the entrance, clear of the training dummy ahead)
+look 1125 0
+wait 0.3
+hold kbA FPForward
+wait 1.0
+fp_expect speed near 400 15
+release kbA FPForward
+quit

@@ -1,0 +1,235 @@
+# Physical techniques against the training dummy (development builds: teleports and test health). Every check logs
+# ok/FAIL. The player stands 1.1 m from the dummy, facing it; the dummy faces the player.
+wait 6
+fp_dummy stand
+fp_teleport 0 -40 0 -90 -4
+wait 0.8
+log == arms are down until a technique needs them
+fp_expect arms eq 0
+
+log == jab connects: 6 damage, arms up
+press kbA FPJab
+fp_expect action eq 1
+fp_expect arms eq 1
+wait 0.5
+fp_expect dummy_hits eq 1
+fp_expect dummy_damage eq 6
+fp_expect action eq 0
+
+log == the jab chains into the straight (pressed during the jab)
+fp_dummy_reset
+wait 0.6
+press kbA FPJab
+press kbA FPStraight
+wait 0.8
+fp_expect dummy_hits eq 2
+fp_expect dummy_damage eq 18
+
+log == reactions: a straight to the head snaps it back; to the body the chest leads
+fp_dummy_reset
+fp_teleport 0 -40 0 -90 -4
+wait 0.6
+press kbA FPStraight
+wait 0.5
+fp_expect dummy_body eq 0
+fp_expect dummy_headpeak gt 8
+fp_expect dummy_chestpeak gt 2
+wait 1.0
+fp_dummy_reset
+fp_teleport 0 -40 0 -90 -22
+wait 0.6
+press kbA FPStraight
+wait 0.5
+fp_expect dummy_body eq 1
+fp_expect dummy_chestpeak gt 6
+log (every reaction goes away from the attacker and settles without swinging back toward them)
+wait 1.0
+fp_expect dummy_chestback near 0 1.5
+fp_expect dummy_chestback gt -0.5
+
+log == the straight does not cancel into a jab; a late jab press expires
+fp_dummy_reset
+wait 0.6
+press kbA FPStraight
+press kbA FPJab
+wait 1.0
+fp_expect dummy_hits eq 1
+fp_expect dummy_damage eq 12
+
+log == a press just before the jab ends is buffered and comes out
+fp_dummy_reset
+wait 0.6
+press kbA FPJab
+wait 0.12
+press kbA FPJab
+wait 0.8
+fp_expect dummy_hits eq 2
+
+log == whiff: aimed away, nothing connects
+fp_dummy_reset
+fp_teleport 0 -40 0 90 -4
+wait 0.4
+press kbA FPJab
+wait 0.6
+fp_expect dummy_hits eq 0
+fp_expect arms eq 1
+wait 1.0
+fp_expect arms eq 0
+
+log == knuckles on stone: a jab into a pier stops there
+fp_teleport 730 -400 0 0 0
+wait 0.4
+press kbA FPJab
+wait 0.5
+fp_expect dummy_hits eq 0
+
+log == guard dummy: frontal hits are blocked (70% stopped), hits from behind are not
+fp_dummy_reset
+fp_teleport 0 -40 0 -90 -4
+wait 0.6
+fp_dummy guard
+wait 0.6
+press kbA FPJab
+wait 0.6
+fp_expect dummy_blocks eq 1
+fp_expect dummy_damage near 1.8 0.05
+fp_teleport 0 -260 0 90 -4
+wait 0.05
+press kbA FPStraight
+wait 0.6
+fp_expect dummy_hits eq 1
+fp_expect dummy_damage near 13.8 0.05
+
+log == block: held guard rises; techniques are not thrown while it is held
+fp_dummy_reset
+fp_dummy stand
+fp_teleport 0 -40 0 -90 -4
+wait 0.5
+hold kbA FPBlock
+wait 0.2
+fp_expect guarding eq 1
+fp_expect arms eq 1
+press kbA FPJab
+wait 0.4
+fp_expect dummy_hits eq 0
+log == releasing the guard, a jab pressed while it lowers still comes out
+release kbA FPBlock
+press kbA FPJab
+wait 0.5
+fp_expect guarding eq 0
+fp_expect dummy_hits eq 1
+
+log == the dummy strikes back: 10 damage, 3 through a held guard, 10 from behind the guard
+fp_dummy_reset
+fp_dummy strikes
+fp_teleport 0 -40 0 -90 -4
+wait 2.5
+fp_expect dummy_strikes gt 0
+fp_expect hurt eq 1
+fp_expect health near 90 0.1
+hold kbA FPBlock
+wait 2.0
+release kbA FPBlock
+fp_expect guarded gt 0
+fp_expect hurt eq 1
+fp_state after_guarded_strike
+fp_teleport 0 -40 0 90 -4
+hold kbA FPBlock
+wait 2.0
+release kbA FPBlock
+log (the guard faced away: strikes land in full)
+fp_expect hurt gt 1
+
+log == a jab in the dummy's wind-up stops its strike
+fp_dummy_reset
+fp_dummy strikes
+fp_teleport 0 -40 0 -90 -4
+fp_health 100
+wait 1.2
+fp_expect dummy_strikes eq 0
+press kbA FPJab
+wait 0.2
+press kbA FPJab
+wait 0.2
+press kbA FPJab
+wait 0.2
+press kbA FPJab
+wait 0.2
+fp_expect dummy_hits gt 2
+fp_expect health eq 100
+
+log == death resets instantly: start position, full Health and Stamina, dummy restored
+fp_dummy_reset
+fp_health 5
+fp_teleport 0 -40 0 -90 -4
+wait 3.0
+fp_expect deaths eq 1
+fp_expect health eq 100
+fp_expect y near 300 5
+fp_expect stamina eq 100
+fp_expect action eq 0
+fp_expect dummy_hits eq 0
+fp_dummy stand
+
+log == pause holds a technique mid-way; resume finishes it
+fp_teleport 0 -40 0 -90 -4
+wait 0.5
+press kbA FPStraight
+press kbA Pause
+fp_expect paused eq 1
+fp_expect action eq 2
+wait 1.0
+fp_expect action eq 2
+press kbA Pause
+wait 0.8
+fp_expect action eq 0
+fp_expect dummy_hits eq 1
+
+log == Return to the start clears a technique in progress
+fp_teleport 0 -40 0 -90 -4
+wait 0.4
+press kbA FPStraight
+press kbA Pause
+press kbA Down
+press kbA Confirm
+wait 0.3
+fp_expect action eq 0
+fp_expect arms eq 0
+fp_expect dummy_hits eq 0
+
+log == controller: RB jab, RT straight (analog), LB guard
+fp_dummy_reset
+fp_teleport 0 -40 0 -90 -4
+wait 0.5
+press pad7 FPJab
+wait 0.5
+fp_expect dummy_hits eq 1
+fp_expect rumbles gt 0
+axis pad7 Gamepad_RightTriggerAxis 1.0
+wait 0.1
+axis pad7 Gamepad_RightTriggerAxis 0.0
+wait 0.7
+fp_expect dummy_hits eq 2
+fp_expect dummy_damage eq 18
+hold pad7 FPBlock
+wait 0.2
+fp_expect guarding eq 1
+release pad7 FPBlock
+wait 0.3
+
+log == techniques stop a sprint and slow the walk
+fp_dummy_reset
+fp_dummy_place 600 -1500 90
+fp_teleport 0 350 0 -90 0
+wait 0.3
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.0
+fp_expect sprinting eq 1
+press kbA FPStraight
+fp_expect sprinting eq 0
+wait 0.3
+fp_expect speed near 280 20
+release kbA FPSprint
+release kbA FPForward
+quit

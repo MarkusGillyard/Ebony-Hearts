@@ -21,6 +21,10 @@ public:
 	AEHVfx();
 	void Init(bool bReduceFlash);
 	void SetReduceFlash(bool b) { bReduceFlash = b; }
+	// First person: sprites face this point (the eyes) instead of the side-on camera's +Y.
+	void SetViewPoint(const FVector& InView) { ViewPoint = InView; bFaceView = true; }
+	// Size and brightness of hits, blocks and sparks (first person sees them at arm's length, not across a stage).
+	void SetImpactScale(float Size, float Brightness) { ImpactSize = Size; ImpactBrightness = Brightness; }
 	virtual void Tick(float DeltaSeconds) override;
 
 	void Hit(const FVector& At, int32 Facing, bool bHeavy, bool bEnergy, bool bAura, bool bCounter);
@@ -32,6 +36,11 @@ public:
 	void AuraMote(const FVector& At);
 	void Ripple(const FVector& At, float Scale);
 	void Splash(const FVector& At, float Scale);
+	// Spells (first person): a fireball's trail, its burst, steam off melting ice, and ice breaking.
+	void FireTrail(const FVector& At);
+	void FireBurst(const FVector& At);
+	void Steam(const FVector& At, float Scale);
+	void IceBurst(const FVector& At, float Scale);
 	bool HasMaterial() const { return BaseMaterial != nullptr; }
 	int32 ActiveCount() const;
 
@@ -54,7 +63,14 @@ private:
 		float Intensity = 1.0f;
 		EEHFxTex Tex = EEHFxTex::Glow;
 		bool bFire = false;       // a flame tongue from the fire pool: plays its flipbook over its life
+		float Scale = 1.0f;       // size and travel multiplier (impacts seen up close in first person)
 	};
+
+	FVector ViewPoint = FVector::ZeroVector;
+	float ImpactSize = 1.0f;
+	float ImpactBrightness = 1.0f;
+	bool bImpact = false;     // set while Hit or Block spawns
+	bool bFaceView = false;
 
 	UPROPERTY()
 	TArray<TObjectPtr<UStaticMeshComponent>> Pool;

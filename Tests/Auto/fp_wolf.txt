@@ -1,0 +1,159 @@
+# The Chapel wolf (development build: test positions, the alignment selector and stat changes). Alignment tiers:
+# 0 Hero of Humanity, 1 Honorable, 2 Kindhearted | 3 Well-meaning, 4 Platonic, 5 Self-serving | 6 Ruthless,
+# 7 Malevolent, 8 Forsaken. Covers: navigation, each band's behaviour, a threat versus real harm, leaving and returning,
+# the evil wolf's attacks, killing a guardian, the reset keeping the alignment, Hero of Humanity's bond (blows turned
+# back, blows absorbed), the friendly wolf protecting the player, and the Ice Wall rerouting and freezing it.
+wait 7
+fp_expect screen eq 12
+fp_expect alignment eq 4
+fp_expect wolf_state eq 0
+fp_expect wolf_path gt 0
+
+log == Neutral (Platonic): keeps its distance
+fp_teleport 0 -1150 0 -90 0
+wait 3
+fp_expect wolf_dist gt 380
+fp_expect wolf_hostile eq 0
+
+log == a jab aimed at it that does not connect is a threat: it backs off, unprovoked and unhurt
+fp_wolf_place 0 -1000 90
+fp_teleport 0 -760 0 -90 0
+wait 0.2
+press kbA FPJab
+wait 0.6
+fp_expect wolf_disengages eq 1
+fp_expect wolf_provoked eq 0
+fp_expect wolf_health eq 60
+fp_expect alignment eq 4
+wait 3
+
+log == real harm provokes it and pushes the player a tier toward evil
+fp_wolf_place 0 -640 90
+fp_teleport 0 -530 0 -90 -32
+wait 0.1
+press kbA FPJab
+wait 0.4
+fp_expect wolf_health eq 54
+fp_expect wolf_provoked eq 1
+fp_expect alignment eq 5
+fp_expect wolf_harms eq 1
+wait 1.0
+fp_expect wolf_hostile eq 1
+
+log == leaving the Chapel's floor (the entrance strip) and staying a moment calms it; back inside it is calm
+fp_teleport 0 300 0 -90 0
+wait 1.0
+fp_expect wolf_provoked eq 1
+wait 3.0
+fp_expect wolf_provoked eq 0
+fp_teleport 0 -300 0 -90 0
+wait 1.0
+fp_expect wolf_hostile eq 0
+fp_expect health gt 0
+
+log == Evil (Malevolent): naturally hostile; it circles, bites and lunges
+fp_reset
+fp_align 7
+wait 0.3
+fp_teleport 0 -1100 0 -90 0
+wait 6
+fp_expect wolf_hostile eq 1
+fp_expect wolf_connected gt 0
+fp_expect hurt gt 0
+
+log == killing a guardian: at least Malevolent (one tier deeper when already evil); the reset keeps the alignment
+fp_reset
+fp_align 4
+fp_wolf_place 0 -640 90 5
+fp_teleport 0 -530 0 -90 -32
+wait 0.1
+press kbA FPJab
+wait 0.5
+fp_expect wolf_dead eq 1
+fp_expect wolf_kills eq 1
+fp_expect alignment eq 7
+fp_reset
+wait 0.5
+fp_expect wolf_dead eq 0
+fp_expect alignment eq 7
+
+log == Hero of Humanity cannot harm a guardian: the blow lands on the player instead
+fp_align 0
+fp_wolf_place 0 -640 90
+fp_teleport 0 -530 0 -90 -32
+wait 0.1
+press kbA FPJab
+wait 0.5
+fp_expect wolf_health eq 60
+fp_expect reflected eq 1
+fp_expect health near 94 0.1
+fp_expect alignment eq 0
+
+log == and a guardian close by takes the blows meant for them (never fatally)
+fp_reset
+wait 0.3
+fp_dummy strikes
+fp_teleport 0 -40 0 -90 0
+wait 4
+fp_expect wolf_absorbed gt 0
+fp_expect health eq 100
+fp_dummy stand
+fp_reset
+wait 0.3
+
+log == Good (Kindhearted): friendly; it follows and goes for anything striking at the player
+fp_align 2
+fp_teleport 0 -40 0 -90 0
+fp_dummy strikes
+wait 6
+fp_expect wolf_protects gt 0
+fp_expect wolf_hostile eq 0
+fp_dummy stand
+fp_reset
+wait 0.3
+
+log == Ice Wall: the wolf's way round it is longer while it stands, and short again once it melts
+fp_align 4
+fp_wolf_place -60 -1600 90
+fp_teleport 0 -1150 0 -90 0
+wait 1.0
+fp_expect wolf_path lt 500
+press kbA FPIceWall
+wait 1.0
+fp_expect walls eq 1
+fp_wolf_place -60 -1600 90
+wait 0.05
+fp_expect wolf_path gt 900
+wait 9.5
+fp_expect walls eq 0
+fp_wolf_place -60 -1600 90
+wait 0.05
+fp_expect wolf_path lt 500
+fp_reset
+wait 0.3
+
+log == a wall rising in the water freezes the wolf's feet there
+fp_align 7
+fp_wolf_place 0 -1440 90
+fp_teleport 0 -1150 0 -90 0
+press kbA FPIceWall
+wait 0.6
+fp_expect wolf_freezes eq 1
+fp_expect wolf_frozen eq 1
+wait 2.2
+fp_expect wolf_frozen eq 0
+fp_reset
+fp_align 7
+fp_teleport 0 -650 0 -90 0
+fp_wolf_place 0 -780 90
+wait_wolf_bite
+fp_wolf_freeze
+fp_expect wolf_frozen eq 1
+wait 0.5
+fp_expect wolf_bites eq 0
+fp_expect wolf_connected eq 0
+fp_reset
+fp_align 4
+wait 0.5
+fp_state end
+quit

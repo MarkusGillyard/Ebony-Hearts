@@ -129,7 +129,8 @@ AEHVfx::FParticle& AEHVfx::Spawn(EEHFxTex Tex, const FVector& Pos, float Life, f
 	P.Size0 = Size0;
 	P.Size1 = Size1;
 	P.Color = Color;
-	P.Intensity = bReduceFlash ? Intensity * 0.45f : Intensity;
+	P.Intensity = (bReduceFlash ? Intensity * 0.45f : Intensity) * (bImpact ? ImpactBrightness : 1.0f);
+	P.Scale = bImpact ? ImpactSize : 1.0f;
 	UMaterialInstanceDynamic* M = Materials[Index];
 	const int32 T = static_cast<int32>(Tex);
 	if (Textures.IsValidIndex(T) && Textures[T])
@@ -189,14 +190,20 @@ void AEHVfx::TickPool(TArray<FParticle>& List, TArray<TObjectPtr<UStaticMeshComp
 		}
 		const float T = P.Age / P.Life;
 		P.Vel.Z -= P.Gravity * DeltaSeconds;
-		P.Pos += P.Vel * DeltaSeconds;
-		const float Size = FMath::Lerp(P.Size0, P.Size1, 1.0f - FMath::Square(1.0f - T));
+		P.Pos += P.Vel * DeltaSeconds * P.Scale;
+		const float Size = FMath::Lerp(P.Size0, P.Size1, 1.0f - FMath::Square(1.0f - T)) * P.Scale;
 		// A flame tongue fades in over its first frames and burns out through its flipbook; sprites fade from birth.
 		const float Fade = P.bFire ? FMath::Min(1.0f, T * 10.0f) : (1.0f - T) * (1.0f - T);
 		FQuat Q;
 		if (P.bGround)
 		{
 			Q = FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(P.Angle));
+		}
+		else if (bFaceView)
+		{
+			// Plane normal (+Z) turned toward the eyes, then spun about it.
+			const FVector ToView = (ViewPoint - P.Pos).GetSafeNormal();
+			Q = FRotationMatrix::MakeFromZ(ToView.IsNearlyZero() ? FVector(0, 1, 0) : ToView).ToQuat() * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(P.Angle));
 		}
 		else
 		{
@@ -215,6 +222,7 @@ void AEHVfx::TickPool(TArray<FParticle>& List, TArray<TObjectPtr<UStaticMeshComp
 
 void AEHVfx::Hit(const FVector& At, int32 Facing, bool bHeavy, bool bEnergy, bool bAura, bool bCounter)
 {
+	TGuardValue<bool> ScaleImpact(bImpact, true);
 	if (!BaseMaterial)
 	{
 		return;
@@ -248,6 +256,7 @@ void AEHVfx::Hit(const FVector& At, int32 Facing, bool bHeavy, bool bEnergy, boo
 
 void AEHVfx::Block(const FVector& At, int32 Facing, bool bDeflect)
 {
+	TGuardValue<bool> ScaleImpact(bImpact, true);
 	if (!BaseMaterial)
 	{
 		return;
@@ -387,5 +396,74 @@ void AEHVfx::Splash(const FVector& At, float Scale)
 		FParticle& S = Spawn(EEHFxTex::Splash, FVector(At.X + FMath::FRandRange(-20.0f, 20.0f), At.Y + 6.0f, 6.0f), FMath::FRandRange(0.35f, 0.55f), 16.0f * Scale, 34.0f * Scale, Water, 1.6f);
 		S.Vel = FVector(FMath::FRandRange(-90.0f, 90.0f), 0.0f, FMath::FRandRange(160.0f, 300.0f) * Scale);
 		S.Gravity = 900.0f;
+	}
+}
+
+void AEHVfx::FireTrail(const FVector& At)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	// Two layers of glow left behind the ball: a hot yellow core that dies at once and an orange skin that drifts and
+	// cools a moment longer.
+	const FVector Jitter(FMath::FRandRange(-3.0f, 3.0f), FMath::FRandRange(-3.0f, 3.0f), FMath::FRandRange(-3.0f, 3.0f));
+	Spawn(EEHFxTex::Glow, At + Jitter, 0.10f, 30.0f, 12.0f, FLinearColor(1.0f, 0.72f, 0.32f), 5.0f);
+	FParticle& O = Spawn(EEHFxTex::Glow, At + Jitter * 2.0f, FMath::FRandRange(0.16f, 0.26f), 34.0f, 10.0f, FLinearColor(1.0f, 0.34f, 0.07f), 3.0f);
+	O.Vel = FVector(FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(-20.0f, 20.0f), FMath::FRandRange(10.0f, 45.0f));
+	if (FMath::FRand() < 0.35f)
+	{
+		FParticle& E = Spawn(EEHFxTex::Glow, At, FMath::FRandRange(0.3f, 0.55f), 3.5f, 1.0f, EmberColor, 7.0f);
+		E.Vel = FVector(FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(-70.0f, 70.0f), FMath::FRandRange(20.0f, 110.0f));
+	}
+}
+
+void AEHVfx::FireBurst(const FVector& At)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	Spawn(EEHFxTex::Glow, At, 0.26f, 40.0f, 170.0f, FLinearColor(1.0f, 0.55f, 0.2f), 4.0f);
+	Spawn(EEHFxTex::Ring, At, 0.24f, 20.0f, 190.0f, FLinearColor(1.0f, 0.42f, 0.1f), 2.4f);
+	for (int32 i = 0; i < 14; ++i)
+	{
+		FParticle& F = Spawn(EEHFxTex::Glow, At, FMath::FRandRange(0.22f, 0.45f), FMath::FRandRange(16.0f, 30.0f), 6.0f, FLinearColor(1.0f, 0.38f, 0.08f), 3.4f);
+		F.Vel = FMath::VRand() * FMath::FRandRange(150.0f, 420.0f) + FVector(0, 0, 60.0f);
+	}
+	for (int32 i = 0; i < 6; ++i)
+	{
+		FParticle& E = Spawn(EEHFxTex::Glow, At, FMath::FRandRange(0.45f, 0.9f), 3.5f, 1.0f, EmberColor, 7.0f);
+		E.Vel = FMath::VRand() * FMath::FRandRange(200.0f, 500.0f) + FVector(0, 0, 150.0f);
+		E.Gravity = 600.0f;
+	}
+}
+
+void AEHVfx::Steam(const FVector& At, float Scale)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	for (int32 i = 0; i < 5; ++i)
+	{
+		FParticle& P = Spawn(EEHFxTex::Glow, At + FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-20.0f, 30.0f)) * Scale,
+		                     FMath::FRandRange(0.7f, 1.2f), 40.0f * Scale, 160.0f * Scale, FLinearColor(0.55f, 0.6f, 0.66f), 0.4f);
+		P.Vel = FVector(FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(-25.0f, 25.0f), FMath::FRandRange(50.0f, 110.0f));
+	}
+}
+
+void AEHVfx::IceBurst(const FVector& At, float Scale)
+{
+	if (!BaseMaterial)
+	{
+		return;
+	}
+	Spawn(EEHFxTex::Glow, At, 0.2f, 30.0f * Scale, 110.0f * Scale, FLinearColor(0.5f, 0.8f, 1.0f), 2.2f);
+	for (int32 i = 0; i < FMath::RoundToInt(10 * Scale); ++i)
+	{
+		FParticle& F = Spawn(EEHFxTex::Spark, At, FMath::FRandRange(0.3f, 0.6f), FMath::FRandRange(6.0f, 12.0f), 2.0f, FLinearColor(0.7f, 0.9f, 1.0f), 2.5f);
+		F.Vel = FMath::VRand() * FMath::FRandRange(150.0f, 380.0f) * Scale + FVector(0, 0, 120.0f);
+		F.Gravity = 900.0f;
 	}
 }

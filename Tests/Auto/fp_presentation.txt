@@ -1,0 +1,37 @@
+# Shadow and reflection review of the hidden placeholder body (development builds: teleports and the visibility aid).
+wait 5
+ui_hidden 1
+# In the rose window's moonlight: the moon is low in the east, so the body's shadow falls west, behind the player.
+fp_teleport 0 -330 0 90 -50
+wait 1.0
+fp_state shadow
+screenshot p01_shadow_hidden_body
+fp_body_visible 1
+wait 0.3
+screenshot p02_shadow_body_shown
+fp_body_visible 0
+fp_teleport 0 -330 0 -90 -35
+wait 0.6
+screenshot p03_shadow_facing_moon
+# Deep water in the basin: looking down at the surface in front of the feet.
+fp_teleport 0 -900 0 -90 -55
+wait 1.0
+fp_state water
+screenshot p04_water_hidden_body
+fp_body_visible 1
+wait 0.3
+screenshot p05_water_body_shown
+fp_body_visible 0
+fp_planar on 50
+wait 2.0
+screenshot p06_water_planar50_hidden
+fp_body_visible 1
+wait 0.3
+screenshot p07_water_planar50_shown
+fp_body_visible 0
+fp_teleport 0 -330 0 90 -50
+wait 1.0
+screenshot p08_shadow_planar50
+fp_planar off
+wait 0.5
+quit

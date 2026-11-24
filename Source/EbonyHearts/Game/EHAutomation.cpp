@@ -183,10 +183,11 @@ bool AEHGameDirector::AutoKey(int32 Device, const FString& Name, FKey& OutKey) c
 		return OutKey.IsValid();
 	}
 	const EEHBindingSet Set = RouterPtr->SetFor(Device);
-	const EEHBindingSet MenuClass = EHIsKeyboardSet(Set) ? Set : EEHBindingSet::GamepadP1;
+	const EEHBindingSet MenuClass = EHMenuClass(Set);
 	const EEHNav N = ParseNav(Name);
 	const EEHAction A = ParseAction(Name);
-	if (N != EEHNav::Count && (A == EEHAction::Count || Screen != EEHScreen::Match))
+	const bool bPlaying = Screen == EEHScreen::Match || (Screen == EEHScreen::FirstPerson && !bPaused);
+	if (N != EEHNav::Count && (A == EEHAction::Count || !bPlaying))
 	{
 		OutKey = EHMenuKey(MenuClass, N);
 		return OutKey.IsValid();
@@ -389,6 +390,20 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			}
 			return;
 		}
+#if !UE_BUILD_SHIPPING
+		if (Cmd == TEXT("wait_wolf_bite"))
+		{
+			const bool bReady = IsValid(FPWolf) && FPWolf->GetState() == EEHWolfState::BiteWindup;
+			if (!bReady && StepTimer <= 10.0f)
+			{
+				return;
+			}
+			AutoLogLine(bReady ? TEXT("ok wait_wolf_bite") : TEXT("FAIL wait_wolf_bite timed out"));
+			StepTimer = 0.0f;
+			++AutoLine;
+			continue;
+		}
+#endif
 		++AutoLine;
 		StepTimer = 0.0f;
 		if (Cmd == TEXT("log"))
@@ -469,7 +484,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			{
 				LeaveMatch(EEHScreen::Main);
 			}
-			SettingsReturn = EEHScreen::Main;
+			SettingsReturn = bFirstPersonMode ? EEHScreen::FirstPerson : EEHScreen::Main;
 			BindingSet = ParseSet(Arg(1, TEXT("controller1")));
 			BindingPage = 0;
 			BindingListIndex = 0;
@@ -752,7 +767,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 		else if (Cmd == TEXT("assets"))
 		{
 			FString Missing;
-			for (int32 i = 0; i < 2; ++i)
+			for (int32 i = 0; i < 2 && Visual[i]; ++i)
 			{
 				Missing += FString::Join(Visual[i]->MissingAnimations(), TEXT(","));
 				if (Visual[i]->UsesGraybox())
@@ -841,7 +856,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 			UKismetSystemLibrary::QuitGame(this, GetWorld()->GetFirstPlayerController(), EQuitPreference::Quit, false);
 			return;
 		}
-		else
+		else if (!RunFirstPersonCommand(T, Line))
 		{
 			AutoLogLine(FString::Printf(TEXT("FAIL unknown command: %s"), *Line));
 		}
@@ -1139,6 +1154,116 @@ void AEHGameDirector::RunBindingsSelfTest()
 	const FEHSettings Bad = FEHSettings::Load(&Warning, BadPath);
 	Check(Bad.Bindings.Get(S::GamepadP1, A::Light, 0) == EKeys::Gamepad_FaceButton_Left && Bad.Bindings.Get(S::GamepadP2, A::Light, 0) == EKeys::Gamepad_LeftThumbstick && !Warning.IsEmpty(),
 		TEXT("a conflicting layout resets alone; the other layout is kept"));
+
+	// First person (settings version 6): the proposed starting layout, mouse buttons, isolation from the
+	// fighting layouts, and files from the 2.5D slice gaining the layouts with their defaults.
+	Check(D.Get(S::FPKeyboard, A::FPForward, 0) == EKeys::W && D.Get(S::FPKeyboard, A::FPBack, 0) == EKeys::S && D.Get(S::FPKeyboard, A::FPLeft, 0) == EKeys::A &&
+		D.Get(S::FPKeyboard, A::FPRight, 0) == EKeys::D, TEXT("first person: W A S D move"));
+	Check(D.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::SpaceBar && D.Get(S::FPKeyboard, A::FPCrouch, 0) == EKeys::LeftControl && D.Get(S::FPKeyboard, A::FPSprint, 0) == EKeys::LeftShift,
+		TEXT("first person: Space jumps, Left Ctrl crouches, Left Shift sprints"));
+	Check(D.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Bottom && D.Get(S::FPController, A::FPCrouch, 0) == EKeys::Gamepad_RightThumbstick &&
+		D.Get(S::FPController, A::FPSprint, 0) == EKeys::Gamepad_LeftThumbstick, TEXT("first person controller: A / Cross jumps, R3 crouches, L3 sprints"));
+	Check(!D.HasConflicts(&Report), TEXT("defaults have no conflicts: ") + Report);
+	Check(FEHBindings::IsBindable(S::FPKeyboard, EKeys::LeftMouseButton) && FEHBindings::IsBindable(S::FPKeyboard, EKeys::ThumbMouseButton) &&
+		!FEHBindings::IsBindable(S::KeyboardA, EKeys::LeftMouseButton) && !FEHBindings::IsBindable(S::FPKeyboard, EKeys::Escape) &&
+		!FEHBindings::IsBindable(S::FPKeyboard, EKeys::F10) && !FEHBindings::IsBindable(S::FPKeyboard, EKeys::MouseX) &&
+		!FEHBindings::IsBindable(S::FPKeyboard, EKeys::Gamepad_FaceButton_Bottom) && !FEHBindings::IsBindable(S::FPController, EKeys::LeftMouseButton),
+		TEXT("first person: mouse buttons bind on the keyboard layout only; Escape, F10, axes and other devices do not"));
+	{
+		FEHBindings FPT = D;
+		FPT.Assign(S::FPKeyboard, A::FPJump, 0, EKeys::W, EEHConflictResolve::Swap);
+		Check(FPT.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::W && FPT.Get(S::FPKeyboard, A::FPForward, 0) == EKeys::SpaceBar &&
+			FPT.Get(S::KeyboardA, A::Jump, 0) == EKeys::W, TEXT("first person: a swap stays inside its layout; the 2.5D layouts are untouched"));
+		const FEHBindingRef FPC = D.FindConflict(S::FPKeyboard, A::FPJump, 0, EKeys::J);
+		Check(!FPC.IsValid(), TEXT("first person: keys used only by the 2.5D layouts are free"));
+	}
+	{
+		const FString FPV5Path = FPaths::Combine(Dir, TEXT("slice_v5.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":5,\"masterVolume\":40,\"uiScale\":1.2,\"bindings\":{\"keyboard1\":{\"LightAttack\":[\"G\",\"\",\"\"]}}}"), *FPV5Path);
+		Warning.Reset();
+		const FEHSettings FPV5 = FEHSettings::Load(&Warning, FPV5Path);
+		Check(FPV5.MasterVolume == 40 && FMath::IsNearlyEqual(FPV5.UIScale, 1.2f) && FPV5.Bindings.Get(S::KeyboardA, A::Light, 0) == EKeys::G &&
+			FPV5.Bindings.Get(S::FPKeyboard, A::FPForward, 0) == EKeys::W && FPV5.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Bottom &&
+			FMath::IsNearlyEqual(FPV5.MouseSensitivity, 0.08f) && FPV5.FieldOfView == 90, TEXT("a version 5 file keeps its values and gains the first-person defaults"));
+		FEHSettings FPW6 = FPV5;
+		FPW6.MouseSensitivity = 0.13f;
+		FPW6.bInvertLook = true;
+		FPW6.FieldOfView = 100;
+		FPW6.bCrouchToggle = true;
+		FPW6.StaminaMeter = 2;
+		FPW6.Bindings.Assign(S::FPKeyboard, A::FPSprint, 0, EKeys::ThumbMouseButton, EEHConflictResolve::Replace);
+		const FString FPV6Path = FPaths::Combine(Dir, TEXT("fp_v6.json"));
+		Check(FPW6.Save(FPV6Path), TEXT("version 6 file written"));
+		const FEHSettings FPR6 = FEHSettings::Load(nullptr, FPV6Path);
+		Check(FPR6.LoadedVersion == EHSettingsVersion && FMath::IsNearlyEqual(FPR6.MouseSensitivity, 0.13f) && FPR6.bInvertLook && FPR6.FieldOfView == 100 && FPR6.bCrouchToggle && FPR6.StaminaMeter == 2 &&
+			FPR6.Bindings.Get(S::FPKeyboard, A::FPSprint, 0) == EKeys::ThumbMouseButton, TEXT("version 6 round trip: look, field of view, toggles, meter and a mouse binding"));
+	}
+	// Physical techniques (settings version 7).
+	Check(D.Get(S::FPKeyboard, A::FPJab, 0) == EKeys::LeftMouseButton && D.Get(S::FPKeyboard, A::FPStraight, 0) == EKeys::RightMouseButton &&
+		D.Get(S::FPKeyboard, A::FPBlock, 0) == EKeys::Q, TEXT("techniques: left and right mouse buttons, Q"));
+	Check(D.Get(S::FPController, A::FPJab, 0) == EKeys::Gamepad_RightShoulder && D.Get(S::FPController, A::FPStraight, 0) == EKeys::Gamepad_RightTrigger &&
+		D.Get(S::FPController, A::FPBlock, 0) == EKeys::Gamepad_LeftShoulder,
+		TEXT("techniques on a controller: R1 / RB, R2 / RT, L1 / LB"));
+	{
+		const FString V6Path = FPaths::Combine(Dir, TEXT("fp_v6_jump_on_mouse.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":6,\"bindings\":{\"fpKeyboard\":{\"FirstPersonJump\":[\"LeftMouseButton\",\"SpaceBar\",\"\"]}}}"), *V6Path);
+		Warning.Reset();
+		const FEHSettings V6 = FEHSettings::Load(&Warning, V6Path);
+		FString V6Report;
+		Check(V6.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::LeftMouseButton && V6.Bindings.IsUnbound(S::FPKeyboard, A::FPJab) &&
+			V6.Bindings.Get(S::FPKeyboard, A::FPStraight, 0) == EKeys::RightMouseButton && !V6.Bindings.HasConflicts(&V6Report) && Warning.Contains(TEXT("Jab")),
+			TEXT("version 6 to 7: the player's own mouse binding stays; the jab is left without it and the notice says so ") + Warning);
+	}
+	// Spells (settings version 8).
+	Check(D.Get(S::FPKeyboard, A::FPFireball, 0) == EKeys::F && D.Get(S::FPKeyboard, A::FPIceWall, 0) == EKeys::R &&
+		D.Get(S::FPController, A::FPFireball, 0) == EKeys::Gamepad_LeftTrigger && D.Get(S::FPController, A::FPIceWall, 0) == EKeys::Gamepad_FaceButton_Top,
+		TEXT("spells: F and R; L2 / LT and Triangle / Y"));
+	{
+		const FString V7Path = FPaths::Combine(Dir, TEXT("fp_v7_jump_on_f.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":7,\"bindings\":{\"fpKeyboard\":{\"FirstPersonBlock\":[\"F\",\"\",\"\"]},\"fpController\":{\"FirstPersonJump\":[\"Gamepad_FaceButton_Top\",\"\",\"\"]}}}"), *V7Path);
+		Warning.Reset();
+		const FEHSettings V7 = FEHSettings::Load(&Warning, V7Path);
+		FString V7Report;
+		Check(V7.Bindings.Get(S::FPKeyboard, A::FPBlock, 0) == EKeys::F && V7.Bindings.IsUnbound(S::FPKeyboard, A::FPFireball) &&
+			V7.Bindings.Get(S::FPKeyboard, A::FPIceWall, 0) == EKeys::R && V7.Bindings.Get(S::FPController, A::FPJump, 0) == EKeys::Gamepad_FaceButton_Top &&
+			V7.Bindings.IsUnbound(S::FPController, A::FPIceWall) && V7.Bindings.Get(S::FPController, A::FPFireball, 0) == EKeys::Gamepad_LeftTrigger &&
+			!V7.Bindings.HasConflicts(&V7Report) && Warning.Contains(TEXT("Fireball")) && Warning.Contains(TEXT("Ice Wall")),
+			TEXT("version 7 to 8: the player's own F and Triangle stay theirs; the spells are left without them and the notice says so ") + Warning);
+	}
+	// Spell selector; the shove removed (settings version 9).
+	Check(D.Get(S::FPKeyboard, A::FPSpellSelect, 0) == EKeys::Tab && D.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
+		D.Find(S::FPKeyboard, EKeys::E) == A::Count && D.Find(S::FPController, EKeys::Gamepad_FaceButton_Right) == A::Count,
+		TEXT("spell selector: Tab and Square / X; E and Circle / B are free"));
+	{
+		const FString V8Path = FPaths::Combine(Dir, TEXT("fp_v8_shove_and_tab.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":8,\"spellSelector\":1,\"bindings\":{\"fpKeyboard\":{\"FirstPersonShove\":[\"E\",\"\",\"\"],\"FirstPersonJump\":[\"Tab\",\"SpaceBar\",\"\"]}}}"), *V8Path);
+		Warning.Reset();
+		const FEHSettings V8 = FEHSettings::Load(&Warning, V8Path);
+		FString V8Report;
+		Check(V8.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::Tab && V8.Bindings.IsUnbound(S::FPKeyboard, A::FPSpellSelect) &&
+			V8.Bindings.Find(S::FPKeyboard, EKeys::E) == A::Count && V8.Bindings.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
+			V8.SpellSelector == 1 && !V8.Bindings.HasConflicts(&V8Report) && Warning.Contains(TEXT("shove")),
+			TEXT("version 8 to 9: the shove's key is dropped, the player's Tab stays theirs and the notice says so ") + Warning);
+	}
+	{
+		const FString NumericPath = FPaths::Combine(Dir, TEXT("settings_numeric_ranges.json"));
+		Check(FFileHelper::SaveStringToFile(TEXT(R"({"resX":1e100,"quality":-1e100,"effectsVolume":-10,"uiScale":1e100,"mouseSensitivity":-1e100,"stickSensitivity":4,"fieldOfView":200})"), *NumericPath),
+			TEXT("numeric settings fixture written"));
+		const FEHSettings Numeric = FEHSettings::Load(nullptr, NumericPath);
+		const FEHSettings Default;
+		Check(Numeric.Resolution.X == Default.Resolution.X && Numeric.Quality == Default.Quality && Numeric.UIScale == Default.UIScale && Numeric.MouseSensitivity == Default.MouseSensitivity,
+			TEXT("unrepresentable settings retain safe defaults"));
+		Check(Numeric.EffectsVolume == 0 && Numeric.StickSensitivity == 3.0f && Numeric.FieldOfView == 110,
+			TEXT("representable settings still clamp to their supported ranges"));
+	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"spawn":[null,{},[]]})"), Error) && Error.Contains(TEXT("spawn")),
+			TEXT("first-person spawn rejects nonnumeric coordinates"));
+		Check(Tuning.Load(TEXT(R"({"spawn":[15,-20,1.5]})"), Error) && Tuning.Spawn == FVector(15, -20, 1.5),
+			TEXT("first-person spawn accepts numeric coordinates"));
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 
@@ -1238,6 +1363,14 @@ void AEHGameDirector::RunInputSelfTest()
 	Check(LastNav() == EEHNav::Count, TEXT("Square / X does nothing in menus"));
 	Tap(EKeys::Gamepad_Special_Right);
 	Check(LastNav() == EEHNav::Pause, TEXT("Options / Menu pauses"));
+
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, true);
+	R.ResetForFocusLoss();
+	Check(LastNav() == EEHNav::Count && R.FindDevice(Dev)->NavHeld == 0 && Sample().y == 0,
+		TEXT("focus loss clears queued navigation and held input"));
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, true);
+	Check(LastNav() == EEHNav::Down, TEXT("the next press works even when focus loss swallowed the old key-up"));
+	R.InjectKey(Dev, EKeys::Gamepad_DPad_Down, false);
 
 	// Directions (toward / away is judged from x when a button is pressed).
 	R.InjectKey(Dev, EKeys::Gamepad_DPad_Right, true);

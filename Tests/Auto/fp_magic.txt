@@ -1,0 +1,469 @@
+# Stats, Qhi and the two spells (development build: uses test positions and stat changes). Covers the spec's resource
+# rules (one payment per accepted cast, refusal without the Qhi, clamping, regeneration by Intelligence and Faith,
+# Qhi from landed strikes), the stats' effects, Fireball damage and melt, Ice Wall blocking, freezing in and out of
+# water, obstruction, expiry, breaking, target proximity, casts straight before and after strikes, pause, reset and
+# death. Intelligence and Faith at 0 stop regeneration, so Qhi amounts can be checked exactly.
+wait 6
+fp_expect screen eq 12
+fp_expect qhi eq 100
+fp_expect qhi_max eq 100
+fp_expect health_max eq 100
+
+log == Fireball: 20 Qhi once, 25 damage to the dummy 4.5 m ahead
+fp_stat intelligence 0
+fp_stat faith 0
+press kbA FPFireball
+wait 0.1
+fp_expect action eq 3
+fp_expect qhi eq 80
+wait 1.4
+fp_expect qhi eq 80
+fp_expect casts eq 1
+fp_expect fireball_hits eq 1
+fp_expect dummy_damage eq 25
+fp_expect fireballs eq 0
+fp_dummy_reset
+wait 0.5
+
+log == not enough Qhi: refused, nothing spent, the arms stay down
+fp_qhi 15
+press kbA FPFireball
+wait 0.3
+fp_expect refused_qhi eq 1
+fp_expect qhi eq 15
+fp_expect action eq 0
+fp_expect fireballs eq 0
+fp_qhi 25
+press kbA FPIceWall
+wait 0.3
+fp_expect refused_qhi eq 2
+fp_expect walls eq 0
+fp_expect qhi eq 25
+log exactly enough is enough
+fp_qhi 20
+press kbA FPFireball
+wait 0.3
+fp_expect qhi eq 0
+fp_expect casts eq 2
+wait 1.5
+fp_dummy_reset
+
+log == clamping: never above the pool, never below zero
+fp_qhi 500
+fp_expect qhi eq 100
+fp_qhi -50
+fp_expect qhi eq 0
+
+log == regeneration: 5 per second at base Intelligence and Faith, +5% a point for each
+fp_stat intelligence 10
+fp_stat faith 10
+fp_qhi 0
+wait 2.0
+fp_expect qhi near 10 0.8
+fp_stat intelligence 20
+fp_qhi 0
+wait 2.0
+fp_expect qhi near 15 0.8
+fp_stat faith 20
+fp_qhi 0
+wait 2.0
+fp_expect qhi near 20 0.8
+wait 8.5
+fp_expect qhi eq 100
+log a cast pauses regeneration for half a second
+fp_stat intelligence 10
+fp_stat faith 10
+press kbA FPFireball
+wait 0.3
+fp_expect qhi eq 80
+wait 1.0
+fp_expect qhi gt 82
+wait 0.5
+fp_dummy_reset
+wait 0.3
+fp_stat intelligence 0
+fp_stat faith 0
+
+log == a landed technique restores 4 Qhi; a guarded one does not
+fp_teleport 0 -30 0 -90 0
+fp_qhi 50
+press kbA FPJab
+wait 0.8
+fp_expect dummy_hits eq 1
+fp_expect qhi eq 54
+fp_dummy guard
+wait 0.6
+press kbA FPJab
+wait 0.8
+fp_expect dummy_blocks eq 1
+fp_expect qhi eq 54
+fp_dummy stand
+fp_dummy_reset
+wait 0.5
+
+log == Martial Prowess: 20 adds half again to strikes
+fp_teleport 0 -30 0 -90 0
+fp_stat martial 20
+press kbA FPJab
+wait 0.8
+fp_expect dummy_damage eq 9
+fp_stat martial 10
+fp_dummy_reset
+wait 0.5
+
+log == Dexterity: Stamina recovers faster (dummy moved out of the sprint)
+fp_dummy_place 900 -1700 90
+fp_teleport 0 300 0 -90 0
+wait 0.3
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.2
+release kbA FPSprint
+release kbA FPForward
+wait 1.4
+fp_expect stamina lt 99
+fp_teleport 0 300 0 -90 0
+wait 3
+fp_stat dexterity 30
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.2
+release kbA FPSprint
+release kbA FPForward
+wait 1.4
+fp_expect stamina eq 100
+fp_stat dexterity 10
+fp_dummy_reset
+fp_teleport 0 300 0 -90 0
+wait 0.5
+
+log == Ice Wall: 30 Qhi once, rises 2.2 m ahead across the view and blocks the way
+fp_qhi 100
+press kbA FPIceWall
+wait 0.6
+fp_expect qhi eq 70
+fp_expect walls eq 1
+fp_expect walls_raised eq 1
+fp_expect wall_solid eq 1
+fp_expect wall_dist near 220 5
+fp_expect wall_ice_water eq 1
+log the dummy 2.3 m beyond it, in the entrance strip's water, is caught in the freeze
+fp_expect dummy_frozen eq 1
+hold kbA FPForward
+wait 2.0
+release kbA FPForward
+fp_expect y gt 130
+log the freeze lets go after 2 s
+fp_expect dummy_frozen eq 0
+fp_expect dummy_freezes eq 1
+
+log == Fireball melts the player's own wall, and the way is open
+press kbA FPFireball
+wait 1.2
+fp_expect walls eq 0
+fp_expect walls_melted eq 1
+fp_expect dummy_damage eq 0
+hold kbA FPForward
+wait 1.0
+release kbA FPForward
+fp_expect y lt 100
+fp_teleport 0 300 0 -90 0
+fp_dummy_reset
+wait 0.5
+
+log == frozen feet: beside the wall a straight cannot knock the dummy back until the ice lets go
+fp_qhi 100
+fp_dummy_place 230 150 -90
+wait 0.5
+press kbA FPIceWall
+wait 0.5
+fp_expect dummy_frozen eq 1
+fp_teleport 230 260 0 -90 0
+wait 0.1
+press kbA FPStraight
+wait 0.8
+fp_expect dummy_dist near 110 4
+fp_expect dummy_hits eq 1
+wait 1.2
+fp_expect dummy_frozen eq 0
+press kbA FPStraight
+wait 1.3
+fp_expect dummy_dist gt 125
+fp_reset
+wait 0.5
+
+log == out of the water: a wall on dry floor freezes nothing
+fp_dummy_place 1000 -900 90
+fp_teleport 1000 -480 16 -90 0
+wait 0.5
+press kbA FPIceWall
+wait 0.6
+fp_expect walls eq 1
+fp_expect wall_ice_water eq 0
+fp_expect dummy_frozen eq 0
+fp_expect dummy_freezes eq 0
+fp_reset
+wait 0.5
+
+log == obstruction: no room against the west wall, refused, nothing spent
+fp_teleport 0 360 0 90 0
+wait 0.3
+press kbA FPIceWall
+wait 0.4
+fp_expect walls eq 0
+fp_expect refused_room eq 1
+fp_expect qhi eq 100
+log a Fireball into stone bursts there
+press kbA FPFireball
+wait 0.6
+fp_expect fireballs eq 0
+fp_expect qhi eq 80
+fp_reset
+wait 0.5
+
+log == target proximity: a wall rising where the dummy stands pushes it out of the ice
+fp_dummy_place 0 80 90
+wait 0.5
+press kbA FPIceWall
+wait 0.6
+fp_expect walls eq 1
+fp_expect dummy_dist gt 250
+fp_reset
+wait 0.5
+
+log == player proximity: a dummy between the player and the wall's line does not stop it; it is pushed out on its own side
+fp_dummy_place 0 110 90
+wait 0.5
+press kbA FPIceWall
+wait 0.6
+fp_expect walls eq 1
+fp_expect dummy_dist near 154 8
+fp_reset
+wait 0.5
+
+log == expiry: after 8 s the wall melts away on its own and the way is open
+press kbA FPIceWall
+wait 9.2
+fp_expect walls eq 0
+fp_expect walls_expired eq 1
+log it has turned to water: a puddle where it stood, dry again a few seconds later
+fp_expect puddles eq 1
+hold kbA FPForward
+wait 1.0
+release kbA FPForward
+fp_expect y lt 100
+fp_reset
+wait 0.5
+
+log == breaking: five straights (60 damage) shatter the wall
+fp_dummy_place 900 -1700 90
+press kbA FPIceWall
+wait 0.6
+fp_teleport 0 175 0 -90 0
+wait 0.2
+press kbA FPStraight
+wait 0.6
+fp_expect wall_hp eq 48
+press kbA FPStraight
+wait 0.6
+press kbA FPStraight
+wait 0.6
+press kbA FPStraight
+wait 0.6
+fp_expect walls eq 1
+press kbA FPStraight
+wait 0.8
+fp_expect walls eq 0
+fp_expect walls_shattered eq 1
+fp_reset
+wait 0.5
+
+log == casts straight before and after strikes: straight into Fireball, Fireball into straight, jab into Ice Wall
+fp_mark
+press kbA FPStraight
+wait 0.25
+press kbA FPFireball
+wait 0.05
+fp_expect action eq 3
+wait 1.2
+fp_expect fireball_hits eq 1
+fp_dummy_reset
+wait 0.5
+fp_teleport 0 -60 0 -90 0
+wait 0.2
+press kbA FPFireball
+wait 0.27
+press kbA FPStraight
+wait 0.05
+fp_expect action eq 2
+wait 1.0
+fp_expect dummy_hits eq 2
+fp_reset
+wait 0.5
+fp_dummy_place 900 -1700 90
+press kbA FPJab
+wait 0.2
+press kbA FPIceWall
+wait 0.05
+fp_expect action eq 4
+wait 0.6
+fp_expect walls eq 1
+fp_reset
+wait 0.5
+
+log == controller: L2 / LT Fireball, Triangle / Y Ice Wall
+axis pad7 Gamepad_LeftTriggerAxis 1.0
+wait 0.1
+axis pad7 Gamepad_LeftTriggerAxis 0.0
+wait 1.4
+fp_expect casts gt 0
+fp_expect fireball_hits eq 1
+fp_dummy_reset
+wait 0.5
+press pad7 FPIceWall
+wait 0.6
+fp_expect walls eq 1
+
+log == pause mid-cast, then Return to the start clears every spell
+press kbA FPFireball
+wait 0.1
+press kbA Pause
+fp_expect action eq 3
+press kbA Down
+press kbA Confirm
+wait 0.4
+fp_expect fireballs eq 0
+fp_expect walls eq 0
+fp_expect qhi eq 100
+fp_expect action eq 0
+fp_expect dummy_frozen eq 0
+
+log == death resets everything, spells included
+press kbA FPIceWall
+wait 0.6
+fp_expect walls eq 1
+fp_health 5
+fp_teleport 0 -40 0 -90 0
+fp_dummy strikes
+wait 3
+fp_expect deaths eq 1
+fp_expect walls eq 0
+fp_expect qhi eq 100
+fp_expect health eq 100
+fp_dummy stand
+
+log == spell selector, wheel: hold Tab, the world slows; point left at Fireball and let go to cast it
+fp_reset
+wait 0.5
+fp_selector wheel
+hold kbA FPSpellSelect
+wait 0.1
+fp_expect selecting eq 1
+fp_expect time_dilation near 0.25 0.01
+fp_expect select_highlight eq -1
+look -150 0
+wait 0.1
+fp_expect select_highlight eq 0
+fp_expect action eq 0
+release kbA FPSpellSelect
+wait 0.1
+fp_expect selecting eq 0
+fp_expect time_dilation eq 1
+fp_expect action eq 3
+fp_expect select_casts eq 1
+wait 1.4
+fp_expect fireball_hits eq 1
+log right is Ice Wall
+hold kbA FPSpellSelect
+wait 0.1
+look 150 0
+wait 0.1
+fp_expect select_highlight eq 1
+release kbA FPSpellSelect
+wait 0.6
+fp_expect walls eq 1
+log letting go at the centre casts nothing
+fp_reset
+wait 0.5
+hold kbA FPSpellSelect
+wait 0.2
+release kbA FPSpellSelect
+wait 0.3
+fp_expect select_casts eq 2
+fp_expect action eq 0
+fp_expect walls eq 0
+log controller: Square / X and the right stick
+hold pad7 FPSpellSelect
+wait 0.1
+axis pad7 Gamepad_RightX -1.0
+wait 0.1
+fp_expect select_highlight eq 0
+axis pad7 Gamepad_RightX 0.0
+release pad7 FPSpellSelect
+wait 1.4
+fp_expect fireball_hits eq 1
+fp_dummy_reset
+log not enough Qhi: chosen, then refused like a button press
+fp_qhi 10
+hold kbA FPSpellSelect
+wait 0.1
+look -150 0
+wait 0.1
+release kbA FPSpellSelect
+wait 0.3
+fp_expect refused_qhi eq 1
+fp_expect qhi eq 10
+log pausing cancels the choice and restores time
+hold kbA FPSpellSelect
+wait 0.1
+press kbA Pause
+wait 0.1
+fp_expect selecting eq 0
+fp_expect time_dilation eq 1
+press kbA Pause
+release kbA FPSpellSelect
+wait 0.3
+fp_reset
+wait 0.5
+
+log == spell selector, list: the first spell is lit; Down (or the mouse, or the stick) moves to the next
+fp_selector list
+hold kbA FPSpellSelect
+wait 0.1
+fp_expect select_highlight eq 0
+press kbA key:S
+fp_expect select_highlight eq 1
+look 0 -100
+wait 0.1
+fp_expect select_highlight eq 0
+look 0 100
+wait 0.1
+fp_expect select_highlight eq 1
+release kbA FPSpellSelect
+wait 0.6
+fp_expect walls eq 1
+fp_reset
+wait 0.5
+hold pad7 FPSpellSelect
+wait 0.1
+axis pad7 Gamepad_RightY -1.0
+wait 0.1
+axis pad7 Gamepad_RightY 0.0
+fp_expect select_highlight eq 1
+release pad7 FPSpellSelect
+wait 0.6
+fp_expect walls eq 1
+fp_selector wheel
+fp_reset
+wait 0.5
+
+log == the developer panel (F10) opens in development builds
+fp_devkey
+wait 0.3
+fp_expect dev_panel eq 1
+fp_expect paused eq 1
+fp_devkey
+wait 0.3
+fp_expect paused eq 0
+fp_state end
+quit

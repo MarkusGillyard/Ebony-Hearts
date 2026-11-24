@@ -172,6 +172,8 @@ void FEHAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds)
 	TransitionSerial = Instance->TransitionSerial;
 	TransitionSeconds = Instance->TransitionSeconds;
 	TransitionLegSeconds = Instance->TransitionLegSeconds;
+	Additive = Instance->Additive;
+	LimbIK = Instance->LimbIK;
 	FrameDelta = FMath::Max(DeltaSeconds, 1e-4f);
 	Elapsed = FMath::Min(Elapsed + DeltaSeconds, 1.0e6f);
 }
@@ -307,12 +309,102 @@ bool FEHAnimProxy::Evaluate(FPoseContext& Output)
 		Offsets.Reset();
 	}
 
-	// Remember what was shown for the next transition's offset and speed.
+	// Remember what was shown for the next transition's offset and speed (without the additive reactions, which decay
+	// on their own and must not be carried into a transition twice).
 	Swap(Shown1, Shown2);
 	Shown1.SetNum(NumBones, EAllowShrinking::No);
 	for (const FCompactPoseBoneIndex Bone : Pose.ForEachBoneIndex())
 	{
 		Shown1[Bone.GetInt()] = Pose[Bone];
 	}
+	// Additive turns first (a torso turn carries the shoulders), then the limbs reach their targets from there.
+	ApplyAdditive(Pose);
+	ApplyLimbIK(Pose);
 	return true;
+}
+
+FCompactPoseBoneIndex FEHAnimProxy::FindBone(const FCompactPose& Pose, const FName Name)
+{
+	const FBoneContainer& Bones = Pose.GetBoneContainer();
+	const int32 SkeletonIndex = Bones.GetPoseBoneIndexForBoneName(Name);
+	return SkeletonIndex == INDEX_NONE ? FCompactPoseBoneIndex(INDEX_NONE) : Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(SkeletonIndex));
+}
+
+void FEHAnimProxy::RotateBoneCS(FCompactPose& Pose, const FCompactPoseBoneIndex Bone, const FQuat& DeltaCS)
+{
+	// Component-space delta D on the bone: its local rotation becomes ParentCS^-1 * D * ParentCS * Local.
+	FQuat ParentCS = FQuat::Identity;
+	const FCompactPoseBoneIndex Parent = Pose.GetParentBoneIndex(Bone);
+	if (Parent != INDEX_NONE)
+	{
+		FCSPose<FCompactPose> CS;
+		CS.InitPose(Pose);
+		ParentCS = CS.GetComponentSpaceTransform(Parent).GetRotation();
+	}
+	const FQuat LocalDelta = ParentCS.Inverse() * DeltaCS * ParentCS;
+	Pose[Bone].SetRotation((LocalDelta * Pose[Bone].GetRotation()).GetNormalized());
+}
+
+void FEHAnimProxy::ApplyLimbIK(FCompactPose& Pose) const
+{
+	for (const FEHLimbIK& Limb : LimbIK)
+	{
+		const FCompactPoseBoneIndex Upper = FindBone(Pose, Limb.Upper);
+		const FCompactPoseBoneIndex Lower = FindBone(Pose, Limb.Lower);
+		const FCompactPoseBoneIndex End = FindBone(Pose, Limb.End);
+		if (Upper == INDEX_NONE || Lower == INDEX_NONE || End == INDEX_NONE)
+		{
+			continue;
+		}
+		FCSPose<FCompactPose> CS;
+		CS.InitPose(Pose);
+		const FVector S = CS.GetComponentSpaceTransform(Upper).GetLocation();
+		const FVector E = CS.GetComponentSpaceTransform(Lower).GetLocation();
+		const FVector H = CS.GetComponentSpaceTransform(End).GetLocation();
+		const double A = FVector::Dist(S, E);
+		const double B = FVector::Dist(E, H);
+		if (A < 1e-3 || B < 1e-3)
+		{
+			continue;
+		}
+		const FVector ToT = Limb.Target - S;
+		const double D = FMath::Clamp(ToT.Size(), FMath::Abs(A - B) + 0.1, A + B - 0.01);
+		const FVector Dir = ToT.GetSafeNormal();
+		FVector Pole = Limb.Pole - Dir * FVector::DotProduct(Limb.Pole, Dir);
+		Pole = Pole.GetSafeNormal(UE_SMALL_NUMBER, FVector(0, 0, -1));
+		const double X = (A * A - B * B + D * D) / (2.0 * D);
+		const double Hh = FMath::Sqrt(FMath::Max(0.0, A * A - X * X));
+		const FVector ElbowTo = S + Dir * X + Pole * Hh;
+		const FVector HandTo = S + Dir * D;
+		// The upper bone turns so the elbow lands; then the lower bone turns so the hand lands.
+		RotateBoneCS(Pose, Upper, FQuat::FindBetweenNormals((E - S).GetSafeNormal(), (ElbowTo - S).GetSafeNormal()));
+		FCSPose<FCompactPose> CS2;
+		CS2.InitPose(Pose);
+		const FVector E2 = CS2.GetComponentSpaceTransform(Lower).GetLocation();
+		const FVector H2 = CS2.GetComponentSpaceTransform(End).GetLocation();
+		RotateBoneCS(Pose, Lower, FQuat::FindBetweenNormals((H2 - E2).GetSafeNormal(), (HandTo - E2).GetSafeNormal()));
+	}
+}
+
+void FEHAnimProxy::ApplyAdditive(FCompactPose& Pose) const
+{
+	const FBoneContainer& Bones = Pose.GetBoneContainer();
+	for (const FEHAdditiveRotation& A : Additive)
+	{
+		if (A.Rotation.Equals(FQuat::Identity, 1e-5))
+		{
+			continue;
+		}
+		const int32 SkeletonIndex = Bones.GetPoseBoneIndexForBoneName(A.Bone);
+		if (SkeletonIndex == INDEX_NONE)
+		{
+			continue;
+		}
+		const FCompactPoseBoneIndex Bone = Bones.MakeCompactPoseIndex(FMeshPoseBoneIndex(SkeletonIndex));
+		if (Bone == INDEX_NONE)
+		{
+			continue;
+		}
+		RotateBoneCS(Pose, Bone, A.Rotation);
+	}
 }

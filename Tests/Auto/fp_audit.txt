@@ -1,0 +1,94 @@
+# First-person audit of the Chapel (development builds: uses fp_teleport).
+wait 4
+ui_hidden 1
+fp_state start
+fp_teleport 0 300 0 -90 0
+wait 0.8
+fp_state 01_entrance_east
+screenshot 01_entrance_east
+fp_teleport 0 300 0 90 0
+wait 0.8
+fp_state 02_entrance_west
+screenshot 02_entrance_west
+fp_teleport 0 300 0 -90 55
+wait 0.8
+fp_state 03_entrance_up
+screenshot 03_entrance_up
+fp_teleport 0 -700 0 -90 0
+wait 0.8
+fp_state 04_nave_mid_east
+screenshot 04_nave_mid_east
+fp_teleport 0 -700 0 90 0
+wait 0.8
+fp_state 05_nave_mid_west
+screenshot 05_nave_mid_west
+fp_teleport 0 -700 0 0 0
+wait 0.8
+fp_state 06_nave_mid_north
+screenshot 06_nave_mid_north
+fp_teleport 0 -700 0 180 0
+wait 0.8
+fp_state 07_nave_mid_south
+screenshot 07_nave_mid_south
+fp_teleport 0 -700 0 -90 70
+wait 0.8
+fp_state 08_nave_mid_up
+screenshot 08_nave_mid_up
+fp_teleport 0 -700 0 -90 -60
+wait 0.8
+fp_state 09_nave_mid_down
+screenshot 09_nave_mid_down
+fp_teleport 0 -1500 0 90 0
+wait 0.8
+fp_state 10_altar_west
+screenshot 10_altar_west
+fp_teleport 0 -1500 0 -90 25
+wait 0.8
+fp_state 11_altar_rose
+screenshot 11_altar_rose
+fp_teleport -1000 -200 0 -90 0
+wait 0.8
+fp_state 12_aisle_left_east
+screenshot 12_aisle_left_east
+fp_teleport -1000 -200 0 90 0
+wait 0.8
+fp_state 13_aisle_left_west
+screenshot 13_aisle_left_west
+fp_teleport -1000 -900 0 180 0
+wait 0.8
+fp_state 14_aisle_left_wall
+screenshot 14_aisle_left_wall
+fp_teleport -1000 -1700 0 -90 0
+wait 0.8
+fp_state 15_aisle_left_end
+screenshot 15_aisle_left_end
+fp_teleport 1000 -600 0 -90 0
+wait 0.8
+fp_state 16_aisle_right_east
+screenshot 16_aisle_right_east
+fp_teleport 1000 -1700 0 -90 0
+wait 0.8
+fp_state 17_aisle_right_end
+screenshot 17_aisle_right_end
+fp_teleport 1000 -1700 0 90 0
+wait 0.8
+fp_state 18_aisle_right_west
+screenshot 18_aisle_right_west
+fp_teleport 300 -1200 0 -60 -70
+wait 0.8
+fp_state 19_basin_down
+screenshot 19_basin_down
+fp_teleport 300 -1200 0 90 -15
+wait 0.8
+fp_state 20_basin_low
+screenshot 20_basin_low
+fp_teleport -700 -1900 0 180 0
+wait 0.8
+fp_state 21_apse_corner_left
+screenshot 21_apse_corner_left
+fp_teleport 700 -1900 0 0 0
+wait 0.8
+fp_state 22_apse_corner_right
+screenshot 22_apse_corner_right
+wait 0.5
+quit

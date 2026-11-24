@@ -19,8 +19,28 @@ enum class EEHAction : uint8
 	Block,
 	Reset,   // training quick reset
 	Down,    // crouch while held; with Heavy the uppercut, with Light the low attack (added in settings version 4)
+	// First person (settings version 6). Bound only in the first-person layouts.
+	FPForward,
+	FPBack,
+	FPLeft,
+	FPRight,
+	FPJump,
+	FPCrouch,
+	FPSprint,
+	// Physical techniques (settings version 7).
+	FPJab,
+	FPStraight,
+	FPBlock,             // (version 7 also had a shove; version 9 removed it)
+	// Spells (settings version 8).
+	FPFireball,
+	FPIceWall,
+	// Hold to choose a spell from the wheel or list, release to cast it (settings version 9).
+	FPSpellSelect,
 	Count
 };
+
+constexpr int32 EHFightActionCount = static_cast<int32>(EEHAction::Down) + 1;
+inline bool EHIsFirstPersonAction(EEHAction Action) { return static_cast<int32>(Action) >= EHFightActionCount && Action != EEHAction::Count; }
 
 // Menu commands: fixed per device class (never remappable), so a player can never lock themselves out of the menus.
 enum class EEHNav : uint8
@@ -42,8 +62,14 @@ enum class EEHBindingSet : uint8
 	KeyboardB,   // player two, right side of the keyboard
 	GamepadP1,   // player one's controller layout
 	GamepadP2,   // player two's controller layout (Local Versus)
+	FPKeyboard,  // first-person keyboard and mouse
+	FPController,// first-person controller (every controller)
 	Count
 };
+
+// The layouts of the 2.5D slice come first; settings migrations before version 6 apply to them only.
+constexpr int32 EHFightSetCount = 4;
+inline bool EHIsFirstPersonSet(EEHBindingSet Set) { return Set == EEHBindingSet::FPKeyboard || Set == EEHBindingSet::FPController; }
 
 enum class EEHPromptStyle : uint8
 {
@@ -58,7 +84,14 @@ constexpr int32 EHNavCount = static_cast<int32>(EEHNav::Count);
 constexpr int32 EHSetCount = static_cast<int32>(EEHBindingSet::Count);
 constexpr int32 EHKeysPerAction = 3;   // primary, secondary and third button of an action in one layout
 
-inline bool EHIsKeyboardSet(EEHBindingSet Set) { return Set == EEHBindingSet::KeyboardA || Set == EEHBindingSet::KeyboardB; }
+inline bool EHIsKeyboardSet(EEHBindingSet Set) { return Set == EEHBindingSet::KeyboardA || Set == EEHBindingSet::KeyboardB || Set == EEHBindingSet::FPKeyboard; }
+// The fixed menu map a layout's device uses (EHMenuCommand): the left keyboard side, the right one, or any controller.
+inline EEHBindingSet EHMenuClass(EEHBindingSet Set)
+{
+	return Set == EEHBindingSet::KeyboardB ? Set : (EHIsKeyboardSet(Set) ? EEHBindingSet::KeyboardA : EEHBindingSet::GamepadP1);
+}
+// The actions a layout lists and binds, in menu order.
+TArray<EEHAction> EHActionsFor(EEHBindingSet Set);
 
 // A single binding slot.
 struct FEHBindingRef
@@ -136,8 +169,22 @@ struct FEHSettings
 	// Gameplay
 	int32 CpuLevel = 1;
 	FEHBindings Bindings = FEHBindings::Defaults();
+	// First person (version 6)
+	float MouseSensitivity = 0.08f;  // degrees of turn per mouse count
+	float StickSensitivity = 1.0f;   // multiplier on the stick's full-tilt turn rate
+	bool bInvertLook = false;
+	int32 FieldOfView = 90;          // horizontal degrees at 16:9
+	bool bSprintToggle = false;      // keyboard: press to sprint instead of hold (a controller's stick press always toggles)
+	bool bCrouchToggle = false;      // keyboard: press to crouch instead of hold (a controller's stick press always toggles)
+	int32 StaminaMeter = 1;          // 0 never, 1 while it changes, 2 always
+	bool bVibration = true;          // controller rumble on contact and on being hit
+	int32 SpellSelector = 0;         // 0 wheel, 1 list (settings version 9)
+	// True when this profile was started from the 2.5D slice's settings file (display, audio and accessibility kept).
+	bool bImportedFromSlice = false;
 
+	// The first-person prototype keeps its own file, so the 2.5D slice's Settings.json is never rewritten.
 	static FString FilePath();
+	static FString SliceFilePath();
 	// Loads settings; a missing or corrupt file yields defaults (a corrupt file is kept as .bad for inspection).
 	// Version 1 files keep their keyboard layouts; their controller layout moves to the current default. Files before
 	// version 5 move every action still on its old default to the current layout (DefaultsV4).
@@ -152,7 +199,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 5;
+constexpr int32 EHSettingsVersion = 9;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

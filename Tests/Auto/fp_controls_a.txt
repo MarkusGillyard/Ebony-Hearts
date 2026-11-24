@@ -1,0 +1,44 @@
+# First-person controls, launch A of two: remap through the Controls page's capture path, then use the new keys.
+# Launch B (fp_controls_b.txt) checks that the remaps were saved and restores the defaults.
+wait 5
+bindings_selftest
+log == remap: Forward to I, Jump to the left mouse button, Sprint onto D (swap), controller Jump to B / Circle
+remap fpKeyboard FPForward 0 I
+expect_binding fpKeyboard FPForward 0 I
+remap fpKeyboard FPJump 0 LeftMouseButton
+expect_binding fpKeyboard FPJump 0 LeftMouseButton
+remap fpKeyboard FPSprint 0 D swap
+expect_binding fpKeyboard FPSprint 0 D
+expect_binding fpKeyboard FPRight 0 LeftShift
+remap fpController FPJump 0 Gamepad_FaceButton_Right
+expect_binding fpController FPJump 0 Gamepad_FaceButton_Right
+log == the new keys act; the old ones do not
+fp_reset
+log (turned along the entrance, clear of the training dummy ahead)
+look 1125 0
+wait 0.3
+hold kbA key:I
+wait 1.0
+fp_expect speed near 400 15
+release kbA key:I
+wait 0.5
+hold kbA key:W
+wait 0.6
+fp_expect speed lt 5
+release kbA key:W
+press kbA key:LeftMouseButton
+fp_expect falling eq 1
+wait 1.2
+press kbA key:SpaceBar
+fp_expect falling eq 0
+press pad7 key:Gamepad_FaceButton_Right
+fp_expect falling eq 1
+wait 1.2
+hold kbA key:I
+hold kbA key:D
+wait 1.0
+fp_expect sprinting eq 1
+release kbA key:D
+release kbA key:I
+wait 0.5
+quit

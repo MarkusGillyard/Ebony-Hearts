@@ -1,0 +1,59 @@
+# First-person smoke check for any build, Shipping included (device inputs and observation only).
+wait 5
+fp_expect screen eq 12
+fp_expect paused eq 0
+fp_expect z near 0 5
+fp_expect y near 300 5
+platform_check
+window_check
+assets
+log == walk, sprint, jump, crouch (across the entrance strip, clear of the training dummy ahead)
+hold kbA FPLeft
+wait 1.2
+fp_expect speed near 400 15
+release kbA FPLeft
+look 1125 0
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.0
+fp_expect speed near 700 20
+release kbA FPSprint
+release kbA FPForward
+look -1125 0
+press kbA FPJump
+fp_expect falling eq 1
+wait 1.2
+hold kbA FPCrouch
+wait 0.7
+fp_expect crouched eq 1
+release kbA FPCrouch
+wait 0.7
+fp_expect crouched eq 0
+log == pause, Settings and back, resume
+press kbA Pause
+fp_expect paused eq 1
+press kbA Down
+press kbA Down
+press kbA Confirm
+wait 0.3
+fp_expect screen eq 6
+press kbA Back
+wait 0.3
+fp_expect screen eq 12
+press kbA Back
+wait 0.3
+fp_expect paused eq 0
+log == focus loss and return to the start
+hold kbA FPForward
+wait 0.4
+fp_focus_lost
+fp_expect paused eq 1
+press kbA Back
+release kbA FPForward
+wait 0.5
+fp_expect speed lt 5
+fp_reset
+fp_expect y near 300 5
+settings_roundtrip
+mem end
+quit

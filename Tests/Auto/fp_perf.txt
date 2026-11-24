@@ -1,0 +1,206 @@
+# Warm frame-time capture along a fixed traversal route (all builds: device inputs only, so it runs in Shipping).
+# The route is played once to warm caches, then captured. About 2.5 minutes.
+wait 6
+log warm-up pass
+wait 0.5
+fp_reset
+wait 4
+log route: nave east
+hold kbA FPForward
+wait 3.5
+release kbA FPForward
+loop 36
+look 125 0
+wait 0.05
+endloop
+wait 0.5
+log route: sprint toward the altar
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.5
+release kbA FPSprint
+release kbA FPForward
+log route: look up at the vault and the rose window
+loop 20
+look 0 -40
+wait 0.05
+endloop
+wait 1.0
+loop 20
+look 0 40
+wait 0.05
+endloop
+log route: into the left aisle
+loop 18
+look -125 0
+wait 0.05
+endloop
+hold kbA FPForward
+wait 2.0
+release kbA FPForward
+loop 36
+look 125 0
+wait 0.05
+endloop
+log route: crouch-walk and jump
+hold kbA FPCrouch
+hold kbA FPBack
+wait 1.5
+release kbA FPBack
+release kbA FPCrouch
+press kbA FPJump
+wait 1.0
+press kbA FPJump
+wait 1.0
+log route: back to the entrance, then down the nave again
+fp_reset
+wait 0.5
+loop 36
+look -125 0
+wait 0.05
+endloop
+hold kbA FPForward
+hold kbA FPRight
+wait 2.0
+release kbA FPRight
+wait 2.0
+release kbA FPForward
+loop 36
+look 125 0
+wait 0.05
+endloop
+loop 10
+look 0 60
+wait 0.05
+endloop
+loop 36
+look -125 0
+wait 0.05
+endloop
+loop 10
+look 0 -60
+wait 0.05
+endloop
+hold kbA FPForward
+hold kbA FPSprint
+wait 2.0
+release kbA FPSprint
+release kbA FPForward
+wait 1.0
+fp_reset
+hold kbA FPForward
+hold kbA FPLeft
+wait 2.5
+release kbA FPLeft
+wait 2.5
+release kbA FPForward
+loop 72
+look -125 0
+wait 0.05
+endloop
+wait 2
+fp_state end
+mem end
+log captured pass
+wait 0.5
+fp_reset
+perf_begin
+wait 4
+log route: nave east
+hold kbA FPForward
+wait 3.5
+release kbA FPForward
+loop 36
+look 125 0
+wait 0.05
+endloop
+wait 0.5
+log route: sprint toward the altar
+hold kbA FPForward
+hold kbA FPSprint
+wait 1.5
+release kbA FPSprint
+release kbA FPForward
+log route: look up at the vault and the rose window
+loop 20
+look 0 -40
+wait 0.05
+endloop
+wait 1.0
+loop 20
+look 0 40
+wait 0.05
+endloop
+log route: into the left aisle
+loop 18
+look -125 0
+wait 0.05
+endloop
+hold kbA FPForward
+wait 2.0
+release kbA FPForward
+loop 36
+look 125 0
+wait 0.05
+endloop
+log route: crouch-walk and jump
+hold kbA FPCrouch
+hold kbA FPBack
+wait 1.5
+release kbA FPBack
+release kbA FPCrouch
+press kbA FPJump
+wait 1.0
+press kbA FPJump
+wait 1.0
+log route: back to the entrance, then down the nave again
+fp_reset
+wait 0.5
+loop 36
+look -125 0
+wait 0.05
+endloop
+hold kbA FPForward
+hold kbA FPRight
+wait 2.0
+release kbA FPRight
+wait 2.0
+release kbA FPForward
+loop 36
+look 125 0
+wait 0.05
+endloop
+loop 10
+look 0 60
+wait 0.05
+endloop
+loop 36
+look -125 0
+wait 0.05
+endloop
+loop 10
+look 0 -60
+wait 0.05
+endloop
+hold kbA FPForward
+hold kbA FPSprint
+wait 2.0
+release kbA FPSprint
+release kbA FPForward
+wait 1.0
+fp_reset
+hold kbA FPForward
+hold kbA FPLeft
+wait 2.5
+release kbA FPLeft
+wait 2.5
+release kbA FPForward
+loop 72
+look -125 0
+wait 0.05
+endloop
+wait 2
+perf_end fp_warm
+fp_state end
+mem end
+quit

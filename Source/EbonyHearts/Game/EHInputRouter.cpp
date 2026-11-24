@@ -153,6 +153,11 @@ void FEHInputRouter::ClearGamepadPlayers()
 
 EEHBindingSet FEHInputRouter::SetFor(int32 DeviceKey) const
 {
+	if (bFirstPerson)
+	{
+		if (DeviceKey == EHDeviceKeyboardA) return EEHBindingSet::FPKeyboard;
+		if (DeviceKey >= EHDeviceGamepadBase) return EEHBindingSet::FPController;
+	}
 	if (DeviceKey == EHDeviceKeyboardA) return EEHBindingSet::KeyboardA;
 	if (DeviceKey == EHDeviceKeyboardB) return EEHBindingSet::KeyboardB;
 	return GamepadPlayer.FindRef(DeviceKey) == 1 ? EEHBindingSet::GamepadP2 : EEHBindingSet::GamepadP1;
@@ -321,9 +326,13 @@ void FEHInputRouter::ProcessKeyboardKey(const FKey& Key, bool bDown, int32 OnlyD
 		{
 			continue;
 		}
-		const EEHBindingSet Set = DeviceKey == EHDeviceKeyboardA ? EEHBindingSet::KeyboardA : EEHBindingSet::KeyboardB;
+		if (bFirstPerson && DeviceKey != EHDeviceKeyboardA)
+		{
+			continue;
+		}
+		const EEHBindingSet Set = SetFor(DeviceKey);
 		FEHDevice& D = DeviceMap.FindChecked(DeviceKey);
-		const EEHNav Command = EHMenuCommand(Set, Key);
+		const EEHNav Command = Key.IsMouseButton() ? EEHNav::Count : EHMenuCommand(EHMenuClass(Set), Key);
 		const EEHAction Action = Bindings->Find(Set, Key);
 		const bool bNewNav = Command != EEHNav::Count && SetNav(D, Command, bDown, false);
 		bool bNewAction = false;
@@ -363,6 +372,13 @@ bool FEHInputRouter::HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyE
 	{
 		return true;
 	}
+#if !UE_BUILD_SHIPPING
+	if (bFirstPerson && Key == EKeys::F10)
+	{
+		bDeveloperKey = true;
+		return true;
+	}
+#endif
 	ProcessKeyboardKey(Key, true);
 	return false;
 }
@@ -384,6 +400,10 @@ bool FEHInputRouter::HandleKeyUpEvent(FSlateApplication& SlateApp, const FKeyEve
 
 void FEHInputRouter::ProcessAxis(FEHDevice& D, const FKey& Axis, float V)
 {
+	if (Axis == EKeys::Gamepad_LeftX) D.Axes[0] = V;
+	else if (Axis == EKeys::Gamepad_LeftY) D.Axes[1] = V;
+	else if (Axis == EKeys::Gamepad_RightX) D.Axes[2] = V;
+	else if (Axis == EKeys::Gamepad_RightY) D.Axes[3] = V;
 	if (Axis == EKeys::Gamepad_LeftTriggerAxis || Axis == EKeys::Gamepad_RightTriggerAxis)
 	{
 		const uint8 B = Axis == EKeys::Gamepad_LeftTriggerAxis ? 1 : 2;
@@ -426,6 +446,15 @@ void FEHInputRouter::ProcessAxis(FEHDevice& D, const FKey& Axis, float V)
 		const EEHNav Command = i == 0 ? NavNeg : NavPos;
 		const bool bDown = i == 0 ? bNeg : bPos;
 		const bool bNewNav = SetNav(D, Command, bDown, true);
+		if (bFirstPerson)
+		{
+			// First person reads the stick's position directly; it only navigates menus here.
+			if (bNewNav)
+			{
+				Pressed(D, Command, EEHAction::Count);
+			}
+			continue;
+		}
 		// Left and right move; up jumps; down crouches. Each axis has its own hysteresis, so a diagonal must pass the
 		// same threshold on both axes and a resting or slightly off-centre stick neither crouches nor jumps.
 		const EEHAction Action = bX ? (i == 0 ? EEHAction::Left : EEHAction::Right) : (i == 0 ? EEHAction::Down : EEHAction::Jump);
@@ -440,13 +469,94 @@ void FEHInputRouter::ProcessAxis(FEHDevice& D, const FKey& Axis, float V)
 bool FEHInputRouter::HandleAnalogInputEvent(FSlateApplication& SlateApp, const FAnalogInputEvent& InAnalogInputEvent)
 {
 	const FKey Key = InAnalogInputEvent.GetKey();
-	if (Key != EKeys::Gamepad_LeftX && Key != EKeys::Gamepad_LeftY && Key != EKeys::Gamepad_LeftTriggerAxis && Key != EKeys::Gamepad_RightTriggerAxis)
+	if (Key != EKeys::Gamepad_LeftX && Key != EKeys::Gamepad_LeftY && Key != EKeys::Gamepad_LeftTriggerAxis && Key != EKeys::Gamepad_RightTriggerAxis &&
+		Key != EKeys::Gamepad_RightX && Key != EKeys::Gamepad_RightY)
 	{
 		return false;
 	}
 	FEHDevice& D = Touch(EHDeviceGamepadBase + InAnalogInputEvent.GetInputDeviceId().GetId(), true, InAnalogInputEvent.GetInputDeviceId());
 	ProcessAxis(D, Key, InAnalogInputEvent.GetAnalogValue());
 	return false;
+}
+
+bool FEHInputRouter::OnMouseButton(const FKey& Key, bool bDown)
+{
+	// Mouse buttons are gameplay keys of the first-person keyboard layout only; menus never use the mouse.
+	if (!bFirstPerson)
+	{
+		return false;
+	}
+	if (bDown && bCapturing)
+	{
+		if (CaptureSet == EEHBindingSet::FPKeyboard && FEHBindings::IsBindable(CaptureSet, Key))
+		{
+			CapturedKey = Key;
+			bCaptureCancelled = false;
+			bCaptureDone = true;
+			bCapturing = false;
+		}
+		return true;
+	}
+	ProcessKeyboardKey(Key, bDown, EHDeviceKeyboardA);
+	return false;
+}
+
+bool FEHInputRouter::HandleMouseMoveEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent)
+{
+	if (bFirstPerson)
+	{
+		MouseDelta += FVector2D(MouseEvent.GetCursorDelta());
+	}
+	return false;
+}
+
+bool FEHInputRouter::HandleMouseButtonDownEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent)
+{
+	return OnMouseButton(MouseEvent.GetEffectingButton(), true);
+}
+
+bool FEHInputRouter::HandleMouseButtonDoubleClickEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent)
+{
+	return OnMouseButton(MouseEvent.GetEffectingButton(), true);
+}
+
+bool FEHInputRouter::HandleMouseButtonUpEvent(FSlateApplication& SlateApp, const FPointerEvent& MouseEvent)
+{
+	return OnMouseButton(MouseEvent.GetEffectingButton(), false);
+}
+
+void FEHInputRouter::SetFirstPerson(bool bOn)
+{
+	if (bFirstPerson != bOn)
+	{
+		bFirstPerson = bOn;
+		ResetHeld();
+	}
+}
+
+FVector2D FEHInputRouter::ConsumeMouseDelta()
+{
+	const FVector2D Out = MouseDelta;
+	MouseDelta = FVector2D::ZeroVector;
+	return Out;
+}
+
+uint32 FEHInputRouter::TakePresses(int32 DeviceKey)
+{
+	FEHDevice* D = DeviceMap.Find(DeviceKey);
+	if (D == nullptr)
+	{
+		return 0;
+	}
+	const uint32 Out = D->SimLatch;
+	D->SimLatch = 0;
+	return Out;
+}
+
+uint32 FEHInputRouter::HeldBits(int32 DeviceKey) const
+{
+	const FEHDevice* D = DeviceMap.Find(DeviceKey);
+	return D && D->bConnected ? D->Held : 0;
 }
 
 void FEHInputRouter::Tick(const float DeltaTime, FSlateApplication& SlateApp, TSharedRef<ICursor> Cursor)
@@ -521,7 +631,29 @@ void FEHInputRouter::ResetHeld()
 		D.KeyHeld = D.SimLatch = 0;
 		D.Held = D.StickHeld;
 		D.KeysDown.Reset();
+		if (bFirstPerson)
+		{
+			// Sticks report again when they next move; a released stick must not keep walking or turning meanwhile.
+			FMemory::Memzero(D.Axes);
+		}
 	}
+	MouseDelta = FVector2D::ZeroVector;
+}
+
+void FEHInputRouter::ResetForFocusLoss()
+{
+	ResetHeld();
+	for (auto& Pair : DeviceMap)
+	{
+		FEHDevice& D = Pair.Value;
+		D.Held = D.StickHeld = 0;
+		D.NavHeld = D.NavKeyHeld = D.NavStickHeld = 0;
+		D.TriggerDown = D.DigitalTriggerDown = 0;
+		FMemory::Memzero(D.Axes);
+	}
+	Nav.Reset();
+	RepeatTimers.Reset();
+	bDeveloperKey = false;
 }
 
 bool FEHInputRouter::PopNav(FEHNavEvent& Out)
@@ -599,6 +731,8 @@ void FEHInputRouter::OnConnectionChange(EInputDeviceConnectionState State, FPlat
 		D->NavHeld = D->NavKeyHeld = D->NavStickHeld = 0;
 		D->TriggerDown = D->DigitalTriggerDown = 0;
 		D->KeysDown.Reset();
+		FMemory::Memzero(D->Axes);
+		Nav.RemoveAll([DeviceKey](const FEHNavEvent& E) { return E.Device == DeviceKey; });
 	}
 	ConnectionChanges.Add(TPair<int32, bool>(DeviceKey, bConnected));
 }
