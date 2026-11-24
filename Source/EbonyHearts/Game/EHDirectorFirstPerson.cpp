@@ -1336,7 +1336,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		// Combat text: beside each speaker (development labels above stay readable: bubbles sit above them).
 		APlayerController* PC = GetWorld()->GetFirstPlayerController();
 		const float AppScale = FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale());
-		CombatText.Paint(P, Fonts, [&](const FVector& World, FVector2f& Out) {
+		CombatText.Paint(P, Fonts, FPPlayer->Camera()->GetComponentTransform(), [&](const FVector& World, FVector2f& Out) {
 			FVector2D S;
 			if (PC == nullptr || !PC->ProjectWorldLocationToScreen(World, S, true))
 			{

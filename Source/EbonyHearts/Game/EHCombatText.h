@@ -66,7 +66,7 @@ public:
 	void Clear();                 // reset and death: every line gone, every speaker's memory cleared
 	// Lays out and draws every line. ViewTo projects a world point to virtual canvas coordinates (false behind the
 	// camera). Speakers that no longer exist lose their lines.
-	void Paint(FEHPainter& P, const FEHFonts& Fonts, TFunctionRef<bool(const FVector&, FVector2f&)> ViewTo, bool bReduceFlash);
+	void Paint(FEHPainter& P, const FEHFonts& Fonts, const FTransform& View, TFunctionRef<bool(const FVector&, FVector2f&)> ViewTo, bool bReduceFlash);
 
 	// Evidence for the automation (fp_expect ct_*).
 	int32 Visible() const { return Bubbles.Num(); }
@@ -74,6 +74,7 @@ public:
 	int32 ShownByKind[4] = {0, 0, 0, 0};
 	int32 MaxVisibleSeen = 0;
 	int32 OverlapsSeen = 0;       // the most overlapping pairs in any one frame
+	float LastOffscreenX = 0.0f; // last off-screen anchor relative to the view centre
 	int32 Offscreen = 0;          // visible lines whose speaker is off screen (last frame)
 	int32 OutsideView = 0;        // visible lines drawn even partly outside the view (last frame)
 	int32 Popping = 0;            // lines in their jump-out (last frame)
