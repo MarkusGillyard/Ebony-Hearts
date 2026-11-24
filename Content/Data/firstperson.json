@@ -421,5 +421,40 @@
         "fill": 1.0
       }
     ]
+  },
+  "pack": {
+    "comment": "The Chapel wolves as a pack (milestone 6). count: wolves in the Chapel (1..4; development builds change it live). spawns: each wolf's place and rest [x, y, yaw], the first the lone wolf's. Overwhelmed, when the pack allows a one-on-one (the creator's rule, 2026-11-23): any of Health below overwhelmedHealth of full, surroundCount wolves within surroundRadius cm, or hitsCount hits within hitsWindow seconds. oneOnOneLinger: seconds the one-on-one lasts after that. holdBackRadius: how far the others stand back. waitRadius: taking turns, how far the waiting wolves circle (outside surroundRadius, so waiting is not surrounding). turnTimeout: a turn holder that has not attacked for this long (blocked, stuck) passes the turn.",
+    "count": 1,
+    "spawns": [
+      [
+        330,
+        -1530,
+        90
+      ],
+      [
+        -330,
+        -1530,
+        90
+      ],
+      [
+        560,
+        -1250,
+        120
+      ],
+      [
+        -560,
+        -1250,
+        60
+      ]
+    ],
+    "overwhelmedHealth": 0.5,
+    "surroundRadius": 400,
+    "surroundCount": 3,
+    "hitsCount": 3,
+    "hitsWindow": 4,
+    "oneOnOneLinger": 3,
+    "holdBackRadius": 650,
+    "waitRadius": 520,
+    "turnTimeout": 6
   }
 }

@@ -286,6 +286,30 @@ The body is a low-poly wolf in parts (body, head, four legs, tail; `Tools/Blende
 `Tools/Unreal/import_wolf.py`) posed and animated in code: a walk and run cycle, a crouch before attacks, the head
 turning toward the player, a wagging tail when friendly, and a fall when killed. Its sounds reuse the slice's effects.
 
+### The pack (milestone 6)
+
+The Chapel can hold one to four wolves (`pack.count` in `firstperson.json`, 1 by default; the developer panel's
+Wolves item and `fp_wolves <n>` change it live). Each has its own place and rest (`pack.spawns`; the first is the lone
+wolf's). Every wolf follows the alignment rules above on its own; when two or more are hostile and on the Chapel's
+floor with the player they fight as a pack (`Source/EbonyHearts/Game/EHDirectorPack.cpp`):
+
+- **Turns.** One wolf holds the turn and may bite or lunge; the others circle about 5.2 m away (outside the 4 m that counts as surrounding) and press but do not attack. The
+  turn passes, to the wolf that has waited longest, when the holder finishes an attack, dies, is frozen, stops
+  fighting, or has not attacked for 6 seconds (a blocked path). Never more than one wolf is attacking at once.
+- **One-on-one.** When the player is overwhelmed the pack allows a one-on-one: the holder fights on alone and the
+  others stand back about 6.5 m away and watch, until 3 seconds after the player stops being overwhelmed. The
+  creator's rule (2026-11-23), any one of: **Health below half**, **three or more wolves within 4 m**, or **three hits
+  taken within 4 seconds**. The numbers are data (`pack.overwhelmedHealth`, `surroundRadius`, `surroundCount`,
+  `hitsCount`, `hitsWindow`, `oneOnOneLinger`, `holdBackRadius`, `turnTimeout`).
+- **Ice Wall.** When a wall rises or starts to melt every wolf re-plans its path then, and again 0.4 and 1.2 seconds
+  later while the navigation mesh rebuilds. A wolf that is moving but has gone nowhere for 0.75 seconds re-plans too,
+  so none stays stuck against the wall or another wolf.
+- A Hero of Humanity's blows are taken by the nearest wolf within 10 m; an Ice Wall freezes and pushes every wolf
+  near it.
+
+In development builds each wolf's label shows its number, state and part (turn, waiting, standing back). The pause
+menu's Reset the wolves puts them all back at rest.
+
 ## The Chapel in first person
 
 The slice built the Chapel for a camera looking down the nave from one side. Walking it from eye height
@@ -345,7 +369,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path, praying, prayers, prayer_seconds, interact_focus, interact_messages, placed_loops, sparks, clock_hour, clock_day, sky_light, glass_glow |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path, praying, prayers, prayer_seconds, interact_focus, interact_messages, placed_loops, sparks, clock_hour, clock_day, sky_light, glass_glow, wolves, wolves_alive, wolves_fighting, overwhelmed, one_on_one, one_on_ones, pack_passes, pack_max_attackers, pack_holder, pack_attacks, pack_repaths, pack_stuck, pack_hits, pack_holdback_min |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -357,7 +381,8 @@ path as a player. New commands:
 | `fp_selector <wheel\|list>` | all | what Settings > Controls > Spell selector does |
 | `fp_clock <hour>` | development only | sets the hour of the current day (0 is midnight; a day is 144 hours) |
 | `fp_hide <mesh name prefix \| lights> <0\|1>` | development only | hides static meshes by mesh name, or switches off the interior's lights, to measure what a view's frame time is made of |
-| `fp_wolf_reset` | all | what the pause menu's Reset the wolf does |
+| `fp_wolf_reset` | all | what the pause menu's Reset the wolves does |
+| `fp_wolves <1..4>`, `fp_pack_ring <radius>`, `fp_hurt <damage>`, `fp_wolf_kill <index>` | development only | the pack's size; every living wolf placed round the player; a blow from straight ahead; one wolf killed at once (no alignment change) |
 | `fp_align <0..8>`, `fp_wolf_place <x> <y> [yaw] [health]` | development only | the developer panel's alignment; a test position (and Health) for the wolf |
 | `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
 
@@ -380,7 +405,8 @@ the spell wheel and list with mouse, stick and keys, the developer panel), `fp_s
 a threat against real harm, leaving and returning, the evil wolf's attacks, a kill, the reset keeping the alignment,
 Hero of Humanity's bond, the friendly wolf protecting the player, the Ice Wall rerouting and freezing it) and
 `fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping), and the Chapel interior's `fp_interior.txt`,
-`fp_chapel.txt`, `fp_ship_chapel.txt`, `fp_clock.txt` and `fp_perf_interior.txt` (`Docs/ChapelInterior.md`).
+`fp_chapel.txt`, `fp_ship_chapel.txt`, `fp_clock.txt` and `fp_perf_interior.txt` (`Docs/ChapelInterior.md`), and the pack's `fp_pack.txt` (two, three and four wolves taking turns, each of the three
+overwhelmed conditions, the turn passing on a death and a freeze, the Ice Wall re-plan, the reset, back to one wolf).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.

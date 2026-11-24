@@ -73,6 +73,16 @@ enum class EEHWolfState : uint8
 
 const TCHAR* EHWolfStateName(EEHWolfState S);
 
+// A wolf's part in a pack's fight (milestone 6), set each frame by the director's pack. A lone wolf, or one not
+// fighting, is Free and behaves as before.
+enum class EEHPackRole : uint8
+{
+	Free,      // no pack coordination
+	Attacker,  // holds the pack's turn: may bite and lunge
+	Waiting,   // the pack takes turns: circles close, presses, but does not attack
+	HoldBack,  // one-on-one: stands back at a distance and watches
+};
+
 // What a strike from the player did to the wolf.
 struct FEHWolfHit
 {
@@ -106,6 +116,16 @@ public:
 	void Freeze(float Seconds);
 	void Displace(const FVector& Offset, AActor* Ignore);
 
+	// The pack (milestone 6).
+	void SetPackRole(EEHPackRole InRole, float InHoldBackRadius, float InWaitRadius) { PackRole = InRole; HoldBackRadius = InHoldBackRadius; WaitRadius = InWaitRadius; }
+	EEHPackRole GetPackRole() const { return PackRole; }
+	bool IsAttacking() const;          // in a bite or lunge, from wind-up to recovery
+	int32 AttacksStarted() const { return BiteCount + LungeCount; }
+	// The navigation mesh changed nearby (an Ice Wall rose or melted): re-plan the next move now.
+	void RequestRepath() { LastMoveTarget = FVector(1e9); RepathCount += 1; }
+	int32 Repaths() const { return RepathCount; }
+	int32 StuckRepaths() const { return StuckCount; }
+	float SecondsSinceAttack() const { return SinceAttack; }
 	bool IsDead() const { return State == EEHWolfState::Dead; }
 	bool IsFrozen() const { return FrozenLeft > 0.0f; }
 	bool IsProvoked() const { return bProvoked; }
@@ -162,6 +182,9 @@ private:
 	float OutsideFor = 0.0f;       // seconds the player has been outside while it is provoked
 	float CircleSign = 1.0f;
 	int32 CircleFrames = 0;
+	FVector WaitGoal = FVector(1e9);   // a waiting wolf's place on the floor, re-chosen every few frames
+	int32 WaitGoalFrames = 0;
+	FVector FindWaitSpot(float Radius) const;
 	FVector DisengageFrom = FVector::ZeroVector;
 	bool bLungeHit = false;
 	float FrozenLeft = 0.0f;
@@ -173,6 +196,13 @@ private:
 	FVector LastMoveTarget = FVector(1e9);
 	bool bBiteCue = false;
 	int32 BiteCount = 0, LungeCount = 0, ConnectCount = 0, DisengageCount = 0, AbsorbCount = 0, ProtectCount = 0, FreezeCount = 0;
+	EEHPackRole PackRole = EEHPackRole::Free;
+	float HoldBackRadius = 650.0f;
+	float WaitRadius = 520.0f;
+	int32 RepathCount = 0;
+	int32 StuckCount = 0;
+	int32 StuckFrames = 0;
+	float SinceAttack = 0.0f;
 
 	void StepFrame();
 	void Enter(EEHWolfState Next, int32 Length);
