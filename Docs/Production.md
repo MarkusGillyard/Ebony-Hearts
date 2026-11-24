@@ -14,6 +14,7 @@ and the tools; the checkout alone cannot reproduce every animation.
   includes numpy.
 - Third-party inputs, used byte-identical to their original downloads (see `Docs/AssetLedger.md`):
   - MakeHuman system assets
+  - Blender Human Base Meshes Bundle v1.4.1 for the first-person hands
   - Poly Haven and ambientCG surfaces
   - Kenney audio packs
   - Google Fonts / NDISCOVER font files (already in `Content/UI/Fonts`)
@@ -24,6 +25,24 @@ and the tools; the checkout alone cannot reproduce every animation.
 The working layout used to build this slice keeps the engine, caches, downloads, generated art and packages on a
 dedicated drive outside the repository. Paths in the scripts follow that layout. Adjust the root constants at the top
 of each script for another machine.
+
+## First-person candidate
+
+Build the Development Editor target, then run BuildCookRun separately with `-clientconfig=Shipping` and
+`-clientconfig=Development`. Record the full source commit and tree with each output. Stage and verify the archives,
+then exercise each executable from a fresh extraction using a disposable profile. On Linux, use `-SaveToUserDir`
+with the isolated profile so Development saves also resolve there.
+
+Run the title check with `-EHTitle`. The Development build also exposes the earlier slice with `-EHSlice`.
+`Tests/Auto/fp_ship_magic.txt` exercises Shipping's disabled developer panel and all Ice Wall audio phases.
+Use the Development build for wolf, pack, lock-on, combat text and position-based scripts. The
+[first-person guide](FirstPerson.md#automation) lists the scripts and their scope.
+
+The Blender scripts under `Tools/Blender/fphands` generate the hands and six authored prototype clips.
+Import the skeletal mesh with `import_fp_hands.py`, then import the clips with `import_fp_anims.py`.
+For the wolf, run `Tools/Blender/wolf/make_wolf.py` and `Tools/Unreal/import_wolf.py`. The importer headers
+specify their required inputs. Check import completion and saved assets before cooking. The
+[asset ledger](AssetLedger.md) records original source and attribution.
 
 ## Order
 
