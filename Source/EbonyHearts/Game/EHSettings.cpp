@@ -1,5 +1,7 @@
 #include "EHSettings.h"
 
+#include <limits>
+
 #include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
@@ -667,7 +669,10 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	}
 	auto Int = [&Root](const TCHAR* Name, int32& Out) {
 		double V = 0;
-		if (Root->TryGetNumberField(Name, V)) Out = static_cast<int32>(V);
+		if (Root->TryGetNumberField(Name, V) && FMath::IsFinite(V) && V >= MIN_int32 && V <= MAX_int32)
+		{
+			Out = static_cast<int32>(V);
+		}
 	};
 	auto Bool = [&Root](const TCHAR* Name, bool& Out) {
 		bool V = false;
@@ -687,8 +692,6 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Int(TEXT("musicVolume"), S.MusicVolume);
 	Int(TEXT("effectsVolume"), S.EffectsVolume);
 	Int(TEXT("ambienceVolume"), S.AmbienceVolume);
-	double Scale = S.UIScale;
-	if (Root->TryGetNumberField(TEXT("uiScale"), Scale)) S.UIScale = static_cast<float>(Scale);
 	Bool(TEXT("reduceShake"), S.bReduceShake);
 	Bool(TEXT("reduceFlash"), S.bReduceFlash);
 	Bool(TEXT("inputHints"), S.bInputHints);
@@ -698,8 +701,13 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Int(TEXT("cpuLevel"), S.CpuLevel);
 	auto Float = [&Root](const TCHAR* Name, float& Out) {
 		double V = 0;
-		if (Root->TryGetNumberField(Name, V)) Out = static_cast<float>(V);
+		constexpr double FloatMax = std::numeric_limits<float>::max();
+		if (Root->TryGetNumberField(Name, V) && FMath::IsFinite(V) && V >= -FloatMax && V <= FloatMax)
+		{
+			Out = static_cast<float>(V);
+		}
 	};
+	Float(TEXT("uiScale"), S.UIScale);
 	Float(TEXT("mouseSensitivity"), S.MouseSensitivity);
 	Float(TEXT("stickSensitivity"), S.StickSensitivity);
 	Bool(TEXT("invertLook"), S.bInvertLook);

@@ -23,6 +23,7 @@ before every attempt (nothing is deleted), so each launch is a first run. summar
 import argparse
 import datetime
 import json
+import math
 import os
 import signal
 import subprocess
@@ -129,6 +130,13 @@ def main():
     ap.add_argument("--label", default="")
     ap.add_argument("game_args", nargs="*")
     a = ap.parse_args()
+
+    if a.runs <= 0:
+        ap.error("--runs must be positive")
+    if not math.isfinite(a.timeout) or a.timeout <= 0:
+        ap.error("--timeout must be finite and positive")
+    if not math.isfinite(a.gap) or a.gap < 0:
+        ap.error("--gap must be finite and nonnegative")
 
     launcher = os.path.abspath(a.launcher)
     script = os.path.abspath(a.script)

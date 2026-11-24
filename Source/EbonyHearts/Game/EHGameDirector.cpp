@@ -395,7 +395,6 @@ void AEHGameDirector::Tick(float DeltaSeconds)
 		}
 	}
 	TickAutomation(DeltaSeconds);
-	HandleNav();
 
 	float Alpha = 0.0f;
 	const bool bFocusLost = FSlateApplication::IsInitialized() && !FSlateApplication::Get().IsActive() && !FParse::Param(FCommandLine::Get(), TEXT("EHNoFocusPause"));
@@ -407,7 +406,7 @@ void AEHGameDirector::Tick(float DeltaSeconds)
 		if (bFocusLost && bHadFocus)
 		{
 			// Another window took focus: stop, and forget every held key and stick so nothing keeps walking.
-			RouterPtr->ResetHeld();
+			RouterPtr->ResetForFocusLoss();
 			if (Screen == EEHScreen::FirstPerson && !bPaused)
 			{
 				SetPaused(true, EHDeviceNone);
@@ -419,9 +418,11 @@ void AEHGameDirector::Tick(float DeltaSeconds)
 			AutoLogLine(TEXT("focus regained"));
 		}
 		bHadFocus = !bFocusLost;
+		HandleNav();
 		TickFirstPerson(DeltaSeconds);
 		return;
 	}
+	HandleNav();
 	if (bMatchActive && Screen == EEHScreen::Match && bFocusLost && !bPaused && Mode != EEHMode::Training)
 	{
 		SetPaused(true, SlotDevice[0]);

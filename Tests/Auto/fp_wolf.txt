@@ -143,6 +143,16 @@ fp_expect wolf_frozen eq 1
 wait 2.2
 fp_expect wolf_frozen eq 0
 fp_reset
+fp_align 7
+fp_teleport 0 -650 0 -90 0
+fp_wolf_place 0 -780 90
+wait_wolf_bite
+fp_wolf_freeze
+fp_expect wolf_frozen eq 1
+wait 0.5
+fp_expect wolf_bites eq 0
+fp_expect wolf_connected eq 0
+fp_reset
 fp_align 4
 wait 0.5
 fp_state end
