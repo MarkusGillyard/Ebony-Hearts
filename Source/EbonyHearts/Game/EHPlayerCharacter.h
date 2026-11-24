@@ -5,6 +5,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EHChapel.h"
+#include "EHWorldClock.h"
 #include "EHFists.h"
 #include "EHMagic.h"
 #include "EHWolf.h"
@@ -59,7 +61,9 @@ struct FEHFirstPersonTuning
 	FEHFistTuning Fists;
 	FEHDummyTuning Dummy;
 	FEHMagicTuning Magic;
-	FEHWolfTuning Wolf;     // the Chapel wolf (milestone 5)   // stats, Qhi and the spells; stats.health and stats.stamina set PlayerHealth and StaminaMax
+	FEHWolfTuning Wolf;     // the Chapel wolf (milestone 5)
+	FEHChapelTuning Chapel; // the Chapel's interactions and prayer (interior stage 2)
+	FEHWorldClockTuning Clock; // Destiny's Ark's time
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);
@@ -114,6 +118,7 @@ public:
 
 	void ApplyTuning(const FEHFirstPersonTuning& InTuning);
 	void ApplyInput(const FEHFirstPersonInput& In, float DeltaSeconds);
+	void CancelActionsForPrayer();
 	void SetFieldOfView(float HorizontalDegrees);
 	// Camera kicks from contact and hits are scaled by this (0 with Reduce camera shake).
 	void SetShakeScale(float Scale) { ShakeScale = Scale; }
@@ -150,6 +155,8 @@ public:
 	bool IsSprinting() const { return bSprinting; }
 	bool IsExhausted() const { return bExhausted; }
 	float WaterDepthAtFeet() const { return WaterDepth; }
+	// The Chapel's water sheets (owned by the director); without them the tuned surface covers everything.
+	void SetWater(const FEHWater* InWater) { Water = InWater; }
 	float EyeHeight() const { return EyeZ; }
 	FVector FeetLocation() const;
 	UCameraComponent* Camera() const { return CameraComp; }
@@ -206,6 +213,7 @@ private:
 	void AddQhi(float Amount);
 
 	void UpdateWater();
+	const FEHWater* Water = nullptr;
 	void UpdateCamera(float DeltaSeconds);
 	void UpdateBody();
 	void Emit(FEHFirstPersonEvent::EKind Kind, float Strength);

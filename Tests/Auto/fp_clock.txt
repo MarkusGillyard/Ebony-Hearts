@@ -1,0 +1,69 @@
+# Destiny's Ark's time in the Chapel (development build: test positions and fp_clock). Covers: the start hour; one
+# real minute to one game hour; the pause menu stopping time; prayer running it about 86 times faster; the window
+# light, glass and fills following the hour (night, dawn, noon, dusk); the day wrapping at 144 hours. Screenshots of
+# the same view at the four phases.
+wait 5
+fp_expect screen eq 12
+fp_expect clock_day eq 0
+fp_expect clock_hour gt 3.9
+fp_expect clock_hour lt 4.3
+fp_expect sky_light near 1 0.01
+
+log == one real minute is one hour
+fp_clock 10
+wait 6
+fp_expect clock_hour gt 10.08
+fp_expect clock_hour lt 10.13
+
+log == the pause menu stops time
+fp_clock 20
+press kbA Pause
+wait 3
+fp_expect paused eq 1
+fp_expect clock_hour lt 20.01
+press kbA Pause
+wait 0.2
+
+log == prayer runs it about 86 times faster (the longest prayer, three days, in five real minutes)
+fp_teleport 0 -1660 44 -90 -50
+wait 0.4
+fp_clock 20
+press kbA FPInteract
+wait 3
+fp_expect praying eq 1
+fp_expect clock_hour gt 24
+fp_expect clock_hour lt 25.2
+press kbA FPInteract
+wait 0.3
+
+log == the light through the day
+ui_hidden 1
+fp_teleport 0 -500 0 -90 12
+wait 0.3
+fp_clock 4
+fp_expect sky_light near 1 0.01
+fp_expect glass_glow near 1 0.01
+wait 0.6
+screenshot clock_night_h4
+fp_clock 40
+fp_expect sky_light lt 0.9
+wait 0.6
+screenshot clock_dawn_h40
+fp_clock 72
+fp_expect sky_light near 3 0.01
+fp_expect glass_glow near 2.2 0.01
+wait 0.6
+screenshot clock_noon_h72
+fp_clock 104
+fp_expect sky_light lt 1
+wait 0.6
+screenshot clock_dusk_h104
+ui_hidden 0
+
+log == the day wraps at 144 hours
+fp_clock 143.95
+wait 6
+fp_expect clock_day eq 1
+fp_expect clock_hour lt 0.1
+fp_expect sky_light near 1 0.01
+quit

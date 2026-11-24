@@ -364,6 +364,50 @@ private:
 	void PaintSpellSelect(FEHPainter& P);
 	void TickSpells(float DeltaSeconds);
 	void ClearSpells();
+	// The Chapel's interactions and prayer (EHDirectorChapel.cpp).
+	bool bFPInteractPressed = false;  // Interact was pressed this frame
+	int32 FPInteractFocus = -1;       // the interactable the player looks at, -1 none
+	FString FPMessage;                // a used thing's text, shown for a moment
+	float FPMessageLeft = 0.0f;
+	FVector FPMessageFrom = FVector::ZeroVector;
+	int32 FPMessages = 0;
+	bool bPraying = false;
+	float PrayAlpha = 0.0f;
+	float PrayerSeconds = 0.0f;
+	float RiseBlockLeft = 0.0f;
+	float FPSparkLeft = 0.0f;         // the forge: seconds to the next ember
+	int32 FPSparks = 0;      // after rising from prayer, techniques and spells wait a moment
+	int32 FPPrayers = 0;
+	// Finds what the player looks at, handles Interact and, while praying, holds the player kneeling.
+	void UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds);
+	void BeginPrayer();
+	void EndPrayer(const TCHAR* Why);
+	void PaintChapel(FEHPainter& P);
+	// Destiny's Ark's time (EHWorldClock.h; driven in EHDirectorChapel.cpp).
+	double FPClockHours = 0.0;          // hours since hour 0 of day 0
+	double FPClockApplied = -1.0;
+	FEHClockKey FPClockNow;
+	TWeakObjectPtr<class ULightComponent> SkyLightComp;
+	float SkyBaseIntensity = 1.0f;
+	TWeakObjectPtr<class UExponentialHeightFogComponent> FogComp;
+	FLinearColor FogBase = FLinearColor::Black;
+	struct FGlassGlow
+	{
+		TWeakObjectPtr<class UMaterialInstanceDynamic> Mid;
+		float Base = 1.0f;
+	};
+	TArray<FGlassGlow> GlassGlows;
+	struct FSkyFill
+	{
+		TWeakObjectPtr<class ULightComponent> Light;
+		float BaseIntensity = 1.0f;
+		FLinearColor BaseColor = FLinearColor::White;
+	};
+	TArray<FSkyFill> SkyFills;
+	FLinearColor ClockNightColor = FLinearColor::White;   // the first key's colour: fills keep their own colour at night
+	void InitWorldClock();
+	void TickWorldClock(float RealSeconds);
+	void ApplyWorldClock(bool bForce);
 	void BuildDeveloperPanel();
 	int32 FrameCaptureLeft = 0;     // automation: fp_frames screenshots every rendered frame
 	int32 FrameCaptureIndex = 0;

@@ -73,6 +73,7 @@ bool FEHWolfTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
 	Vec(TEXT("spawn"), Spawn);
 	Num(TEXT("homeYaw"), HomeYaw, -360, 360);
 	Num(TEXT("leaveLineY"), LeaveLineY, -5000, 5000);
+	Num(TEXT("leaveMaxZ"), LeaveMaxZ, -5000, 5000);
 	Num(TEXT("calmSeconds"), CalmSeconds, 0, 60);
 	Num(TEXT("walkSpeed"), WalkSpeed, 50, 2000);
 	Num(TEXT("runSpeed"), RunSpeed, 50, 3000);
@@ -192,6 +193,13 @@ void AEHWolf::Setup(const FEHWolfTuning& InTuning, AEHPlayerCharacter* InPlayer,
 	ResetWolf();
 }
 
+void AEHWolf::HaltForTest()
+{
+	Stop();
+	GetCharacterMovement()->StopMovementImmediately();
+	LastMoveTarget = FVector(1e9);
+}
+
 void AEHWolf::ResetWolf()
 {
 	Stop();
@@ -222,7 +230,7 @@ FVector AEHWolf::FeetLocation() const
 
 bool AEHWolf::PlayerOutside() const
 {
-	return Player.IsValid() && Player->GetActorLocation().Y > Tuning.LeaveLineY;
+	return Player.IsValid() && Player->FeetLocation().Y > Tuning.LeaveLineY && Player->FeetLocation().Z < Tuning.LeaveMaxZ;
 }
 
 FVector AEHWolf::ToPlayer2D() const

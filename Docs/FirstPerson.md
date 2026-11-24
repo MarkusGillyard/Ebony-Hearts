@@ -37,6 +37,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Fireball | F | L2 / LT |
 | Ice Wall | R | Triangle / Y |
 | Choose a spell (hold) | Tab | Square / X |
+| Interact / pray | E | Circle / B |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -53,14 +54,14 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 9), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 10), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
 first-person action. Version 6 adds the two first-person layouts (`fpKeyboard`, `fpController`) and the look,
 field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techniques and Controller vibration;
 version 8 Fireball and Ice Wall; version 9 removed the shove (its keys are simply free) and added Choose a spell
-and the Spell selector setting. Each new action takes its default key only where the player has not already used
+and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left. Each new action takes its default key only where the player has not already used
 that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
@@ -260,7 +261,8 @@ and the death reset keep it.
 - **A threat is not harm.** A jab, straight or cast aimed at the wolf within 4.8 m that does not connect makes it back
   off for 3 seconds, unprovoked. The player can stop there.
 - **Real harm** (a strike or Fireball that connects) provokes it: hostile whatever the band, until the player leaves
-  the Chapel's floor. The entrance strip counts as outside. After 3 seconds outside it calms, and back inside it
+  the Chapel's floor. The Threshold Hall, by the door, counts as outside (the loft above it does not). After 3 seconds
+  outside it calms, and back inside it
   treats the player by their band again.
 - **Hero of Humanity** cannot harm a guardian: a blow at the wolf lands on the player instead. A wolf within 10 m
   takes the blows meant for the player (it is never brought below 1 Health doing so).
@@ -293,8 +295,8 @@ The slice built the Chapel for a camera looking down the nave from one side. Wal
   and its steps, the pews, the candle stands and the aisles' east walls. The basin's water is about 40 cm deep at
   its centre, so the player wades knee-deep. The stone floor on the entrance strip is under 3 cm of water.
 - **Missing:** the whole west (entrance) end. The side-on camera never looked that way, so the nave and aisles
-  opened onto a void. `PH_Blockout_WestWall`, a grey 1 m grid placeholder, now closes it from the floor to above the
-  nave vault.
+  opened onto a void. A grey placeholder wall closed it at first; the interior's west wall, Threshold Hall and loft
+  now replace it (`Docs/ChapelInterior.md`).
 - **Light leak:** the vault webs and upper walls are single-sided. The low moon shone through them onto the west end
   (rib shadows across the new wall). The shell pieces now cast two-sided shadows, so moonlight enters only through
   the glass. The rose window's light pattern on the nave floor is unchanged.
@@ -343,7 +345,7 @@ path as a player. New commands:
 |---|---|---|
 | `look <dx> <dy>` | all | mouse movement in counts through the input router |
 | `fp_state [label]` | all | logs position, view, speed, posture, Stamina, water depth and eye height |
-| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path |
+| `fp_expect <field> <lt\|gt\|eq\|near> <value> [tolerance]` | all | checks stamina, speed, vz, x, y, z, yaw, pitch, crouched, sprinting, exhausted, falling, water, eye, paused, screen, fov, moved, health, deaths, guarded, hurt, action, guarding, arms, dummy_hits, dummy_blocks, dummy_damage, dummy_strikes, dummy_dist, dummy_moved, qhi, qhi_max, health_max, casts, refused, refused_qhi, refused_room, fizzles, fireballs, fireball_hits, walls, walls_raised, walls_melted, walls_shattered, walls_expired, wall_solid, wall_hp, wall_ice_water, wall_dist, puddles, selecting, select_highlight, select_casts, time_dilation, dev_panel, dummy_frozen, dummy_freezes, alignment, wolf_harms, wolf_kills, reflected, wolf_state, wolf_hostile, wolf_provoked, wolf_dead, wolf_frozen, wolf_health, wolf_dist, wolf_home_dist, wolf_bites, wolf_lunges, wolf_connected, wolf_disengages, wolf_absorbed, wolf_protects, wolf_freezes, wolf_y, wolf_path, praying, prayers, prayer_seconds, interact_focus, interact_messages, placed_loops, sparks, clock_hour, clock_day, sky_light, glass_glow |
 | `fp_mark` | all | remembers the feet position for `fp_expect moved` |
 | `fp_reset` | all | what the pause menu's Return to the start does |
 | `fp_focus_lost` | all | what losing window focus does (pause, drop held input) |
@@ -353,6 +355,8 @@ path as a player. New commands:
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 | `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |
 | `fp_selector <wheel\|list>` | all | what Settings > Controls > Spell selector does |
+| `fp_clock <hour>` | development only | sets the hour of the current day (0 is midnight; a day is 144 hours) |
+| `fp_hide <mesh name prefix \| lights> <0\|1>` | development only | hides static meshes by mesh name, or switches off the interior's lights, to measure what a view's frame time is made of |
 | `fp_wolf_reset` | all | what the pause menu's Reset the wolf does |
 | `fp_align <0..8>`, `fp_wolf_place <x> <y> [yaw] [health]` | development only | the developer panel's alignment; a test position (and Health) for the wolf |
 | `fp_devkey` | all | F10 as the keyboard sends it (opens the developer panel in development builds; nothing in Shipping) |
@@ -375,13 +379,57 @@ the spell wheel and list with mouse, stick and keys, the developer panel), `fp_s
 `fp_perf_magic.txt` (a warm frame-time capture with walls and Fireballs in play), `fp_wolf.txt` (every band,
 a threat against real harm, leaving and returning, the evil wolf's attacks, a kill, the reset keeping the alignment,
 Hero of Humanity's bond, the friendly wolf protecting the player, the Ice Wall rerouting and freezing it) and
-`fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping).
+`fp_ship_wolf.txt` (the Neutral wolf with inputs only, for Shipping), and the Chapel interior's `fp_interior.txt`,
+`fp_chapel.txt`, `fp_ship_chapel.txt`, `fp_clock.txt` and `fp_perf_interior.txt` (`Docs/ChapelInterior.md`).
 
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.
 
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.
+
+## Sound loading and the single slow frames
+
+First person loads every combat, UI and ambience sound when it starts: 59 sounds, in 10–13 ms in a Shipping build.
+Before that, each sound loaded from the package the first time it played, which is a synchronous read in the middle
+of a frame.
+
+The single 40–70 ms frames seen in Shipping captures since milestone 4 are mostly something else.
+
+| Capture | When the slow frame comes |
+|---|---|
+| Spells | the first time the view turns that way in a session |
+| Stability | the first 360° turn, the first time the west end comes into view |
+| Stability | also the first reset after launch |
+
+- They repeat at the same moments in the same script, the GPU time stays normal, and runs whose warm-up covers the
+  same views have none: graphics pipelines being created the first time a material is drawn.
+
+### The bundled pipeline cache
+
+The package carries a recorded pipeline cache (`Build/Linux/PipelineCaches/EbonyHearts_SF_VULKAN_SM6.spc`, cooked into
+`Content/PipelineCaches/Linux/`); the game compiles those pipelines while it starts. PSO precaching stays on; Vulkan
+switches the file cache off when precaching is on, so `r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1` keeps both
+(`Config/DefaultEngine.ini`, which also turns on shader stable keys for the cook).
+
+| Shipping capture (1920 × 1080) | Before (1dfb393): max, frames over 33 ms | With the cache (6316b39) |
+|---|---|---|
+| Spells, VSync off | 53.8 ms, 1 | 12.1 ms, 0 |
+| Spells, VSync on | 46.3 ms, 1 | 16.9 ms, 0 |
+| Stability (7 laps, about 7.5 minutes) | 51.9 ms, 3 (first reset, first turns) | 78.0 ms, 1 (lap 7) |
+| Interior, warm route | under 17.1 ms, 0 | under 17.1 ms, 0 |
+
+The remaining stability frame comes in the seventh lap, which repeats the first six exactly, so it is not a first
+draw; its cause is not known. p99 is unchanged (16.7 ms with VSync).
+
+**Re-recording** (when materials or rendering settings change, new pipelines are not in the cache; they still work,
+compiled on first draw as before): package a Development build, run the scripts with `-logPSO` and
+`-ini:Engine:[ConsoleVariables]:r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1`, collect each
+`Saved/CollectedPSOs/*.rec.upipelinecache`, and expand them with the cook's `.shk` files
+(`Saved/Cooked/Linux/EbonyHearts/Metadata/PipelineCaches/`):
+`UnrealEditor-Cmd EbonyHearts.uproject -run=ShaderPipelineCacheTools expand "<recs>/*.rec.upipelinecache"
+"<recs>/*.shk" Build/Linux/PipelineCaches/EbonyHearts_SF_VULKAN_SM6.spc`. The 2026-11-23 recording: 11 scripts (the
+perf routes, spells, wolf, Chapel, clock, controls, movement and two view tours), 63 pipelines, 113 stable entries.
 
 ## Known limits
 
@@ -401,5 +449,4 @@ no longer shows. The combat core tests (`Tests/Core`) are unchanged.
   step sound yet.
 - The placeholder body is a fighting-stance model. Its shadow shows raised guard arms and its walk is a fighting
   shuffle.
-- The west wall blockout is plain and very dark. Most of the Chapel's light comes from the east.
 - No music plays in first person; the Chapel ambience does.

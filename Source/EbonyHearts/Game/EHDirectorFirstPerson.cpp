@@ -5,6 +5,7 @@
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/LightComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "EHMagic.h"
@@ -141,17 +142,32 @@ void AEHGameDirector::BeginFirstPerson()
 		AutoLogLine(FString::Printf(TEXT("fp wolf absorbed %.1f for the Hero of Humanity"), Damage));
 		return true;
 	});
-	// The water the Ice Wall freezes: the Chapel's water sheet, over the floor within its mesh's bounds.
-	FPWater.SurfaceZ = FPTuning.WaterSurfaceZ;
+	// The Chapel's water: one sheet per water mesh (the nave's basin at the tuned surface; the undercroft's crypt at its
+	// mesh's height), each over its mesh's bounds. The Ice Wall, the player's wading and the ripples all read it.
+	FPWater.Sheets.Reset();
 	for (TActorIterator<AStaticMeshActor> It(GetWorld()); It; ++It)
 	{
 		const UStaticMesh* M = It->GetStaticMeshComponent() ? It->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
-		if (M && M->GetName() == TEXT("SM_Water"))
+		const bool bNave = M && M->GetName() == TEXT("SM_Water");
+		if (bNave || (M && M->GetName() == TEXT("SM_IX_UnderWater")))
 		{
 			const FBox B = It->GetComponentsBoundingBox();
-			FPWater.Bounds = FBox2D(FVector2D(B.Min.X, B.Min.Y), FVector2D(B.Max.X, B.Max.Y));
-			break;
+			FEHWaterSheet W;
+			W.Bounds = FBox2D(FVector2D(B.Min.X, B.Min.Y), FVector2D(B.Max.X, B.Max.Y));
+			W.SurfaceZ = bNave ? FPTuning.WaterSurfaceZ : B.Max.Z;
+			FPWater.Sheets.Add(W);
 		}
+	}
+	FPPlayer->SetWater(&FPWater);
+	InitWorldClock();
+	// Load every sound now, during start-up: loading one the first time it plays stalls that frame in a packaged build.
+	const double PreloadStart = FPlatformTime::Seconds();
+	const int32 Preloaded = Audio.PreloadAll();
+	AutoLogLine(FString::Printf(TEXT("firstperson sounds preloaded %d in %.0f ms"), Preloaded, (FPlatformTime::Seconds() - PreloadStart) * 1000.0));
+	// The rooms' own sounds (the forge's fire, the brazier, the crypt's tone), placed in the world.
+	for (const FEHChapelSound& Snd : FPTuning.Chapel.Sounds)
+	{
+		Audio.PlayLoopAt(Snd.Name, Snd.At, Snd.Inner, Snd.Falloff, Snd.Volume);
 	}
 	PC->SetViewTarget(FPPlayer);
 	PC->bShowMouseCursor = false;
@@ -236,11 +252,12 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	// The spell selector: held, it takes the mouse and the right stick for choosing instead of looking.
 	const bool bSelectHeld = ((KeyHeld | PadHeld) & Bit(EEHAction::FPSpellSelect)) != 0;
 	EEHFistAction SelectedSpell = EEHFistAction::None;
-	if (bSelectHeld && !bSpellSelect)
+	if (bSelectHeld && !bSpellSelect && !bPraying)
 	{
 		OpenSpellSelect();
 	}
-	if (bSpellSelect)
+	const bool bSelectorOwnsLook = bSpellSelect;
+	if (bSelectorOwnsLook)
 	{
 		if (Settings.SpellSelector == 0)
 		{
@@ -293,8 +310,8 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 			SelectedSpell = CloseSpellSelect(true);
 		}
 	}
-	const FVector2D LookMouse = bSpellSelect ? FVector2D::ZeroVector : Mouse;
-	if (bSpellSelect)
+	const FVector2D LookMouse = bSelectorOwnsLook ? FVector2D::ZeroVector : Mouse;
+	if (bSelectorOwnsLook)
 	{
 		PadLook = FVector2D::ZeroVector;
 	}
@@ -365,6 +382,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	{
 		In.FistPress = SelectedSpell;          // released on a spell: cast it now
 	}
+	bFPInteractPressed = (AnyPress & Bit(EEHAction::FPInteract)) != 0 && !bSpellSelect;
 	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
 	if (In.FistPress != EEHFistAction::None || In.bBlock)
 	{
@@ -379,8 +397,7 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	{
 		BeginFirstPerson();
 	}
-	const FEHFirstPersonInput In = GatherFirstPersonInput(DeltaSeconds);
-	LastFPInput = In;
+	FEHFirstPersonInput In = GatherFirstPersonInput(DeltaSeconds);
 	const bool bDeveloperKey = RouterPtr->TakeDeveloperKey();
 #if !UE_BUILD_SHIPPING
 	// F10: the developer panel (stats and resources live). Shipping builds never open it.
@@ -413,6 +430,9 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	{
 		return;
 	}
+	TickWorldClock(FApp::GetDeltaTime());   // real time: the spell selector's slow motion does not slow the world's day
+	UpdateChapel(In, DeltaSeconds);
+	LastFPInput = In;
 	FPPlayer->ApplyInput(In, DeltaSeconds);
 	if (Vfx)
 	{
@@ -437,6 +457,17 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 	}
 	PlayFirstPersonEvents();
 	TickSpells(DeltaSeconds);
+	if (Vfx && FPTuning.Chapel.SparkRange > 0.0f && FVector::Dist(FPPlayer->GetActorLocation(), FPTuning.Chapel.SparkAt) < FPTuning.Chapel.SparkRange)
+	{
+		// Now and then an ember rises off the forge's coals.
+		FPSparkLeft -= DeltaSeconds;
+		if (FPSparkLeft <= 0.0f)
+		{
+			Vfx->HearthSpark(FPTuning.Chapel.SparkAt + FVector(FMath::FRandRange(-30.0f, 30.0f), FMath::FRandRange(-80.0f, 80.0f), 0.0f));
+			FPSparkLeft = FPTuning.Chapel.SparkGap * FMath::FRandRange(0.3f, 1.7f);
+			++FPSparks;
+		}
+	}
 	if (FPWolf)
 	{
 		FPWolf->SetAlignment(FPAlignment);
@@ -483,7 +514,7 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				Audio.PlayVaried(TEXT("StepWater"), 3, EEHSoundCat::Effects, 0.18f + 0.22f * E.Strength + 0.25f * Depth);
 				if (Vfx)
 				{
-					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPTuning.WaterSurfaceZ), 0.35f + 0.5f * Depth);
+					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPWater.SurfaceOr(E.Location, FPTuning.WaterSurfaceZ)), 0.35f + 0.5f * Depth);
 				}
 			}
 			break;
@@ -499,10 +530,10 @@ void AEHGameDirector::PlayFirstPersonEvents()
 				Audio.PlayVaried(TEXT("StepWater"), 3, EEHSoundCat::Effects, 0.35f + 0.45f * E.Strength);
 				if (Vfx)
 				{
-					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPTuning.WaterSurfaceZ), 0.6f + 0.6f * E.Strength);
+					Vfx->Ripple(FVector(E.Location.X, E.Location.Y, FPWater.SurfaceOr(E.Location, FPTuning.WaterSurfaceZ)), 0.6f + 0.6f * E.Strength);
 					if (E.Strength > 0.5f)
 					{
-						Vfx->Splash(FVector(E.Location.X, E.Location.Y, FPTuning.WaterSurfaceZ), 0.6f * E.Strength);
+						Vfx->Splash(FVector(E.Location.X, E.Location.Y, FPWater.SurfaceOr(E.Location, FPTuning.WaterSurfaceZ)), 0.6f * E.Strength);
 					}
 				}
 			}
@@ -1023,6 +1054,22 @@ void AEHGameDirector::BuildDeveloperPanel()
 		Menu.Add(I);
 	}
 	Menu.Add(FPButton(TEXT("Reset the wolf"), [this] { if (FPWolf) { FPWolf->ResetWolf(); } }, TEXT("Calm, unhurt, at its rest.")));
+	Menu.Add(FPHeader(TEXT("Time")));
+	{
+		// Destiny's Ark's hour, six at a time: the windows follow it.
+		FEHMenuItem I;
+		I.Label = TEXT("Hour");
+		I.Value = [this] {
+			const double H = FMath::Fmod(FPClockHours, static_cast<double>(FPTuning.Clock.DayHours));
+			return FString::Printf(TEXT("day %.0f · hour %.0f of %.0f"), FMath::FloorToDouble(FPClockHours / FPTuning.Clock.DayHours) + 1.0, FMath::FloorToDouble(H), FPTuning.Clock.DayHours);
+		};
+		I.Change = [this](int32 D) {
+			FPClockHours = FMath::Max(0.0, FPClockHours + 6.0 * D);
+			ApplyWorldClock(true);
+		};
+		I.Hint = TEXT("Left and right move six hours. One real minute is one hour; praying runs faster; pausing stops it.");
+		Menu.Add(I);
+	}
 	Menu.Add(FPHeader(TEXT("Stats")));
 	auto StatItem = [this](const TCHAR* Label, int32 Which, const TCHAR* Hint) {
 		FEHMenuItem I;
@@ -1097,6 +1144,9 @@ void AEHGameDirector::ResetFirstPerson(const TCHAR* Why)
 	{
 		FPWolf->ResetWolf();   // the alignment stays: a case can be repeated
 	}
+	EndPrayer(TEXT("reset"));
+	FPMessageLeft = 0.0f;
+	FPPrayers = FPMessages = 0;
 	HurtFlash = 0.0f;
 	++FPResets;
 	AutoLogLine(FString::Printf(TEXT("firstperson reset (%s) %s"), Why, *DescribeFirstPerson()));
@@ -1243,6 +1293,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 #endif
 	if (!bPaused)
 	{
+		PaintChapel(P);
 		PaintSpellSelect(P);
 	}
 	// Every piece of art in this build is a stand-in; say so where a reviewer will see it.
@@ -1284,6 +1335,7 @@ FString AEHGameDirector::DescribeFirstPerson() const
 		}
 	}
 	Out += FString::Printf(TEXT(" alignment=%s"), EHAlign::Name(FPAlignment));
+	Out += FString::Printf(TEXT(" clock=%.2fh"), FPClockHours);
 	if (FPWolf)
 	{
 		Out += FString::Printf(TEXT(" wolf=(%.0f,%.0f) %s"), FPWolf->GetActorLocation().X, FPWolf->GetActorLocation().Y, *FPWolf->Describe());
@@ -1397,6 +1449,17 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (FPWolf && Field == TEXT("wolf_frozen")) V = FPWolf->IsFrozen() ? 1.0f : 0.0f;
 		else if (FPWolf && Field == TEXT("wolf_health")) V = FPWolf->HealthValue();
 		else if (FPWolf && Field == TEXT("wolf_dist")) V = FVector::Dist2D(FPWolf->GetActorLocation(), FPPlayer->GetActorLocation());
+		else if (Field == TEXT("clock_hour")) V = static_cast<float>(FMath::Fmod(FPClockHours, static_cast<double>(FPTuning.Clock.DayHours)));
+		else if (Field == TEXT("clock_day")) V = static_cast<float>(FMath::FloorToDouble(FPClockHours / FPTuning.Clock.DayHours));
+		else if (Field == TEXT("sky_light")) V = FPClockNow.Light;
+		else if (Field == TEXT("glass_glow")) V = FPClockNow.Glass;
+		else if (Field == TEXT("placed_loops")) V = static_cast<float>(Audio.PlacedLoopCount());
+		else if (Field == TEXT("sparks")) V = static_cast<float>(FPSparks);
+		else if (Field == TEXT("praying")) V = bPraying ? 1.0f : 0.0f;
+		else if (Field == TEXT("prayers")) V = static_cast<float>(FPPrayers);
+		else if (Field == TEXT("prayer_seconds")) V = PrayerSeconds;
+		else if (Field == TEXT("interact_focus")) V = static_cast<float>(FPInteractFocus);
+		else if (Field == TEXT("interact_messages")) V = static_cast<float>(FPMessages);
 		else if (FPWolf && Field == TEXT("wolf_home_dist")) V = FVector::Dist2D(FPWolf->FeetLocation(), FPTuning.Wolf.Home);
 		else if (FPWolf && Field == TEXT("wolf_bites")) V = static_cast<float>(FPWolf->Bites());
 		else if (FPWolf && Field == TEXT("wolf_lunges")) V = static_cast<float>(FPWolf->Lunges());
@@ -1538,6 +1601,47 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(FString::Printf(TEXT("%s -> %s"), *Line, EHAlign::Name(FPAlignment)));
 		return true;
 	}
+	if (Cmd == TEXT("fp_clock"))
+	{
+		// fp_clock <hour>: sets the hour of the current day (0 = midnight; the day is clock.dayHours long).
+		const double Day = FMath::FloorToDouble(FPClockHours / FPTuning.Clock.DayHours);
+		FPClockHours = Day * FPTuning.Clock.DayHours + FMath::Clamp(F(1, 0.0f), 0.0f, FPTuning.Clock.DayHours - 0.001f);
+		ApplyWorldClock(true);
+		AutoLogLine(FString::Printf(TEXT("%s -> hour %.2f light %.2f glass %.2f"), *Line, FMath::Fmod(FPClockHours, (double)FPTuning.Clock.DayHours), FPClockNow.Light, FPClockNow.Glass));
+		return true;
+	}
+	if (Cmd == TEXT("fp_hide"))
+	{
+		// fp_hide <mesh name prefix | lights> <0|1>: hides static meshes whose mesh name starts with the prefix, or
+		// switches off the interior's lights (tagged EHInterior); for measuring what a view's frame time is made of.
+		const FString What = Arg(1, TEXT(""));
+		const bool bHide = F(2, 1.0f) > 0.5f;
+		int32 N = 0;
+		for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+		{
+			if (What == TEXT("lights"))
+			{
+				if (It->ActorHasTag(TEXT("EHInterior")))
+				{
+					for (ULightComponent* L : TInlineComponentArray<ULightComponent*>(*It))
+					{
+						L->SetVisibility(!bHide);
+						++N;
+					}
+				}
+				continue;
+			}
+			const AStaticMeshActor* SMA = Cast<AStaticMeshActor>(*It);
+			const UStaticMesh* M = SMA && SMA->GetStaticMeshComponent() ? SMA->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
+			if (M && M->GetName().StartsWith(What))
+			{
+				It->SetActorHiddenInGame(bHide);
+				++N;
+			}
+		}
+		AutoLogLine(FString::Printf(TEXT("%s -> %d"), *Line, N));
+		return true;
+	}
 	if (Cmd == TEXT("fp_wolf_freeze"))
 	{
 		if (FPWolf)
@@ -1553,6 +1657,7 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		if (FPWolf)
 		{
 			FPWolf->TeleportTo(FVector(F(1, 0.0f), F(2, -1450.0f), 60.0f), FRotator(0, F(3, 90.0f), 0), false, true);
+			FPWolf->HaltForTest();
 			if (T.Num() > 4)
 			{
 				FPWolf->SetHealthForTest(F(4, 60.0f));

@@ -113,9 +113,30 @@ float FEHMagicTuning::PhysicalScale(const FEHPlayerStats& S) const
 	return FMath::Max(0.0f, 1.0f + PhysicalPerProwess * static_cast<float>(S.MartialProwess - StatBase));
 }
 
+bool FEHWater::SurfaceAt(const FVector& At, float& OutZ) const
+{
+	bool bFound = false;
+	for (const FEHWaterSheet& W : Sheets)
+	{
+		if (W.Bounds.IsInside(FVector2D(At.X, At.Y)) && (!bFound || FMath::Abs(W.SurfaceZ - At.Z) < FMath::Abs(OutZ - At.Z)))
+		{
+			OutZ = W.SurfaceZ;
+			bFound = true;
+		}
+	}
+	return bFound;
+}
+
+float FEHWater::SurfaceOr(const FVector& At, float Fallback) const
+{
+	float Z = Fallback;
+	return SurfaceAt(At, Z) ? Z : Fallback;
+}
+
 float FEHWater::DepthAt(const UWorld* World, const FVector& At, const AActor* Ignore) const
 {
-	if (World == nullptr || !Bounds.IsInside(FVector2D(At.X, At.Y)))
+	float SurfaceZ = 0.0f;
+	if (World == nullptr || !SurfaceAt(At, SurfaceZ))
 	{
 		return 0.0f;
 	}
@@ -352,7 +373,7 @@ void AEHIceWall::Raise(const FEHMagicTuning& InTuning, const FEHWater& InWater, 
 		Thin->SetScalarParameterValue(TEXT("Glow"), 0.4f);
 		Sheet->SetMaterial(0, Thin);
 		// The floe mesh has a 0.9 m radius; turned at random so no two freezes look alike.
-		Sheet->SetWorldLocationAndRotation(FVector(Base.X, Base.Y, Water.SurfaceZ + 0.6f), FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f));
+		Sheet->SetWorldLocationAndRotation(FVector(Base.X, Base.Y, Water.SurfaceOr(Feet, Feet.Z) + 0.6f), FRotator(0.0f, FMath::FRandRange(0.0f, 360.0f), 0.0f));
 		Sheet->SetWorldScale3D(Floe ? FVector(Tuning.FreezeRadius / 90.0f, Tuning.FreezeRadius / 90.0f, 1.0f)
 		                            : FVector(Tuning.FreezeRadius * 2.0f / 100.0f, Tuning.FreezeRadius * 2.0f / 100.0f, 0.012f));
 		Sheet->SetVisibility(true);
@@ -504,7 +525,7 @@ void AEHIceWall::UpdateMelt(float T, float DeltaSeconds)
 	{
 		// The puddle spreads across the wall's width and out to either side.
 		const float Spread = FMath::SmoothStep(0.0f, 1.0f, T);
-		const float WaterZ = Water.DepthAt(GetWorld(), BaseAt, this) > 0.5f ? Water.SurfaceZ + 0.4f : BaseAt.Z + 0.6f;
+		const float WaterZ = Water.DepthAt(GetWorld(), BaseAt, this) > 0.5f ? Water.SurfaceOr(BaseAt, BaseAt.Z) + 0.4f : BaseAt.Z + 0.6f;
 		Puddle->SetWorldLocationAndRotation(FVector(BaseAt.X, BaseAt.Y, WaterZ), GetActorRotation());
 		Puddle->SetWorldScale3D(FVector((0.5f + 1.3f * Spread) * Tuning.IceWallThickness / 60.0f, (0.6f + 1.4f * Spread) * Tuning.IceWallWidth / 180.0f, 1.0f));
 		PuddleAlpha = FMath::Max(PuddleAlpha, FMath::Min(1.0f, T * 4.0f));

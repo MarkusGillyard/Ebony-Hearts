@@ -143,7 +143,7 @@
     "freezeSeconds": 2
   },
   "wolf": {
-    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY: the Chapel's floor ends here; the entrance strip beyond counts as outside.",
+    "comment": "The Chapel wolf (placeholder). Distances in cm, frames at 60 per second. leaveLineY / leaveMaxZ: the Chapel's floor ends here; the Threshold Hall's floor beyond (below leaveMaxZ) counts as outside, the loft above it does not.",
     "health": 60,
     "spawn": [
       330,
@@ -156,7 +156,8 @@
       0
     ],
     "homeYaw": 90,
-    "leaveLineY": 120,
+    "leaveLineY": 560,
+    "leaveMaxZ": 250,
     "calmSeconds": 3,
     "walkSpeed": 260,
     "runSpeed": 640,
@@ -181,5 +182,244 @@
     "hitstun": 18,
     "absorbRange": 1000,
     "protectRange": 1200
+  },
+  "chapel": {
+    "comment": "The Drowned Chapel's interactions (interior stage 2). Each interactable: id, at [x, y, z] in cm, radius (how far off the line of sight it still counts), prompt (shown after the Interact key), text (shown when used; bracketed text marks a placeholder until the creator writes the real words), pray (the kneeler). reach: how far from the eye something can be used. sounds: looping ambience placed in the rooms (Ambience/S_<name>), full volume within inner, silent at inner + falloff, scaled by the ambience setting. sparkAt / sparkRange / sparkGap: embers rising off the forge's coals while the player is near.",
+    "reach": 230,
+    "messageSeconds": 5,
+    "messageWalkAway": 300,
+    "prayLookScale": 0.4,
+    "prayLookAt": [
+      0,
+      -2050,
+      560
+    ],
+    "prayTurnSeconds": 1.2,
+    "interactables": [
+      {
+        "id": "kneeler",
+        "at": [
+          0,
+          -1790,
+          90
+        ],
+        "radius": 80,
+        "prompt": "Pray",
+        "pray": true
+      },
+      {
+        "id": "threshold_door",
+        "at": [
+          0,
+          1360,
+          150
+        ],
+        "radius": 140,
+        "prompt": "Look",
+        "text": "The Threshold Door. It opens onto wherever the Chapel stands. [Placeholder: the way out is not in the prototype.]"
+      },
+      {
+        "id": "forge_counter",
+        "at": [
+          -1650,
+          -490,
+          150
+        ],
+        "radius": 120,
+        "prompt": "Buy",
+        "text": "Smithing King Dwar's counter. [Placeholder: buying items is not built yet.]"
+      },
+      {
+        "id": "forge_anvil",
+        "at": [
+          -1850,
+          -820,
+          135
+        ],
+        "radius": 60,
+        "prompt": "Upgrade",
+        "text": "Dwar's anvil. [Placeholder: upgrading weapons is not built yet.]"
+      },
+      {
+        "id": "dwar",
+        "at": [
+          -1980,
+          -680,
+          150
+        ],
+        "radius": 70,
+        "prompt": "Talk",
+        "text": "Smithing King Dwar. [Placeholder figure: his look and his words are the creator's to write.]"
+      },
+      {
+        "id": "cave_gate",
+        "at": [
+          -400,
+          -3525,
+          -170
+        ],
+        "radius": 130,
+        "prompt": "Look",
+        "text": "A heavy iron gate, locked. [Placeholder: the caverns beyond are not in the prototype.]"
+      },
+      {
+        "id": "sealed_door",
+        "at": [
+          -1340,
+          -3100,
+          -200
+        ],
+        "radius": 90,
+        "prompt": "Touch",
+        "text": "Smooth stone. It does not move."
+      }
+    ],
+    "sparkAt": [
+      -2130,
+      -800,
+      145
+    ],
+    "sparkRange": 2200,
+    "sparkGap": 0.45,
+    "sounds": [
+      {
+        "name": "ForgeFire",
+        "at": [
+          -2120,
+          -800,
+          110
+        ],
+        "inner": 150,
+        "falloff": 1500,
+        "volume": 1.0
+      },
+      {
+        "name": "Brazier",
+        "at": [
+          960,
+          140,
+          60
+        ],
+        "inner": 60,
+        "falloff": 700,
+        "volume": 1.0
+      },
+      {
+        "name": "CryptTone",
+        "at": [
+          -700,
+          -3100,
+          -150
+        ],
+        "inner": 500,
+        "falloff": 700,
+        "volume": 1.0
+      }
+    ]
+  },
+  "clock": {
+    "comment": "Destiny's Ark's time (New Direction): one real minute is one game hour (realSecondsPerHour 60) and a day lasts 144 hours; the pause menu stops it; prayer runs it prayScale times faster (86.4: the longest prayer in the design, three days, in five real minutes; the prototype's reading). Hour 0 is midnight; the game starts at startHour. keys: through the day, the window light's colour (linear RGB) and strength (light), the glass's glow (glass) the fog's brightness (fog) and the Chapel's general fills, as daylight through the windows (fill), each times the map's own; eased between keys, the last wrapping to the first. Night 0-28 and 116-144, dawn about 40, day 52-92, dusk about 104.",
+    "dayHours": 144,
+    "realSecondsPerHour": 60,
+    "startHour": 4,
+    "prayScale": 86.4,
+    "keys": [
+      {
+        "hour": 0,
+        "color": [
+          0.597,
+          0.701,
+          1.0
+        ],
+        "light": 1.0,
+        "glass": 1.0,
+        "fog": 1.0,
+        "fill": 1.0
+      },
+      {
+        "hour": 28,
+        "color": [
+          0.597,
+          0.701,
+          1.0
+        ],
+        "light": 1.0,
+        "glass": 1.0,
+        "fog": 1.0,
+        "fill": 1.0
+      },
+      {
+        "hour": 40,
+        "color": [
+          1.0,
+          0.55,
+          0.33
+        ],
+        "light": 0.8,
+        "glass": 0.9,
+        "fog": 1.2,
+        "fill": 1.3
+      },
+      {
+        "hour": 52,
+        "color": [
+          1.0,
+          0.85,
+          0.68
+        ],
+        "light": 2.2,
+        "glass": 1.7,
+        "fog": 1.6,
+        "fill": 2.4
+      },
+      {
+        "hour": 72,
+        "color": [
+          0.95,
+          0.92,
+          0.88
+        ],
+        "light": 3.0,
+        "glass": 2.2,
+        "fog": 1.8,
+        "fill": 3.2
+      },
+      {
+        "hour": 92,
+        "color": [
+          1.0,
+          0.85,
+          0.68
+        ],
+        "light": 2.2,
+        "glass": 1.7,
+        "fog": 1.6,
+        "fill": 2.4
+      },
+      {
+        "hour": 104,
+        "color": [
+          1.0,
+          0.48,
+          0.3
+        ],
+        "light": 0.9,
+        "glass": 1.0,
+        "fog": 1.3,
+        "fill": 1.3
+      },
+      {
+        "hour": 116,
+        "color": [
+          0.597,
+          0.701,
+          1.0
+        ],
+        "light": 1.0,
+        "glass": 1.0,
+        "fog": 1.0,
+        "fill": 1.0
+      }
+    ]
   }
 }

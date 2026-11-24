@@ -1231,9 +1231,11 @@ void AEHGameDirector::RunBindingsSelfTest()
 			TEXT("version 7 to 8: the player's own F and Triangle stay theirs; the spells are left without them and the notice says so ") + Warning);
 	}
 	// Spell selector; the shove removed (settings version 9).
-	Check(D.Get(S::FPKeyboard, A::FPSpellSelect, 0) == EKeys::Tab && D.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
-		D.Find(S::FPKeyboard, EKeys::E) == A::Count && D.Find(S::FPController, EKeys::Gamepad_FaceButton_Right) == A::Count,
-		TEXT("spell selector: Tab and Square / X; E and Circle / B are free"));
+	Check(D.Get(S::FPKeyboard, A::FPSpellSelect, 0) == EKeys::Tab && D.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left,
+		TEXT("spell selector: Tab and Square / X"));
+	// Interact (settings version 10) takes the keys the shove freed.
+	Check(D.Get(S::FPKeyboard, A::FPInteract, 0) == EKeys::E && D.Get(S::FPController, A::FPInteract, 0) == EKeys::Gamepad_FaceButton_Right,
+		TEXT("interact: E and Circle / B"));
 	{
 		const FString V8Path = FPaths::Combine(Dir, TEXT("fp_v8_shove_and_tab.json"));
 		FFileHelper::SaveStringToFile(TEXT("{\"version\":8,\"spellSelector\":1,\"bindings\":{\"fpKeyboard\":{\"FirstPersonShove\":[\"E\",\"\",\"\"],\"FirstPersonJump\":[\"Tab\",\"SpaceBar\",\"\"]}}}"), *V8Path);
@@ -1241,9 +1243,20 @@ void AEHGameDirector::RunBindingsSelfTest()
 		const FEHSettings V8 = FEHSettings::Load(&Warning, V8Path);
 		FString V8Report;
 		Check(V8.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::Tab && V8.Bindings.IsUnbound(S::FPKeyboard, A::FPSpellSelect) &&
-			V8.Bindings.Find(S::FPKeyboard, EKeys::E) == A::Count && V8.Bindings.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
+			V8.Bindings.Get(S::FPKeyboard, A::FPInteract, 0) == EKeys::E && V8.Bindings.Get(S::FPController, A::FPSpellSelect, 0) == EKeys::Gamepad_FaceButton_Left &&
 			V8.SpellSelector == 1 && !V8.Bindings.HasConflicts(&V8Report) && Warning.Contains(TEXT("shove")),
-			TEXT("version 8 to 9: the shove's key is dropped, the player's Tab stays theirs and the notice says so ") + Warning);
+			TEXT("version 8 to 9 (and on to 10): the shove's E is dropped and later taken by Interact, the player's Tab stays theirs and the notice says so ") + Warning);
+	}
+	{
+		const FString V9Path = FPaths::Combine(Dir, TEXT("fp_v9_e_is_jump.json"));
+		FFileHelper::SaveStringToFile(TEXT("{\"version\":9,\"bindings\":{\"fpKeyboard\":{\"FirstPersonJump\":[\"E\",\"SpaceBar\",\"\"]}}}"), *V9Path);
+		Warning.Reset();
+		const FEHSettings V9 = FEHSettings::Load(&Warning, V9Path);
+		FString V9Report;
+		Check(V9.Bindings.Get(S::FPKeyboard, A::FPJump, 0) == EKeys::E && V9.Bindings.IsUnbound(S::FPKeyboard, A::FPInteract) &&
+			V9.Bindings.Get(S::FPController, A::FPInteract, 0) == EKeys::Gamepad_FaceButton_Right && !V9.Bindings.HasConflicts(&V9Report) &&
+			Warning.Contains(TEXT("Interact")),
+			TEXT("version 9 to 10: the player's own E stays theirs; Interact is left without it and the notice says so ") + Warning);
 	}
 	{
 		const FString NumericPath = FPaths::Combine(Dir, TEXT("settings_numeric_ranges.json"));
@@ -1263,6 +1276,12 @@ void AEHGameDirector::RunBindingsSelfTest()
 			TEXT("first-person spawn rejects nonnumeric coordinates"));
 		Check(Tuning.Load(TEXT(R"({"spawn":[15,-20,1.5]})"), Error) && Tuning.Spawn == FVector(15, -20, 1.5),
 			TEXT("first-person spawn accepts numeric coordinates"));
+	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"chapel":{"sounds":[{"name":"test","at":[1,false,2]}]}})"), Error) && Error.Contains(TEXT("chapel.sounds[0]")),
+			TEXT("Chapel sound positions reject nonnumeric coordinates"));
 	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }

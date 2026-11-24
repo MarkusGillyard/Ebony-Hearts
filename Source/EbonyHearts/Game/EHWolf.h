@@ -1,8 +1,8 @@
 // A Chapel wolf (milestone 5): a peaceful guardian first. How it treats the player follows the player's alignment
 // band: friendly and protective toward Good, keeping its distance from Neutral, hostile toward Evil (it senses the
 // menacing aura). A swing or cast at it that does not connect is a threat: it backs off and gives the player a
-// chance to stop. Real harm makes it hostile until the player leaves the Chapel's floor (the entrance strip counts as
-// outside) and comes back. A Hero of Humanity cannot harm it: the blow lands on the player instead, and the wolf takes
+// chance to stop. Real harm makes it hostile until the player leaves the Chapel's floor (the Threshold Hall, by the
+// door, counts as outside; the loft above it does not) and comes back. A Hero of Humanity cannot harm it: the blow lands on the player instead, and the wolf takes
 // blows meant for that player. Movement uses the navigation mesh (an Ice Wall reroutes it); behaviour is stepped at
 // 60 Hz like the techniques. The body is a placeholder in parts (Tools/Blender/wolf), posed and animated in code.
 #pragma once
@@ -23,7 +23,8 @@ struct FEHWolfTuning
 	float Health = 60.0f;
 	FVector Home = FVector(320, -1450, 0);   // where it rests (feet), and the yaw it faces
 	float HomeYaw = 90.0f;
-	float LeaveLineY = 120.0f;     // the Chapel's floor ends here: the entrance strip beyond counts as outside
+	float LeaveLineY = 560.0f;     // the Chapel's floor ends here: the Threshold Hall's floor beyond counts as outside
+	float LeaveMaxZ = 250.0f;      // ...below this height (the loft above the hall is still inside)
 	float CalmSeconds = 3.0f;      // a provoked wolf calms once the player has been outside this long
 	float WalkSpeed = 260.0f;
 	float RunSpeed = 640.0f;
@@ -112,6 +113,8 @@ public:
 	EEHWolfState GetState() const { return State; }
 	float HealthValue() const { return HealthNow; }
 	void SetHealthForTest(float Value) { HealthNow = FMath::Clamp(Value, 1.0f, Tuning.Health); }
+	// A test position: no movement carried over from before it was placed.
+	void HaltForTest();
 	FVector FeetLocation() const;
 	FVector LabelLocation() const { return GetActorLocation() + FVector(0, 0, 95.0f); }
 	FString Describe() const;

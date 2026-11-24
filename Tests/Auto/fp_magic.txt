@@ -205,8 +205,8 @@ fp_expect dummy_freezes eq 0
 fp_reset
 wait 0.5
 
-log == obstruction: no room against the west wall, refused, nothing spent
-fp_teleport 0 360 0 90 0
+log == obstruction: no room against the west wall (beside the great arch), refused, nothing spent
+fp_teleport 600 360 0 90 0
 wait 0.3
 press kbA FPIceWall
 wait 0.4
