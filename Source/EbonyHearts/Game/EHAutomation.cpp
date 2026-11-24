@@ -1256,6 +1256,14 @@ void AEHGameDirector::RunBindingsSelfTest()
 		Check(Numeric.EffectsVolume == 0 && Numeric.StickSensitivity == 3.0f && Numeric.FieldOfView == 110,
 			TEXT("representable settings still clamp to their supported ranges"));
 	}
+	{
+		FEHFirstPersonTuning Tuning;
+		FString Error;
+		Check(!Tuning.Load(TEXT(R"({"spawn":[null,{},[]]})"), Error) && Error.Contains(TEXT("spawn")),
+			TEXT("first-person spawn rejects nonnumeric coordinates"));
+		Check(Tuning.Load(TEXT(R"({"spawn":[15,-20,1.5]})"), Error) && Tuning.Spawn == FVector(15, -20, 1.5),
+			TEXT("first-person spawn accepts numeric coordinates"));
+	}
 	AutoLogLine(FString::Printf(TEXT("%s bindings_selftest checks=%d failures=%d"), Fails == 0 ? TEXT("ok") : TEXT("FAIL"), Checks, Fails));
 }
 

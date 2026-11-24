@@ -452,12 +452,12 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 			{
 				PlayImpact(TEXT("WhooshHeavy"), 3, 0.7f, 0.8f);
 			}
-			else if (FPWolfLastState == EEHWolfState::BiteWindup)
-			{
-				PlayImpact(TEXT("Grab"), 1, 0.7f, 1.4f);
-			}
 			AutoLogLine(FString::Printf(TEXT("fp wolf %s -> %s"), EHWolfStateName(FPWolfLastState), EHWolfStateName(WS)));
 			FPWolfLastState = WS;
+		}
+		if (FPWolf->TakeBiteCue())
+		{
+			PlayImpact(TEXT("Grab"), 1, 0.7f, 1.4f);
 		}
 	}
 	// The Qhi line shows while it changes and a moment after; it flashes when a cast is refused.

@@ -117,6 +117,12 @@ public:
 	FString Describe() const;
 	// Counters for tests and the developer readout.
 	int32 Bites() const { return BiteCount; }
+	bool TakeBiteCue()
+	{
+		const bool bCue = bBiteCue;
+		bBiteCue = false;
+		return bCue;
+	}
 	int32 Lunges() const { return LungeCount; }
 	int32 Connected() const { return ConnectCount; }
 	int32 Disengages() const { return DisengageCount; }
@@ -162,6 +168,7 @@ private:
 	float HeadThrust = 0.0f;       // 0..1, eased
 	float DeadTime = 0.0f;
 	FVector LastMoveTarget = FVector(1e9);
+	bool bBiteCue = false;
 	int32 BiteCount = 0, LungeCount = 0, ConnectCount = 0, DisengageCount = 0, AbsorbCount = 0, ProtectCount = 0, FreezeCount = 0;
 
 	void StepFrame();
