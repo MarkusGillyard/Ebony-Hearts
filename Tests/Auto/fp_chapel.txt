@@ -31,6 +31,7 @@ hold kbA FPSpellSelect
 wait 0.4
 fp_expect selecting eq 0
 fp_expect action eq 0
+fp_expect casts eq 0
 fp_expect fireballs eq 0
 release kbA FPSpellSelect
 wait 1.2
