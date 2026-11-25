@@ -1,0 +1,32 @@
+wait 6
+fp_expect screen eq 12
+fp_reset
+fp_align 7
+fp_teleport 0 -1660 44 -90 -50
+fp_wolf_place 130 -1660 180
+fp_escalate
+wait_wolf_bite
+fp_expect interact_focus eq 0
+press kbA FPInteract
+wait 0.6
+fp_expect praying eq 1
+fp_expect wolf_sanctuary eq 1
+fp_expect wolf_connected eq 0
+fp_expect health eq 100
+
+fp_reset
+fp_align 2
+fp_wolf_place 0 -820 90
+fp_teleport 0 -600 0 -90 -22
+wait 0.2
+fp_expect wolf_focus eq 0
+fp_box 0 -710 112 44 12 86
+wait 0.25
+fp_expect wolf_focus eq -1
+press kbA FPInteract
+wait 0.2
+fp_expect wolf_talks eq 0
+fp_clear_boxes
+wait 0.25
+fp_expect wolf_focus eq 0
+quit
