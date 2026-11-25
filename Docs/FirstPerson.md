@@ -576,7 +576,7 @@ Shipping preloaded 68 first-person sounds and the functional script exercised al
 | Four-wolf fight | Development | On | 59.13 | 3,548 | 16.666 | 16.764 | 16.831 | 17.137 | 0 |
 | Four-wolf soak | Development | On | 1961.64 | 117,722 | 16.667 | 16.771 | 16.846 | 32.072 | 0 |
 
-The Development soak completed 84 laps and 84 settings round trips with no dropped simulation ticks.
+The Development soak completed 84 laps and 84 settings round trips with no assertion failures.
 The final lap's peak concurrent attackers was one. The cold traversal hitches were its first three captured frames.
 The cold spell hitch was its first captured frame. GPU samples were elevated during those frames.
 These traces lack the timing markers needed to establish a shader compilation cause.
