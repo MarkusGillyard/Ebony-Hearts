@@ -69,16 +69,69 @@ private:
 	EEHFistAction LastAction = EEHFistAction::None;
 	float Visible = 0.0f;                   // 0 lowered out of view .. 1 up
 	float Recoil = 0.0f;                    // 1 at contact, easing to 0 after the hitstop
+	float GuardShock = 0.0f;
+	float Rebound = 0.0f;
+	int32 ReboundHand = 1;
 	float ShudderTime = 0.0f;
 	bool bShown = false;
 
+	// The realistic first-person hands (Tools/Blender/fphands; CC0 base mesh): posed with no clip, by IK for the reach
+	// and by rotations for each finger, the wrist's turn and the hand's bend. Each hand's state eases toward a target
+	// per technique: curl 0 open .. 1 a tight fist; pronation turns the palm down (degrees); bend tips the hand back.
+	bool bRealHands = false;
+	struct FHandFrame
+	{
+		bool bValid = false;
+		FVector Lateral = FVector::ZeroVector;      // across the knuckles, index to pinky (component space)
+		FVector Forearm = FVector::ZeroVector;      // elbow to wrist
+		float FlexSign = 1.0f;                      // which way about Lateral curls a finger toward the palm
+		float PronateSign = 1.0f;                   // which way about Forearm turns the palm down
+		FVector ThumbAxis = FVector::ZeroVector;    // the thumb folds about this, toward the palm
+		float ThumbSweepSign = 1.0f;                // which way about the palm normal sweeps the thumb toward the pinky
+		float SpreadSign = 1.0f;                    // which way about the palm normal turns a finger toward the pinky
+		FVector Thumb[3];                           // the thumb's three joints, rest pose
+		FVector Knuckles = FVector::ZeroVector;     // wrist to the middle knuckle, rest pose
+		FVector Palm = FVector::ZeroVector;         // out of the palm, rest pose
+		FQuat RefRotation = FQuat::Identity;        // the hand bone's rest rotation (component space)
+		FVector FingerRest[4];                      // each finger's rest direction across the palm (component space)
+		FQuat FingerIn[4];                          // turns each finger from its rest fan to lie alongside its neighbours
+		FVector HingeUpper = FVector::ZeroVector;   // the elbow's hinge axis in the upper arm's and forearm's own space
+		FVector HingeLower = FVector::ZeroVector;
+		FQuat LowerToHand = FQuat::Identity;        // the hand's rest rotation relative to the forearm
+		bool bTwist = false;                        // the skeleton has forearm twist bones
+	};
+	FHandFrame HandFrames[2];
+	float Curl[2] = {0.3f, 0.3f};
+	float Pronate[2] = {0.0f, 0.0f};
+	float Bend[2] = {0.0f, 0.0f};
+	float Spread[2] = {0.0f, 0.0f};
+	float FingerCurl[2][4] = {{0.3f, 0.3f, 0.3f, 0.3f}, {0.3f, 0.3f, 0.3f, 0.3f}};   // each finger follows Curl in a wave
+	float GuardW = 0.0f;                    // 0..1, how far the hands are in the high guard (block held)
+	void CacheHandFrames();
+	void AddHandRotations(TArray<struct FEHAdditiveRotation>& Out, int32 Hand) const;
+	// The hand bone's component-space rotation that points the knuckles along Forward (camera space) with the palm
+	// facing Palm.
+	FQuat AimHand(int32 Hand, const FVector& Forward, const FVector& PalmDir, const FQuat& CamToCS) const;
+	void UpdateHandTargets(const FEHFists& Fists, float DeltaSeconds);
 	void PoseArm(FArm& Arm, const FVector& Shoulder, const FVector& Hand, float Side);
 	void PoseMeshArms(const FVector& L, const FVector& R);
+	// The keyed clips (Tools/Blender/fphands/fp_anim.py): at the ready, the block held, and one per technique, played
+	// on the game's frames; blows and lowering move the keyed hands by offsets (view space, cm).
+	void PoseClipArms(const FEHFists& Fists, float Alpha, const FVector& OffL, const FVector& OffR);
+	void PlaceArmsMesh();
+	UPROPERTY()
+	TArray<TObjectPtr<UAnimSequence>> Clips;   // Ready, Guard, Jab, Straight, Fireball, IceWall
+	bool bClips = false;
+	UAnimSequence* ShownClip = nullptr;
+	double ClipClock = 0.0;
 	void ShowParts(bool bShow);
 	void BuildGlows();
 	void SetGlow(int32 Hand, const FLinearColor& Color, float Amount);
 public:
 	bool UsesModelArms() const { return ArmsMesh != nullptr; }
+	// A blow landed on the player's guard (both fists pushed back), or the player's strike was stopped by a guard.
+	void GuardImpact(float Strength);
+	void StrikeRebound(int32 Hand, float Strength);
 	FString Describe() const;
 	UStaticMeshComponent* MakePart(UStaticMesh* Mesh, UMaterialInstanceDynamic* Material);
 };

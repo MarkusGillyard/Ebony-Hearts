@@ -460,33 +460,34 @@ void AEHGameDirector::PaintError(FEHPainter& P)
 	P.Text(TEXT("Press confirm or Escape to quit."), FVector2f(960, 560), Fonts.Sized(Fonts.Body, 20), Muted, 0.5f, 0.5f);
 }
 
+void AEHGameDirector::TitleWordmark(FEHPainter& P, FVector2f Centre, float Scale, float Alpha)
+{
+	namespace St = EHStyle;
+	FSlateFontInfo F = Fonts.Sized(Fonts.DisplayLight, 116.0f * Scale);
+	F.LetterSpacing = 190;
+	P.Text(TEXT("EBONY HEARTS"), Centre, F, A(Bone, Alpha), 0.5f, 0.5f);
+	// A fine rule beneath, fading out at both ends.
+	const float Half = 330.0f * Scale;
+	const float Y = Centre.Y + 82.0f * Scale;
+	const int32 Steps = 24;
+	for (int32 k = 0; k < Steps; ++k)
+	{
+		const float T = (k + 0.5f) / Steps;
+		const float Fade = FMath::Sin(T * PI);
+		P.Rect(FVector2f(Centre.X - Half + 2.0f * Half * k / Steps, Y), FVector2f(2.0f * Half / Steps + 0.5f, FMath::Max(1.0f, 1.5f * Scale)), St::Alpha(St::Silver, 0.55f * Fade * Alpha));
+	}
+}
+
 void AEHGameDirector::PaintTitle(FEHPainter& P)
 {
 	namespace St = EHStyle;
 	const float In = FMath::Clamp(ScreenAge / 1.2f, 0.0f, 1.0f);
-	if (KeyArtTexture)
-	{
-		// Still Water: the key art fills the screen (cover: wider screens crop top and bottom), its wordmark is part of
-		// the painting, and only the prompt and the credit sit over it.
-		const float Wide = P.VirtualMax.X - P.VirtualMin.X;
-		const float Tall = P.VirtualMax.Y - P.VirtualMin.Y;
-		const float Aspect = KeyArtBrush.ImageSize.X / FMath::Max(1.0, KeyArtBrush.ImageSize.Y);
-		const float DrawW = FMath::Max(Wide, Tall * Aspect);
-		const float DrawH = DrawW / Aspect;
-		P.Fill(St::Abyss);
-		P.Image(KeyArtBrush, FVector2f(960 - DrawW * 0.5f, 540 - DrawH * 0.5f), FVector2f(DrawW, DrawH), FLinearColor(1, 1, 1, In));
-		P.Gradient(FVector2f(P.VirtualMin.X, 820), FVector2f(Wide, P.VirtualMax.Y - 820), St::Alpha(St::Abyss, 0.0f), St::Alpha(St::Abyss, 0.9f * In));
-	}
-	else if (TitleTexture)
-	{
-		const float W = 1280.0f;
-		const float H = W * TitleBrush.ImageSize.Y / FMath::Max(1.0, TitleBrush.ImageSize.X);
-		P.Image(TitleBrush, FVector2f(960 - W * 0.5f, 250 - H * 0.5f + (1.0f - In) * 20.0f), FVector2f(W, H), FLinearColor(1, 1, 1, In));
-	}
-	else
-	{
-		P.Text(TEXT("EBONY HEARTS"), FVector2f(960, 250), Fonts.Sized(Fonts.Display, 110), A(Bone, In), 0.5f, 0.5f);
-	}
+	// The title is typeset, not an image (the creator's decisions, 2026-11-23: no AI-made art in the game, and a simple
+	// black background): the name in Cinzel, widely spaced in the manner of a carved inscription, with a fine rule
+	// beneath it.
+	P.Fill(FLinearColor::Black);
+	const float Rise = (1.0f - In) * 14.0f;
+	TitleWordmark(P, FVector2f(960.0f, 430.0f + Rise), 1.0f, In);
 	if (ScreenAge < 1.5f)
 	{
 		// Rasterise the large in-match glyphs (round banners, callouts, combo counter) while nothing is at stake, at
@@ -524,13 +525,12 @@ void AEHGameDirector::PaintMainMenuA(FEHPainter& P)
 		const float X1 = P.VirtualMin.X + (1180.0f - P.VirtualMin.X) * (c + 1) / Cols;
 		P.Rect(FVector2f(X0, P.VirtualMin.Y), FVector2f(X1 - X0, Tall), St::Alpha(St::Abyss, 0.94f * (1.0f - T * T)));
 	}
-	if (LogoSmallTexture || TitleTexture)
 	{
-		const FSlateBrush& Logo = LogoSmallTexture ? LogoSmallBrush : TitleBrush;
-		// At enlarged scale the visible rect is narrower. Keep the full-size wordmark in the open area beside the list.
-		const float LogoX = P.VirtualMin.X > 96.0f ? P.VirtualMax.X - 716.0f : 96.0f;
-		const float LogoY = FMath::Max(56.0f, P.VirtualMin.Y + 14.0f);
-		P.Image(Logo, FVector2f(LogoX, LogoY), FVector2f(700, 700 * Logo.ImageSize.Y / FMath::Max(1.0, Logo.ImageSize.X)), FLinearColor(1, 1, 1, 1));
+		// The typeset name, smaller, above the list. At enlarged scale the visible rect is narrower: keep it in the open
+		// area beside the list.
+		const float CX = P.VirtualMin.X > 96.0f ? P.VirtualMax.X - 366.0f : 446.0f;
+		const float CY = FMath::Max(150.0f, P.VirtualMin.Y + 108.0f);
+		TitleWordmark(P, FVector2f(CX, CY), 0.52f, 1.0f);
 	}
 	P.NextLayer();
 	// Leave enough room for the focused row's crescent inside the enlarged visible rect.

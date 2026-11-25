@@ -776,7 +776,7 @@ void AEHGameDirector::TickAutomation(float DeltaSeconds)
 				}
 			}
 			const FString Sounds = FString::Join(Audio.MissingSounds(), TEXT(","));
-			AutoLogLine(FString::Printf(TEXT("%s assets missing_anims=[%s] missing_sounds=[%s] vfx=%d fonts=%d title=%d"), Missing.IsEmpty() && Sounds.IsEmpty() ? TEXT("ok") : TEXT("WARN"), *Missing, *Sounds, Vfx && Vfx->HasMaterial(), Fonts.bLoaded, TitleTexture != nullptr));
+			AutoLogLine(FString::Printf(TEXT("%s assets missing_anims=[%s] missing_sounds=[%s] vfx=%d fonts=%d title=text"), Missing.IsEmpty() && Sounds.IsEmpty() ? TEXT("ok") : TEXT("WARN"), *Missing, *Sounds, Vfx && Vfx->HasMaterial(), Fonts.bLoaded));
 		}
 		else if (Cmd == TEXT("loop"))
 		{

@@ -126,6 +126,10 @@ public:
 	int32 Repaths() const { return RepathCount; }
 	int32 StuckRepaths() const { return StuckCount; }
 	float SecondsSinceAttack() const { return SinceAttack; }
+	int32 HitReactions() const { return Reactions; }
+	int32 RebuffCount() const { return Rebuffs; }
+	float ReactionTilt() const { return Tilt.Size(); }
+	float ReactionPeak() const { return PeakTilt; }
 	bool IsDead() const { return State == EEHWolfState::Dead; }
 	bool IsFrozen() const { return FrozenLeft > 0.0f; }
 	bool IsProvoked() const { return bProvoked; }
@@ -196,6 +200,14 @@ private:
 	FVector LastMoveTarget = FVector(1e9);
 	bool bBiteCue = false;
 	int32 BiteCount = 0, LungeCount = 0, ConnectCount = 0, DisengageCount = 0, AbsorbCount = 0, ProtectCount = 0, FreezeCount = 0;
+	// Physical hit reactions: body tilt (pitch, roll) and head snap (pitch, yaw), degrees, on springs.
+	FVector2D Tilt = FVector2D::ZeroVector, TiltVel = FVector2D::ZeroVector;
+	FVector2D Snap = FVector2D::ZeroVector, SnapVel = FVector2D::ZeroVector;
+	int32 Reactions = 0;
+	int32 Rebuffs = 0;
+	float PeakTilt = 0.0f;   // the largest tilt since the last reaction began (evidence)
+	void React(const FVector& Away, float Strength);
+	void Rebuff();
 	EEHPackRole PackRole = EEHPackRole::Free;
 	float HoldBackRadius = 650.0f;
 	float WaitRadius = 520.0f;

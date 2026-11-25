@@ -137,6 +137,9 @@ public:
 	float SecondsSinceHurt() const { return SinceHurt; }
 	const FEHFists& GetFists() const { return Fists; }
 	UEHViewArms* ViewArms() const { return Arms; }
+	// The view's weight: a kick of pitch, forward travel and roll that springs back (respects reduced shake).
+	void AddCameraKick(float PitchDegrees, float ForwardCm, float RollDegrees) { Kick(PitchDegrees, ForwardCm, RollDegrees); }
+	bool WasLastStrikeGuarded() const { return bLastStrikeGuarded; }
 	// Back to the Chapel's start with full Stamina, standing, at rest.
 	void ResetToStart();
 	void TakeEvents(TArray<FEHFirstPersonEvent>& Out) { Out.Append(Events); Events.Reset(); }
@@ -224,4 +227,5 @@ private:
 	void StepFists();
 	void CheckContact(EEHFistAction Action);
 	void Kick(float PitchDegrees, float ForwardCm = 0.0f, float RollDegrees = 0.0f);
+	bool bLastStrikeGuarded = false;
 };

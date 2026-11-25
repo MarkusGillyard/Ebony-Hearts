@@ -188,14 +188,6 @@ private:
 	TObjectPtr<AEHVfx> Vfx;
 	UPROPERTY()
 	TObjectPtr<ACameraActor> Camera;
-	// The creator's logo (2026-11-09): full size for the title, a 1024 px copy for menus.
-	UPROPERTY()
-	TObjectPtr<UTexture2D> TitleTexture;
-	UPROPERTY()
-	TObjectPtr<UTexture2D> LogoSmallTexture;
-	// The creator's key art: the title screen (direction A, chosen 2026-11-09), its wordmark painted in.
-	UPROPERTY()
-	TObjectPtr<UTexture2D> KeyArtTexture;
 	UPROPERTY()
 	TObjectPtr<AEHPlayerCharacter> FPPlayer;
 	UPROPERTY()
@@ -288,9 +280,6 @@ private:
 	int8 LessonWalkDir = 0;
 
 	// Presentation
-	FSlateBrush TitleBrush;
-	FSlateBrush LogoSmallBrush;
-	FSlateBrush KeyArtBrush;
 	FVector CamPos = FVector(0, 600, 140);
 	float CamShake = 0.0f;
 	float CamPunch = 0.0f;
@@ -557,6 +546,7 @@ private:
 
 	// UI painting
 	void PaintBackdrop(FEHPainter& P, float Dim);
+	void TitleWordmark(FEHPainter& P, FVector2f Centre, float Scale, float Alpha);
 	void PaintTitle(FEHPainter& P);
 	// TopY >= 0 places a compact (centred) menu's top edge there instead of centring it vertically.
 	void PaintMenu(FEHPainter& P, const FString& Heading, bool bCompact, float TopY = -1.0f);

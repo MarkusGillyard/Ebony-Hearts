@@ -28,7 +28,7 @@ USED = {
     "kenney/interface-sounds": "Menu sounds (processed)",
     "kenney/rpg-audio": "Cloth and creak layers",
     "accad/male2_bvh": "Base motion for both fighters' idle stances, Wren's 720 hook kick and tornado kick, Ashka's bow intro and bow win, and both fighters' defeated pose; retargeted and retimed (Tools/Blender/anim/build_mocap.py, mocap_clips.json)",
-    "mixamo/animations": "Base motion for Wren's jab, cross and jab-to-cross string, Spirit Enhanced Strikes, roundhouse, spinning back kick, walks, held guard, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's body roundhouse, teep, held guard, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, both fighters' hit, block, knockdown and KO reactions and get-ups, and the fall of the fighter Ashka throws; retargeted and retimed (Tools/Blender/anim/build_mocap.py, build_anims.py, mocap_clips.json). Raw exports are not in the repository",
+    "mixamo/animations": "Base motion for Wren's jab, cross and jab-to-cross string, Spirit Enhanced Strikes, roundhouse, spinning back kick, walks, intro, win, forward roll, double-leg slam and shoulder throw (both sides), Ashka's body roundhouse, teep, jab, horizontal elbow, step-in knee, flame elbow, flying knee, walks and forward roll, both fighters' hit, knockdown and KO reactions and get-ups, and the fall of the fighter Ashka throws; retargeted and retimed (Tools/Blender/anim/build_mocap.py, build_anims.py, mocap_clips.json). Raw exports are not in the repository",
 }
 
 
@@ -41,8 +41,15 @@ def download_name(url):
 def main():
     tp, fonts = Path(sys.argv[1]), Path(sys.argv[2])
     ledger = json.loads((tp / "ledger.json").read_text())
+    missing_items = set(USED) - {item["id"] for item in ledger["items"]}
+    if missing_items:
+        raise SystemExit("Required inputs missing from source ledger: " + ", ".join(sorted(missing_items)))
     clips = json.loads((Path(__file__).resolve().parents[1] / "Blender" / "anim" / "mocap_clips.json").read_text())
     used_fbx = {spec["fbx"] for char in clips.values() for spec in char.values() if "fbx" in spec}
+    # Paired throws store their sources under attacker/victim rather than fbx.
+    used_fbx.update(spec[key] for spec in clips.get("throws", {}).values() for key in ("attacker", "victim"))
+    # Every Mixamo retarget also reads FbxSource.NEUTRAL (mocap.py).
+    used_fbx.add("Rig_XBot_TPose.fbx")
     out = []
     for item in ledger["items"]:
         if item["id"] not in USED:
@@ -75,7 +82,7 @@ def main():
                 "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
                 "use": "Base body mesh hm08, eyes, eyebrows, eyelashes (via MPFB) for both fighters", "modified": True,
                 "raw_files_in_repo": False, "original_downloads": [{"file": os.path.basename(msa["file"]), "sha256": msa["sha256"], "url": msa["url"]}],
-                "notes": "Skin textures and hair/clothes assets not used; files with conflicting author metadata excluded."})
+                "notes": "Skin textures and hair/clothes assets not used; files with conflicting author metadata excluded. Current character configuration uses eyebrow001 (Wren) and eyebrow005 (Ashka); earlier eyebrow006/008 references are historical."})
     mp = prov["mpfb_addon"]
     out.append({"id": "mpfb/2.0.18", "title": "MPFB 2.0.18 (Blender extension)", "creator": "MakeHuman Community",
                 "source_page": mp["listed_by"], "acquired": "2026-10-26", "license": "GPL-3.0-or-later (code); CC0-1.0 (bundled assets)",
@@ -97,6 +104,23 @@ def main():
                                             "url": f"http://mocap.cs.cmu.edu/subjects/{f.split('_')[0].split('.')[0]}/{f}"} for f in files],
                     "notes": "Credit requested by CMU: The data used in this project was obtained from mocap.cs.cmu.edu. "
                              "The database was created with funding from NSF EIA-0196217."})
+    out.append({
+        "id": "blender/human-base-meshes-1.4.1",
+        "title": "Human Base Meshes Bundle v1.4.1",
+        "creator": "Blender Studio and community",
+        "source_page": "https://www.blender.org/download/demo-files/",
+        "acquired": "2026-11-23",
+        "license": "CC0-1.0",
+        "license_url": "https://creativecommons.org/publicdomain/zero/1.0/legalcode",
+        "use": "Realistic male arms and hands cut, subdivided and rigged as the first-person SK_FPHands skeletal mesh",
+        "modified": True,
+        "raw_files_in_repo": False,
+        "original_downloads": [{
+            "file": "human-base-meshes-bundle-v1.4.1.zip",
+            "sha256": "811f43accbb31a88266d932f8f5563b2d13586fca0ba2693aad1f5fe582b3515",
+            "url": "https://download.blender.org/demo/asset-bundles/human-base-meshes/human-base-meshes-bundle-v1.4.1.zip",
+        }],
+    })
     sums = {}
     for line in (fonts / "SHA256SUMS").read_text().splitlines():
         h, f = line.split(None, 1)
@@ -110,8 +134,9 @@ def main():
                 "use": "Body type", "modified": False, "raw_files_in_repo": True,
                 "original_downloads": [{"file": k.split('/')[-1], "sha256": v} for k, v in sums.items() if k.startswith("alegreyasans/")]})
     dest = Path(__file__).resolve().parents[2] / "Docs" / "ThirdPartyManifest.json"
-    dest.write_text(json.dumps({"generated_from": "original download records, SHA-256 verified on 2026-11-02/03", "items": out}, indent=1))
+    dest.write_text(json.dumps({"generated_from": "Original download records including the first-person hands source verified on 2026-11-24", "items": out}, indent=1))
     print("wrote", dest, len(out), "items")
 
 
-main()
+if __name__ == "__main__":
+    main()

@@ -748,6 +748,7 @@ float AEHPlayerCharacter::ReceiveStrike(float Damage, const FVector& From, bool 
 	Facing.Z = 0.0f;
 	const float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(ToAttacker.GetSafeNormal(), Facing.GetSafeNormal()), -1.0f, 1.0f)));
 	const bool bGuarded = !bOwnBlow && Fists.IsGuarding() && Angle <= Tuning.Fists.BlockAngle;
+	bLastStrikeGuarded = bGuarded;
 	const float Taken = bGuarded ? Damage * (1.0f - Tuning.Fists.BlockReduction) : Damage;
 	HealthValue = FMath::Max(0.0f, HealthValue - Taken);
 	SinceHurt = 0.0f;

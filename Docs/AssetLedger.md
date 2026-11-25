@@ -23,6 +23,7 @@ the original download record before use.
 | Alegreya Sans (Regular, Medium, Bold) | SIL OFL 1.1 | Body type | Unmodified font files with `OFL-AlegreyaSans.txt` | Yes (`Content/UI/Fonts`) |
 | ACCAD Open Motion Project, Male 2 BVH takes (ACCAD, The Ohio State University) | CC BY 3.0 Unported (attribution required) | Base motion for both fighters' idle stances (Male2_E8_Bounce, Male2_D1_StandToReady), retargeted onto the researched MMA and Muay Thai stances; Wren's 720 hook kick and tornado kick (Male2_G20, G9; both add a jump and an extra turn); Ashka's bow intro and bow win (Male2_D8_BowToReady, D7_WalkToBow) and both fighters' defeated pose (Male2_D4_ReadyToRelax, settling into the scripted slump) | Cooked animations | No (downloaded from accad.osu.edu) |
 | Mixamo animations (Adobe), 40 clips plus the X Bot T-pose (38 in use since 2026-11-09), exported from the creator's Adobe account | Mixamo: free; characters and animations are royalty free for personal, commercial and non-profit projects, including video games (Mixamo FAQ, helpx.adobe.com/creative-cloud/faq/mixamo-faq.html) | Base motion for Wren's jab and cross (and her jab-to-cross string, from one performance), Spirit Enhanced Strikes (a two-handed cast: sink, gather, rise with the arms raised), roundhouse (MMA high kick), spinning back kick, walks, intro (boxing warm-up), win (victory), forward roll (a quick shoulder roll), double-leg slam and shoulder throw (each a paired attacker and victim); Ashka's jab, horizontal elbow, step-in knee, flame elbow (stepping elbow), flying knee, walks and forward roll; both fighters' light and heavy hit, knockdown and KO reactions and get-ups, and hit reactions by where the hit lands (a straight to the head, a hook to the head, a stomach or straight body hit, a side (liver) hit); Ashka's body kick (a rear-leg roundhouse) and teep (a lead-leg thrust kick); both fighters' jumps and landings (a jump from a fighting stance, its rise left to the game); Wren's flying kick in a jump (a flying sidekick) and Ashka's jumping knee (from her flying knee); the fall of the fighter Ashka throws (a sweep fall, after her keyed clinch). Retargeted, retimed to the combat data, placed on the stances; the knockdown ends in the lying pose the get-up starts from | Cooked animations | No (raw exports kept outside the repository). The held guard (MMA Idle) and the large block reaction are no longer used: both fighters' guards and blocked-hit reactions are keyed since 2026-11-09 |
+| Blender Foundation: Human Base Meshes bundle v1.4.1 (`human-base-meshes-bundle-v1.4.1.zip`, download.blender.org, SHA-256 `811f43accbb31a88266d932f8f5563b2d13586fca0ba2693aad1f5fe582b3515`) | CC0 1.0 | The first-person hands (from 2026-11-23): the realistic male body's arms and hands, cut at the shoulders, subdivided twice and rigged with a 49-bone skeleton (with forearm twist bones) by `Tools/Blender/fphands/build_fp_hands.py` (made with AI assistance); downloaded with the creator's approval | Cooked skeletal mesh (`/Game/Characters/FPHands/SK_FPHands`) | No (downloaded by hand into the work area) |
 | Unreal Engine 5.8.4 | Unreal Engine EULA | Engine | Engine runtime | No |
 
 CC0 needs no attribution, but the in-game credits name the sources as a courtesy. The ACCAD motion capture is CC BY 3.0, so its attribution is required and appears in the in-game credits and `THIRD_PARTY_NOTICES.txt`: "Motion capture: Open Motion Project by ACCAD / The Ohio State University, CC BY 3.0; retargeted and retimed for this game." Mixamo needs no credit; the in-game credits and `THIRD_PARTY_NOTICES.txt` name it as a courtesy. CMU motion capture was used in earlier builds and no longer ships, so its credit was removed. "MakeHuman" is a trademark and
@@ -69,6 +70,7 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | `/Game/Magic/SM_PH_IceWall`, `SM_PH_IceSheet`, `SM_PH_IceCuff` (Ice Wall shards, frozen water, ice around frozen feet) | Placeholder meshes | Made with AI assistance (`Tools/Blender/magic/make_ice.py`, procedural, fixed seed) | No source art; imported by `Tools/Unreal/make_magic_materials.py` |
 | `/Game/Magic/M_PH_Ice` | Placeholder material | Made with AI assistance (`Tools/Unreal/make_magic_materials.py`) | Samples the slice's `T_FX_Noise` and the Chapel's `T_Water_N` (provenance above); a cold point light in the wall |
 | Fireball, hand glows, steam and ice bursts (runtime) | Placeholder effects | Made with AI assistance (`EHMagic.cpp`, `EHVfx.cpp`, `EHViewArms.cpp`) | The slice's `M_VFX_Additive`, `T_FX_Glow`, `T_FX_Ring`, `T_FX_Spark` on Unreal Engine's `/Engine/BasicShapes/Plane`; a point light |
+| `/Game/Characters/FPHands/Anims/A_FPH_*` (Ready, Guard, Jab, Straight, Fireball, IceWall: the first-person hand clips) | Placeholder animation | Made with AI assistance (`Tools/Blender/fphands/fp_anim.py` keying the poses in `fp_clips.py`; imported by `Tools/Unreal/import_fp_anims.py`) | On the CC0 hands rig above; no motion capture or third-party motion |
 | `/Game/Wolf/SM_PH_Wolf_Body`, `_Head`, `_Leg`, `_Tail` (the Chapel wolf, in parts) | Placeholder meshes | Made with AI assistance (`Tools/Blender/wolf/make_wolf.py`, procedural, fixed seeds) | No source art; imported by `Tools/Unreal/import_wolf.py`; the creator authors the real wolf |
 | `/Game/Wolf/M_PH_Wolf` | Placeholder material | Made with AI assistance (`Tools/Unreal/import_wolf.py`) | Dark back and pale belly by surface direction, broken up by the slice's `T_FX_Noise` |
 | `/Game/Chapel/Interior/SM_IX_*` (the interior's west wall, Threshold Hall and door, loft, transept arches and rooms, the way down, the undercroft, its gate, sealed door and water) | Placeholder architecture | Made with AI assistance (`Tools/Blender/chapel/chapel_interior.py`, procedural, with the Chapel kit's own geometry code) | No new textures: the Chapel's existing material instances (`MI_StoneAshlar`, `MI_StoneDressed`, `MI_FloorFlags`, `MI_WoodPew`, `MI_IronAged`, `MI_GlassLancet`, `MI_Water`); placed by `Tools/Unreal/build_chapel_interior.py` |
@@ -79,29 +81,20 @@ Placeholders only. The creator authors the final Chapel, characters and animatio
 | Wolf sounds (placeholder voice) | Existing slice assets reused | | `S_AuraCharge_01-03` (pitched down: the wind-up growl), `S_WhooshHeavy_01-03` (the lunge), `S_Grab` (the bite) |
 | `/Game/Audio/Ambience/S_ForgeFire`, `S_Brazier`, `S_CryptTone` (the Chapel interior's placed loops) | Placeholder sounds | Made with AI assistance (`Tools/Audio/eh_audio/ambience.py`, synthesized, seeded and deterministic; built by `Tools/Audio/build_audio.py`) | No samples: filtered noise, synthesized crackles, drips and a synthetic room reverb |
 
-No new third-party inputs were added.
+The Blender Human Base Meshes bundle is the source of the first-person hand geometry. The hand clips are keyed for the project.
 
 ## Creator-supplied
 
-- **Logo** (`/Game/UI/T_Logo`, `/Game/UI/T_LogoSmall`). Supplied by the creator on 2026-11-09 as `1000012869.png`,
-  the file `Ebony Hearts Title Card.png` (PNG, 2172 × 724, RGBA), SHA-256
-  `5508d12d6f4b9acf2c023e3fd85bbf17134cb1b670b61f9bda3693a5d243d61f`. It replaces the title card below as the
-  game's wordmark everywhere (the creator's decision, 2026-11-09).
-  - `T_Logo` is the file unmodified.
-  - `T_LogoSmall` is the same logo, downscaled to 1024 px wide for menus by `Tools/Assets/make_ui_textures.py`, which
-    checks the hash first. It is imported by `Tools/Unreal/import_ui.py`.
-  - **Origin and rights.** Supplied by the creator for Ebony Hearts. Its method of creation is not verified here. If
-    it was AI-generated, the notes on the earlier title card apply in the same way.
-  - **Handling.** Keep the original (`sourceart/ui/supplied-20261109/` in the delivery workspace, with `SHA256SUMS`).
-    Do not redraw or redesign the logo without the creator's approval.
-- **Key art** (`/Game/UI/T_KeyArt`, the title screen since the creator chose direction A on 2026-11-09). Supplied by the creator on 2026-11-09 as `1000012878.png`, the file `EH Concept
-  Art.png` (1536 × 864), SHA-256 `21992941f9b3ad508701c4f061ffcb32f8a7ecd8a51d3b742ae9b72acaaf7f69`.
-  - The data is a JPEG despite the `.png` name, so it is lossy.
-  - A copy with the same bytes is named "ChatGPT Image Nov 9, 2026", which suggests AI generation (not confirmed).
-  - The painting contains the logo's wordmark, so it can serve as a title screen but not behind other screens.
-  - The depicted buildings are atmosphere, not canon locations.
-  - Imported unchanged by `Tools/Unreal/import_ui.py` (BC1, 1536 × 864). A larger or lossless version would be
-    sharper at 1080p and above.
+- **Logo and key art, removed** (were `/Game/UI/T_Logo`, `/Game/UI/T_LogoSmall` and `/Game/UI/T_KeyArt`; removed from
+  the content on 2026-11-23 at the creator's decision, kept in the repository's history).
+  - **Origin.** AI-generated: the creator confirmed on 2026-11-23 that the logo and the key art were all made with AI.
+    The logo was supplied on 2026-11-09 as `1000012869.png` (SHA-256
+    `5508d12d6f4b9acf2c023e3fd85bbf17134cb1b670b61f9bda3693a5d243d61f`), the key art as `1000012878.png` (SHA-256
+    `21992941f9b3ad508701c4f061ffcb32f8a7ecd8a51d3b742ae9b72acaaf7f69`).
+  - **Why removed.** The creator wants Ebony Hearts on Steam without AI-generated content shown to players.
+  - **Replacement.** The title and main menu set the name "EBONY HEARTS" as text in Cinzel Regular (SIL OFL 1.1,
+    listed above), drawn by the game's code. No image replaces them.
+  - **Handling.** The creator keeps his original files; nothing from them ships.
 - **Title card, retired** (was `/Game/UI/T_TitleCard`; removed from the content on 2026-11-09 at the creator's
   decision, kept in the repository's history). Imported unmodified from the creator's file `Ebony Hearts Title Card`
   (PNG, 2172 × 724), SHA-256 `2856a3520ba7def78f39c1daeb6c8e1b4b119c637902d6a55e78598f5a401f0f`.

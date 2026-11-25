@@ -1,0 +1,47 @@
+# The fists rework's feel (development build: test positions, the alignment): the struck wolf's body visibly takes the
+# blow (a tilt and head snap on springs that settle), a straight staggers it for longer than a jab, and a bite into the
+# player's raised guard throws the wolf back off balance instead of landing.
+wait 5
+fp_expect screen eq 12
+
+log == a jab: the wolf tips away from it and settles
+fp_align 4
+fp_wolf_place 0 -640 90
+fp_teleport 0 -530 -28 -90 -32
+wait 0.1
+press kbA FPJab
+wait 0.6
+fp_expect wolf_reactions eq 1
+fp_expect wolf_tilt_peak gt 7
+wait 1.5
+fp_expect wolf_tilt lt 1
+
+log == a straight: a harder reaction
+fp_reset
+fp_align 4
+wait 0.3
+fp_wolf_place 0 -640 90
+fp_teleport 0 -530 -28 -90 -32
+wait 0.1
+press kbA FPStraight
+wait 0.6
+fp_expect wolf_reactions eq 1
+fp_expect wolf_tilt_peak gt 12
+
+log == an evil wolf bites into the raised guard: it is thrown back off balance
+fp_reset
+fp_stat health 1000
+fp_health 1000
+fp_align 7
+wait 0.3
+fp_teleport 0 -900 0 -90 0
+hold kbA FPBlock
+wait 8
+fp_state guarding
+fp_expect guarded gt 0
+fp_expect wolf_rebuffs gt 0
+release kbA FPBlock
+fp_align 4
+fp_reset
+fp_state end
+quit

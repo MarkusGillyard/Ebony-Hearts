@@ -4,9 +4,11 @@ This branch (`proto/first-person`) turns the Drowned Chapel into a first-person 
 the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
 and a held block, practised on a training dummy (the shove was removed on 2026-11-22: quality over quantity). Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
 Wall, with the wall's water freeze and Fireball's melt. Milestone 5, One Wolf: a Chapel wolf that treats the player by
-their alignment (nine tiers), with navigation through the Chapel. The game starts straight in the Chapel, with no title screen or menus
-before play. The 2.5D slice stays intact in `main`'s history. Its fighting code is still compiled here but is not
-reachable from the first-person flow.
+their alignment (nine tiers), with navigation through the Chapel. The game opens on the title (the name typeset in Cinzel on
+plain black, since 2026-11-23); any button goes straight into the Chapel. The 2.5D slice stays intact in `main`'s
+history. Its fighting code is still compiled here but is not reachable from the first-person flow (the creator chose to
+hide it, 2026-11-23). Automated runs start in the Chapel unless `-EHTitle` is given; development builds open the slice's
+own title and menus with `-EHSlice`.
 
 Every model, animation and blockout in this build is a placeholder. The game says so in a small line at the bottom
 left of the screen.
@@ -107,6 +109,10 @@ sounds and the arms all read that state, so what the player sees and what connec
 Damage and the guard's 70% are the prototype plan's proposed values; frames, reach, hitstop and
 speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`).
 
+The dummy's reactions are physical: springs drive its head and chest back from the blow, plus a knockback. A blow
+landing to one side of the line pushes that side back, so the head and chest turn toward the side it landed on (the
+creator compared this with the opposite turn and chose it, 2026-11-23).
+
 - **Aim.** A strike sweeps a sphere along the view from the eyes. A wall or pier in between stops it (a knock on stone,
   no hit).
 - **Combos.** The jab chains into the straight as soon as its active frames end, hit or miss. Any strike's recovery
@@ -125,7 +131,73 @@ speeds are engineering starting points (`Content/Data/firstperson.json`, `fists`
 
 ### Arms
 
-Placeholder arms cut from the slice's Wren model (`SK_FPArms_Wren`: her upper arms, forearms and gloved hands, on her
+**Realistic hands (fists rework, 2026-11-23).** The first-person arms are a realistic human pair from the Blender
+Foundation's CC0 Human Base Meshes: the realistic male body's arms, cut at the shoulders and rigged by
+`Tools/Blender/fphands/build_fp_hands.py` on a 49-bone skeleton that uses the characters' bone names, with three bones
+per finger and two twist bones in each forearm. Joints are found from the mesh itself: arm centre lines from
+cross-sections, the wrist at the forearm's narrowest point, digits separated by connectivity. Finger bones follow real
+phalanx proportions (proximal : middle : distal about 0.49 : 0.30 : 0.21, the knuckle joint well behind the finger
+web). The forearm's skin is shared out between the elbow end, the two twist bones and the wrist end, and each finger's
+skin follows only its own bones and the hand. `Tools/Unreal/import_fp_hands.py` imports them with their own skeleton
+and a plain subsurface skin material (the creator's painted skin replaces it).
+
+**Keyed clips (2026-11-23).** The hands now play keyed clips: at the ready, the block held, Jab, Straight, Fireball and
+Ice Wall (`/Game/Characters/FPHands/Anims/A_FPH_*`). They are made in Blender by `Tools/Blender/fphands/fp_anim.py` from
+the key poses in `fp_clips.py`, seen from the game's eye (72° field of view):
+- each technique is keyed on its own frame data, so the blow lands on its first active frame;
+- a key sets each hand's knuckle position, aim, palm, closure, spread, wrist straightness and shoulder carry, with an
+  ease per segment (a strike's "snap" covers most of its distance in its last frames);
+- every frame is posed by the same anatomy as below (elbow hinge, forearm twist, fingers drawing in and closing in a
+  wave, the thumb across them), then keyed.
+
+`Tools/Unreal/import_fp_anims.py` imports them at 60 fps. The game picks the technique's clip and plays it on the
+game's frames, held during hitstop. Between techniques it plays the block or the ready, looping. Changes blend over 4
+frames (5 for the block). Blows and lowering are added on top: the contact give, a blow on the guard and a stopped
+strike's rebound move the keyed hand by an offset (the arm reaching there on its hinge, the hand keeping its keyed
+turn), and lowering carries both hands down out of view. If the clips are missing, the hands fall back to the code
+posing below.
+
+`fp_anim.py preview` renders a contact sheet of each clip from the eye. The rig it keys on is saved by
+`build_fp_hands.py` when `EH_FPHANDS_BLEND` is set.
+
+The code posing (the fallback, and what the clips were built from) follows hand and arm anatomy and Oblivion's first
+person (the study of 2026-11-23):
+- The arm IK reaches each wrist. The elbow bends only on its hinge, so the upper arm's roll and the forearm's neutral
+  turn follow the elbow.
+- A final aim turns each hand. For fists the knuckles point forward and the palm turns down as a blow lands (the
+  corkscrew); for pushes the hand is bent back with the palm forward. A closed fist then straightens its wrist so the
+  knuckles run on along the forearm.
+- The hand's turn about the forearm (palm down or up) is shared along it: the twist bones take about half at
+  mid-forearm and most near the wrist, as the radius rolls around the ulna, so the wrist's skin does not twist.
+- The fingers close as real ones do:
+  - each finger draws in alongside its neighbours, then bends on its own hinge (the rest mesh's fingers fan apart, and
+    bending them about one shared axis hooked the outer fingertips out to the sides);
+  - joint angles at full curl are about 92°, 105° and 65° (the end joint follows the middle one);
+  - a relaxed hand falls into a cascade, each finger a little more bent toward the little finger;
+  - a hand closes in a quick wave from the little finger and opens from the index;
+  - the thumb wraps across the middle bones of the index and middle fingers.
+- Each technique sets the hands' state: closed fists for the guard and strikes, a fully open throwing hand for Fireball
+  (fingers spread, wrist bent back, palm to the target), open palms driving forward for Ice Wall, and relaxed when
+  lowered.
+- The block is Oblivion's hand-to-hand stance raised: fists up a little below the middle of the view and well apart,
+  forearms rising from the lower corners.
+
+Because the real arm is shorter than the placeholder's, positions are drawn in toward the shoulder line.
+
+Strikes have a snap: a compact load, a release that covers most of the distance in its last frames, a short drive
+through the target on the active frames, and a small drop in the follow-through. The view carries the body's weight: a
+lean with each swing (more for the straight, turning with the shoulder), a jolt back on impact, and a stronger one when
+a guard stops the fist (which rebounds).
+
+A blow taken on the guard drives both fists back toward the face and jolts the view. All view motion respects Reduce
+shake.
+
+The struck wolf's body takes the blow: it tips away and its head snaps aside, on springs that settle on their own. A
+straight staggers it 12 frames longer. A bite or lunge into the player's raised guard throws the wolf back off balance
+instead of landing. `fp_fists_feel.txt` covers these, with the fields `wolf_reactions`, `wolf_tilt` and
+`wolf_rebuffs`.
+
+**The earlier placeholder (the fallback):** arms cut from the slice's Wren model (`SK_FPArms_Wren`: her upper arms, forearms and gloved hands, on her
 skeleton and with her materials; `Tools/Blender/fparms/cut_fp_arms.py` makes it from `SK_Wren.fbx`,
 `Tools/Unreal/import_fp_arms.py` imports it). `EHViewArms.*` holds the model's fists from her guard clip, squares her
 bladed shoulders to the view and turns them into each blow (the straight drives the right shoulder through), and
