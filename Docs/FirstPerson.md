@@ -535,6 +535,11 @@ greeting arising on their own, the reset) and `fp_ship_text.txt` (the neutral wo
 Shipping), and the final stability run `fp_soak_pack.txt` (about 30 minutes of the four-wolf fight with spells, text,
 pauses and settings round trips).
 
+Development also runs `fp_lockon.txt` for target acquisition, switching, tracking and release.
+`fp_wolf_prayer_edge.txt` checks that prayer interrupts a wolf's bite wind-up and that an obstruction blocks
+interaction with the wolf. `fp_lock_select_interop.txt` checks that closing the spell selector with the stick
+held leaves the lock-on target alone. A new flick after neutral switches targets.
+
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.
 
@@ -552,6 +557,29 @@ run at 1920 × 1080 with VSync, 3,626 frames had a 16.758 ms p99 and two frames 
 The GPU samples at those two frames were 7.131 and 7.844 ms. The trace does not identify the stall cause. The warm
 Development four-wolf run had 3,562 frames, a 16.854 ms p99, and no frames over 33.3 ms. The older 32.7-minute
 soak applies to `63a08b2`.
+
+### Independent package measurements
+
+Linux x86-64 source `9cd378557dedcb1044f78ed99016ce5f8ce80ae6`, Unreal Engine 5.8.4 CL 58902052,
+Vulkan, Ryzen 7 5700G and RTX 2060 (NVIDIA 595.99.02). Captures use a 1920 × 1080 window, High quality
+and 100% render scale. Cold runs start with separate fresh profiles and driver caches. They capture
+from the first playable frames. The spell route omits its usual warm-up casts for the cold run.
+Shipping preloaded 68 first-person sounds and the functional script exercised all five Ice Wall cue types.
+
+| Route | Build | VSync | Seconds | Frames | Median ms | p95 ms | p99 ms | Max ms | Frames over 33.3 ms |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Cold traversal | Shipping | On | 55.30 | 3,316 | 16.666 | 16.713 | 16.748 | 40.210 | 3 |
+| Warm traversal | Shipping | On | 55.98 | 3,359 | 16.666 | 16.714 | 16.749 | 18.135 | 0 |
+| Warm traversal | Shipping | Off | 50.97 | 7,320 | 6.920 | 8.633 | 9.802 | 13.691 | 0 |
+| Cold spells | Shipping | On | 60.44 | 3,625 | 16.666 | 16.708 | 16.740 | 70.998 | 1 |
+| Warm spells | Shipping | On | 60.18 | 3,611 | 16.667 | 16.714 | 16.739 | 16.841 | 0 |
+| Four-wolf fight | Development | On | 59.13 | 3,548 | 16.666 | 16.764 | 16.831 | 17.137 | 0 |
+| Four-wolf soak | Development | On | 1961.64 | 117,722 | 16.667 | 16.771 | 16.846 | 32.072 | 0 |
+
+The Development soak completed 84 laps and 84 settings round trips, with one attacker at a time and
+no dropped simulation ticks. The cold traversal hitches were its first three captured frames.
+The cold spell hitch was its first captured frame. GPU samples were elevated during those frames.
+These traces lack the timing markers needed to establish a shader compilation cause.
 
 ### The bundled pipeline cache
 
