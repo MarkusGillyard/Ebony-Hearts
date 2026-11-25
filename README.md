@@ -1,44 +1,13 @@
 # Ebony Hearts
 
-Ebony Hearts is a mature dark fantasy 2.5D fighting game with action RPG influences, set in the mysterious realm of
-Destiny's Ark. Featuring precision-focused combat, distinctive stylized visuals, and rich worldbuilding, the game
-follows resurrected warriors fighting to claim the power of the Ebony Heart.
+Ebony Hearts is a stylized dark fantasy action RPG in development. The playable first-person prototype opens on a
+Cinzel title and leads into the Drowned Chapel. It includes movement, a jab, a straight, held guard, Fireball, Ice Wall,
+Chapel interactions and prayer, and encounters with one to four guardian wolves. See the
+[first-person guide](Docs/FirstPerson.md) for controls, tuning, and launch instructions.
 
-This branch holds the first playable slice: **Wren Ku** and **Ashka Rook** fighting in **The Drowned Chapel**.
-
-## Status
-
-**Branch `proto/first-person` (2026-11-21):** a first-person prototype in the Drowned Chapel: walking, three
-physical techniques on a training dummy, and two spells (Fireball and Ice Wall) on the seven stats and Qhi, with
-placeholder art. See [Docs/FirstPerson.md](Docs/FirstPerson.md). The status notes below describe the 2.5D slice.
-
-**Independent review update (2026-11-10):** PR #1 and the stacked Still Water PR #2 remain open. The creator has
-identified animation transitions and the appearance and feel of throws as the first issues to address from the
-November 9 playtest. Focused review repairs and a fresh packaged validation are in progress; neither PR has a new
-technical approval or a completed human playtest. The owner has authorized normal integration if the review gates
-pass. See [Docs/Review.md](Docs/Review.md) for the current disposition. The candidate account below is historical.
-
-**Combat, animation and character pass (2026-11-08), the fighting-game control layout, Ashka refined to her character
-sheet (version 2 of 2026-11-09) and simple, natural guards for both fighters: candidate `84acb66` ready for independent
-review and the creator's playtest. Not merged.**
-- **This round** (made on `dev/combat-pass-1108` from PR #1's earlier head `ea3ddc6`, and added to PR #1 on
-  2026-11-09 at the creator's request) adds crouching and hit levels, uppercuts, standalone throws that also finish
-  combos (Wren's double-leg takedown, Ashka's clinch trip), higher jumps, an audit of every clip and every
-  move-to-move relationship, Wren's ankle wraps and materials, the controls, Lesson and CPU for all of it, the
-  MK-style default controls, and Ashka Rook to her 2026-11-09 character sheet (version 2: a Gothic-Victorian frock
-  coat with crimson lining, blouse, brocade waistcoat, crimson cravat, high-waisted trousers and ankle boots; a loose
-  crimson ponytail with a black ribbon; the flame lights her coat's lining; a front kick and a spinning elbow), and
-  the blocking animations rebuilt (one simple guard per fighter in front of the face, standing and crouching), with
-  Ashka's coat tails simulated as cloth so her legs stay under the coat.
-- **Candidate.** `EbonyHearts-Slice-84acb66.tar.gz` (Shipping, Linux), built from commit `84acb66`. Results on the
-  test machine are in `Docs/Validation.md` ("Current candidate").
-- **Pull request #1** (`release/first-slice` → `main`) carries this work. Its 2026-11-08 independent technical audit
-  applies to its earlier head `ea3ddc6` (`Docs/Review.md`, previous round, section 6).
-- **Still open.** An independent review of this candidate, the creator's playtest and the merge decision.
-- **Crash report.** Early in development, one editor crash report was sent to Epic Games before the opt-out was set.
-  The packaged game has no crash reporter.
-
-Details: [Docs/Validation.md](Docs/Validation.md) and [Docs/Status.md](Docs/Status.md).
+The fighting prototype remains available in Development builds with `-EHSlice`. The sections below document that
+2.5D slice and its production pipeline. The November 2026 slice integration and remaining playtest issues are recorded
+in the [review history](Docs/Review.md) and [validation history](Docs/Validation.md).
 
 ## What is in the slice
 

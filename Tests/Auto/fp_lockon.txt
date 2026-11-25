@@ -1,0 +1,108 @@
+# Souls-style target lock-on (development build: test positions, pack size, wolf kill).
+# Covers: locking onto the training dummy and strafing around it; unlocking; locking onto a wolf;
+# switching targets with mouse flicks and controller right stick; Fireball hitting a locked wolf;
+# lock breaking when the target dies, moves out of range, or the player kneels to pray.
+wait 6
+fp_expect screen eq 12
+fp_expect locked_on eq 0
+
+log == lock onto the training dummy, strafe around it while camera tracks, then unlock
+fp_teleport 0 220 0 -90 0
+wait 0.3
+press kbA FPLockOn
+wait 0.4
+fp_expect locked_on eq 1
+fp_expect lock_target eq 100
+hold kbA FPRight
+wait 0.8
+release kbA FPRight
+wait 0.3
+fp_expect locked_on eq 1
+log yaw shifted left of -90 as we strafed right around the dummy
+fp_expect yaw lt -95
+press kbA FPLockOn
+wait 0.2
+fp_expect locked_on eq 0
+
+log == two wolves: lock on, switch targets with mouse flicks, capture reticle
+fp_reset
+fp_wolves 2
+wait 0.3
+fp_wolf_place -140 -900 90 60 0
+fp_wolf_place 140 -900 90 60 1
+fp_teleport 0 -420 0 -90 0
+wait 0.3
+press kbA FPLockOn
+wait 0.4
+fp_expect locked_on eq 1
+screenshot lockon_reticle
+log flick right and left to switch between the two wolves
+look 140 0
+wait 0.4
+look -140 0
+wait 0.4
+fp_expect lock_switches gt 0
+
+log == controller lock-on and right-stick target switch
+press kbA FPLockOn
+wait 0.2
+fp_expect locked_on eq 0
+press pad7 FPLockOn
+wait 0.4
+fp_expect locked_on eq 1
+axis pad7 Gamepad_RightX 0.9
+wait 0.3
+axis pad7 Gamepad_RightX 0.0
+wait 0.3
+axis pad7 Gamepad_RightX -0.9
+wait 0.3
+axis pad7 Gamepad_RightX 0.0
+wait 0.3
+fp_expect lock_switches gt 1
+
+log == locked Fireball hits the wolf, and killing the locked wolf clears lock-on
+fp_reset
+fp_wolves 1
+wait 0.3
+fp_wolf_place 0 -900 90 60 0
+fp_teleport 0 -450 0 -90 0
+wait 0.3
+press kbA FPLockOn
+wait 0.4
+fp_expect locked_on eq 1
+fp_expect lock_target eq 0
+press kbA FPFireball
+wait 0.8
+fp_expect fireball_hits gt 0
+fp_wolf_kill 0
+wait 0.3
+fp_expect locked_on eq 0
+
+log == out of range breaks lock-on
+fp_reset
+wait 0.3
+fp_wolf_place 0 -900 90 60 0
+fp_teleport 0 -450 0 -90 0
+wait 0.3
+press kbA FPLockOn
+wait 0.3
+fp_expect locked_on eq 1
+fp_teleport 0 1600 0 -90 0
+wait 0.3
+fp_expect locked_on eq 0
+
+log == kneeling to pray clears lock-on
+fp_reset
+fp_align 7
+wait 0.2
+fp_wolf_place 0 -1790 90 60 0
+fp_teleport 0 -1710 44 -90 -30
+wait 0.2
+press kbA FPLockOn
+wait 0.1
+fp_expect locked_on eq 1
+press kbA FPInteract
+wait 0.4
+fp_expect praying eq 1
+fp_expect locked_on eq 0
+quit

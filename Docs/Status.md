@@ -1,5 +1,8 @@
 # Status and handoff
 
+The [first-person guide](FirstPerson.md) describes the active Chapel prototype. The dated entries below record
+engineering and playtest work on the 2.5D slice.
+
 ## Independent review update (2026-11-11)
 
 PR #2 merged into `release/first-slice` as `964eeb8c95f38d2c35fee3dde3c8847705cf6bfb`; the freshly reviewed

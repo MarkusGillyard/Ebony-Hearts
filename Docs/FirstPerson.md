@@ -1,14 +1,13 @@
 # First-person prototype
 
-This branch (`proto/first-person`) turns the Drowned Chapel into a first-person space. Milestone 2, Walk the Chapel:
-the player walks, sprints, jumps and crouches through the flooded nave. Milestone 3, Fists: a jab, a straight, a
-and a held block, practised on a training dummy (the shove was removed on 2026-11-22: quality over quantity). Milestone 4, Magic: the seven stats, Qhi, Fireball and Ice
-Wall, with the wall's water freeze and Fireball's melt. Milestone 5, One Wolf: a Chapel wolf that treats the player by
-their alignment (nine tiers), with navigation through the Chapel. The game opens on the title (the name typeset in Cinzel on
-plain black, since 2026-11-23); any button goes straight into the Chapel. The 2.5D slice stays intact in `main`'s
-history. Its fighting code is still compiled here but is not reachable from the first-person flow (the creator chose to
-hide it, 2026-11-23). Automated runs start in the Chapel unless `-EHTitle` is given; development builds open the slice's
-own title and menus with `-EHSlice`.
+Walk, sprint, jump and crouch through the Drowned Chapel. Practice the jab, straight and held guard on the training
+dummy, then use Fireball and Ice Wall against one to four wolves. Ice Wall freezes nearby shallow water and Fireball
+melts the wall. The Chapel supports interactions, prayer and a prototype clock. Wolf encounters use nine alignment
+tiers and placeholder combat text.
+
+The game opens on a black title with the name typeset in Cinzel. Any button enters the Chapel. Automated runs start
+in the Chapel by default and can exercise the title with `-EHTitle`. Development builds open the 2.5D slice's own
+title and menus with `-EHSlice`.
 
 Every model, animation and blockout in this build is a placeholder. The game says so in a small line at the bottom
 left of the screen.
@@ -31,7 +30,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Move | W A S D (and the arrow keys) | Left stick (always) |
 | Look | Mouse (always) | Right stick (always) |
 | Jump | Space | A / Cross |
-| Crouch | Left Ctrl (and C); hold | Right stick press; toggles |
+| Crouch | Left Ctrl (and C); hold | D-pad down; toggles |
 | Sprint | Left Shift; hold | Left stick press; toggles until you stop moving forward |
 | Jab | Left mouse button | R1 / RB |
 | Straight | Right mouse button | R2 / RT |
@@ -40,6 +39,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Ice Wall | R | Triangle / Y |
 | Choose a spell (hold) | Tab | Square / X |
 | Interact / pray | E | Circle / B |
+| Lock on | Middle mouse button (and V) | Right stick press (R3 / RS) |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -56,14 +56,16 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 10), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 11), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
 first-person action. Version 6 adds the two first-person layouts (`fpKeyboard`, `fpController`) and the look,
 field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techniques and Controller vibration;
 version 8 Fireball and Ice Wall; version 9 removed the shove (its keys are simply free) and added Choose a spell
-and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left. Each new action takes its default key only where the player has not already used
+and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left; version 11 added Lock on
+(Middle mouse / V on keyboard and mouse, R3 / RS on controller, moving controller Crouch to D-pad down when still on
+its previous default). Each new action takes its default key only where the player has not already used
 that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
@@ -276,8 +278,9 @@ go straight into a Fireball and a Fireball straight into a straight.
   faceted crystal shards that pushes up out of the floor in a burst of frost and mist; a faint cold light inside it lights the ice and the floor. The frozen water is an irregular floe and frozen
   feet get a ring of small shards (meshes from `Tools/Blender/magic/make_ice.py`). The ice material
   (`/Game/Magic/M_PH_Ice`, `Tools/Unreal/make_magic_materials.py`) is clear blue, refractive, glossy and frosted at
-  its feet and in streaks. The sounds are the slice's (flame ignite,
-  roar and hit for Fireball; aura charge, deflect and a body slam for the wall; water steps and a fading hiss as it melts).
+  its feet and in streaks. Fireball reuses the slice's flame sounds; Ice Wall uses its own synthesized crystalline
+  sound set (`S_IceWallCharge_01-02`, `S_IceWallRaise_01-03`, `S_IceWallHit_01-02`, `S_IceWallShatter`, `S_IceWallMelt`
+  from `Tools/Audio/eh_audio/combat.py`).
 - **Navigation.** The wall's blocking box is marked to affect navigation for the wolves of milestone 5; nothing
   navigates yet.
 
@@ -318,31 +321,56 @@ names (`Source/EbonyHearts/Game/EHAlignment.h`).
 | Neutral | Well-meaning, Platonic (the start), Self-serving |
 | Evil | Ruthless, Malevolent, Forsaken |
 
-The prototype has no alignment meter yet. The developer panel (development builds) sets the tier directly, and the
+The untitled alignment meter appears while praying. The Development panel sets the tier directly, and the
 wolf moves it: harming the wolf pushes the player one tier toward evil, and killing it drops them to at least
 Malevolent (one tier deeper if they are already evil). The alignment lasts until the game closes; Return to the start
 and the death reset keep it.
 
 ### Behaviour
 
-- **Good:** friendly. It follows about 2.4 m behind and goes for anything striking at the player: when the training
-  dummy (Strikes back) winds up a punch, the wolf bites it.
-- **Neutral:** wary. It keeps at least 4.6 m away and walks back to its rest when the player leaves.
-- **Evil:** hostile. It senses the menacing aura: it closes, circles at about 3.3 m, then bites (8 damage) or lunges
-  from 3 to 6 m away (12 damage). Both have a wind-up the player can read: a crouch, then the head drawn back.
-- **A threat is not harm.** A jab, straight or cast aimed at the wolf within 4.8 m that does not connect makes it back
-  off for 3 seconds, unprovoked. The player can stop there.
-- **Real harm** (a strike or Fireball that connects) provokes it: hostile whatever the band, until the player leaves
-  the Chapel's floor. The Threshold Hall, by the door, counts as outside (the loft above it does not). After 3 seconds
-  outside it calms, and back inside it
-  treats the player by their band again.
+- **Good:** friendly. It follows about 2.4 m behind, greets a returning friend with a lowered head and wagging tail,
+  lies down beside a badly hurt friend who keeps still, talks when interacted with, and goes for anything striking at
+  the player.
+- **Neutral:** wary. It keeps at least 4.6 m away, offers brief warnings when interacted with, and still protects the
+  player from a strike.
+- **Evil:** senses the menacing aura and warns first: hackles and ceremonial mane raised, holding off at ~5.2 m with
+  growls and insults. Coming too close (< 3 m), swinging at it, or lingering starts the fight (and the whole pack
+  escalates together); leaving the Chapel ends the warning. Once fighting, it closes, circles at about 3.3 m, then
+  bites (8 damage) or lunges from 3 to 6 m away (12 damage).
+- **Prayer as sanctuary:** while the player kneels to pray, no wolf attacks them regardless of alignment; the wolves
+  stand guard nearby and can intercept the prototype training dummy when it threatens the player.
+- **Life at rest:** when no one needs attending to, wolves lie down, sleep, lift their heads as someone passes, and
+  occasionally wander near their resting spot.
+- **A threat is not harm.** A jab, straight or cast aimed at a calm wolf within 4.8 m that does not connect makes it
+  back off for 3 seconds, unprovoked. The player can stop there.
+- **Real harm** (a strike or Fireball that connects) provokes it—and alerts other wolves within 15 m—until the player
+  leaves the Chapel's floor. The Threshold Hall, by the door, counts as outside (the loft above it does not). After
+  3 seconds outside it calms, and back inside it treats the player by their band again.
 - **Hero of Humanity** cannot harm a guardian: a blow at the wolf lands on the player instead. A wolf within 10 m
   takes the blows meant for the player (it is never brought below 1 Health doing so).
+- **Shadows (developer toggle until death/Qhi Stones exist):** a Shadow cannot cast Qhi spells. The wolves warn it to
+  pray; three in-game days of prayer at the kneeler restore it, while striking or ignoring the warning triggers the
+  prototype encounter outcome and returns to the title.
 - **Ice Wall:** the wall blocks the wolf's path. It walks the long way round (in the test, 4.7 m becomes 21 m by the
   side aisle) until the wall melts. A wall rising in water freezes the wolf's feet, like the dummy's.
 
-Strikes reach the wolf even though it stands below the line of a punch: a second sweep at its body's height finds it
-within the same reach. The pause menu has Reset the wolf; the alignment stays.
+### Souls-style lock-on
+
+Press Lock on (`Middle mouse` / `V`, or `R3` / `RS` on controller; `lockOn` in `firstperson.json`) to lock the view
+onto the nearest living wolf or the training dummy in front of the player (a crisp white-gold reticle marks the target;
+with no valid target, the view levels toward the horizon). While locked on, the camera smoothly tracks the target so
+left/right movement orbits cleanly around it and punches and Fireballs aim straight at it. Flicking the mouse or right
+stick left or right switches between targets. Lock-on breaks automatically if the target dies, moves past break range,
+loses line of sight for 1.2 s, or when the player kneels to pray or resets.
+
+### Body and painted coat
+
+The wolf is horse-sized (~1.50 m at the shoulder, ~2.85 m nose to tail), sculpted in Blender
+(`Tools/Blender/wolf/make_wolf.py`, imported by `Tools/Unreal/import_wolf.py`) in five UV-mapped parts: muscular body,
+separate layered pale-silver ceremonial mane (which rises and flares when hackles go up), head with pale amber eyes and
+a battle-notched right ear, articulated legs with broad wet dark paws, and a thick plumed tail. Painterly charcoal,
+silver and ash brush-stroke textures (base colour, roughness and normal maps) give the coat its dark blue-grey spine,
+scars and glossy wet paws, with per-wolf tint variations across the pack.
 
 ### Navigation
 
@@ -350,7 +378,7 @@ The wolf moves on a Recast navigation mesh built when first person starts (about
 its render geometry (complex as simple), which navigation does not read, so 85 invisible boxes (`EH_NavProxy_*`,
 no collision, navigation only) stand in for the floors, steps, piers, pews and the altar. `EH_FP_STAGE=nav
 Tools/Unreal/adapt_chapel_fp.py` places them and the navigation bounds. Ice Walls update the mesh when they rise and
-when they start to melt.
+when they melt, expire or shatter.
 
 ### Placeholder body
 
@@ -507,28 +535,51 @@ greeting arising on their own, the reset) and `fp_ship_text.txt` (the neutral wo
 Shipping), and the final stability run `fp_soak_pack.txt` (about 30 minutes of the four-wolf fight with spells, text,
 pauses and settings round trips).
 
+Development also runs `fp_lockon.txt` for target acquisition, switching, tracking and release.
+`fp_wolf_prayer_edge.txt` checks that prayer interrupts a wolf's bite wind-up and that an obstruction blocks
+interaction with the wolf. `fp_lock_select_interop.txt` checks that closing the spell selector with the stick
+held leaves the lock-on target alone. A new flick after neutral switches targets.
+
 Scripted controller input uses `pad7`: a real controller connected to the machine takes the first device slots and
 would override injected stick values on `pad0`.
 
 The slice's fighting-game scripts (`journey.txt`, `smoke.txt`, `matrix.txt` and the others) drive screens this flow
 no longer shows. The combat core tests (`Tests/Core`) are unchanged.
 
-## Sound loading and the single slow frames
+## Sound preload and frame-time evidence
 
-First person loads every combat, UI and ambience sound when it starts: 59 sounds, in 10–13 ms in a Shipping build.
-Before that, each sound loaded from the package the first time it played, which is a synchronous read in the middle
-of a frame.
+First person preloads combat, UI and ambience cues on entry. Historical Shipping logs at `d1da055` loaded 59 cues.
+The Ice Wall sound set adds nine cues across charge, raise, hit, shatter and melt. The `25d2ef3` Development Editor
+run logged 68 preloads. These counts describe different builds and establish load coverage.
 
-The single 40–70 ms frames seen in Shipping captures since milestone 4 are mostly something else.
+The recorded cache comparison below describes `1dfb393` and `6316b39`. On the later `d1da055` warm Shipping spell
+run at 1920 × 1080 with VSync, 3,626 frames had a 16.758 ms p99 and two frames over 33.3 ms (maximum 56.779 ms).
+The GPU samples at those two frames were 7.131 and 7.844 ms. The trace does not identify the stall cause. The warm
+Development four-wolf run had 3,562 frames, a 16.854 ms p99, and no frames over 33.3 ms. The older 32.7-minute
+soak applies to `63a08b2`.
 
-| Capture | When the slow frame comes |
-|---|---|
-| Spells | the first time the view turns that way in a session |
-| Stability | the first 360° turn, the first time the west end comes into view |
-| Stability | also the first reset after launch |
+### Independent package measurements
 
-- They repeat at the same moments in the same script, the GPU time stays normal, and runs whose warm-up covers the
-  same views have none: graphics pipelines being created the first time a material is drawn.
+Linux x86-64 source `9cd378557dedcb1044f78ed99016ce5f8ce80ae6`, Unreal Engine 5.8.4 CL 58902052,
+Vulkan, Ryzen 7 5700G and RTX 2060 (NVIDIA 595.99.02). Captures use a 1920 × 1080 window, High quality
+and 100% render scale. Cold runs start with separate fresh profiles and driver caches. They capture
+from the first playable frames. The spell route omits its usual warm-up casts for the cold run.
+Shipping preloaded 68 first-person sounds and the functional script exercised all five Ice Wall cue types.
+
+| Route | Build | VSync | Seconds | Frames | Median ms | p95 ms | p99 ms | Max ms | Frames over 33.3 ms |
+|---|---|---|---:|---:|---:|---:|---:|---:|---:|
+| Cold traversal | Shipping | On | 55.30 | 3,316 | 16.666 | 16.713 | 16.748 | 40.210 | 3 |
+| Warm traversal | Shipping | On | 55.98 | 3,359 | 16.666 | 16.714 | 16.749 | 18.135 | 0 |
+| Warm traversal | Shipping | Off | 50.97 | 7,320 | 6.920 | 8.633 | 9.802 | 13.691 | 0 |
+| Cold spells | Shipping | On | 60.44 | 3,625 | 16.666 | 16.708 | 16.740 | 70.998 | 1 |
+| Warm spells | Shipping | On | 60.18 | 3,611 | 16.667 | 16.714 | 16.739 | 16.841 | 0 |
+| Four-wolf fight | Development | On | 59.13 | 3,548 | 16.666 | 16.764 | 16.831 | 17.137 | 0 |
+| Four-wolf soak | Development | On | 1961.64 | 117,722 | 16.667 | 16.771 | 16.846 | 32.072 | 0 |
+
+The Development soak completed 84 laps and 84 settings round trips with no assertion failures.
+The final lap's peak concurrent attackers was one. The cold traversal hitches were its first three captured frames.
+The cold spell hitch was its first captured frame. GPU samples were elevated during those frames.
+These traces lack the timing markers needed to establish a shader compilation cause.
 
 ### The bundled pipeline cache
 
@@ -558,16 +609,15 @@ perf routes, spells, wolf, Chapel, clock, controls, movement and two view tours)
 
 ## Known limits
 
-- Fists: the arms are Wren's, cut from her test model, and both casts use the same fists as the punches;
-  final arms and animation are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
+- Fists use the CC0-derived hands with six placeholder keyed clips and open casting palms. Final arms and animation
+  are the creator's. The guard does not cost Stamina yet. The dummy's punch is the slice's
   fighting clip.
 - Magic: the stat shares are engineering guesses; the ice, fire and their sounds are placeholders; the frozen sheet is
   a plain disc that can reach over a dry edge; Enchanted
   strikes and lesser ice spells that strengthen the wall wait for their own specs.
 
 - Wolf: the body is placeholder parts with code animation, so it slides a little on turns and has no fur. The
-  harm and kill shifts and the six new tier names are the prototype's reading of the design. The alignment has no
-  meter; only the developer panel and the wolf change it. One wolf only: the pack is milestone 6. The navigation
+  harm and kill shifts and the six new tier names are the prototype's reading of the design. The numeric tuning and text are provisional. The navigation
   proxies must be re-placed if the Chapel's layout changes.
 
 - Footsteps sound only in water (`S_StepWater`). Dry surfaces (pews, altar steps, rubble) are silent; there is no dry

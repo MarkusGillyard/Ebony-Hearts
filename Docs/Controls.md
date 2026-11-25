@@ -5,8 +5,9 @@ Implementation: `Source/EbonyHearts/Game/EHSettings.*` (actions, layouts, defaul
 `EHInputRouter.*` (devices, menu and gameplay maps, triggers) and `EHDirectorFlow.cpp` / `EHDirectorUI.cpp` (the
 Controls screens and button prompts).
 
-The first-person prototype (settings format 6) adds two layouts of its own, keyboard and mouse and controller,
-documented in `Docs/FirstPerson.md`. The sections below describe the slice's fighting layouts.
+First person uses settings format 11 and has separate keyboard-and-mouse and controller layouts.
+The [first-person controls](FirstPerson.md#default-controls) cover lock-on and the current defaults. This page
+records the 2.5D fighting layouts.
 
 ## Fighting-game layout (settings format 5)
 

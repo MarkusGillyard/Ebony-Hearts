@@ -36,6 +36,7 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::FPStraight: return TEXT("FPStraight");
 	case EEHAction::FPSpellSelect: return TEXT("FPSpellSelect");
 	case EEHAction::FPInteract: return TEXT("FPInteract");
+	case EEHAction::FPLockOn: return TEXT("FPLockOn");
 	case EEHAction::FPBlock: return TEXT("FPBlock");
 	case EEHAction::FPFireball: return TEXT("FPFireball");
 	case EEHAction::FPIceWall: return TEXT("FPIceWall");
@@ -69,6 +70,7 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::FPStraight: return TEXT("FirstPersonStraight");
 	case EEHAction::FPSpellSelect: return TEXT("FirstPersonSpellSelect");
 	case EEHAction::FPInteract: return TEXT("FirstPersonInteract");
+	case EEHAction::FPLockOn: return TEXT("FirstPersonLockOn");
 	case EEHAction::FPBlock: return TEXT("FirstPersonBlock");
 	case EEHAction::FPFireball: return TEXT("FirstPersonFireball");
 	case EEHAction::FPIceWall: return TEXT("FirstPersonIceWall");
@@ -102,6 +104,7 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::FPStraight: return TEXT("Straight");
 	case EEHAction::FPSpellSelect: return TEXT("Choose a spell (hold)");
 	case EEHAction::FPInteract: return TEXT("Interact / pray");
+	case EEHAction::FPLockOn: return TEXT("Lock on");
 	case EEHAction::FPBlock: return TEXT("Block (hold)");
 	case EEHAction::FPFireball: return TEXT("Fireball");
 	case EEHAction::FPIceWall: return TEXT("Ice Wall");
@@ -157,12 +160,12 @@ TArray<EEHAction> EHActionsFor(EEHBindingSet Set)
 	using A = EEHAction;
 	if (Set == EEHBindingSet::FPKeyboard)
 	{
-		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPLockOn, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	if (Set == EEHBindingSet::FPController)
 	{
 		// The left stick always moves and the right stick always looks, so only buttons are listed.
-		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPLockOn, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	return {A::Light, A::Heavy, A::Dodge, A::Throw, A::Block, A::Special, A::Left, A::Right, A::Jump, A::Down, A::Reset};
 }
@@ -260,7 +263,7 @@ FEHBindings FEHBindings::Defaults()
 	Set(S::FPKeyboard, A::FPCrouch, EKeys::LeftControl, EKeys::C);
 	Set(S::FPKeyboard, A::FPSprint, EKeys::LeftShift);
 	Set(S::FPController, A::FPJump, EKeys::Gamepad_FaceButton_Bottom);
-	Set(S::FPController, A::FPCrouch, EKeys::Gamepad_RightThumbstick);
+	Set(S::FPController, A::FPCrouch, EKeys::Gamepad_DPad_Down);
 	Set(S::FPController, A::FPSprint, EKeys::Gamepad_LeftThumbstick);
 	// Physical techniques (2026-11-21): the right hand holds both punches and the left holds block, so strikes and
 	// stick movement mix without moving a thumb.
@@ -282,6 +285,9 @@ FEHBindings FEHBindings::Defaults()
 	// Interact and pray (2026-11-22): E and Circle / B, the keys the shove left free.
 	Set(S::FPKeyboard, A::FPInteract, EKeys::E);
 	Set(S::FPController, A::FPInteract, EKeys::Gamepad_FaceButton_Right);
+	// Souls-style lock-on (2026-11-24): middle mouse (or V) on keyboard and mouse, R3 / RS on controller (crouch moves to D-pad down).
+	Set(S::FPKeyboard, A::FPLockOn, EKeys::MiddleMouseButton, EKeys::V);
+	Set(S::FPController, A::FPLockOn, EKeys::Gamepad_RightThumbstick);
 	return B;
 }
 
@@ -733,6 +739,10 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 		// Files before version 5 were written against the older layout; whatever they leave out is that layout's, and
 		// the version 5 step below moves it to the current one.
 		FEHBindings Loaded = Version < 5 ? FEHBindings::DefaultsV4() : FEHBindings::Defaults();
+		if (Version < 11)
+		{
+			Loaded.Keys[Idx(EEHBindingSet::FPController)][Idx(EEHAction::FPCrouch)][0] = EKeys::Gamepad_RightThumbstick;
+		}
 		if (Version < 4)
 		{
 			// Crouch did not exist and Throw had no buttons of its own: both start unbound and get their defaults
@@ -1057,6 +1067,44 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 			if (Version >= 6)
 			{
 				Notes += FString::Printf(TEXT("%sNew: Interact and pray (E, Circle / B)."), Notes.IsEmpty() ? TEXT("") : TEXT(" "));
+				if (!Taken.IsEmpty())
+				{
+					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
+				}
+			}
+		}
+		if (Version < 11)
+		{
+			// Version 11 added Lock on (Middle mouse / V, and R3 on controller with Crouch moved from R3 to D-pad down).
+			FString Taken;
+			FKey* Crouch = Loaded.Keys[Idx(EEHBindingSet::FPController)][Idx(EEHAction::FPCrouch)];
+			const bool bMoveDefaultCrouch = Crouch[0] == EKeys::Gamepad_RightThumbstick && !Crouch[1].IsValid() && !Crouch[2].IsValid()
+				&& !Loaded.FindConflict(EEHBindingSet::FPController, EEHAction::FPCrouch, 0, EKeys::Gamepad_DPad_Down).IsValid();
+			if (bMoveDefaultCrouch)
+			{
+				Crouch[0] = EKeys::Gamepad_DPad_Down;
+			}
+			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
+			{
+				const EEHAction A = EEHAction::FPLockOn;
+				for (int32 K = 0; K < EHKeysPerAction; ++K)
+				{
+					const FKey Key = Loaded.Keys[Idx(BS)][Idx(A)][K];
+					const FEHBindingRef C = Key.IsValid() ? Loaded.FindConflict(BS, A, K, Key) : FEHBindingRef();
+					if (C.IsValid() && C.Action != A)
+					{
+						Loaded.Keys[Idx(BS)][Idx(A)][K] = EKeys::Invalid;
+						Taken += FString::Printf(TEXT("%s%s (%s) is used by %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), *Key.GetDisplayName(false).ToString(), EHActionLabel(A), EHActionLabel(C.Action));
+					}
+				}
+			}
+			if (Version >= 6)
+			{
+				Notes += Notes.IsEmpty() ? TEXT("New: Lock on.") : TEXT(" New: Lock on.");
+				if (bMoveDefaultCrouch)
+				{
+					Notes += TEXT(" Default controller Crouch moved to D-pad down.");
+				}
 				if (!Taken.IsEmpty())
 				{
 					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);

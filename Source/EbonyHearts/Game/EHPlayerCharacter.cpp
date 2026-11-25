@@ -15,6 +15,38 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
+bool FEHLockOnTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
+{
+	if (!Obj.IsValid())
+	{
+		return true;
+	}
+	bool bOk = true;
+	auto Num = [&](const TCHAR* Name, float& Out, float Min, float Max) {
+		double V = 0.0;
+		if (!Obj->TryGetNumberField(Name, V))
+		{
+			return;
+		}
+		if (V < Min || V > Max)
+		{
+			OutError = FString::Printf(TEXT("Data/firstperson.json: lockOn.%s = %g is outside %g..%g."), Name, V, Min, Max);
+			bOk = false;
+			return;
+		}
+		Out = static_cast<float>(V);
+	};
+	Num(TEXT("range"), Range, 100, 10000);
+	Num(TEXT("breakRange"), BreakRange, 100, 15000);
+	Num(TEXT("coneDegrees"), ConeDegrees, 5, 90);
+	Num(TEXT("trackSpeed"), TrackSpeed, 1, 60);
+	Num(TEXT("losGrace"), LosGrace, 0, 10);
+	Num(TEXT("switchMouse"), SwitchMouse, 10, 1000);
+	Num(TEXT("switchStick"), SwitchStick, 0.2f, 1.0f);
+	Num(TEXT("switchCooldown"), SwitchCooldown, 0.05f, 2.0f);
+	return bOk;
+}
+
 bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 {
 	TSharedPtr<FJsonObject> Root;
@@ -82,6 +114,11 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	}
 	const TSharedPtr<FJsonObject>* WolfObj = nullptr;
 	if (Root->TryGetObjectField(TEXT("wolf"), WolfObj) && !Wolf.Load(*WolfObj, OutError))
+	{
+		return false;
+	}
+	const TSharedPtr<FJsonObject>* LockObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("lockOn"), LockObj) && !LockOn.Load(*LockObj, OutError))
 	{
 		return false;
 	}
@@ -272,6 +309,10 @@ void AEHPlayerCharacter::AddQhi(float Amount)
 
 bool AEHPlayerCharacter::CanCast(EEHFistAction Spell) const
 {
+	if (bShadowForm)
+	{
+		return false;
+	}
 	const float Cost = Spell == EEHFistAction::Fireball ? Tuning.Magic.FireballCost : Tuning.Magic.IceWallCost;
 	if (QhiValue + 0.001f < Cost)
 	{

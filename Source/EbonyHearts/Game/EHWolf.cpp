@@ -9,6 +9,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "Navigation/PathFollowingComponent.h"
 #include "NavigationSystem.h"
 
@@ -32,6 +33,13 @@ const TCHAR* EHWolfStateName(EEHWolfState S)
 	case EEHWolfState::Hitstun: return TEXT("hurt");
 	case EEHWolfState::Protect: return TEXT("protecting");
 	case EEHWolfState::Guarding: return TEXT("guarding the Chapel");
+	case EEHWolfState::Warn: return TEXT("warning");
+	case EEHWolfState::Rest: return TEXT("resting");
+	case EEHWolfState::Sleep: return TEXT("asleep");
+	case EEHWolfState::Wander: return TEXT("wandering");
+	case EEHWolfState::Greet: return TEXT("greeting");
+	case EEHWolfState::Beside: return TEXT("lying beside the player");
+	case EEHWolfState::Sanctuary: return TEXT("standing guard over the prayer");
 	default: return TEXT("dead");
 	}
 }
@@ -99,6 +107,20 @@ bool FEHWolfTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
 	Int(TEXT("hitstun"), Hitstun, 0, 120);
 	Num(TEXT("absorbRange"), AbsorbRange, 0, 5000);
 	Num(TEXT("protectRange"), ProtectRange, 0, 5000);
+	Num(TEXT("warnRange"), WarnRange, 0, 5000);
+	Num(TEXT("warnRadius"), WarnRadius, 50, 3000);
+	Num(TEXT("warnClose"), WarnClose, 0, 3000);
+	Num(TEXT("warnSeconds"), WarnSeconds, 0, 600);
+	Num(TEXT("alertRange"), AlertRange, 0, 10000);
+	Num(TEXT("sanctuaryGuard"), SanctuaryGuard, 50, 3000);
+	Num(TEXT("shadowPatience"), ShadowPatience, 1, 3600);
+	Num(TEXT("friendRange"), FriendRange, 0, 10000);
+	Num(TEXT("noticeRange"), NoticeRange, 0, 3000);
+	Num(TEXT("restSeconds"), RestSeconds, 0.5, 600);
+	Num(TEXT("sleepSeconds"), SleepSeconds, 0.5, 3600);
+	Num(TEXT("wanderRadius"), WanderRadius, 0, 5000);
+	Num(TEXT("besideHealth"), BesideHealth, 0, 1);
+	Num(TEXT("besideStill"), BesideStill, 0, 60);
 	return bOk;
 }
 
@@ -108,7 +130,8 @@ FString FEHWolfTuning::Describe() const
 		"bite %.0f/%.0f dmg=%.0f %d+%d lunge %.0f..%.0f @%.0f dmg=%.0f %d+%d cooldown=%d stun=%d absorb=%.0f protect=%.0f"),
 		Health, Home.X, Home.Y, LeaveLineY, CalmSeconds, WalkSpeed, RunSpeed, FollowDistance, KeepDistance, ThreatRange, DisengageSeconds, DisengageDistance,
 		CircleRadius, BiteRange, BiteReach, BiteDamage, BiteWindup, BiteRecover, LungeMin, LungeMax, LungeSpeed, LungeDamage, LungeWindup, LungeRecover,
-		AttackCooldown, Hitstun, AbsorbRange, ProtectRange);
+		AttackCooldown, Hitstun, AbsorbRange, ProtectRange) + FString::Printf(TEXT(" warn %.0f/%.0f close=%.0f %.0fs alert=%.0f sanctuary=%.0f shadow=%.0fs friend=%.0f notice=%.0f rest=%.0fs sleep=%.0fs wander=%.0f beside<%.2f after %.1fs"),
+		WarnRange, WarnRadius, WarnClose, WarnSeconds, AlertRange, SanctuaryGuard, ShadowPatience, FriendRange, NoticeRange, RestSeconds, SleepSeconds, WanderRadius, BesideHealth, BesideStill);
 }
 
 AEHWolf::AEHWolf(const FObjectInitializer& ObjectInitializer)
@@ -117,7 +140,7 @@ AEHWolf::AEHWolf(const FObjectInitializer& ObjectInitializer)
 	PrimaryActorTick.bCanEverTick = true;
 	AIControllerClass = AAIController::StaticClass();
 	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
-	GetCapsuleComponent()->InitCapsuleSize(40.0f, 48.0f);
+	GetCapsuleComponent()->InitCapsuleSize(44.0f, 76.0f);
 	GetCapsuleComponent()->SetCollisionProfileName(TEXT("Pawn"));
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetVisibility(false);
@@ -129,12 +152,12 @@ AEHWolf::AEHWolf(const FObjectInitializer& ObjectInitializer)
 	Move->MaxAcceleration = 2200.0f;
 	Move->BrakingDecelerationWalking = 2400.0f;
 	Move->bUseRVOAvoidance = false;
-	Move->NavAgentProps.AgentRadius = 36.0f;
-	Move->NavAgentProps.AgentHeight = 96.0f;
+	Move->NavAgentProps.AgentRadius = 40.0f;
+	Move->NavAgentProps.AgentHeight = 152.0f;
 
 	Rig = CreateDefaultSubobject<USceneComponent>(TEXT("Rig"));
 	Rig->SetupAttachment(GetCapsuleComponent());
-	Rig->SetRelativeLocation(FVector(0, 0, -48.0f));
+	Rig->SetRelativeLocation(FVector(0, 0, -76.0f));
 	auto Part = [this](const TCHAR* Name, USceneComponent* Parent) {
 		UStaticMeshComponent* C = CreateDefaultSubobject<UStaticMeshComponent>(Name);
 		C->SetupAttachment(Parent);
@@ -144,6 +167,7 @@ AEHWolf::AEHWolf(const FObjectInitializer& ObjectInitializer)
 		return C;
 	};
 	Body = Part(TEXT("Body"), Rig);
+	Mane = Part(TEXT("Mane"), Body);
 	Head = Part(TEXT("Head"), Body);
 	Tail = Part(TEXT("Tail"), Body);
 	for (int32 i = 0; i < 4; ++i)
@@ -153,11 +177,12 @@ AEHWolf::AEHWolf(const FObjectInitializer& ObjectInitializer)
 	IceCuff = Part(TEXT("IceCuff"), Rig);
 	IceCuff->SetCastShadow(false);
 	IceCuff->SetVisibility(false);
-	// Placeholder proportions: about 80 cm at the shoulder. Legs: front left, front right, back left, back right.
-	Body->SetRelativeLocation(FVector(0, 0, 72.0f));
-	Head->SetRelativeLocation(FVector(50.0f, 0, 6.0f));
-	Tail->SetRelativeLocation(FVector(-58.0f, 0, 8.0f));
-	const FVector LegAt[4] = {FVector(34, 11, -6), FVector(34, -11, -6), FVector(-40, 11, -6), FVector(-40, -11, -6)};
+	// Horse-sized proportions: ~150 cm at the shoulder. Legs: front left, front right, back left, back right.
+	Body->SetRelativeLocation(FVector(0, 0, 124.0f));
+	Mane->SetRelativeLocation(FVector(46.0f, 0, 14.0f));
+	Head->SetRelativeLocation(FVector(88.0f, 0, 14.0f));
+	Tail->SetRelativeLocation(FVector(-92.0f, 0, 12.0f));
+	const FVector LegAt[4] = {FVector(64, 24, -8), FVector(64, -24, -8), FVector(-66, 22, -8), FVector(-66, -22, -8)};
 	for (int32 i = 0; i < 4; ++i)
 	{
 		Legs[i]->SetRelativeLocation(LegAt[i]);
@@ -169,6 +194,7 @@ void AEHWolf::BeginPlay()
 	Super::BeginPlay();
 	auto Load = [](const TCHAR* Name) { return LoadObject<UStaticMesh>(nullptr, *FString::Printf(TEXT("/Game/Wolf/%s.%s"), Name, Name), nullptr, LOAD_NoWarn | LOAD_Quiet); };
 	Body->SetStaticMesh(Load(TEXT("SM_PH_Wolf_Body")));
+	Mane->SetStaticMesh(Load(TEXT("SM_PH_Wolf_Mane")));
 	Head->SetStaticMesh(Load(TEXT("SM_PH_Wolf_Head")));
 	Tail->SetStaticMesh(Load(TEXT("SM_PH_Wolf_Tail")));
 	for (UStaticMeshComponent* L : Legs)
@@ -178,7 +204,7 @@ void AEHWolf::BeginPlay()
 	if (UStaticMesh* Cuff = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Magic/SM_PH_IceCuff.SM_PH_IceCuff"), nullptr, LOAD_NoWarn | LOAD_Quiet))
 	{
 		IceCuff->SetStaticMesh(Cuff);
-		IceCuff->SetRelativeScale3D(FVector(1.5f, 1.2f, 1.0f));
+		IceCuff->SetRelativeScale3D(FVector(2.4f, 1.9f, 1.3f));
 	}
 	if (!Controller)
 	{
@@ -194,6 +220,41 @@ void AEHWolf::Setup(const FEHWolfTuning& InTuning, AEHPlayerCharacter* InPlayer,
 	ResetWolf();
 }
 
+void AEHWolf::SetCoatVariant(int32 Index)
+{
+	// Individual pack wolves vary in coat darkness and silver sheen (charcoal, darker obsidian, silver-ash, blue-slate).
+	static const FLinearColor Coats[4] = {
+		FLinearColor(1.00f, 1.00f, 1.00f, 1.0f),
+		FLinearColor(0.68f, 0.70f, 0.76f, 1.0f),
+		FLinearColor(1.22f, 1.22f, 1.25f, 1.0f),
+		FLinearColor(0.76f, 0.82f, 0.94f, 1.0f),
+	};
+	static const FLinearColor Manes[4] = {
+		FLinearColor(1.00f, 1.00f, 1.00f, 1.0f),
+		FLinearColor(0.84f, 0.86f, 0.90f, 1.0f),
+		FLinearColor(1.12f, 1.12f, 1.14f, 1.0f),
+		FLinearColor(0.88f, 0.92f, 1.00f, 1.0f),
+	};
+	const int32 V = FMath::Abs(Index) % 4;
+	auto Tint = [](UStaticMeshComponent* C, const TCHAR* Param, const FLinearColor& Col) {
+		if (C && C->GetMaterial(0))
+		{
+			if (UMaterialInstanceDynamic* MID = C->CreateAndSetMaterialInstanceDynamic(0))
+			{
+				MID->SetVectorParameterValue(Param, Col);
+			}
+		}
+	};
+	Tint(Body, TEXT("CoatTint"), Coats[V]);
+	Tint(Head, TEXT("CoatTint"), Coats[V]);
+	Tint(Tail, TEXT("CoatTint"), Coats[V]);
+	for (UStaticMeshComponent* L : Legs)
+	{
+		Tint(L, TEXT("CoatTint"), Coats[V]);
+	}
+	Tint(Mane, TEXT("ManeTint"), Manes[V]);
+}
+
 void AEHWolf::HaltForTest()
 {
 	Stop();
@@ -206,7 +267,7 @@ void AEHWolf::ResetWolf()
 	Stop();
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
-	TeleportTo(Tuning.Spawn + FVector(0, 0, 50.0f), FRotator(0, Tuning.HomeYaw, 0), false, true);
+	TeleportTo(Tuning.Spawn + FVector(0, 0, 78.0f), FRotator(0, Tuning.HomeYaw, 0), false, true);
 	HealthNow = Tuning.Health;
 	bProvoked = false;
 	OutsideFor = 0.0f;
@@ -217,7 +278,7 @@ void AEHWolf::ResetWolf()
 	Crouch = HeadThrust = 0.0f;
 	IceCuff->SetVisibility(false);
 	Rig->SetRelativeRotation(FRotator::ZeroRotator);
-	Rig->SetRelativeLocation(FVector(0, 0, -48.0f));
+	Rig->SetRelativeLocation(FVector(0, 0, -76.0f));
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	bBiteCue = false;
 	BiteCount = LungeCount = ConnectCount = DisengageCount = AbsorbCount = ProtectCount = FreezeCount = 0;
@@ -228,12 +289,25 @@ void AEHWolf::ResetWolf()
 	WaitGoal = FVector(1e9);
 	SinceAttack = 0.0f;
 	PackRole = EEHPackRole::Free;
+	bEscalated = false;
+	WarnFor = 0.0f;
+	RestLeft = 0.0f;
+	AwayFor = 100.0f;
+	bGreetDue = false;
+	GraceLeft = 0.0f;
+	PlayerStillFor = 0.0f;
+	Lie = HeadDown = HacklesNow = 0.0f;
 	Enter(EEHWolfState::Calm, 0);
 }
 
 FVector AEHWolf::FeetLocation() const
 {
 	return GetActorLocation() - FVector(0, 0, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+}
+
+FVector AEHWolf::LockOnPoint() const
+{
+	return FeetLocation() + FVector(0.0f, 0.0f, Body ? Body->GetRelativeLocation().Z : 72.0f);
 }
 
 bool AEHWolf::PlayerOutside() const
@@ -254,8 +328,53 @@ FVector AEHWolf::ToPlayer2D() const
 
 EEHWolfState AEHWolf::Attitude() const
 {
-	// Hostile when provoked, or toward a menacing (evil) aura; otherwise calm in its own way.
-	return (bProvoked || EHAlign::Band(Alignment) == EEHAlignBand::Evil) ? EEHWolfState::Hostile : EEHWolfState::Calm;
+	// Prayer is sanctuary: no wolf attacks the one praying, whatever they are. Otherwise a fight when provoked or when an
+	// evil aura would not leave; a warning toward an evil aura or a Shadow; calm in its own way toward everyone else.
+	if (bSanctuary)
+	{
+		return EEHWolfState::Sanctuary;
+	}
+	if (bProvoked || (bEscalated && EHAlign::Band(Alignment) == EEHAlignBand::Evil))
+	{
+		return EEHWolfState::Hostile;
+	}
+	if (bShadow || EHAlign::Band(Alignment) == EEHAlignBand::Evil)
+	{
+		return EEHWolfState::Warn;
+	}
+	return EEHWolfState::Calm;
+}
+
+bool AEHWolf::IsCalmLike() const
+{
+	switch (State)
+	{
+	case EEHWolfState::Calm: case EEHWolfState::Rest: case EEHWolfState::Sleep: case EEHWolfState::Wander:
+	case EEHWolfState::Greet: case EEHWolfState::Beside: case EEHWolfState::Sanctuary:
+		return true;
+	default:
+		return false;
+	}
+}
+
+void AEHWolf::StartRest(bool bSleep)
+{
+	Stop();
+	RestLeft = (bSleep ? Tuning.SleepSeconds : Tuning.RestSeconds) * FMath::FRandRange(0.6f, 1.6f);
+	Enter(bSleep ? EEHWolfState::Sleep : EEHWolfState::Rest, 0);
+}
+
+bool AEHWolf::TryProtect()
+{
+	// Anything winding up a strike at the player is bitten first.
+	if (Player.IsValid() && Dummy.IsValid() && Dummy->IsWindingUp() && FVector::Dist2D(Dummy->GetActorLocation(), GetActorLocation()) < Tuning.ProtectRange
+		&& FVector::Dist2D(Dummy->GetActorLocation(), Player->GetActorLocation()) < 400.0f)
+	{
+		++ProtectCount;
+		Enter(EEHWolfState::Protect, 90);
+		return true;
+	}
+	return false;
 }
 
 bool AEHWolf::IsHostile() const
@@ -358,6 +477,7 @@ bool AEHWolf::NoticeThreat(const FVector& Eye, const FVector& Aim)
 	{
 		return false;
 	}
+	const bool bWarning = State == EEHWolfState::Warn;
 	FVector To = GetActorLocation() - Eye;
 	To.Z = 0.0f;
 	const float Dist = To.Size();
@@ -366,6 +486,12 @@ bool AEHWolf::NoticeThreat(const FVector& Eye, const FVector& Aim)
 	if (Dist > Tuning.ThreatRange || FVector::DotProduct(To.GetSafeNormal(), A.GetSafeNormal()) < 0.8f)
 	{
 		return false;
+	}
+	if (bWarning && !bShadow)
+	{
+		// A swing at it from someone it was already warning: the warning is over.
+		Escalate();
+		return true;
 	}
 	// It backs off and watches, giving the player the chance to stop.
 	DisengageFrom = Eye;
@@ -377,6 +503,7 @@ bool AEHWolf::NoticeThreat(const FVector& Eye, const FVector& Aim)
 FEHWolfHit AEHWolf::ReceivePlayerHit(float Damage, const FVector& From, const FVector& At, bool bHeavy)
 {
 	FEHWolfHit Out;
+	Out.WolfAt = GetActorLocation();
 	if (IsDead())
 	{
 		return Out;
@@ -428,6 +555,23 @@ bool AEHWolf::Absorb(float Damage)
 	HealthNow = FMath::Max(1.0f, HealthNow - Damage);
 	++AbsorbCount;
 	return true;
+}
+
+void AEHWolf::SetSanctuary(bool bOn)
+{
+	if (bSanctuary == bOn)
+	{
+		return;
+	}
+	bSanctuary = bOn;
+	if (bOn && IsAttacking())
+	{
+		Stop();
+		UCharacterMovementComponent* Movement = GetCharacterMovement();
+		Movement->StopMovementImmediately();
+		Movement->ClearAccumulatedForces();
+		Enter(EEHWolfState::Sanctuary, 0);
+	}
 }
 
 void AEHWolf::Freeze(float Seconds)
@@ -514,66 +658,303 @@ void AEHWolf::StepFrame()
 	const FVector To = ToPlayer2D();
 	const float Dist = To.Size();
 	const bool bOutside = PlayerOutside();
-	// Provoked hostility ends once the player has left the Chapel's floor for a while (and so comes back to a calm
-	// wolf). A menacing aura keeps it hostile regardless.
-	if (bProvoked)
+	// Provoked hostility, and a fight with an evil aura that would not leave, end once the player has left the Chapel's
+	// floor for a while (and so comes back to a calm wolf, judged by their alignment again).
+	if (bProvoked || bEscalated)
 	{
 		OutsideFor = bOutside ? OutsideFor + Step : 0.0f;
 		if (OutsideFor >= Tuning.CalmSeconds)
 		{
 			bProvoked = false;
+			bEscalated = false;
 			OutsideFor = 0.0f;
 		}
 	}
+	// What it knows of the player: how long they have kept still, how long a friend has been away.
+	if (Player.IsValid())
+	{
+		const FVector At = Player->GetActorLocation();
+		PlayerStillFor = FVector::Dist2D(At, PlayerLastAt) < 1.5f ? PlayerStillFor + Step : 0.0f;
+		PlayerLastAt = At;
+	}
 	const EEHWolfState Want = Attitude();
 	const EEHAlignBand Band = EHAlign::Band(Alignment);
+	const bool bFriend = Band == EEHAlignBand::Good && !bShadow && !bOutside && Dist < Tuning.FriendRange;
+	if (bFriend && Dist < 900.0f)
+	{
+		bGreetDue |= AwayFor > 8.0f;
+		AwayFor = 0.0f;
+	}
+	else
+	{
+		AwayFor += Step;
+	}
+	GraceLeft = FMath::Max(0.0f, GraceLeft - Step);
+	if (bOutside || Want != EEHWolfState::Warn)
+	{
+		WarnFor = 0.0f;
+	}
+	// Any calm-like state gives way at once when the attitude changes (a prayer begins or ends, a fight starts).
+	if (IsCalmLike())
+	{
+		const bool bInSanctuary = State == EEHWolfState::Sanctuary;
+		if (Want == EEHWolfState::Hostile || Want == EEHWolfState::Warn || (Want == EEHWolfState::Sanctuary) != bInSanctuary)
+		{
+			if (bInSanctuary && Want == EEHWolfState::Warn)
+			{
+				GraceLeft = 3.0f;   // the prayer is over: it steps back before its warning can turn into a fight
+			}
+			Enter(Want, 0);
+		}
+	}
 	switch (State)
 	{
 	case EEHWolfState::Calm:
 	{
-		if (Want == EEHWolfState::Hostile)
-		{
-			Enter(EEHWolfState::Hostile, 0);
-			break;
-		}
+		// Attending to the player in its own way, or settling to rest.
 		if (!Player.IsValid() || bFrozen)
 		{
 			break;
 		}
-		if (Band == EEHAlignBand::Good && !bOutside)
+		if (bFriend)
 		{
-			// Friendly: keeps the player company, a little to one side.
+			if (bGreetDue && Dist < 450.0f)
+			{
+				// A friend come back: it greets them, head lowered and tail going.
+				bGreetDue = false;
+				Stop();
+				Enter(EEHWolfState::Greet, 72);
+				break;
+			}
+			if (TryProtect())
+			{
+				break;
+			}
+			if (Player->HealthFraction() < Tuning.BesideHealth && PlayerStillFor >= Tuning.BesideStill && Dist < 700.0f)
+			{
+				// A friend badly hurt and keeping still: it lies down beside them until they recover or move off.
+				Enter(EEHWolfState::Beside, 0);
+				break;
+			}
+			// Keeps the player company, a little to one side; when they stay put a while, it lies down near them.
 			if (Dist > Tuning.FollowDistance + 80.0f)
 			{
 				MoveTo(Player->GetActorLocation() - To.GetSafeNormal() * Tuning.FollowDistance, Dist > 600.0f ? Tuning.RunSpeed : Tuning.WalkSpeed, 60.0f);
+			}
+			else if (PlayerStillFor > 6.0f)
+			{
+				StartRest(false);
 			}
 			else
 			{
 				Stop();
 				FaceTowards(Player->GetActorLocation(), 4.0f);
 			}
-			// Protects: anything winding up a strike at the player is bitten first.
-			if (Dummy.IsValid() && Dummy->IsWindingUp() && FVector::Dist2D(Dummy->GetActorLocation(), GetActorLocation()) < Tuning.ProtectRange
-				&& FVector::Dist2D(Dummy->GetActorLocation(), Player->GetActorLocation()) < 400.0f)
+			break;
+		}
+		if (Band == EEHAlignBand::Neutral && !bOutside && !bShadow)
+		{
+			// Wary, but still a guardian: it goes for a strike at the player, and keeps its distance.
+			if (TryProtect())
 			{
-				++ProtectCount;
-				Enter(EEHWolfState::Protect, 90);
+				break;
+			}
+			if (Dist < Tuning.KeepDistance)
+			{
+				MoveTo(GetActorLocation() - To.GetSafeNormal() * (Tuning.KeepDistance - Dist + 120.0f), Tuning.WalkSpeed, 50.0f);
+				break;
 			}
 		}
-		else if (Band == EEHAlignBand::Neutral && Dist < Tuning.KeepDistance && !bOutside)
-		{
-			// Wary: keeps its distance, watching.
-			MoveTo(GetActorLocation() - To.GetSafeNormal() * (Tuning.KeepDistance - Dist + 120.0f), Tuning.WalkSpeed, 50.0f);
-		}
-		else if (FVector::Dist2D(GetActorLocation(), Tuning.Home) > 120.0f && (Band != EEHAlignBand::Good || bOutside))
+		if (FVector::Dist2D(GetActorLocation(), Tuning.Home) > 120.0f)
 		{
 			MoveTo(Tuning.Home, Tuning.WalkSpeed, 60.0f);
+			break;
+		}
+		// At its place with nothing to attend to: it lies down.
+		StartRest(false);
+		break;
+	}
+	case EEHWolfState::Rest:
+	case EEHWolfState::Sleep:
+	case EEHWolfState::Wander:
+	{
+		// Life at rest: lying with its head up, asleep, or wandering near its place, now and then. A friend nearby, or a
+		// wary wolf crowded, gets up to attend to them; someone passing close wakes a sleeper for a moment.
+		if (!Player.IsValid())
+		{
+			break;
+		}
+		const bool bCrowded = Band == EEHAlignBand::Neutral && !bOutside && !bShadow && Dist < Tuning.KeepDistance;
+		const bool bFriendLeft = bFriend && Dist > Tuning.FollowDistance + 200.0f;   // a friend resting near the player gets up when they move off
+		const bool bStrikeAtPlayer = Band != EEHAlignBand::Evil && !bOutside && !bShadow && Dummy.IsValid() && Dummy->IsWindingUp()
+			&& FVector::Dist2D(Dummy->GetActorLocation(), Player->GetActorLocation()) < 400.0f && FVector::Dist2D(Dummy->GetActorLocation(), GetActorLocation()) < Tuning.ProtectRange;
+		const bool bFriendNeeds = bFriend && ((bGreetDue && Dist < 450.0f)
+			|| (Player->HealthFraction() < Tuning.BesideHealth && PlayerStillFor >= Tuning.BesideStill && Dist < 700.0f));
+		if (bFriendLeft || bFriendNeeds || bCrowded || bStrikeAtPlayer)
+		{
+			Enter(EEHWolfState::Calm, 0);
+			break;
+		}
+		if (State == EEHWolfState::Sleep && Dist < Tuning.NoticeRange)
+		{
+			// Lifts its head to see who passes, then settles again.
+			RestLeft = FMath::FRandRange(4.0f, 8.0f);
+			Enter(EEHWolfState::Rest, 0);
+			break;
+		}
+		if (State == EEHWolfState::Wander)
+		{
+			MoveTo(WanderGoal, Tuning.WalkSpeed * 0.6f, 50.0f);
+			if (FVector::Dist2D(GetActorLocation(), WanderGoal) < 70.0f || StateFrame > 60 * 25)
+			{
+				StartRest(false);
+			}
+			break;
+		}
+		if (Dist < Tuning.NoticeRange * 1.5f)
+		{
+			FaceTowards(Player->GetActorLocation(), 1.0f);
+		}
+		RestLeft -= Step;
+		if (RestLeft <= 0.0f)
+		{
+			if (State == EEHWolfState::Sleep)
+			{
+				StartRest(false);
+			}
+			else if (!bFriend && FMath::FRand() < 0.45f)
+			{
+				// A slow walk to somewhere near its place (or back to it); a friend's wolf stays by the friend.
+				FVector Goal = Tuning.Home;
+				if (FVector::Dist2D(GetActorLocation(), Tuning.Home) < 150.0f)
+				{
+					const float A = FMath::FRandRange(0.0f, 2.0f * PI);
+					Goal = Tuning.Home + FVector(FMath::Cos(A), FMath::Sin(A), 0.0f) * FMath::FRandRange(0.4f, 1.0f) * Tuning.WanderRadius;
+					FNavLocation On;
+					const UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(GetWorld());
+					Goal = Nav && Nav->ProjectPointToNavigation(FVector(Goal.X, Goal.Y, GetActorLocation().Z), On, FVector(150.0f, 150.0f, 300.0f)) ? On.Location : Tuning.Home;
+				}
+				WanderGoal = Goal;
+				Enter(EEHWolfState::Wander, 0);
+			}
+			else
+			{
+				StartRest(true);
+			}
+		}
+		break;
+	}
+	case EEHWolfState::Greet:
+		if (Player.IsValid())
+		{
+			FaceTowards(Player->GetActorLocation(), 6.0f);
+		}
+		if (StateFrame >= StateLength)
+		{
+			Enter(EEHWolfState::Calm, 0);
+		}
+		break;
+	case EEHWolfState::Beside:
+	{
+		// Lies down beside the hurt friend until they recover or move off.
+		const bool bMovedOff = PlayerStillFor < 0.1f && StateFrame > 30;
+		if (!Player.IsValid() || !bFriend || Player->HealthFraction() >= FMath::Min(1.0f, Tuning.BesideHealth + 0.15f) || bMovedOff)
+		{
+			Enter(EEHWolfState::Calm, 0);
+			break;
+		}
+		if (Dist > 150.0f)
+		{
+			const FVector Side = FVector::CrossProduct(FVector::UpVector, To.GetSafeNormal());
+			MoveTo(Player->GetActorLocation() + Side * 110.0f, Tuning.WalkSpeed, 30.0f);
 		}
 		else
 		{
 			Stop();
 			FaceTowards(Player->GetActorLocation(), 2.0f);
 		}
+		break;
+	}
+	case EEHWolfState::Sanctuary:
+	{
+		// The player prays: whatever they are, the wolves stand guard nearby and go for anything that threatens them.
+		if (!Player.IsValid() || bFrozen)
+		{
+			break;
+		}
+		if (TryProtect())
+		{
+			break;
+		}
+		if (FMath::Abs(Dist - Tuning.SanctuaryGuard) > 90.0f)
+		{
+			MoveTo(Player->GetActorLocation() - To.GetSafeNormal() * Tuning.SanctuaryGuard, Dist > 900.0f ? Tuning.RunSpeed : Tuning.WalkSpeed, 50.0f);
+		}
+		else
+		{
+			Stop();
+			FaceTowards(GetActorLocation() - To, 2.0f);   // facing outward, watching over them
+		}
+		break;
+	}
+	case EEHWolfState::Warn:
+	{
+		// An evil aura (or a Shadow): hackles up, it holds off and warns. A Shadow is told to pray; anyone else is given
+		// the chance to leave. Coming too close, or staying near too long, starts the fight (the director spreads it to
+		// the pack); a Shadow that stays in the Chapel without praying runs out of patience (the director exorcises it).
+		if (Want != EEHWolfState::Warn)
+		{
+			Enter(Want, 0);
+			break;
+		}
+		if (!Player.IsValid() || bFrozen)
+		{
+			break;
+		}
+		if (bOutside)
+		{
+			if (FVector::Dist2D(GetActorLocation(), Tuning.Home) > 120.0f)
+			{
+				MoveTo(Tuning.Home, Tuning.WalkSpeed, 60.0f);
+			}
+			else
+			{
+				Stop();
+				FaceTowards(Player->GetActorLocation(), 2.0f);
+			}
+			break;
+		}
+		if (bShadow)
+		{
+			WarnFor += Step;   // anywhere in the Chapel: only prayer is answer enough
+		}
+		else if (Dist < Tuning.WarnRange)
+		{
+			WarnFor += Step;
+			if (GraceLeft <= 0.0f && (Dist < Tuning.WarnClose || WarnFor >= Tuning.WarnSeconds))
+			{
+				Escalate();
+				Enter(EEHWolfState::Hostile, 0);
+				break;
+			}
+		}
+		else
+		{
+			WarnFor = FMath::Max(0.0f, WarnFor - Step * 0.5f);
+		}
+		if (Dist < Tuning.WarnRange + 300.0f && FMath::Abs(Dist - Tuning.WarnRadius) > 100.0f)
+		{
+			MoveTo(Player->GetActorLocation() - To.GetSafeNormal() * Tuning.WarnRadius, Tuning.WalkSpeed, 50.0f);
+		}
+		else if (Dist >= Tuning.WarnRange + 300.0f && FVector::Dist2D(GetActorLocation(), Tuning.Home) > 120.0f)
+		{
+			MoveTo(Tuning.Home, Tuning.WalkSpeed, 60.0f);
+		}
+		else
+		{
+			Stop();
+		}
+		FaceTowards(Player->GetActorLocation(), 5.0f);
 		break;
 	}
 	case EEHWolfState::Disengage:
@@ -590,9 +971,9 @@ void AEHWolf::StepFrame()
 			Stop();
 			FaceTowards(DisengageFrom, 6.0f);
 		}
-		if (Want == EEHWolfState::Hostile || StateFrame >= StateLength)
+		if (Want != EEHWolfState::Calm || StateFrame >= StateLength)
 		{
-			Enter(Want == EEHWolfState::Hostile ? EEHWolfState::Hostile : EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 		}
 		break;
 	}
@@ -600,7 +981,7 @@ void AEHWolf::StepFrame()
 	{
 		if (!Dummy.IsValid() || bFrozen)
 		{
-			Enter(EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 			break;
 		}
 		const float D = FVector::Dist2D(Dummy->GetActorLocation(), GetActorLocation());
@@ -618,12 +999,12 @@ void AEHWolf::StepFrame()
 			Dummy->ReceiveHit(EEHFistAction::Jab, Def, GetActorLocation() + FVector(0, 0, 40.0f), Dummy->GetActorLocation() + FVector(0, 0, 10.0f), 0.0f);
 			++BiteCount;
 			HeadThrust = 1.0f;
-			Enter(EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 			Cooldown = Tuning.AttackCooldown;
 		}
 		if (StateFrame >= StateLength)
 		{
-			Enter(EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 		}
 		break;
 	}
@@ -632,7 +1013,7 @@ void AEHWolf::StepFrame()
 	{
 		if (Want != EEHWolfState::Hostile)
 		{
-			Enter(EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 			break;
 		}
 		if (!Player.IsValid() || bFrozen)
@@ -745,7 +1126,7 @@ void AEHWolf::StepFrame()
 	case EEHWolfState::LungeWindup:
 		if (Player.IsValid())
 		{
-			FaceTowards(Player->GetActorLocation(), 6.0f);
+			FaceTowards(Player->GetActorLocation(), 12.0f);
 		}
 		if (StateFrame >= StateLength)
 		{
@@ -780,13 +1161,13 @@ void AEHWolf::StepFrame()
 		Stop();
 		if (StateFrame >= StateLength)
 		{
-			Enter(Want == EEHWolfState::Hostile ? EEHWolfState::Hostile : EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 		}
 		break;
 	case EEHWolfState::Hitstun:
 		if (StateFrame >= StateLength)
 		{
-			Enter(Want == EEHWolfState::Hostile ? EEHWolfState::Hostile : EEHWolfState::Calm, 0);
+			Enter(Want, 0);
 		}
 		break;
 	default:
@@ -802,7 +1183,7 @@ void AEHWolf::UpdatePose(float DeltaSeconds)
 		DeadTime += DeltaSeconds;
 		const float T = FMath::Clamp(DeadTime / 0.5f, 0.0f, 1.0f);
 		Rig->SetRelativeRotation(FRotator(0, 0, 88.0f * T * T));
-		Rig->SetRelativeLocation(FVector(0, 0, -48.0f + 22.0f * T));
+		Rig->SetRelativeLocation(FVector(0, 0, -76.0f + 36.0f * T));
 		return;
 	}
 	const float Speed = GetVelocity().Size2D();
@@ -812,12 +1193,19 @@ void AEHWolf::UpdatePose(float DeltaSeconds)
 	const float Swing = FMath::Clamp(Speed / 500.0f, 0.0f, 1.0f) * 34.0f;
 	const float Phase[4] = {0.0f, PI, PI, 0.0f};
 	const float WantCrouch = (State == EEHWolfState::BiteWindup || State == EEHWolfState::LungeWindup) ? 1.0f : (State == EEHWolfState::Hostile ? 0.35f : 0.0f);
-	Crouch = FMath::FInterpTo(Crouch, WantCrouch, DeltaSeconds, 12.0f);
+	Crouch = FMath::FInterpTo(Crouch, WantCrouch + (State == EEHWolfState::Warn ? 0.3f : 0.0f), DeltaSeconds, 12.0f);
 	HeadThrust = FMath::FInterpTo(HeadThrust, 0.0f, DeltaSeconds, 7.0f);
+	// Lying down (resting, asleep, beside a friend) once it has stopped; the head down asleep or bowed in greeting; the
+	// hackles up when warning or fighting. Lying and rising take about half a second.
+	const bool bLie = IsLying() && Speed < 30.0f;
+	Lie = FMath::FInterpTo(Lie, bLie ? 1.0f : 0.0f, DeltaSeconds, bLie ? 4.0f : 7.0f);
+	HeadDown = FMath::FInterpTo(HeadDown, State == EEHWolfState::Sleep ? 1.0f : (State == EEHWolfState::Greet ? 0.75f : 0.0f), DeltaSeconds, 5.0f);
+	HacklesNow = FMath::FInterpTo(HacklesNow, (State == EEHWolfState::Warn || IsHostile()) ? 1.0f : 0.0f, DeltaSeconds, 6.0f);
 	for (int32 i = 0; i < 4; ++i)
 	{
 		const float A = bAir ? (i < 2 ? -40.0f : 40.0f) : FMath::Sin(Gait + Phase[i]) * Swing;
-		Legs[i]->SetRelativeRotation(FRotator(A, 0, 0));
+		// Lying: the legs fold under the body.
+		Legs[i]->SetRelativeRotation(FRotator(FMath::Lerp(A, i < 2 ? -78.0f : 72.0f, Lie), 0, 0));
 	}
 	// Body: a bob in the stride, low and forward when stalking or winding up.
 	const float Bob = FMath::Abs(FMath::Sin(Gait)) * FMath::Clamp(Speed / 500.0f, 0.0f, 1.0f) * 3.0f;
@@ -830,8 +1218,13 @@ void AEHWolf::UpdatePose(float DeltaSeconds)
 	SpringStep(Tilt, TiltVel, 150.0f, 10.0f);
 	SpringStep(Snap, SnapVel, 220.0f, 13.0f);
 	PeakTilt = FMath::Max(PeakTilt, Tilt.Size());
-	Body->SetRelativeLocation(FVector(0, 0, 72.0f - 12.0f * Crouch + Bob - 0.25f * FMath::Abs(Tilt.X)));
+	Body->SetRelativeLocation(FVector(0, 0, 124.0f - 20.0f * Crouch - 74.0f * Lie + Bob * 1.4f - 0.35f * FMath::Abs(Tilt.X)));
 	Body->SetRelativeRotation(FRotator(-6.0f * Crouch + Tilt.X, 0, Tilt.Y));
+	// Ceremonial mane & hackles: flare and rise dramatically in warning or hostility.
+	Body->SetRelativeScale3D(FVector(1.0f, 1.0f + 0.03f * HacklesNow, 1.0f + 0.04f * HacklesNow));
+	Mane->SetRelativeLocation(FVector(46.0f, 0.0f, 14.0f + 7.0f * HacklesNow));
+	Mane->SetRelativeRotation(FRotator(10.0f * HacklesNow, 0.0f, 0.0f));
+	Mane->SetRelativeScale3D(FVector(1.0f + 0.06f * HacklesNow, 1.0f + 0.18f * HacklesNow, 1.0f + 0.24f * HacklesNow));
 	// Head: looks at the player; low when hostile, up when friendly; snaps forward in a bite.
 	float Yaw = 0.0f;
 	if (Player.IsValid())
@@ -839,21 +1232,27 @@ void AEHWolf::UpdatePose(float DeltaSeconds)
 		const FVector Local = GetActorTransform().InverseTransformVectorNoScale(ToPlayer2D());
 		Yaw = FMath::Clamp(FMath::RadiansToDegrees(FMath::Atan2(Local.Y, Local.X)), -55.0f, 55.0f);
 	}
-	const bool bFriendly = State == EEHWolfState::Calm && EHAlign::Band(Alignment) == EEHAlignBand::Good;
-	const float Pitch = bFriendly ? 8.0f : (IsHostile() ? -14.0f : 0.0f);
-	Head->SetRelativeLocation(FVector(50.0f + 16.0f * HeadThrust, 0, 6.0f - 8.0f * Crouch));
+	if (State == EEHWolfState::Sleep)
+	{
+		Yaw *= 1.0f - HeadDown;
+	}
+	const bool bFriendly = IsCalmLike() && !bShadow && EHAlign::Band(Alignment) == EEHAlignBand::Good;
+	const float Pitch = FMath::Lerp(bFriendly ? 8.0f : ((IsHostile() || State == EEHWolfState::Warn) ? -14.0f : 0.0f), -34.0f, HeadDown);
+	Head->SetRelativeLocation(FVector(88.0f + 24.0f * HeadThrust, 0, 14.0f - 14.0f * Crouch - 16.0f * HeadDown));
 	Head->SetRelativeRotation(FRotator(Pitch - 18.0f * HeadThrust + Snap.X, Yaw + Snap.Y, 0));
 	// Tail: wags for a friend, hangs for a wary wolf, straight out and stiff when hostile.
 	WagTime += DeltaSeconds;
-	const float TailYaw = bFriendly ? FMath::Sin(WagTime * 11.0f) * 28.0f : 0.0f;
-	const float TailPitch = bFriendly ? 22.0f : (IsHostile() ? 16.0f : -10.0f);
+	const float Wag = State == EEHWolfState::Sleep ? 0.0f : (State == EEHWolfState::Greet ? 1.4f : 1.0f);
+	const float TailYaw = bFriendly ? FMath::Sin(WagTime * (State == EEHWolfState::Greet ? 15.0f : 11.0f)) * 28.0f * Wag : 0.0f;
+	// Low when relaxed, out and stiff when warning or hostile, along the floor when lying.
+	const float TailPitch = FMath::Lerp(bFriendly ? 22.0f : ((IsHostile() || State == EEHWolfState::Warn) ? 16.0f : -10.0f), -24.0f, Lie);
 	Tail->SetRelativeRotation(FRotator(TailPitch, TailYaw, 0));
 }
 
 FString AEHWolf::Describe() const
 {
-	return FString::Printf(TEXT("%s hp=%.0f provoked=%d frozen=%.1f bites=%d lunges=%d connected=%d disengaged=%d absorbed=%d protects=%d"),
-		EHWolfStateName(State), HealthNow, bProvoked ? 1 : 0, FrozenLeft, BiteCount, LungeCount, ConnectCount, DisengageCount, AbsorbCount, ProtectCount);
+	return FString::Printf(TEXT("%s hp=%.0f provoked=%d escalated=%d warned=%.1fs frozen=%.1f bites=%d lunges=%d connected=%d disengaged=%d absorbed=%d protects=%d"),
+		EHWolfStateName(State), HealthNow, bProvoked ? 1 : 0, bEscalated ? 1 : 0, WarnFor, FrozenLeft, BiteCount, LungeCount, ConnectCount, DisengageCount, AbsorbCount, ProtectCount);
 }
 
 void AEHWolf::React(const FVector& Away, float Strength)

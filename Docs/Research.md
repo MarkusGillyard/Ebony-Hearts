@@ -1,5 +1,8 @@
 # Design research
 
+This record covers the 2.5D combat core. Research claims in the dated tables refer to that slice;
+the [first-person guide](FirstPerson.md) records Chapel prototype mechanics and limits.
+
 The combat rules in this slice came from a short study of Killer Instinct (2013), Mortal Kombat 11 and 1, Street
 Fighter 6 and Sekiro, made on 2026-11-02 before the rules were written. Other fighters (KOF XV, Granblue Fantasy Versus
 Rising, Guilty Gear Strive) were checked where they settle a specific question. Each rule below names its source, what

@@ -13,6 +13,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "EHGameDirector.h"
 #include "EHUIStyle.h"
+#include "EHWolf.h"
 #include "Engine/World.h"
 
 void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
@@ -62,7 +63,7 @@ void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
 	}
 	// What the player looks at: the nearest interactable whose point lies within its radius of the line of sight,
 	// within reach and not behind a wall.
-	FPInteractFocus = -1;
+	FPInteractFocus = FPWolfFocus = -1;
 	if (FPPlayer && !bSpellSelect)
 	{
 		const FVector Eye = FPPlayer->Camera()->GetComponentLocation();
@@ -86,6 +87,35 @@ void AEHGameDirector::UpdateChapel(FEHFirstPersonInput& In, float DeltaSeconds)
 			Best = Along;
 			FPInteractFocus = i;
 		}
+		// A calm wolf looked at within reach can be talked to (it is bigger than most things, so a wider reach).
+		const bool bKneelerFocused = FPInteractFocus >= 0 && T.Interactables[FPInteractFocus].bPray;
+		for (int32 i = 0; !bKneelerFocused && i < FPWolves.Num(); ++i)
+		{
+			const AEHWolf* W = FPWolves[i];
+			if (W == nullptr || W->IsDead() || !W->IsCalmLike() || W->GetState() == EEHWolfState::Sleep)
+			{
+				continue;
+			}
+			const FVector V = W->LockOnPoint() - Eye;
+			const float Along = FVector::DotProduct(V, Fwd);
+			if (Along < 0.0f || Along > Best + 80.0f || (V - Fwd * Along).Size() > 110.0f)
+			{
+				continue;
+			}
+			FCollisionQueryParams Params(TEXT("EHWolfInteract"), false, FPPlayer);
+			Params.AddIgnoredActor(W);
+			if (GetWorld()->LineTraceTestByChannel(Eye, Eye + V, ECC_Visibility, Params))
+			{
+				continue;
+			}
+			Best = Along - 80.0f;
+			FPWolfFocus = i;
+			FPInteractFocus = -1;
+		}
+	}
+	if (bInteract && FPWolfFocus >= 0)
+	{
+		TalkToWolf(FPWolfFocus);
 	}
 	if (bInteract && FPInteractFocus >= 0)
 	{
@@ -130,6 +160,13 @@ void AEHGameDirector::BeginPrayer()
 		CloseSpellSelect(false);
 	}
 	bPraying = true;
+	for (AEHWolf* W : FPWolves)
+	{
+		if (W)
+		{
+			W->SetSanctuary(true);
+		}
+	}
 	if (FPPlayer)
 	{
 		FPPlayer->CancelActionsForPrayer();
@@ -159,6 +196,10 @@ void AEHGameDirector::PaintChapel(FEHPainter& P)
 	const EEHBindingSet Set = bPad ? EEHBindingSet::FPController : EEHBindingSet::FPKeyboard;
 	const FKey Key = Settings.Bindings.Get(Set, EEHAction::FPInteract, 0);
 	const FString KeyText = Key.IsValid() ? KeyName(Set, Key) : FString(TEXT("Interact (unbound)"));
+	if (FPWolfFocus >= 0 && !bPraying && SpellSelectAlpha < 0.01f)
+	{
+		P.Text(FString::Printf(TEXT("%s   Talk to the wolf"), *KeyText), FVector2f(960.0f, 620.0f), Fonts.Sized(Fonts.BodyMedium, 24), EHStyle::Alpha(EHStyle::TextPrimary, 0.85f), 0.5f, 0.5f);
+	}
 	if (FPInteractFocus >= 0 && FPInteractFocus < T.Interactables.Num() && !bPraying && SpellSelectAlpha < 0.01f)
 	{
 		// The prompt: below the centre of the view, quiet, like the other readouts.
@@ -272,7 +313,19 @@ void AEHGameDirector::InitWorldClock()
 void AEHGameDirector::TickWorldClock(float RealSeconds)
 {
 	const FEHWorldClockTuning& C = FPTuning.Clock;
-	FPClockHours += RealSeconds / C.RealSecondsPerHour * (bPraying ? C.PrayScale : 1.0f);
+	const double Hours = RealSeconds / C.RealSecondsPerHour * (bPraying ? C.PrayScale : 1.0f);
+	FPClockHours += Hours;
+	if (bFPShadow && bPraying)
+	{
+		// Three in-game days of prayer at the Chapel restore a Shadow (about five real minutes of kneeling).
+		FPShadowPrayHours += Hours;
+		if (FPShadowPrayHours >= 3.0 * C.DayHours)
+		{
+			bFPShadow = false;
+			FPShadowPrayHours = 0.0;
+			AutoLogLine(TEXT("fp shadow restored by three days of prayer"));
+		}
+	}
 	ApplyWorldClock(false);
 }
 

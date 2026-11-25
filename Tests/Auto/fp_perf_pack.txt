@@ -8,6 +8,7 @@ fp_health 5000
 fp_wolves 4
 fp_align 7
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 3
 log warm-up round
 press kbA FPIceWall
@@ -17,6 +18,7 @@ wait 2.0
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 3
 perf_begin
 loop 4
@@ -51,6 +53,7 @@ endloop
 fp_reset
 wait 0.3
 fp_teleport 0 -900 0 -90 0
+fp_escalate
 wait 1.5
 endloop
 perf_end fp_pack

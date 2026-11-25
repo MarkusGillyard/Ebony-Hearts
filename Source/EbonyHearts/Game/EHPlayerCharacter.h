@@ -21,6 +21,19 @@ class UCameraComponent;
 class UAnimSequence;
 class UEHViewArms;
 
+struct FEHLockOnTuning
+{
+	float Range = 1800.0f;
+	float BreakRange = 2200.0f;
+	float ConeDegrees = 55.0f;
+	float TrackSpeed = 14.0f;
+	float LosGrace = 1.2f;
+	float SwitchMouse = 90.0f;
+	float SwitchStick = 0.72f;
+	float SwitchCooldown = 0.25f;
+	bool Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError);
+};
+
 struct FEHFirstPersonTuning
 {
 	float WalkSpeed = 400.0f;
@@ -68,6 +81,7 @@ struct FEHFirstPersonTuning
 	FEHWorldClockTuning Clock; // Destiny's Ark's time
 	FEHPackTuning Pack;     // the Chapel wolves as a pack (milestone 6)
 	FEHCombatTextTuning CombatText; // comic-book combat text (milestone 7)
+	FEHLockOnTuning LockOn; // Souls-style target lock-on
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);
@@ -131,6 +145,7 @@ public:
 	float ReceiveStrike(float Damage, const FVector& From, bool bOwnBlow = false);
 	// Asked before a strike lands: true if someone else takes it (a Chapel wolf protecting a Hero of Humanity).
 	void SetAbsorber(TFunction<bool(float, const FVector&)> InAbsorber) { Absorber = MoveTemp(InAbsorber); }
+	void SetShadowForm(bool bOn) { bShadowForm = bOn; }
 	float Health() const { return HealthValue; }
 	void SetHealthForTest(float Value) { HealthValue = FMath::Clamp(Value, 1.0f, Tuning.PlayerHealth); }
 	float HealthFraction() const { return Tuning.PlayerHealth > 0.0f ? HealthValue / Tuning.PlayerHealth : 0.0f; }
@@ -216,6 +231,7 @@ private:
 	int32 CastCount = 0;
 	int32 RefusedCount = 0;
 	bool CanCast(EEHFistAction Spell) const;
+	bool bShadowForm = false;   // a Shadow cannot use Qhi-based spells (New Direction, "Playing as a Shadow")
 	void ReleaseSpell(EEHFistAction Spell);
 	void AddQhi(float Amount);
 

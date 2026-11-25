@@ -1,0 +1,37 @@
+# Exhaust Qhi so a new wall cannot obscure the switch target.
+wait 6
+fp_expect screen eq 12
+fp_wolves 2
+wait 0.3
+fp_wolf_place 0 -900 90 60 0
+fp_wolf_place 140 -900 90 60 1
+fp_teleport 0 -420 0 -90 0
+wait 0.3
+press kbA FPLockOn
+wait 0.4
+fp_expect locked_on eq 1
+fp_expect lock_target eq 0
+fp_expect lock_switches eq 0
+fp_stat intelligence 0
+fp_stat faith 0
+fp_qhi 0
+hold pad7 FPSpellSelect
+axis pad7 Gamepad_RightX 0.92
+wait 0.3
+fp_expect selecting eq 1
+release pad7 FPSpellSelect
+wait 0.25
+fp_expect selecting eq 0
+fp_expect walls eq 0
+fp_expect lock_switches eq 0
+axis pad7 Gamepad_RightX 0
+wait 0.2
+axis pad7 Gamepad_RightX 0.92
+wait 0.4
+fp_expect lock_switches eq 1
+fp_expect lock_target eq 1
+axis pad7 Gamepad_RightX 0
+press kbA FPLockOn
+wait 0.2
+fp_expect locked_on eq 0
+quit
