@@ -40,6 +40,8 @@ enum class EEHAction : uint8
 	FPInteract,
 	// Souls-style target lock-on (settings version 11).
 	FPLockOn,
+	// Switch between first and third person (settings version 12).
+	FPCameraView,
 	Count
 };
 
@@ -185,6 +187,7 @@ struct FEHSettings
 	int32 StaminaMeter = 1;          // 0 never, 1 while it changes, 2 always
 	bool bVibration = true;          // controller rumble on contact and on being hit
 	int32 SpellSelector = 0;         // 0 wheel, 1 list (settings version 9)
+	bool bThirdPerson = false;       // the camera behind the shoulder (settings version 12)
 	// True when this profile was started from the 2.5D slice's settings file (display, audio and accessibility kept).
 	bool bImportedFromSlice = false;
 
@@ -205,7 +208,7 @@ struct FEHSettings
 FKey EHFormerGrabKey(EEHBindingSet Set, int32 Slot);
 
 // The settings file format written by this build.
-constexpr int32 EHSettingsVersion = 11;
+constexpr int32 EHSettingsVersion = 12;
 
 // Short name used in logs and automation scripts ("Light", "Grab", ...).
 const TCHAR* EHActionName(EEHAction Action);

@@ -1,0 +1,26 @@
+# Third-person view in a Shipping build (no developer commands): Switch view from the keyboard and the controller,
+# the blend, the camera behind the shoulder, and back to the eyes.
+wait 6
+fp_expect screen eq 12
+fp_expect third_person eq 0
+fp_expect view_distance lt 1
+press kbA FPCameraView
+wait 0.6
+fp_expect third_person eq 1
+fp_expect settings_third eq 1
+fp_expect view_blend eq 1
+fp_expect view_distance gt 150
+screenshot ship_tp
+hold kbA FPForward
+wait 0.6
+release kbA FPForward
+press kbA FPJab
+wait 0.6
+fp_expect third_person eq 1
+press pad7 FPCameraView
+wait 0.6
+fp_expect third_person eq 0
+fp_expect view_blend eq 0
+fp_expect view_distance lt 1
+fp_expect settings_third eq 0
+quit

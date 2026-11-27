@@ -115,6 +115,7 @@ void AEHGameDirector::BeginFirstPerson()
 	FPPlayer->ApplyTuning(FPTuning);
 	ApplyFieldOfView();
 	FPPlayer->ResetToStart();
+	ApplyCameraView(true);
 	FActorSpawnParameters Params;
 	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	FPDummy = GetWorld()->SpawnActor<AEHTrainingDummy>(AEHTrainingDummy::StaticClass(), FTransform(FRotator(0, FPTuning.Dummy.SpawnYaw, 0), FPTuning.Dummy.Spawn + FVector(0, 0, 92.0f)), Params);
@@ -210,6 +211,22 @@ void AEHGameDirector::ApplyFieldOfView()
 		FPPlayer->SetFieldOfView(static_cast<float>(Settings.FieldOfView));
 		FPPlayer->SetShakeScale(Settings.bReduceShake ? 0.0f : 1.0f);
 	}
+}
+
+void AEHGameDirector::ApplyCameraView(bool bInstant)
+{
+	if (FPPlayer && (FPPlayer->IsThirdPerson() != Settings.bThirdPerson || bInstant))
+	{
+		FPPlayer->SetThirdPerson(Settings.bThirdPerson, bInstant);
+	}
+}
+
+void AEHGameDirector::ToggleCameraView()
+{
+	Settings.bThirdPerson = !Settings.bThirdPerson;
+	ApplyCameraView(false);
+	SaveSettings();   // the chosen view is kept for next time
+	AutoLogLine(FString::Printf(TEXT("fp view %s"), Settings.bThirdPerson ? TEXT("third") : TEXT("first")));
 }
 
 FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
@@ -394,6 +411,7 @@ FEHFirstPersonInput AEHGameDirector::GatherFirstPersonInput(float DeltaSeconds)
 	}
 	bFPInteractPressed = (AnyPress & Bit(EEHAction::FPInteract)) != 0 && !bSpellSelect;
 	bFPLockPressed = (AnyPress & Bit(EEHAction::FPLockOn)) != 0 && !bSpellSelect;
+	bFPViewPressed = (AnyPress & Bit(EEHAction::FPCameraView)) != 0 && !bSpellSelect;
 	In.bBlock = ((KeyHeld | PadHeld) & Bit(EEHAction::FPBlock)) != 0;
 	if (In.FistPress != EEHFistAction::None || In.bBlock)
 	{
@@ -460,13 +478,17 @@ void AEHGameDirector::TickFirstPerson(float DeltaSeconds)
 			return;
 		}
 	}
+	if (bFPViewPressed && FPExorcism < 0.0f)
+	{
+		ToggleCameraView();
+	}
 	UpdateChapel(In, DeltaSeconds);
 	UpdateLockOn(In, DeltaSeconds);
 	LastFPInput = In;
 	FPPlayer->ApplyInput(In, DeltaSeconds);
 	if (Vfx)
 	{
-		Vfx->SetViewPoint(FPPlayer->Camera()->GetComponentLocation());
+		Vfx->SetViewPoint(FPPlayer->ViewCamera()->GetComponentLocation());
 		Vfx->SetImpactScale(0.3f, 0.5f);
 	}
 	HurtFlash = FMath::Max(0.0f, HurtFlash - DeltaSeconds * 2.5f);
@@ -1770,7 +1792,7 @@ void AEHGameDirector::PaintFirstPerson(FEHPainter& P)
 		// Combat text: beside each speaker (development labels above stay readable: bubbles sit above them).
 		APlayerController* PC = GetWorld()->GetFirstPlayerController();
 		const float AppScale = FMath::Max(0.01f, FSlateApplication::Get().GetApplicationScale());
-		CombatText.Paint(P, Fonts, FPPlayer->Camera()->GetComponentTransform(), [&](const FVector& World, FVector2f& Out) {
+		CombatText.Paint(P, Fonts, FPPlayer->ViewCamera()->GetComponentTransform(), [&](const FVector& World, FVector2f& Out) {
 			FVector2D S;
 			if (PC == nullptr || !PC->ProjectWorldLocationToScreen(World, S, true))
 			{
@@ -1840,6 +1862,7 @@ FString AEHGameDirector::DescribeFirstPerson() const
 	}
 	Out += FString::Printf(TEXT(" alignment=%s"), EHAlign::Name(FPAlignment));
 	Out += FString::Printf(TEXT(" clock=%.2fh"), FPClockHours);
+	Out += FString::Printf(TEXT(" view=%s blend=%.2f body=%s"), FPPlayer->IsThirdPerson() ? TEXT("third") : TEXT("first"), FPPlayer->ThirdPersonBlend(), *FPPlayer->BodyClipName());
 	if (FPWolf)
 	{
 		Out += FString::Printf(TEXT(" wolf=(%.0f,%.0f) %s"), FPWolf->GetActorLocation().X, FPWolf->GetActorLocation().Y, *FPWolf->Describe());
@@ -1909,6 +1932,10 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		else if (Field == TEXT("paused")) V = bPaused ? 1.0f : 0.0f;
 		else if (Field == TEXT("screen")) V = static_cast<float>(static_cast<int32>(Screen));
 		else if (Field == TEXT("fov")) V = FPPlayer->Camera()->FieldOfView;
+		else if (Field == TEXT("third_person")) V = FPPlayer->IsThirdPerson() ? 1.0f : 0.0f;
+		else if (Field == TEXT("view_blend")) V = FPPlayer->ThirdPersonBlend();
+		else if (Field == TEXT("view_distance")) V = FVector::Dist(FPPlayer->ViewCamera()->GetComponentLocation(), FPPlayer->Camera()->GetComponentLocation());
+		else if (Field == TEXT("settings_third")) V = Settings.bThirdPerson ? 1.0f : 0.0f;
 		else if (Field == TEXT("moved")) V = FVector::Dist(FPPlayer->FeetLocation(), FPMark);
 		else if (Field == TEXT("health")) V = FPPlayer->Health();
 		else if (Field == TEXT("deaths")) V = static_cast<float>(FPDeaths);
@@ -2056,6 +2083,23 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 	{
 		// What the pause menu's Reset the wolf does.
 		ResetWolves();
+		AutoLogLine(Line);
+		return true;
+	}
+	if (Cmd == TEXT("fp_camera"))
+	{
+		// fp_camera <first|third|toggle> [instant]: what Switch view and Settings > Camera view do. (fp_view, in
+		// development builds, points the view instead.)
+		const FString Want = Arg(1, TEXT("toggle"));
+		if (Want == TEXT("toggle"))
+		{
+			ToggleCameraView();
+		}
+		else
+		{
+			Settings.bThirdPerson = Want == TEXT("third");
+			ApplyCameraView(Arg(2, TEXT("")) == TEXT("instant"));
+		}
 		AutoLogLine(Line);
 		return true;
 	}

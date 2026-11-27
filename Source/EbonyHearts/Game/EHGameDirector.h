@@ -366,6 +366,7 @@ private:
 	bool bFPLockSelectorOwnsLook = false;
 	bool bFPLockStickHeld = false;
 	bool bFPLockPressed = false;
+	bool bFPViewPressed = false;   // Switch view was pressed this frame
 	int32 FPLockSwitches = 0;
 	FVector LockOnPoint(const AActor* Target) const;
 	bool HasLockLineOfSight(const AActor* Target) const;
@@ -478,6 +479,9 @@ private:
 	void HandleFirstPersonNav(const FEHNavEvent& E);
 	void PaintFirstPerson(FEHPainter& P);
 	void ApplyFieldOfView();
+	// Puts the camera where Settings.bThirdPerson says (instantly, or with the switch blend).
+	void ApplyCameraView(bool bInstant);
+	void ToggleCameraView();
 	// Rumble on the controller the player is using (when vibration is on). Large and small motor strengths 0..1.
 	void Rumble(float Large, float Small, float Seconds);
 	// One variant of a numbered sound (S_<Base>_01..N) at a pitch.

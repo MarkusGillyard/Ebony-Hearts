@@ -251,6 +251,9 @@ void AEHGameDirector::BuildSettingsMenu(int32 Page)
 			Menu.Add(Button(TEXT("Keyboard and mouse"), [OpenFP] { OpenFP(EEHBindingSet::FPKeyboard); }, TEXT("Remap movement keys and mouse buttons. The mouse always looks.")));
 			Menu.Add(Button(TEXT("Controller"), [OpenFP] { OpenFP(EEHBindingSet::FPController); }, TEXT("Remap buttons. The left stick always moves and the right stick always looks.")));
 			Menu.Add(Header(TEXT("Look")));
+			Menu.Add(Choice(TEXT("Camera view"), [this] { return FString(Settings.bThirdPerson ? TEXT("Third person") : TEXT("First person")); },
+				[this](int32) { Settings.bThirdPerson = !Settings.bThirdPerson; ApplyCameraView(false); },
+				TEXT("Over the shoulder or through the eyes. Switch view (T or D-pad up by default) changes it in play.")));
 			Menu.Add(Choice(TEXT("Mouse sensitivity"), [this] { return FString::Printf(TEXT("%.2f"), Settings.MouseSensitivity); },
 				[this](int32 D) { Settings.MouseSensitivity = FMath::Clamp(FMath::RoundToFloat((Settings.MouseSensitivity + D * 0.01f) * 100.0f) / 100.0f, 0.01f, 0.5f); },
 				TEXT("Degrees of turn per mouse count. Hold the arrow for larger steps.")));

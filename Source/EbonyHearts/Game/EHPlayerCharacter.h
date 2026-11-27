@@ -18,6 +18,7 @@
 #include "EHPlayerCharacter.generated.h"
 
 class UCameraComponent;
+class USpringArmComponent;
 class UAnimSequence;
 class UEHViewArms;
 
@@ -31,6 +32,19 @@ struct FEHLockOnTuning
 	float SwitchMouse = 90.0f;
 	float SwitchStick = 0.72f;
 	float SwitchCooldown = 0.25f;
+	bool Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError);
+};
+
+// The third-person view: a camera on a boom behind the right shoulder (Data/firstperson.json "thirdPerson").
+struct FEHThirdPersonTuning
+{
+	float Distance = 260.0f;      // cm from the pivot to the camera
+	float ShoulderOffset = 45.0f; // cm to the right of the pivot
+	float PivotBelowEye = 15.0f;  // cm the pivot sits below the eyes
+	float CameraLift = 10.0f;     // cm the camera rises over the pivot
+	float ProbeRadius = 12.0f;    // cm; walls pull the camera in rather than clip through
+	float LagSpeed = 14.0f;       // position follow rate (0 = rigid)
+	float SwitchSeconds = 0.3f;   // the blend between first and third person
 	bool Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError);
 };
 
@@ -82,6 +96,7 @@ struct FEHFirstPersonTuning
 	FEHPackTuning Pack;     // the Chapel wolves as a pack (milestone 6)
 	FEHCombatTextTuning CombatText; // comic-book combat text (milestone 7)
 	FEHLockOnTuning LockOn; // Souls-style target lock-on
+	FEHThirdPersonTuning ThirdPerson; // the over-the-shoulder view
 
 	// Reads Content/Data/firstperson.json text; a missing field keeps its default, a bad value is reported.
 	bool Load(const FString& Text, FString& OutError);
@@ -181,7 +196,17 @@ public:
 	void SetWater(const FEHWater* InWater) { Water = InWater; }
 	float EyeHeight() const { return EyeZ; }
 	FVector FeetLocation() const;
+	// The eyes: every aim, reach and line of sight starts here, in either view.
 	UCameraComponent* Camera() const { return CameraComp; }
+	// The camera the player is looking through (the eyes, or the third-person camera behind the shoulder).
+	UCameraComponent* ViewCamera() const;
+	// Switches between first and third person; bInstant skips the blend (loading, tests).
+	void SetThirdPerson(bool bOn, bool bInstant = false);
+	bool IsThirdPerson() const { return bThirdPerson; }
+	// 0 first person .. 1 fully behind the shoulder (the blend in progress).
+	float ThirdPersonBlend() const { return ViewBlend; }
+	// The clip the visible body is playing (tests and the developer state line).
+	FString BodyClipName() const;
 	const FEHFirstPersonTuning& GetTuning() const { return Tuning; }
 	// Development aid: shows the placeholder body to the player's own camera (shadow and reflection review).
 	void SetBodyVisibleToSelf(bool bVisible);
@@ -195,9 +220,20 @@ private:
 	UPROPERTY()
 	TObjectPtr<UEHViewArms> Arms;
 	UPROPERTY()
-	TObjectPtr<UAnimSequence> BodyIdle;
+	TObjectPtr<USpringArmComponent> Boom;
 	UPROPERTY()
-	TObjectPtr<UAnimSequence> BodyWalk;
+	TObjectPtr<UCameraComponent> ThirdCamera;
+	// Wren's clips from the 2.5D slice, by role (see UpdateBody).
+	UPROPERTY()
+	TMap<FName, TObjectPtr<UAnimSequence>> BodyClips;
+	FName BodyClip;
+	double BodyTime = 0.0;
+	EEHFistAction BodyAction = EEHFistAction::None;
+	bool bThirdPerson = false;
+	bool bBodyShownForReview = false;   // fp_body_visible
+	float ViewBlend = 0.0f;
+	void UpdateView(float DeltaSeconds);
+	void ApplyViewVisibility();
 
 	FEHFirstPersonTuning Tuning;
 	float StaminaValue = 100.0f;
@@ -212,7 +248,6 @@ private:
 	float StepTimer = 0.0f;
 	float FallStartZ = 0.0f;
 	bool bWasFalling = false;
-	bool bBodyWalking = false;
 	TArray<FEHFirstPersonEvent> Events;
 	TFunction<bool(float, const FVector&)> Absorber;
 	FEHFists Fists;
