@@ -375,7 +375,7 @@ chest instead of the left hand. Behind the shoulder the view arms are hidden and
 Wren's slice clips by role: idle, walk forward and back, crouch, guard (standing and crouched), jump, jab (`L1`),
 straight (`L2`), casts (the two-handed `BS`), a light hit and the KO. A technique's clip is stretched over the
 technique's own frames. Camera kicks are halved behind the shoulder. Tuning is `thirdPerson` in `firstperson.json`
-(distance, shoulder offset, pivot, lift, wall probe, lag, blend time). Test: `Tests/Auto/fp_third_person.txt`.
+(distance, shoulder offset, pivot, lift, wall probe, lag, blend time). Tests: `Tests/Auto/fp_third_person.txt` (development) and `Tests/Auto/fp_ship_third_person.txt` (Shipping).
 
 ### Body and painted coat
 
@@ -515,6 +515,7 @@ path as a player. New commands:
 | `fp_arms_state` | development only | logs the arms model's placement and bone positions |
 | `fp_stat <health\|qhi\|stamina\|intelligence\|faith\|dexterity\|martial> <value>`, `fp_qhi <value>` | development only | the developer panel's stat changes; sets current Qhi |
 | `fp_selector <wheel\|list>` | all | what Settings > Controls > Spell selector does |
+| `fp_camera <first\|third\|toggle> [instant]` | all | what Switch view and Settings > Controls > Camera view do; `fp_expect` reads `third_person`, `view_blend`, `view_distance`, `settings_third` |
 | `fp_clock <hour>` | development only | sets the hour of the current day (0 is midnight; a day is 144 hours) |
 | `fp_hide <mesh name prefix \| lights> <0\|1>` | development only | hides static meshes by mesh name, or switches off the interior's lights, to measure what a view's frame time is made of |
 | `fp_wolf_reset` | all | what the pause menu's Reset the wolves does |

@@ -3,7 +3,7 @@
 # (a jab still lands on the dummy), the setting saved, and the way back to first person.
 wait 6
 fp_expect screen eq 12
-fp_view first instant
+fp_camera first instant
 wait 0.2
 fp_expect third_person eq 0
 fp_expect view_distance lt 1
@@ -86,7 +86,7 @@ log == and the same button goes behind the shoulder again
 press pad7 FPCameraView
 wait 0.6
 fp_expect third_person eq 1
-fp_view first instant
+fp_camera first instant
 wait 0.1
 fp_expect view_blend eq 0
 quit

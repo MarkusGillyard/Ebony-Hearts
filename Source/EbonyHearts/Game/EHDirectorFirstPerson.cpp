@@ -2086,9 +2086,10 @@ bool AEHGameDirector::RunFirstPersonCommand(const TArray<FString>& T, const FStr
 		AutoLogLine(Line);
 		return true;
 	}
-	if (Cmd == TEXT("fp_view"))
+	if (Cmd == TEXT("fp_camera"))
 	{
-		// fp_view <first|third|toggle> [instant]: what Switch view and Settings > Camera view do.
+		// fp_camera <first|third|toggle> [instant]: what Switch view and Settings > Camera view do. (fp_view, in
+		// development builds, points the view instead.)
 		const FString Want = Arg(1, TEXT("toggle"));
 		if (Want == TEXT("toggle"))
 		{
