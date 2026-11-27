@@ -208,6 +208,16 @@
     "switchStick": 0.72,
     "switchCooldown": 0.25
   },
+  "thirdPerson": {
+    "comment": "The third-person view (switched in game with Switch view, or in Settings). Distances in cm. distance: boom length behind the pivot. shoulderOffset: to the right. pivotBelowEye: the pivot under the eyes. cameraLift: the camera over the pivot. probeRadius: walls pull the camera in. lagSpeed: follow rate (0 rigid). switchSeconds: the blend between views.",
+    "distance": 260,
+    "shoulderOffset": 45,
+    "pivotBelowEye": 15,
+    "cameraLift": 10,
+    "probeRadius": 12,
+    "lagSpeed": 14,
+    "switchSeconds": 0.3
+  },
   "chapel": {
     "comment": "The Drowned Chapel's interactions (interior stage 2). Each interactable: id, at [x, y, z] in cm, radius (how far off the line of sight it still counts), prompt (shown after the Interact key), text (shown when used; bracketed text marks a placeholder until the creator writes the real words), pray (the kneeler). reach: how far from the eye something can be used. sounds: looping ambience placed in the rooms (Ambience/S_<name>), full volume within inner, silent at inner + falloff, scaled by the ambience setting. sparkAt / sparkRange / sparkGap: embers rising off the forge's coals while the player is near.",
     "reach": 230,

@@ -1,0 +1,92 @@
+# Third-person view (development build): Switch view from the keyboard and controller, the blend, the camera behind
+# the shoulder pulled in by walls, the body's clips (walk, jab, straight, guard, cast, crouch), aim kept from the eyes
+# (a jab still lands on the dummy), the setting saved, and the way back to first person.
+wait 6
+fp_expect screen eq 12
+fp_view first instant
+wait 0.2
+fp_expect third_person eq 0
+fp_expect view_distance lt 1
+
+log == T switches to third person with a blend; the camera ends behind the shoulder
+fp_teleport 0 220 0 -90 0
+wait 0.3
+press kbA FPCameraView
+wait 0.1
+fp_expect third_person eq 1
+fp_expect settings_third eq 1
+fp_expect view_blend gt 0.05
+fp_expect view_blend lt 0.95
+wait 0.5
+fp_expect view_blend eq 1
+fp_expect view_distance gt 150
+screenshot tp_idle
+fp_state idle
+
+log == walking shows the walk; backing up the back-walk
+hold kbA FPForward
+wait 0.6
+fp_state walk_forward
+screenshot tp_walk
+release kbA FPForward
+hold kbA FPBack
+wait 0.6
+fp_state walk_back
+release kbA FPBack
+wait 0.5
+
+log == a jab from behind the shoulder still reaches the dummy (aim from the eyes)
+fp_dummy stand
+fp_teleport 0 -40 0 -90 -4
+wait 0.8
+press kbA FPJab
+wait 0.05
+fp_state jab
+wait 0.05
+screenshot tp_jab
+wait 0.4
+fp_expect dummy_hits gt 0
+press kbA FPStraight
+wait 0.1
+fp_state straight
+wait 0.5
+hold kbA FPBlock
+wait 0.3
+fp_state guard
+screenshot tp_guard
+release kbA FPBlock
+wait 0.4
+press kbA FPFireball
+wait 0.15
+fp_state cast
+screenshot tp_cast
+wait 1.0
+hold kbA FPCrouch
+wait 0.4
+fp_state crouch
+release kbA FPCrouch
+wait 0.4
+
+log == a wall behind pulls the camera in rather than through it
+fp_teleport 0 220 0 90 0
+wait 0.8
+fp_state near_wall
+screenshot tp_wall
+
+log == D-pad up on the controller switches back to first person
+press pad7 FPCameraView
+wait 0.6
+fp_expect third_person eq 0
+fp_expect view_blend eq 0
+fp_expect view_distance lt 1
+fp_expect settings_third eq 0
+screenshot fp_back
+
+log == and the same button goes behind the shoulder again
+press pad7 FPCameraView
+wait 0.6
+fp_expect third_person eq 1
+fp_view first instant
+wait 0.1
+fp_expect view_blend eq 0
+quit

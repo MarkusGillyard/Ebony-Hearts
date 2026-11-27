@@ -12,6 +12,8 @@
 #include "Engine/World.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "EHAnimInstance.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 
@@ -44,6 +46,37 @@ bool FEHLockOnTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError
 	Num(TEXT("switchMouse"), SwitchMouse, 10, 1000);
 	Num(TEXT("switchStick"), SwitchStick, 0.2f, 1.0f);
 	Num(TEXT("switchCooldown"), SwitchCooldown, 0.05f, 2.0f);
+	return bOk;
+}
+
+bool FEHThirdPersonTuning::Load(const TSharedPtr<FJsonObject>& Obj, FString& OutError)
+{
+	if (!Obj.IsValid())
+	{
+		return true;
+	}
+	bool bOk = true;
+	auto Num = [&](const TCHAR* Name, float& Out, float Min, float Max) {
+		double V = 0.0;
+		if (!Obj->TryGetNumberField(Name, V))
+		{
+			return;
+		}
+		if (V < Min || V > Max)
+		{
+			OutError = FString::Printf(TEXT("Data/firstperson.json: thirdPerson.%s = %g is outside %g..%g."), Name, V, Min, Max);
+			bOk = false;
+			return;
+		}
+		Out = static_cast<float>(V);
+	};
+	Num(TEXT("distance"), Distance, 80, 800);
+	Num(TEXT("shoulderOffset"), ShoulderOffset, -150, 150);
+	Num(TEXT("pivotBelowEye"), PivotBelowEye, -50, 100);
+	Num(TEXT("cameraLift"), CameraLift, -100, 150);
+	Num(TEXT("probeRadius"), ProbeRadius, 2, 40);
+	Num(TEXT("lagSpeed"), LagSpeed, 0, 60);
+	Num(TEXT("switchSeconds"), SwitchSeconds, 0, 2);
 	return bOk;
 }
 
@@ -119,6 +152,11 @@ bool FEHFirstPersonTuning::Load(const FString& Text, FString& OutError)
 	}
 	const TSharedPtr<FJsonObject>* LockObj = nullptr;
 	if (Root->TryGetObjectField(TEXT("lockOn"), LockObj) && !LockOn.Load(*LockObj, OutError))
+	{
+		return false;
+	}
+	const TSharedPtr<FJsonObject>* ThirdObj = nullptr;
+	if (Root->TryGetObjectField(TEXT("thirdPerson"), ThirdObj) && !ThirdPerson.Load(*ThirdObj, OutError))
 	{
 		return false;
 	}
@@ -208,6 +246,19 @@ AEHPlayerCharacter::AEHPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	Arms = CreateDefaultSubobject<UEHViewArms>(TEXT("ViewArms"));
 	Arms->SetupAttachment(CameraComp);
 
+	// Third person: a boom from just under the eyes to a camera behind the right shoulder. It turns with the aim, so the
+	// view and every reach keep one direction; walls pull it in instead of letting it clip through.
+	Boom = CreateDefaultSubobject<USpringArmComponent>(TEXT("ThirdPersonBoom"));
+	Boom->SetupAttachment(GetCapsuleComponent());
+	Boom->bUsePawnControlRotation = true;
+	Boom->bDoCollisionTest = true;
+	Boom->ProbeChannel = ECC_Camera;
+	ThirdCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("ThirdPersonCamera"));
+	ThirdCamera->SetupAttachment(Boom, USpringArmComponent::SocketName);
+	ThirdCamera->bUsePawnControlRotation = false;
+	ThirdCamera->SetConstraintAspectRatio(false);
+	ThirdCamera->SetAutoActivate(false);
+
 	// The hidden body: never drawn to its own player's camera, still in shadows (and in other views).
 	Body = GetMesh();
 	Body->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -233,12 +284,22 @@ void AEHPlayerCharacter::BeginPlay()
 	if (USkeletalMesh* Mesh = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Characters/Wren/SK_Wren.SK_Wren"), nullptr, LOAD_NoWarn | LOAD_Quiet))
 	{
 		Body->SetSkeletalMesh(Mesh);
-		Body->SetAnimationMode(EAnimationMode::AnimationSingleNode);
-		BodyIdle = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/Wren/Anims/A_Wren_Idle.A_Wren_Idle"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-		BodyWalk = LoadObject<UAnimSequence>(nullptr, TEXT("/Game/Characters/Wren/Anims/A_Wren_WalkF.A_Wren_WalkF"), nullptr, LOAD_NoWarn | LOAD_Quiet);
-		if (BodyIdle)
+		Body->SetAnimInstanceClass(UEHAnimInstance::StaticClass());
+		// The body's roles and the slice clips that play them (the third-person view shows them; the shadow always
+		// does). Roles without a clip fall back to the idle.
+		static const TCHAR* const Roles[][2] = {
+			{TEXT("Idle"), TEXT("Idle")}, {TEXT("WalkF"), TEXT("WalkF")}, {TEXT("WalkB"), TEXT("WalkB")},
+			{TEXT("Crouch"), TEXT("Crouch")}, {TEXT("CrouchGuard"), TEXT("CrouchGuard")}, {TEXT("Guard"), TEXT("Guard")},
+			{TEXT("Jump"), TEXT("Jump")}, {TEXT("Land"), TEXT("Land")}, {TEXT("Jab"), TEXT("L1")}, {TEXT("Straight"), TEXT("L2")},
+			{TEXT("Cast"), TEXT("BS")}, {TEXT("Hit"), TEXT("HitLight")}, {TEXT("Down"), TEXT("KO")},
+		};
+		for (const auto& R : Roles)
 		{
-			Body->PlayAnimation(BodyIdle, true);
+			const FString Path = FString::Printf(TEXT("/Game/Characters/Wren/Anims/A_Wren_%s.A_Wren_%s"), R[1], R[1]);
+			if (UAnimSequence* Seq = LoadObject<UAnimSequence>(nullptr, *Path, nullptr, LOAD_NoWarn | LOAD_Quiet))
+			{
+				BodyClips.Add(FName(R[0]), Seq);
+			}
 		}
 	}
 	Arms->Build();
@@ -278,6 +339,10 @@ void AEHPlayerCharacter::ApplyTuning(const FEHFirstPersonTuning& InTuning)
 		GetCapsuleComponent()->SetCapsuleSize(Tuning.CapsuleRadius, Tuning.StandHeight * 0.5f);
 	}
 	Body->SetRelativeLocationAndRotation(FVector(0, 0, -Tuning.StandHeight * 0.5f), FRotator(0, -90, 0));
+	Boom->SocketOffset = FVector(0.0f, Tuning.ThirdPerson.ShoulderOffset, Tuning.ThirdPerson.CameraLift);
+	Boom->ProbeSize = Tuning.ThirdPerson.ProbeRadius;
+	Boom->bEnableCameraLag = Tuning.ThirdPerson.LagSpeed > 0.0f;
+	Boom->CameraLagSpeed = Tuning.ThirdPerson.LagSpeed;
 	BaseEyeHeight = Tuning.StandEyeHeight - Tuning.StandHeight * 0.5f;
 	CrouchedEyeHeight = Tuning.CrouchEyeHeight - Tuning.CrouchHeight * 0.5f;
 	StaminaValue = FMath::Min(StaminaValue, Tuning.StaminaMax);
@@ -367,7 +432,9 @@ void AEHPlayerCharacter::ReleaseSpell(EEHFistAction Spell)
 		// From the left hand toward whatever the view's centre rests on, so the ball lands where the player aims.
 		const FVector Eye = CameraComp->GetComponentLocation();
 		const FVector Aim = CameraComp->GetForwardVector();
-		const FVector Origin = Eye + Aim * 45.0f - CameraComp->GetRightVector() * 12.0f - CameraComp->GetUpVector() * 14.0f;
+		// From the left hand in first person; behind the shoulder, from in front of the chest (the body casts it).
+		const FVector Origin = bThirdPerson ? Eye + Aim * 60.0f - CameraComp->GetUpVector() * 30.0f
+			: Eye + Aim * 45.0f - CameraComp->GetRightVector() * 12.0f - CameraComp->GetUpVector() * 14.0f;
 		FHitResult Hit;
 		FCollisionQueryParams Params(TEXT("EHFireballAim"), false, this);
 		FVector Target = Eye + Aim * Tuning.Magic.FireballRange;
@@ -402,12 +469,67 @@ void AEHPlayerCharacter::ReleaseSpell(EEHFistAction Spell)
 void AEHPlayerCharacter::SetFieldOfView(float HorizontalDegrees)
 {
 	CameraComp->SetFieldOfView(HorizontalDegrees);
+	ThirdCamera->SetFieldOfView(HorizontalDegrees);
 }
 
 void AEHPlayerCharacter::SetBodyVisibleToSelf(bool bVisible)
 {
-	Body->SetFirstPersonPrimitiveType(bVisible ? EFirstPersonPrimitiveType::None : EFirstPersonPrimitiveType::WorldSpaceRepresentation);
-	Body->SetOwnerNoSee(!bVisible);
+	bBodyShownForReview = bVisible;
+	ApplyViewVisibility();
+}
+
+UCameraComponent* AEHPlayerCharacter::ViewCamera() const
+{
+	return ThirdCamera->IsActive() ? ThirdCamera.Get() : CameraComp.Get();
+}
+
+void AEHPlayerCharacter::SetThirdPerson(bool bOn, bool bInstant)
+{
+	bThirdPerson = bOn;
+	if (bInstant || Tuning.ThirdPerson.SwitchSeconds <= 0.0f)
+	{
+		ViewBlend = bOn ? 1.0f : 0.0f;
+	}
+	UpdateView(0.0f);
+	if (bInstant)
+	{
+		Boom->bEnableCameraLag = false;   // no lag catching up from wherever the camera last was
+		UpdateView(0.0f);
+		Boom->bEnableCameraLag = Tuning.ThirdPerson.LagSpeed > 0.0f;
+	}
+}
+
+void AEHPlayerCharacter::ApplyViewVisibility()
+{
+	// Behind the shoulder the camera sees the body and no view arms; at the eyes it is the other way round. The body is
+	// shown as soon as the camera starts to pull back and hidden only once it is back at the eyes.
+	const bool bBehind = ViewBlend > 0.0f;
+	const bool bShowBody = bBehind || bBodyShownForReview;
+	Body->SetFirstPersonPrimitiveType(bShowBody ? EFirstPersonPrimitiveType::None : EFirstPersonPrimitiveType::WorldSpaceRepresentation);
+	Body->SetOwnerNoSee(!bShowBody);
+	if (Arms)
+	{
+		Arms->SetHiddenInGame(bBehind, true);   // hidden-in-game, so the arms' own per-frame visibility stays theirs
+	}
+	if (bBehind != ThirdCamera->IsActive())
+	{
+		ThirdCamera->SetActive(bBehind);
+		CameraComp->SetActive(!bBehind);
+	}
+}
+
+void AEHPlayerCharacter::UpdateView(float DeltaSeconds)
+{
+	const float Want = bThirdPerson ? 1.0f : 0.0f;
+	const float Rate = Tuning.ThirdPerson.SwitchSeconds > 0.0f ? DeltaSeconds / Tuning.ThirdPerson.SwitchSeconds : 1.0f;
+	ViewBlend = FMath::FInterpConstantTo(ViewBlend, Want, 1.0f, Rate);
+	// Smoothstep: the camera leaves and reaches the eyes gently. It starts 40 cm back so it is never inside the head.
+	const float E = ViewBlend * ViewBlend * (3.0f - 2.0f * ViewBlend);
+	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+	Boom->SetRelativeLocation(FVector(0, 0, EyeZ - HalfHeight - Tuning.ThirdPerson.PivotBelowEye * E));
+	Boom->TargetArmLength = FMath::Lerp(40.0f, Tuning.ThirdPerson.Distance, E);
+	Boom->SocketOffset = FVector(0.0f, Tuning.ThirdPerson.ShoulderOffset * E, Tuning.ThirdPerson.CameraLift * E);
+	ApplyViewVisibility();
 }
 
 void AEHPlayerCharacter::ResetToStart()
@@ -479,6 +601,7 @@ void AEHPlayerCharacter::ApplyInput(const FEHFirstPersonInput& In, float DeltaSe
 	R.Yaw = FRotator::NormalizeAxis(R.Yaw + In.Look.X);
 	R.Roll = 0.0f;
 	C->SetControlRotation(R);
+	CameraComp->SetWorldRotation(R);   // the eyes aim now, whichever camera is drawing (see UpdateCamera)
 
 	UCharacterMovementComponent* Move = GetCharacterMovement();
 	const bool bGrounded = Move->IsMovingOnGround();
@@ -832,10 +955,14 @@ void AEHPlayerCharacter::Tick(float DeltaSeconds)
 		KickRoll *= FMath::Exp(-DeltaSeconds / 0.09f);
 		KickForward *= FMath::Exp(-DeltaSeconds / 0.06f);
 	}
+	UpdateView(DeltaSeconds);
 	CameraComp->ClearAdditiveOffset();
+	ThirdCamera->ClearAdditiveOffset();
 	if (FMath::Abs(KickPitch) + FMath::Abs(KickRoll) + FMath::Abs(KickForward) > 0.001f)
 	{
-		CameraComp->AddAdditiveOffset(FTransform(FRotator(KickPitch, 0.0f, KickRoll), FVector(KickForward, 0.0f, 0.0f)), 0.0f);
+		// The kick moves whichever camera is in use; behind the shoulder it is halved (the body shows the blow).
+		const float Scale = ViewCamera() == CameraComp ? 1.0f : 0.5f;
+		ViewCamera()->AddAdditiveOffset(FTransform(FRotator(KickPitch * Scale, 0.0f, KickRoll * Scale), FVector(KickForward * Scale, 0.0f, 0.0f)), 0.0f);
 	}
 	if (Arms)
 	{
@@ -907,30 +1034,110 @@ void AEHPlayerCharacter::UpdateCamera(float DeltaSeconds)
 	}
 	const float HalfHeight = GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 	CameraComp->SetRelativeLocation(FVector(0, 0, EyeZ - HalfHeight));
+	// The eyes always face the aim. The engine turns a camera to the control rotation only while it is the one being
+	// drawn, and every reach, interaction and line of sight reads this camera in both views.
+	if (const AController* C = GetController())
+	{
+		CameraComp->SetWorldRotation(C->GetControlRotation());
+	}
+}
+
+FString AEHPlayerCharacter::BodyClipName() const
+{
+	return BodyClip.IsNone() ? FString(TEXT("none")) : BodyClip.ToString();
 }
 
 void AEHPlayerCharacter::UpdateBody()
 {
-	if (!HasBodyPlaceholder())
+	// Chooses the body's clip from what the player is doing and plays it on Wren's slice animations: a technique
+	// stretches its clip over the technique's own frames, so the swing lands with the fists' active frame.
+	UEHAnimInstance* Inst = HasBodyPlaceholder() ? Cast<UEHAnimInstance>(Body->GetAnimInstance()) : nullptr;
+	if (Inst == nullptr)
 	{
 		return;
 	}
-	const bool bWalking = GetVelocity().Size2D() > 40.0f;
-	if (bWalking != bBodyWalking)
+	const float Delta = GetWorld() ? GetWorld()->GetDeltaSeconds() : 1.0f / 60.0f;
+	const UCharacterMovementComponent* Move = GetCharacterMovement();
+	const FVector Vel = GetVelocity();
+	const float Speed = Vel.Size2D();
+	const float Forward = FVector::DotProduct(Vel, GetActorForwardVector());
+	const EEHFistAction Action = Fists.Action();
+	FName Want = TEXT("Idle");
+	bool bLoop = true;
+	double Time = 0.0;
+	float Rate = 1.0f;
+	float Blend = 0.15f;
+	if (HealthValue <= 0.0f)
 	{
-		bBodyWalking = bWalking;
-		UAnimSequence* Anim = bWalking ? BodyWalk : BodyIdle;
-		if (Anim)
+		Want = TEXT("Down");
+		bLoop = false;
+	}
+	else if (Action != EEHFistAction::None)
+	{
+		Want = Action == EEHFistAction::Jab ? FName(TEXT("Jab")) : Action == EEHFistAction::Straight ? FName(TEXT("Straight")) : FName(TEXT("Cast"));
+		bLoop = false;
+		Blend = 0.06f;
+		if (const TObjectPtr<UAnimSequence>* Clip = BodyClips.Find(Want))
 		{
-			Body->PlayAnimation(Anim, true);
+			const int32 Total = FMath::Max(1, Tuning.Fists.Def(Action).Total());
+			Time = (*Clip)->GetPlayLength() * FMath::Clamp((Fists.Frame() + FistAccum * 60.0f) / Total, 0.0f, 1.0f);
 		}
 	}
-	if (bWalking && BodyWalk)
+	else if (SinceHurt < 0.35f)
 	{
-		Body->SetPlayRate(FMath::Clamp(GetVelocity().Size2D() / FMath::Max(1.0f, Tuning.WalkSpeed), 0.5f, 1.8f));
+		Want = TEXT("Hit");
+		bLoop = false;
+		Time = SinceHurt;
+		Blend = 0.05f;
+	}
+	else if (Move->IsFalling())
+	{
+		Want = TEXT("Jump");
+		bLoop = false;
+	}
+	else if (Fists.IsBlockHeld())
+	{
+		Want = bIsCrouched ? TEXT("CrouchGuard") : TEXT("Guard");
+	}
+	else if (bIsCrouched)
+	{
+		Want = TEXT("Crouch");
+	}
+	else if (Speed > 40.0f)
+	{
+		Want = Forward < -20.0f ? TEXT("WalkB") : TEXT("WalkF");
+		Rate = FMath::Clamp(Speed / FMath::Max(1.0f, Tuning.WalkSpeed), 0.5f, 1.8f);
+	}
+	if (!BodyClips.Contains(Want))
+	{
+		Want = Want == TEXT("CrouchGuard") ? FName(TEXT("Crouch")) : FName(TEXT("Idle"));
+	}
+	const TObjectPtr<UAnimSequence>* Clip = BodyClips.Find(Want);
+	if (Clip == nullptr)
+	{
+		return;
+	}
+	// A new clip, or the same technique started again (a jab after a jab), blends in from the current pose.
+	const bool bRestart = Want != BodyClip || (Action != EEHFistAction::None && Fists.Frame() == 0 && BodyAction == Action && BodyTime > 0.05);
+	if (bRestart)
+	{
+		Inst->BeginTransition(BodyClip.IsNone() ? 0.0f : Blend);
+		BodyClip = Want;
+		if (Action == EEHFistAction::None)
+		{
+			BodyTime = 0.0;
+		}
+	}
+	BodyAction = Action;
+	const double Length = FMath::Max((*Clip)->GetPlayLength(), 1e-3f);
+	if (Action != EEHFistAction::None || Want == TEXT("Hit"))
+	{
+		BodyTime = Time;
 	}
 	else
 	{
-		Body->SetPlayRate(1.0f);
+		BodyTime += Delta * Rate;
 	}
+	const double Sample = bLoop ? FMath::Fmod(BodyTime, Length) : FMath::Clamp(BodyTime, 0.0, Length);
+	Inst->SetSample(*Clip, Sample);
 }

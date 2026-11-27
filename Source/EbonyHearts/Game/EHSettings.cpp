@@ -37,6 +37,7 @@ const TCHAR* EHActionName(EEHAction Action)
 	case EEHAction::FPSpellSelect: return TEXT("FPSpellSelect");
 	case EEHAction::FPInteract: return TEXT("FPInteract");
 	case EEHAction::FPLockOn: return TEXT("FPLockOn");
+	case EEHAction::FPCameraView: return TEXT("FPCameraView");
 	case EEHAction::FPBlock: return TEXT("FPBlock");
 	case EEHAction::FPFireball: return TEXT("FPFireball");
 	case EEHAction::FPIceWall: return TEXT("FPIceWall");
@@ -71,6 +72,7 @@ const TCHAR* EHActionId(EEHAction Action)
 	case EEHAction::FPSpellSelect: return TEXT("FirstPersonSpellSelect");
 	case EEHAction::FPInteract: return TEXT("FirstPersonInteract");
 	case EEHAction::FPLockOn: return TEXT("FirstPersonLockOn");
+	case EEHAction::FPCameraView: return TEXT("FirstPersonCameraView");
 	case EEHAction::FPBlock: return TEXT("FirstPersonBlock");
 	case EEHAction::FPFireball: return TEXT("FirstPersonFireball");
 	case EEHAction::FPIceWall: return TEXT("FirstPersonIceWall");
@@ -105,6 +107,7 @@ const TCHAR* EHActionLabel(EEHAction Action)
 	case EEHAction::FPSpellSelect: return TEXT("Choose a spell (hold)");
 	case EEHAction::FPInteract: return TEXT("Interact / pray");
 	case EEHAction::FPLockOn: return TEXT("Lock on");
+	case EEHAction::FPCameraView: return TEXT("Switch view (first / third person)");
 	case EEHAction::FPBlock: return TEXT("Block (hold)");
 	case EEHAction::FPFireball: return TEXT("Fireball");
 	case EEHAction::FPIceWall: return TEXT("Ice Wall");
@@ -160,12 +163,12 @@ TArray<EEHAction> EHActionsFor(EEHBindingSet Set)
 	using A = EEHAction;
 	if (Set == EEHBindingSet::FPKeyboard)
 	{
-		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPLockOn, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPLockOn, A::FPCameraView, A::FPForward, A::FPBack, A::FPLeft, A::FPRight, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	if (Set == EEHBindingSet::FPController)
 	{
 		// The left stick always moves and the right stick always looks, so only buttons are listed.
-		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPLockOn, A::FPJump, A::FPCrouch, A::FPSprint};
+		return {A::FPJab, A::FPStraight, A::FPBlock, A::FPFireball, A::FPIceWall, A::FPSpellSelect, A::FPInteract, A::FPLockOn, A::FPCameraView, A::FPJump, A::FPCrouch, A::FPSprint};
 	}
 	return {A::Light, A::Heavy, A::Dodge, A::Throw, A::Block, A::Special, A::Left, A::Right, A::Jump, A::Down, A::Reset};
 }
@@ -288,6 +291,9 @@ FEHBindings FEHBindings::Defaults()
 	// Souls-style lock-on (2026-11-24): middle mouse (or V) on keyboard and mouse, R3 / RS on controller (crouch moves to D-pad down).
 	Set(S::FPKeyboard, A::FPLockOn, EKeys::MiddleMouseButton, EKeys::V);
 	Set(S::FPController, A::FPLockOn, EKeys::Gamepad_RightThumbstick);
+	// Switch view (2026-11-27): T for third person on the keyboard, D-pad up on controller (both were free).
+	Set(S::FPKeyboard, A::FPCameraView, EKeys::T);
+	Set(S::FPController, A::FPCameraView, EKeys::Gamepad_DPad_Up);
 	return B;
 }
 
@@ -722,6 +728,7 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 	Bool(TEXT("crouchToggle"), S.bCrouchToggle);
 	Int(TEXT("staminaMeter"), S.StaminaMeter);
 	Int(TEXT("spellSelector"), S.SpellSelector);
+	Bool(TEXT("thirdPerson"), S.bThirdPerson);
 	Bool(TEXT("vibration"), S.bVibration);
 	S.bImportedFromSlice = bFromSlice;
 
@@ -1111,6 +1118,33 @@ FEHSettings FEHSettings::Load(FString* OutWarning, const FString& PathOverride)
 				}
 			}
 		}
+		if (Version < 12)
+		{
+			// Version 12 added Switch view (T, and D-pad up on controller). A key the player already uses keeps its job.
+			FString Taken;
+			for (EEHBindingSet BS : {EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
+			{
+				const EEHAction A = EEHAction::FPCameraView;
+				for (int32 K = 0; K < EHKeysPerAction; ++K)
+				{
+					const FKey Key = Loaded.Keys[Idx(BS)][Idx(A)][K];
+					const FEHBindingRef C = Key.IsValid() ? Loaded.FindConflict(BS, A, K, Key) : FEHBindingRef();
+					if (C.IsValid() && C.Action != A)
+					{
+						Loaded.Keys[Idx(BS)][Idx(A)][K] = EKeys::Invalid;
+						Taken += FString::Printf(TEXT("%s%s (%s) is used by %s"), Taken.IsEmpty() ? TEXT("") : TEXT("; "), *Key.GetDisplayName(false).ToString(), EHActionLabel(A), EHActionLabel(C.Action));
+					}
+				}
+			}
+			if (Version >= 6)
+			{
+				Notes += Notes.IsEmpty() ? TEXT("New: Switch view (third person).") : TEXT(" New: Switch view (third person).");
+				if (!Taken.IsEmpty())
+				{
+					Notes += FString::Printf(TEXT(" Your own keys were kept: %s. Choose one in Settings > Controls."), *Taken);
+				}
+			}
+		}
 		// A layout with a duplicate or reserved key falls back to its defaults; the others are kept.
 		for (EEHBindingSet Set : {EEHBindingSet::KeyboardA, EEHBindingSet::GamepadP1, EEHBindingSet::GamepadP2, EEHBindingSet::FPKeyboard, EEHBindingSet::FPController})
 		{
@@ -1173,6 +1207,7 @@ bool FEHSettings::Save(const FString& PathOverride) const
 	Root->SetBoolField(TEXT("crouchToggle"), bCrouchToggle);
 	Root->SetNumberField(TEXT("staminaMeter"), StaminaMeter);
 	Root->SetNumberField(TEXT("spellSelector"), SpellSelector);
+	Root->SetBoolField(TEXT("thirdPerson"), bThirdPerson);
 	Root->SetBoolField(TEXT("vibration"), bVibration);
 	TSharedRef<FJsonObject> BindingsObj = MakeShared<FJsonObject>();
 	for (int32 Set = 0; Set < EHSetCount; ++Set)

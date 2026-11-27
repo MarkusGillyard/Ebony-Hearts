@@ -40,6 +40,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 | Choose a spell (hold) | Tab | Square / X |
 | Interact / pray | E | Circle / B |
 | Lock on | Middle mouse button (and V) | Right stick press (R3 / RS) |
+| Switch view (first / third person) | T | D-pad up |
 | Pause | Escape (fixed) | Menu / Options (fixed) |
 
 - **Keyboard holds and toggles.** Settings > Controls > Keyboard can make sprint and crouch toggle.
@@ -56,7 +57,7 @@ Every gameplay action can be remapped in Settings > Controls. Menu controls are 
 
 ## Settings file
 
-First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 11), so the 2.5D
+First person keeps its own file, `Saved/EbonyHearts/FirstPersonSettings.json` (format version 12), so the 2.5D
 slice's `Settings.json` is never rewritten. On the first launch, when only the slice's file exists, its display,
 audio, accessibility and button-prompt values carry over and a notice says so. The fighting layouts load as before but
 are not used in first person. The first-person layouts start at the defaults above; no fighting action maps onto a
@@ -65,7 +66,8 @@ field-of-view, hold/toggle and Stamina-meter settings; version 7 the four techni
 version 8 Fireball and Ice Wall; version 9 removed the shove (its keys are simply free) and added Choose a spell
 and the Spell selector setting; version 10 added Interact / pray, on the keys the shove left; version 11 added Lock on
 (Middle mouse / V on keyboard and mouse, R3 / RS on controller, moving controller Crouch to D-pad down when still on
-its previous default). Each new action takes its default key only where the player has not already used
+its previous default); version 12 added Switch view (T, D-pad up) and the Camera view setting (`thirdPerson`). Each
+new action takes its default key only where the player has not already used
 that key for something else, and a notice names any that were left for the player to choose.
 
 ## Tuning (`Content/Data/firstperson.json`)
@@ -362,6 +364,18 @@ with no valid target, the view levels toward the horizon). While locked on, the 
 left/right movement orbits cleanly around it and punches and Fireballs aim straight at it. Flicking the mouse or right
 stick left or right switches between targets. Lock-on breaks automatically if the target dies, moves past break range,
 loses line of sight for 1.2 s, or when the player kneels to pray or resets.
+
+### Third-person view
+
+Switch view (`T`, or `D-pad up` on controller) moves the camera from the eyes to behind Wren's right shoulder and back;
+Settings > Controls > Camera view does the same, and the choice is saved. The camera blends over 0.3 s on a boom that
+turns with the aim, and walls pull it in rather than letting it pass through. Every reach, strike, spell and line of
+sight still starts at the eyes in either view, so combat plays the same; only the Fireball leaves from in front of the
+chest instead of the left hand. Behind the shoulder the view arms are hidden and the placeholder body is shown, playing
+Wren's slice clips by role: idle, walk forward and back, crouch, guard (standing and crouched), jump, jab (`L1`),
+straight (`L2`), casts (the two-handed `BS`), a light hit and the KO. A technique's clip is stretched over the
+technique's own frames. Camera kicks are halved behind the shoulder. Tuning is `thirdPerson` in `firstperson.json`
+(distance, shoulder offset, pivot, lift, wall probe, lag, blend time). Test: `Tests/Auto/fp_third_person.txt`.
 
 ### Body and painted coat
 
